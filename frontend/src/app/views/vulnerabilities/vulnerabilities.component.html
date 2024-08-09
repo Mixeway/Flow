@@ -1,0 +1,113 @@
+<c-row>
+    <c-col xs="12">
+        <c-card class="mb-4 h-100">
+            <c-card-header>
+                List of vulnerabilities and links with all resources You have access to
+            </c-card-header>
+            <c-card-body>
+                <ngx-datatable
+                        class="bootstrap"
+                        [rows]="filteredVulns"
+                        [columnMode]="'force'"
+                        [footerHeight]="50"
+                        [headerHeight]="80"
+                        [rowHeight]="'auto'"
+                        [limit]="15">
+
+                    <!-- Conditional Admin Column -->
+                    <ngx-datatable-column *ngIf="userRole === 'ADMIN'" name="Edit" [width]="10" [sortable]="false">
+                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row" >
+                            <button type="button" class="btn btn-outline-primary" (click)="openEditModal(row)">
+                                <svg cIcon name="cil-pencil" class="icon"></svg>
+                            </button>
+                        </ng-template>
+                    </ngx-datatable-column>
+
+                    <!-- Vulnerability Column -->
+                    <ngx-datatable-column name="Vulnerability" prop="vulnerability.name" [sortable]="false" [width]="300">
+                        <ng-template ngx-datatable-header-template>
+                            <c-input-group class="mb-3">
+                                <span cInputGroupText id="filterVulnerability">
+                                    <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
+                                </span>
+                                <input aria-describedby="addon-wrapping"
+                                       aria-label="Filter Vulnerability"
+                                       type="text" class="form-control" placeholder="Filter Vulnerability" (input)="updateFilterVulnerability($event)"
+                                />
+                                <button type="button" class="btn btn-outline-secondary" (click)="clearFilter('vulnerability')">Clear</button>
+                            </c-input-group>
+                        </ng-template>
+                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
+                            <svg cIcon class="me-2" name="cil-bug"></svg>
+                            <span>{{ row?.vulnerability?.name }}</span>
+                        </ng-template>
+                    </ngx-datatable-column>
+
+                    <!-- Repos Affected Column -->
+                    <ngx-datatable-column name="Repos Affected" prop="groupid" [sortable]="false" [width]="300">
+                        <ng-template ngx-datatable-header-template>
+                            <c-input-group class="mb-3">
+                                <span cInputGroupText id="filterRepos">
+                                    <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
+                                </span>
+                                <input aria-describedby="addon-wrapping"
+                                       aria-label="Filter Repos"
+                                       type="text" class="form-control" placeholder="Filter Repos" (input)="updateFilterRepos($event)"
+                                />
+                                <button type="button" class="btn btn-outline-secondary" (click)="clearFilter('repos')">Clear</button>
+                            </c-input-group>
+                        </ng-template>
+                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
+                            <ul cListGroup>
+                                <li cListGroupItem *ngFor="let repo of row?.affectedRepositories">
+                                    <svg cIcon class="me-2" name="cib-gitlab"></svg>
+                                    <span>{{ repo }}</span>
+                                </li>
+                            </ul>
+                        </ng-template>
+                    </ngx-datatable-column>
+
+                </ngx-datatable>
+            </c-card-body>
+        </c-card>
+    </c-col>
+</c-row>
+<!-- Edit Modal -->
+<c-modal size="lg" [visible]="editModalVisible" (visibleChange)="editModalVisible = $event">
+    <c-modal-header>
+        <h5 cModalTitle>Edit Vulnerability: {{ selectedVuln?.vulnerability?.name }}</h5>
+    </c-modal-header>
+    <c-modal-body>
+        <form [formGroup]="editForm">
+            <c-input-group class="mb-3">
+                <span cInputGroupText>Description</span>
+                <textarea cFormControl formControlName="description" rows="3"></textarea>
+            </c-input-group>
+            <c-input-group class="mb-3">
+                <span cInputGroupText>Recommendation</span>
+                <textarea cFormControl formControlName="recommendation" rows="3"></textarea>
+            </c-input-group>
+            <c-input-group class="mb-3">
+                <span cInputGroupText>References</span>
+                <textarea cFormControl formControlName="ref" rows="3"></textarea>
+            </c-input-group>
+        </form>
+    </c-modal-body>
+    <c-modal-footer>
+        <button (click)="closeEditModal()" cButton color="secondary">Close</button>
+        <button (click)="submitEditForm()" cButton color="primary" [disabled]="editForm.invalid">Submit</button>
+    </c-modal-footer>
+</c-modal>
+<c-toaster [placement]="position" class="p-3" position="fixed">
+    <c-toast
+            [color]="toastStatus"
+            (visibleChange)="onVisibleChange($event)"
+            [visible]="visible">
+        <c-toast-header>
+            Team Management
+        </c-toast-header>
+        <c-toast-body>
+            <p>{{toastMessage}}</p>
+        </c-toast-body>
+    </c-toast>
+</c-toaster>

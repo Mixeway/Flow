@@ -1,0 +1,261 @@
+<c-row>
+    <c-col xs>
+        <c-card class="mb-4">
+            <c-card-header>
+                User management
+            </c-card-header>
+            <c-card-body>
+                <button
+                        color="primary"
+                        cButton
+                        (click)="openAddNewUserModal()"
+                >
+                    <svg cIcon class="me-2" name="cil-user-plus"></svg>
+                    Add new User
+                </button>
+                <ngx-datatable
+                        class="bootstrap"
+                        [rows]="users"
+                        [columnMode]="'force'"
+                        [footerHeight]="50"
+                        [headerHeight]="80"
+                        [rowHeight]="'auto'"
+                        [limit]="10">
+
+                    <ngx-datatable-column name="Username" prop="username" [sortable]="false"></ngx-datatable-column>
+                    <ngx-datatable-column name="Role" prop="role" [sortable]="false"></ngx-datatable-column>
+                    <ngx-datatable-column name="Teams" prop="teams" [sortable]="false">
+                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
+                            <ul cListGroup>
+                                <li *ngFor="let team of row.teams" cListGroupItem>{{team.name}}</li>
+                            </ul>
+                        </ng-template>
+                    </ngx-datatable-column>
+                    <ngx-datatable-column name="Active" prop="active" [width]="50">
+                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value"
+                                     let-row="row">
+                            <svg cIcon name="{{ row.active === true ? 'cil-check' : 'cil-x-circle'}}"
+                                 title="cil-check"
+                                 size="3xl"
+                                 class="{{ row.active === true ? 'icon-check' : 'icon-cross'}}"></svg>
+                        </ng-template>
+                    </ngx-datatable-column>
+                    <ngx-datatable-column name="Change<br/>Role" prop="name2" [width]="50">
+                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value"
+                                     let-row="row">
+                            <button type="button" class="btn btn-outline-info"
+                                    (click)='openRoleModal(row)'>
+                                <svg cIcon name="cil-transfer"></svg>
+                            </button>
+
+                        </ng-template>
+                    </ngx-datatable-column>
+                    <ngx-datatable-column name="Manage<br/>teams" prop="name2" [width]="50">
+                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value"
+                                     let-row="row">
+                            <button type="button" class="btn btn-outline-info"
+                                    (click)='openTeamModal(row)'>
+                                <svg cIcon name="cil-vector"></svg>
+                            </button>
+
+                        </ng-template>
+                    </ngx-datatable-column>
+                    <ngx-datatable-column name="Change<br/>password" prop="name2" [width]="50">
+                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value"
+                                     let-row="row">
+                            <button type="button" class="btn btn-outline-info"
+                                    (click)='openChangePasswordModal(row)'>
+                                <svg cIcon name="cil-lock-locked"></svg>
+                            </button>
+
+                        </ng-template>
+                    </ngx-datatable-column>
+                    <ngx-datatable-column name="Activate/<br/>Deactivate" prop="name2" [width]="50">
+                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value"
+                                     let-row="row">
+                            <button *ngIf="row.active === true" type="button" class="btn btn-outline-warning icon-cross"
+                                    (click)='deactivateUser(row)'>
+                                <svg cIcon name="cil-trash"></svg>
+                            </button>
+                            <button *ngIf="row.active === false" type="button" class="btn btn-outline-success icon-check"
+                                    (click)='activate(row)'>
+                                <svg cIcon name="cil-loop-circular"></svg>
+                            </button>
+
+                        </ng-template>
+                    </ngx-datatable-column>
+
+                </ngx-datatable>
+            </c-card-body>
+        </c-card>
+    </c-col>
+</c-row>
+
+<!-- Add New User Modal -->
+<c-modal size="lg" id="addNewUserModal" alignment="center" [visible]="visibleAddNewUser" (visibleChange)="visibleAddNewUser = $event">
+    <c-modal-header>
+        <h5 cModalTitle>Add New User</h5>
+    </c-modal-header>
+    <c-modal-body>
+        <form [formGroup]="addNewUserForm">
+            <c-input-group class="mb-3">
+                <span cInputGroupText>
+                    <svg cIcon name="cil-user" class="icon"></svg>
+                </span>
+                <input type="text" id="username" class="form-control" formControlName="username" placeholder="Username">
+            </c-input-group>
+            <c-input-group class="mb-3">
+                <span cInputGroupText>
+                    <svg cIcon name="cil-lock-locked" class="icon"></svg>
+                </span>
+                <input type="password" id="passwordAdded" class="form-control" formControlName="password" placeholder="Password">
+            </c-input-group>
+            <c-input-group class="mb-3">
+                <span cInputGroupText>
+                    <svg cIcon name="cil-people" class="icon"></svg>
+                </span>
+                <select id="roleAdded" class="form-select" formControlName="role">
+                    <option value="" disabled>Select Role</option>
+                    <option value="USER">User</option>
+                    <option value="ADMIN">Admin</option>
+                    <option value="TEAM_MANAGER">Team Manager</option>
+                </select>
+            </c-input-group>
+            <c-input-group class="mb-3">
+                <span cInputGroupText>
+                    <svg cIcon name="cil-list" class="icon"></svg>
+                </span>
+                <input type="text" id="teamInputAdded" class="form-control" formControlName="teamInput" placeholder="Type to search teams">
+            </c-input-group>
+            <div *ngIf="filteredTeams | async as teams" style="max-height: 200px; overflow-y: auto;">
+                <ul class="list-group">
+                    <li class="list-group-item" *ngFor="let team of teams" (click)="addTeamToAddUserForm(team)">
+                        {{ team.name }}
+                    </li>
+                </ul>
+            </div>
+            <div class="mt-3">
+                <h6>Selected Teams:</h6>
+                <div *ngFor="let teamId of addNewUserForm.value.teams" class="badge bg-primary me-1">
+                    {{ getTeamNameById(teamId) }}
+                    <button type="button" class="btn-close btn-close-white ms-2" aria-label="Close" (click)="removeTeamFromAddUserForm(teamId)"></button>
+                </div>
+            </div>
+        </form>
+    </c-modal-body>
+    <c-modal-footer>
+        <button (click)="closeModal()" cButton color="secondary">
+            Close
+        </button>
+        <button (click)="onSubmitAddNewUser()" cButton color="primary" [disabled]="addNewUserForm.invalid">Submit</button>
+    </c-modal-footer>
+</c-modal>
+
+
+<!-- Change Role Modal -->
+<c-modal size="lg" id="changeRoleModal" alignment="center" [visible]="visibleRoleModal" (visibleChange)="visibleRoleModal = $event">
+    <c-modal-header>
+        <h5 cModalTitle>Change Role</h5>
+    </c-modal-header>
+    <c-modal-body>
+        <form [formGroup]="changeRoleForm">
+            <c-input-group class="mb-3">
+                <span cInputGroupText>
+                    <svg cIcon name="cil-people" class="icon"></svg>
+                </span>
+                <select id="role" class="form-select" formControlName="role">
+                    <option value="" disabled>Select Role</option>
+                    <option value="USER">User</option>
+                    <option value="ADMIN">Admin</option>
+                    <option value="TEAM_MANAGER">Team Manager</option>
+                </select>
+            </c-input-group>
+        </form>
+    </c-modal-body>
+    <c-modal-footer>
+        <button (click)="closeModal()" cButton color="secondary">
+            Close
+        </button>
+        <button (click)="onSubmitChangeRole()" cButton color="primary" [disabled]="changeRoleForm.invalid">Submit</button>
+    </c-modal-footer>
+</c-modal>
+
+<!-- Manage Teams Modal -->
+<c-modal size="lg" id="changeTeamModal" alignment="center" [visible]="visibleTeamModal" (visibleChange)="visibleTeamModal = $event">
+    <c-modal-header>
+        <h5 cModalTitle>Manage Teams</h5>
+    </c-modal-header>
+    <c-modal-body>
+        <form [formGroup]="changeTeamForm">
+            <c-input-group class="mb-3">
+                <span cInputGroupText>
+                    <svg cIcon name="cil-list" class="icon"></svg>
+                </span>
+                <input type="text" id="teamInput" class="form-control" formControlName="teamInput" placeholder="Type to search teams">
+            </c-input-group>
+            <div *ngIf="filteredTeams | async as teams" style="max-height: 200px; overflow-y: auto;">
+                <ul class="list-group">
+                    <li class="list-group-item" *ngFor="let team of teams" (click)="addTeamToForm(team)">
+                        {{ team.name }}
+                    </li>
+                </ul>
+            </div>
+            <div class="mt-3">
+                <h6>Selected Teams:</h6>
+                <div *ngFor="let teamId of changeTeamForm.value.teams" class="badge bg-primary me-1">
+                    {{ getTeamNameById(teamId) }}
+                    <button type="button" class="btn-close btn-close-white ms-2" aria-label="Close" (click)="removeTeamFromForm(teamId)"></button>
+                </div>
+            </div>
+        </form>
+    </c-modal-body>
+    <c-modal-footer>
+        <button (click)="closeModal()" cButton color="secondary">
+            Close
+        </button>
+        <button (click)="onSubmitTeamChange()" cButton color="primary" [disabled]="changeTeamForm.invalid">Submit</button>
+    </c-modal-footer>
+</c-modal>
+
+<!-- Change Password Modal -->
+<c-modal size="lg" id="changePasswordModal" alignment="center" [visible]="visibleChangePassword" (visibleChange)="visibleChangePassword = $event">
+    <c-modal-header>
+        <h5 cModalTitle>Change Password</h5>
+    </c-modal-header>
+    <c-modal-body>
+        <form [formGroup]="changePasswordForm">
+            <c-input-group class="mb-3">
+                <span cInputGroupText>
+                    <svg cIcon name="cil-lock-locked" class="icon"></svg>
+                </span>
+                <input type="password" id="password" class="form-control" formControlName="password" placeholder="Password">
+            </c-input-group>
+            <c-input-group class="mb-3">
+                <span cInputGroupText>
+                    <svg cIcon name="cil-lock-locked" class="icon"></svg>
+                </span>
+                <input type="password" id="confirmPassword" class="form-control" formControlName="confirmPassword" placeholder="Confirm Password">
+            </c-input-group>
+        </form>
+    </c-modal-body>
+    <c-modal-footer>
+        <button (click)="closeModal()" cButton color="secondary">
+            Close
+        </button>
+        <button (click)="onSubmitChangePassword()" cButton color="primary" [disabled]="changePasswordForm.invalid">Submit</button>
+    </c-modal-footer>
+</c-modal>
+
+<c-toaster [placement]="position" class="p-3" position="fixed">
+    <c-toast
+            [color]="toastStatus"
+            (visibleChange)="onVisibleChange($event)"
+            [visible]="visible">
+        <c-toast-header>
+            Team Management
+        </c-toast-header>
+        <c-toast-body>
+            <p>{{toastMessage}}</p>
+        </c-toast-body>
+    </c-toast>
+</c-toaster>

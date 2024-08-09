@@ -1,0 +1,229 @@
+<c-row xmlns="http://www.w3.org/1999/html">
+    <c-col class="xs-12">
+        <c-card>
+            <c-card-body>
+                <c-tabs [activeItemKey]="0">
+                    <c-tabs-list variant="underline-border">
+                        <button cTab [itemKey]="0">
+                            <svg cIcon name="cil-bug" class="me-2"></svg> Scanner Configurations
+                        </button>
+                        <button cTab [itemKey]="1">
+                            <svg cIcon name="cil-envelope-closed" class="me-2"></svg> SMTP and Notifications
+                        </button>
+                        <button cTab [itemKey]="2">
+                            <svg cIcon name="cil-contact" class="me-2"></svg> Authentication
+                        </button>
+                    </c-tabs-list>
+                    <c-tabs-content>
+                        <c-tab-panel class="p-3" [itemKey]="0">
+                            <!-- Scanner Configuration -->
+
+                            <!-- Section 1: Software Component Analysis -->
+                            <c-col [xs]="12" class="mb-3">
+                                <h1>Software Component Analysis</h1>
+                                <hr/>
+                                <form [gutter]="3" [formGroup]="scaConfigForm" novalidate cForm cRow class="needs-validation">
+                                    <c-form-check [switch]="true">
+                                        <input
+                                                cFormCheckInput
+                                                id="embedded"
+                                                value="embedded"
+                                                name="softwareComponent"
+                                                formControlName="scaTypeEmbedded"
+                                                type="checkbox"
+                                                [checked]="isEmbededDTChecked"
+                                                (change)="changeEmbededDT()"
+                                        />
+                                        <label cFormCheckLabel for="embedded">Embedded Dependency Track</label>
+                                    </c-form-check>
+
+                                    <c-form-check [switch]="true">
+                                        <input
+                                                cFormCheckInput
+                                                id="external"
+                                                value="external"
+                                                name="softwareComponent"
+                                                formControlName="scaTypeExternal"
+                                                type="checkbox"
+                                                [checked]="isExternalDTChecked"
+                                                (change)="changeExternalDT()"
+                                        />
+                                        <label cFormCheckLabel for="external">External Dependency Track</label>
+                                    </c-form-check>
+
+                                    <div *ngIf="isExternalDTChecked" style="margin-top: 15px; margin-bottom: 15px;">
+                                        <div class="mb-3">
+                                            <label cLabel for="inputExternalDTUrl">Dependency Track URL</label>
+                                            <input formControlName="scaApiUrl" cFormControl id="inputExternalDTUrl" type="url">
+
+                                        </div>
+                                        <div class="mb-3">
+                                            <label cLabel for="inputExternalDTApiKey">ApiKey</label>
+                                            <input formControlName="scaApiKey" cFormControl id="inputExternalDTApiKey" type="text">
+                                        </div>
+
+                                    </div>
+
+                                    <c-form-check [switch]="true" cTooltipPlacement="top">
+                                        <input
+                                                cFormCheckInput
+                                                id="otherTool"
+                                                name="softwareComponent"
+                                                type="checkbox"
+                                                disabled
+                                        />
+                                        <label
+                                                cFormCheckLabel
+                                                [cTooltip]="'Not supported in this version'"
+                                                for="otherTool"
+                                        >
+                                            Other External Tool
+                                        </label>
+
+                                    </c-form-check>
+                                    <input cButton color="primary" type="submit" (click)="configSca()" value="Change SCA Config">
+                                </form>
+                            </c-col>
+
+
+                            <!-- Section 2: SAST -->
+                            <c-col [xs]="12" class="mb-3">
+                                <h1>SAST</h1>
+                                <hr/>
+                                <c-form-check [switch]="true">
+                                    <input cFormCheckInput id="bearer" name="sast" type="checkbox" [(ngModel)]="sast" [checked]="sast === 'bearer'" (change)="onSastChange('bearer')" disabled />
+                                    <label cFormCheckLabel for="bearer">Bearer</label>
+                                </c-form-check>
+                                <c-form-check [switch]="true" cTooltipPlacement="top">
+                                    <input cFormCheckInput id="sastOtherTool" name="sast" type="checkbox" disabled />
+                                    <label cFormCheckLabel for="sastOtherTool" [cTooltip]="'Not supported in this version'">Other External Tool</label>
+                                </c-form-check>
+                            </c-col>
+
+                            <!-- Section 3: IAC -->
+                            <c-col [xs]="12" class="mb-3">
+                                <h1>IAC</h1>
+                                <hr/>
+                                <c-form-check [switch]="true">
+                                    <input cFormCheckInput id="kics" name="iac" type="checkbox" [(ngModel)]="iac" [checked]="iac === 'kics'" (change)="onIacChange('kics')" disabled/>
+                                    <label cFormCheckLabel for="kics">KICS</label>
+                                </c-form-check>
+                                <c-form-check [switch]="true"  cTooltipPlacement="top">
+                                    <input cFormCheckInput id="iacOtherTool" name="iac" type="checkbox" disabled />
+                                    <label cFormCheckLabel [cTooltip]="'Not supported in this version'" for="iacOtherTool">Other External Tool</label>
+                                </c-form-check>
+                            </c-col>
+
+                            <!-- Section 4: Secrets Leakage -->
+                            <c-col [xs]="12" class="mb-3">
+                                <h1>Secrets Leakage</h1>
+                                <hr/>
+                                <c-form-check [switch]="true">
+                                    <input cFormCheckInput id="gitleaks" name="secretsLeakage" type="checkbox" [(ngModel)]="secretsLeakage" [checked]="secretsLeakage === 'gitleaks'" (change)="onSecretsLeakageChange('gitleaks')" disabled/>
+                                    <label cFormCheckLabel for="gitleaks">Gitleaks</label>
+                                </c-form-check>
+                                <c-form-check [switch]="true"  cTooltipPlacement="top">
+                                    <input cFormCheckInput id="secretsOtherTool" name="secretsLeakage" type="checkbox" disabled />
+                                    <label cFormCheckLabel [cTooltip]="'Not supported in this version'" for="secretsOtherTool">Other External Tool</label>
+                                </c-form-check>
+                            </c-col>
+                        </c-tab-panel>
+
+                        <c-tab-panel class="p-3" [itemKey]="1">
+                            <!-- SMTP and Notifications -->
+
+                            <!-- Section 1: SMTP -->
+                            <c-col [xs]="12" class="mb-3">
+                                <form [gutter]="3" novalidate cForm [formGroup]="smtpConfigForm" cRow class="needs-validation">
+                                    <c-form-check [switch]="true">
+                                        <input formControlName="enabled" cFormCheckInput id="smtpToggle" type="checkbox" (change)="onSmtpToggleChange()" />
+                                        <label cFormCheckLabel for="smtpToggle">SMTP</label>
+                                    </c-form-check>
+                                    <div *ngIf="smtpEnabled" class="mt-3">
+                                        <c-col [md]="6" class="mb-3">
+                                            <label cLabel for="smtpHost">SMTP Host</label>
+                                            <input formControlName="hostname" cFormControl id="smtpHost" required type="text" />
+                                            <c-form-feedback [valid]="false">Please provide a valid SMTP host.</c-form-feedback>
+                                        </c-col>
+                                        <c-col [md]="6" class="mb-3">
+                                            <label cLabel for="smtpPort">SMTP Port</label>
+                                            <input formControlName="port" cFormControl id="smtpPort"required type="number" />
+                                            <c-form-feedback [valid]="false">Please provide a valid SMTP port.</c-form-feedback>
+                                        </c-col>
+                                        <c-col [md]="6" class="mb-3">
+                                            <label cLabel for="smtpUsername">SMTP Username</label>
+                                            <input formControlName="username" cFormControl id="smtpUsername" required type="text" />
+                                            <c-form-feedback [valid]="false">Please provide a valid username.</c-form-feedback>
+                                        </c-col>
+                                        <c-col [md]="6" class="mb-3">
+                                            <label cLabel for="smtpPassword">SMTP Password</label>
+                                            <input formControlName="password" cFormControl id="smtpPassword" required type="password" />
+                                            <c-form-feedback [valid]="false">Please provide a valid password.</c-form-feedback>
+                                        </c-col>
+                                        <c-form-check [switch]="true">
+                                            <input formControlName="tls" cFormCheckInput id="tls" type="checkbox" />
+                                            <label cFormCheckLabel for="tls">TLS</label>
+                                        </c-form-check>
+                                        <c-form-check [switch]="true">
+                                            <input formControlName="startls" cFormCheckInput id="startls" type="checkbox" />
+                                            <label cFormCheckLabel for="startls">STARTTLS</label>
+                                        </c-form-check>
+                                    </div>
+                                    <input cButton color="primary" type="submit" (click)="sonfigSMTP()" value="Change SMTP Config">
+
+                                </form>
+                            </c-col>
+
+                            <hr/>
+
+                            <!-- Section 2: Mattermost -->
+                            <c-col [xs]="12" class="mb-3">
+                                <c-form-check [switch]="true"  cTooltipPlacement="top">
+                                    <input cFormCheckInput disabled type="checkbox" />
+                                    <label [cTooltip]="'Not supported in this version'" cFormCheckLabel>Mattermost</label>
+                                </c-form-check>
+                            </c-col>
+                            <hr/>
+
+                            <!-- Section 3: Slack -->
+                            <c-col [xs]="12" class="mb-3">
+                                <c-form-check [switch]="true" cTooltipPlacement="top">
+                                    <input cFormCheckInput disabled type="checkbox" />
+                                    <label [cTooltip]="'Not supported in this version'" cFormCheckLabel>Slack</label>
+                                </c-form-check>
+                            </c-col>
+                        </c-tab-panel>
+
+                        <c-tab-panel class="p-3" [itemKey]="2">
+                            <!-- Authentication -->
+                            <c-col [md]="6">
+                                <label cLabel for="authType">Authentication Type</label>
+                                <select cSelect id="authType" [(ngModel)]="authType" required>
+                                    <option value="userPass" selected>User + Pass Authentication</option>
+                                    <option value="sso" disabled>SSO (Not available in this version)</option>
+                                </select>
+                                <c-form-feedback [valid]="false">Please select an authentication type.</c-form-feedback>
+                            </c-col>
+                        </c-tab-panel>
+                    </c-tabs-content>
+                </c-tabs>
+            </c-card-body>
+        </c-card>
+    </c-col>
+</c-row>
+
+
+<c-toaster [placement]="position" class="p-3" position="fixed">
+    <c-toast
+            [color]="toastStatus"
+            (visibleChange)="onVisibleChange($event)"
+            [visible]="visible">
+        <c-toast-header>
+            Team Management
+        </c-toast-header>
+        <c-toast-body>
+            <p>{{toastMessage}}</p>
+        </c-toast-body>
+    </c-toast>
+</c-toaster>
+

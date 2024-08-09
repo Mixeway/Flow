@@ -1,0 +1,68 @@
+.dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.critical {
+  background-color: red;
+}
+
+.high {
+  background-color: #f33d3d;
+}
+
+.medium {
+  background-color: #e38334;
+}
+
+.low {
+  background-color: #47a3d3;
+}
+.critical-t {
+  color: red;
+}
+
+.high-t {
+  color: #f33d3d;
+}
+
+.medium-t {
+  color: #e38334;
+}
+
+.low-t {
+  color: #47a3d3;
+}
+
+ngx-datatable {
+  --bs-table-cell-padding-x: 0.75rem;
+  --bs-table-cell-padding-y: 0.75rem;
+}
+
+.datatable-body-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+ngx-datatable .datatable-header-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+ngx-datatable .datatable-row-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.location-cell {
+  white-space: normal;
+  word-break: break-word;
+  max-width: 100%;
+}
+c-card {
+  margin-bottom: 10px;
+}

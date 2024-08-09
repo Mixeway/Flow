@@ -1,0 +1,36 @@
+
+:host {
+  .legend {
+    small {
+      font-size: x-small;
+    }
+  }
+}
+
+
+.icon-cross {
+  color: #cf2f4c;
+}
+.icon-check {
+  color: #369336;
+}
+.custom-btn {
+  width: 100px;
+  height: 100px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.custom-icon {
+  width: 80px;
+  height: 80px;
+}
+
+button.btn.custom-btn.active {
+  border: 2px solid #007bff;
+}
+.icon-xl {
+  width: 124px; /* Adjust the width as needed */
+  height: 24px; /* Adjust the height as needed */
+}

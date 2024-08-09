@@ -1,0 +1,96 @@
+<c-row>
+    <c-col xs="12">
+        <c-card class="mb-4 h-100">
+            <c-card-header>
+                List of components and link with all resources You have access too
+            </c-card-header>
+            <c-card-body>
+                <ngx-datatable
+                        class="bootstrap"
+                        [rows]="filteredComponents"
+                        [columnMode]="'force'"
+                        [footerHeight]="50"
+                        [headerHeight]="80"
+                        [rowHeight]="'auto'"
+                        [limit]="20">
+
+                    <!-- Component Column -->
+                    <ngx-datatable-column name="Component" prop="groupid" [sortable]="false">
+                        <ng-template ngx-datatable-header-template>
+                            <c-input-group class="mb-3">
+                <span cInputGroupText id="filterComponent">
+                    <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
+                </span>
+                                <input aria-describedby="addon-wrapping"
+                                       aria-label="Filter Component"
+                                       type="text" class="form-control" placeholder="Filter Component" (input)="updateFilterComponent($event)"
+                                />
+                                <button type="button" class="btn btn-outline-secondary" (click)="clearFilter('component')">Clear</button>
+                            </c-input-group>
+                        </ng-template>
+                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
+                            <div class="d-flex align-items-center justify-content-center" style="height: 100%;">
+                                <ng-container *ngIf="row?.component.groupid">
+                                    {{ row?.component.groupid }} :
+                                </ng-container>
+                                {{ row?.component.name }} : {{ row?.component.version }}
+                            </div>
+                        </ng-template>
+                    </ngx-datatable-column>
+
+                    <!-- Vulnerabilities Column -->
+                    <ngx-datatable-column name="Vulnerabilities" prop="groupid" [sortable]="false" [width]="50">
+                        <ng-template ngx-datatable-header-template>
+                            <c-input-group class="mb-3">
+                <span cInputGroupText id="filterVulnerabilities">
+                    <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
+                </span>
+                                <input aria-describedby="addon-wrapping"
+                                       aria-label="Filter Vulnerabilities"
+                                       type="text" class="form-control" placeholder="Filter Vulnerabilities" (input)="updateFilterVulnerabilities($event)"
+                                />
+                                <button type="button" class="btn btn-outline-secondary" (click)="clearFilter('vulnerabilities')">Clear</button>
+                            </c-input-group>
+                        </ng-template>
+                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
+                            <ul cListGroup>
+                                <li cListGroupItem *ngFor="let cve of row?.vulnerabilities">
+                                    <svg cIcon class="me-2" name="cil-bug"></svg>
+                                    <span>{{ cve }}</span>
+                                </li>
+                            </ul>
+                        </ng-template>
+                    </ngx-datatable-column>
+
+                    <!-- Repos Affected Column -->
+                    <ngx-datatable-column name="Repos Affected" prop="groupid" [sortable]="false">
+                        <ng-template ngx-datatable-header-template>
+                            <c-input-group class="mb-3">
+                <span cInputGroupText id="filterRepos">
+                    <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
+                </span>
+                                <input aria-describedby="addon-wrapping"
+                                       aria-label="Filter Repos"
+                                       type="text" class="form-control" placeholder="Filter Repos" (input)="updateFilterRepos($event)"
+                                />
+                                <button type="button" class="btn btn-outline-secondary" (click)="clearFilter('repos')">Clear</button>
+                            </c-input-group>
+                        </ng-template>
+                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
+                            <ul cListGroup>
+                                <li cListGroupItem *ngFor="let repo of row?.affectedReposUrl">
+                                    <svg cIcon class="me-2" name="cib-gitlab"></svg>
+                                    <span>{{ repo }}</span>
+                                </li>
+                            </ul>
+                        </ng-template>
+                    </ngx-datatable-column>
+
+                </ngx-datatable>
+
+
+
+            </c-card-body>
+        </c-card>
+    </c-col>
+</c-row>
