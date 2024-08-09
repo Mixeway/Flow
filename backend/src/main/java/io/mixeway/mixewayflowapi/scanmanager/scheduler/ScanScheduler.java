@@ -2,13 +2,8 @@ package io.mixeway.mixewayflowapi.scanmanager.scheduler;
 
 import ch.qos.logback.core.spi.ScanException;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
-import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
-import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
-import io.mixeway.mixewayflowapi.domain.coderepobranch.GetOrCreateCodeRepoBranchService;
-import io.mixeway.mixewayflowapi.domain.settings.FindSettingsService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GetCodeRepoInfoService;
-import io.mixeway.mixewayflowapi.integrations.scanner.sca.apiclient.DependencyTrackApiClientService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.service.SCAService;
 import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import jakarta.annotation.PostConstruct;
@@ -27,26 +22,36 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+/**
+ * Scheduler service responsible for managing and executing periodic scans on code repositories.
+ * This service initializes the SCA environment on startup and schedules regular scans and metadata updates.
+ */
 @Service
 @RequiredArgsConstructor
 @Log4j2
 public class ScanScheduler {
+
     private final CodeRepoRepository codeRepoRepository;
     private final ScanManagerService scanManagerService;
-    private final GetOrCreateCodeRepoBranchService getOrCreateCodeProjectBranchService;
     private final SCAService scaService;
-    private final DependencyTrackApiClientService dependencyTrackApiClientService;
-    private final FindSettingsService findSettingsService;
     private static final int THREAD_POOL_SIZE = 5; // Adjust the pool size as needed
-    private final FindCodeRepoService findCodeRepoService;
     private final GetCodeRepoInfoService getCodeRepoInfoService;
 
-
+    /**
+     * Initializes the SCA environment after the application startup.
+     * This method is executed automatically after the bean's properties have been set.
+     *
+     * @throws URISyntaxException If an error occurs related to URI syntax during initialization.
+     */
     @PostConstruct
-    public void runAfterStartup() throws IOException, InterruptedException, ScanException, URISyntaxException {
+    public void runAfterStartup() throws URISyntaxException {
         scaService.initialize();
     }
 
+    /**
+     * Scheduled task that runs every day at 3 AM.
+     * This method scans all code repositories concurrently using a fixed thread pool.
+     */
     @Scheduled(cron = "0 0 3 * * ?")
     public void runEveryDayAt3AM() {
         Iterable<CodeRepo> codeRepos = codeRepoRepository.findAll();
@@ -80,6 +85,12 @@ public class ScanScheduler {
         }
     }
 
+    /**
+     * Scheduled task that runs every day at 5 AM.
+     * This method updates the metadata of all code repositories by retrieving language statistics from the repository.
+     *
+     * @throws MalformedURLException If an invalid URL is encountered while retrieving repository languages.
+     */
     @Scheduled(cron = "0 0 5 * * ?")
     public void runEveryDayAt5AM() throws MalformedURLException {
         Iterable<CodeRepo> codeRepos = codeRepoRepository.findAll();
@@ -92,6 +103,5 @@ public class ScanScheduler {
             codeRepoRepository.save(codeRepo);
         }
         log.info("[Scheduler] Updated metadata of repositories");
-
     }
 }

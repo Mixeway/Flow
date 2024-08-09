@@ -63,6 +63,7 @@ public class CreateFindingService {
                 findingRepository.save(remainingFinding);
             }
         }
+        log.info("[Finding Service] Saved {} findings for {}. Source: {}", newFindings.size(), repoInWhichFindingWasFound.getName(), source.toString());
     }
 
     private String findingKey(Finding finding) {

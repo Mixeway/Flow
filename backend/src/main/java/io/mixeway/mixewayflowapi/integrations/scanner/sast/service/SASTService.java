@@ -22,24 +22,38 @@ import java.util.concurrent.Executors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-
+/**
+ * Service responsible for running Static Application Security Testing (SAST) scans using the Bearer tool.
+ * This service initiates the Bearer SAST scan on the specified repository, processes the scan results,
+ * and saves any findings or data types identified in the scan.
+ */
 @Service
 @Log4j2
 @RequiredArgsConstructor
 public class SASTService {
-    private final ObjectMapper objectMapper;
+
     private final CreateFindingService createFindingService;
-    private final UpdateCodeRepoService updateCodeRepoService;
-    private final GetOrCreateComponentService getOrCreateComponentService;
     private final CreateAppDataTypeService createAppDataTypeService;
 
     @Value("${bearer.queries.dir}")
     private String bearerRulesDir;
 
+    /**
+     * Runs the Bearer SAST scan on the specified code repository and branch, processes the results,
+     * and saves any findings or data types identified in the scan.
+     *
+     * @param repoDir         The directory of the code repository to scan.
+     * @param codeRepo        The code repository entity.
+     * @param codeRepoBranch  The branch of the code repository to scan.
+     * @throws IOException           If an I/O error occurs during the scan process.
+     * @throws InterruptedException  If the scan process is interrupted.
+     * @throws ScanException         If the scan fails to produce the required report files.
+     */
     public void runBearerScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) throws IOException, InterruptedException, ScanException {
         log.info("[BearerScanService] Starting Bearer scan for repository: {} branch: {}", codeRepo.getName(), codeRepoBranch.getName());
         File securityReportFile = new File(repoDir, "bearer_scan_security.json");
         File dataflowReportFile = new File(repoDir, "bearer_scan_dataflow.json");
+
         ProcessBuilder securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir", bearerRulesDir, "--skip-path=.git", "--report=security", "--format=json", "--output=bearer_scan_security.json");
         ProcessBuilder dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir", bearerRulesDir, "--report=dataflow", "--format=json", "--skip-path=.git", "--output=bearer_scan_dataflow.json");
         securityPb.directory(new File(repoDir));
@@ -50,26 +64,34 @@ public class SASTService {
 
         ObjectMapper objectMapper = new ObjectMapper();
 
-        log.info("[BearerScanService] Finished stan, starting processing... - [{} / {}]",codeRepo.getRepourl(), codeRepoBranch.getName());
+        log.info("[BearerScanService] Finished scan, starting processing... - [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
 
         try {
             BearerScanSecurity bearerScanSecurity = objectMapper.readValue(securityReportFile, BearerScanSecurity.class);
             BearerScanDataflow bearerScanDataflow = objectMapper.readValue(dataflowReportFile, BearerScanDataflow.class);
 
-            // Optionally save findings and update status
+            // Save findings and update status
             createFindingService.saveFindings(createFindingService.mapBearerScanToFindings(bearerScanSecurity, codeRepo, codeRepoBranch), codeRepoBranch, codeRepo, Finding.Source.SAST);
-            if (bearerScanDataflow != null && bearerScanDataflow.getDataTypes()!=null){
-                createAppDataTypeService.getDataTypesForCodeRepo(codeRepo,bearerScanDataflow);
-            }
-            // process components
 
-            log.info("[BearerScanService] Scan results processed successfully - [{} / {}]",codeRepo.getRepourl(), codeRepoBranch.getName());
+            if (bearerScanDataflow != null && bearerScanDataflow.getDataTypes() != null) {
+                createAppDataTypeService.getDataTypesForCodeRepo(codeRepo, bearerScanDataflow);
+            }
+
+            log.info("[BearerScanService] Scan results processed successfully - [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
         } catch (JsonParseException e) {
-            log.warn("[BearerScanService] Error with running scan, probably not supported language or no AppCode in the repo - [{} / {}]",codeRepo.getRepourl(), codeRepoBranch.getName());
+            log.warn("[BearerScanService] Error with running scan, probably not supported language or no AppCode in the repo - [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
         }
+
         log.info("[BearerScanService] Bearer scan completed for repository: {} branch: {}. Reports saved at: {}, {}", codeRepo.getName(), codeRepoBranch.getName(), securityReportFile.getAbsolutePath(), dataflowReportFile.getAbsolutePath());
     }
 
+    /**
+     * Runs a process defined by the provided ProcessBuilder. The output and error streams of the process are discarded.
+     *
+     * @param pb  The ProcessBuilder that defines the process to be run.
+     * @throws IOException           If an I/O error occurs during the process execution.
+     * @throws InterruptedException  If the process is interrupted while waiting.
+     */
     private void runProcess(ProcessBuilder pb) throws IOException, InterruptedException {
         pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
         pb.redirectError(ProcessBuilder.Redirect.DISCARD);
@@ -98,5 +120,4 @@ public class SASTService {
 
         process.waitFor();
     }
-
 }

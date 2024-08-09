@@ -6,7 +6,6 @@ import io.mixeway.mixewayflowapi.db.entity.Finding;
 import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.coderepofindingstats.CreateCodeRepoFindingStatsService;
 import io.mixeway.mixewayflowapi.domain.finding.FindFindingService;
-import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -16,14 +15,24 @@ import org.springframework.stereotype.Service;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
+/**
+ * Scheduler service responsible for generating and saving statistics related to code repository findings.
+ * This service periodically analyzes findings and calculates various metrics for each repository.
+ */
 @Service
 @RequiredArgsConstructor
 @Log4j2
 public class StatsScheduler {
+
     private final FindCodeRepoService findCodeRepoService;
     private final FindFindingService findFindingService;
     private final CreateCodeRepoFindingStatsService createCodeRepoFindingStatsService;
 
+    /**
+     * Scheduled task that runs every day at 3 AM.
+     * This method collects findings statistics for each code repository, calculates metrics,
+     * and saves the statistics for further analysis.
+     */
     @Scheduled(cron = "0 0 3 * * ?")
     @Transactional
     public void collectAndSaveStats() {
@@ -73,9 +82,17 @@ public class StatsScheduler {
             createCodeRepoFindingStatsService.create(stats);
         }
         log.info("[StatusService] Finished generation of stats for CodeRepos...");
-
     }
 
+    /**
+     * Counts the number of findings in the provided list that match the specified source, severity, and statuses.
+     *
+     * @param findings The list of findings to filter and count.
+     * @param source   The source of the findings to count, or null to count all sources.
+     * @param severity The severity of the findings to count, or null to count all severities.
+     * @param statuses The statuses of the findings to count.
+     * @return The count of findings that match the specified criteria.
+     */
     private int countFindings(List<Finding> findings, Finding.Source source, Finding.Severity severity, Finding.Status... statuses) {
         return (int) findings.stream()
                 .filter(f -> (source == null || f.getSource() == source) &&
@@ -84,6 +101,15 @@ public class StatsScheduler {
                 .count();
     }
 
+    /**
+     * Counts the number of findings in the provided list that are not of critical, high, or medium severity,
+     * but match the specified source and statuses.
+     *
+     * @param findings The list of findings to filter and count.
+     * @param source   The source of the findings to count.
+     * @param statuses The statuses of the findings to count.
+     * @return The count of findings that match the specified criteria and are not critical, high, or medium severity.
+     */
     private int countRestFindings(List<Finding> findings, Finding.Source source, Finding.Status... statuses) {
         return (int) findings.stream()
                 .filter(f -> f.getSource() == source &&
@@ -94,6 +120,12 @@ public class StatsScheduler {
                 .count();
     }
 
+    /**
+     * Calculates the average fix time in days for the findings in the provided list that have been removed.
+     *
+     * @param findings The list of findings to filter and analyze.
+     * @return The average fix time in days, or 0 if no findings have been removed.
+     */
     private int calculateAverageFixTime(List<Finding> findings) {
         return (int) findings.stream()
                 .filter(f -> f.getStatus() == Finding.Status.REMOVED)

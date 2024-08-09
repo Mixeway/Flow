@@ -23,24 +23,28 @@ import java.util.List;
 import java.util.Base64;
 import java.util.concurrent.TimeUnit;
 
-
+/**
+ * Service responsible for interacting with Dependency Track API.
+ * This service provides methods for obtaining OAuth tokens, API keys, creating projects,
+ * uploading SBOMs, and retrieving vulnerabilities and components.
+ */
 @Service
 @Log4j2
 @RequiredArgsConstructor
 public class DependencyTrackApiClientService {
+
     private final UpdateCodeRepoService updateCodeRepoService;
     private final ProcessDTrackVulnDataService processDTrackVulnDataService;
 
     @Value("${dependency-track.url}")
     private String dependencyTrackUrl;
 
-
     /**
-     * Getting oAuth token for Dependency track using default username and password
+     * Obtains an OAuth token from Dependency Track using the default username and password.
      *
-     * @return oAuth token
+     * @return The OAuth token, or null if the authentication fails.
      */
-    public String getOAuthToken(){
+    public String getOAuthToken() {
         WebClient webClient = WebClient.builder()
                 .baseUrl(dependencyTrackUrl + Constants.DEPENDENCYTRACK_URL_LOGIN)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE)
@@ -51,7 +55,6 @@ public class DependencyTrackApiClientService {
                 .retrieve()
                 .toEntity(String.class);
 
-        // Block to get the response synchronously
         ResponseEntity<String> response = responseMono.block();
 
         if (response != null && response.getStatusCode().equals(HttpStatus.OK)) {
@@ -62,7 +65,10 @@ public class DependencyTrackApiClientService {
     }
 
     /**
-     * Using obtained oAuth token to check apiKey which is set for Automation team and then save it to DB
+     * Retrieves the API key for the Automation team using the obtained OAuth token,
+     * and saves it to the database if found.
+     *
+     * @return The API key, or null if not found.
      */
     public String getApiKey() {
         String oAuthToken = getOAuthToken();
@@ -75,7 +81,6 @@ public class DependencyTrackApiClientService {
                 .retrieve()
                 .toEntityList(GetApiKeyResponseDto.ResponseObject.class);
 
-        // Block to get the response synchronously
         ResponseEntity<List<GetApiKeyResponseDto.ResponseObject>> response = responseMono.block();
 
         if (response != null && response.getStatusCode().equals(HttpStatus.OK)) {
@@ -89,43 +94,47 @@ public class DependencyTrackApiClientService {
                 }
             }
         }
-        return null; // or throw an exception if necessary
+        return null;
     }
 
     /**
-     * Default API user doesn't have permission to view or create projects, those hase to be added
+     * Sets the necessary permissions for the Automation API user in Dependency Track.
+     * These permissions are required to view and create projects, upload BOMs, and analyze vulnerabilities.
      *
-     * @param automationTeamUuid
+     * @param automationTeamUuid The UUID of the Automation team.
      */
     private void setPermissions(String automationTeamUuid) {
         String oAuthToken = getOAuthToken();
-        String[] permissions = new String[] {"ACCESS_MANAGEMENT", "BOM_UPLOAD","PORTFOLIO_MANAGEMENT","PROJECT_CREATION_UPLOAD","SYSTEM_CONFIGURATION","VIEW_PORTFOLIO","VULNERABILITY_ANALYSIS"};
+        String[] permissions = new String[]{"ACCESS_MANAGEMENT", "BOM_UPLOAD", "PORTFOLIO_MANAGEMENT", "PROJECT_CREATION_UPLOAD", "SYSTEM_CONFIGURATION", "VIEW_PORTFOLIO", "VULNERABILITY_ANALYSIS"};
 
-        for (String permision : permissions) {
+        for (String permission : permissions) {
             WebClient webClient = WebClient.builder()
-                    .baseUrl(dependencyTrackUrl + Constants.DEPENDENCYTRACK_URL_PERMISSIONS + permision + "/team/" + automationTeamUuid)
+                    .baseUrl(dependencyTrackUrl + Constants.DEPENDENCYTRACK_URL_PERMISSIONS + permission + "/team/" + automationTeamUuid)
                     .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + oAuthToken)
                     .build();
             Mono<ResponseEntity<String>> responseMono = webClient.method(HttpMethod.POST)
                     .retrieve()
                     .toEntity(String.class);
 
-            // Block to get the response synchronously
             ResponseEntity<String> response = responseMono.block();
 
             if (response != null && response.getStatusCode().equals(HttpStatus.OK)) {
-                log.info("[Dependency Track] Added team {} for Automation ApiKey", permision);
+                log.info("[Dependency Track] Added permission {} for Automation ApiKey", permission);
             }
         }
     }
 
+    /**
+     * Initializes the API key by changing the default admin password and then retrieving the API key.
+     *
+     * @return The initialized API key, or null if initialization fails.
+     */
     public String initializeAndGetApiKey() {
-        // Create the WebClient and set up the request
         WebClient webClient = WebClient.builder()
                 .baseUrl(dependencyTrackUrl + Constants.DEPENDENCYTRACK_URL_CHANGE_PASSWORD)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE)
                 .build();
-        // CHange default password
+
         Mono<ResponseEntity<String>> responseMono = webClient.method(HttpMethod.POST)
                 .bodyValue(Constants.DEPENDENCYTRACK_CHANGE_PASSWORD_STRING)
                 .retrieve()
@@ -141,15 +150,21 @@ public class DependencyTrackApiClientService {
         return null;
     }
 
-
+    /**
+     * Creates a new project in Dependency Track for the specified code repository.
+     *
+     * @param settings  The settings containing the API key.
+     * @param codeRepo  The code repository for which the project is created.
+     */
     public void createProject(Settings settings, CodeRepo codeRepo) {
         WebClient webClient = WebClient.builder()
                 .baseUrl(dependencyTrackUrl + Constants.DEPENDENCYTRACK_GET_PROJECTS)
                 .defaultHeader(Constants.DEPENDENCYTRACK_APIKEY_HEADER, settings.getScaApiKey())
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();
+
         Mono<ResponseEntity<CreateProjectResponseDto>> responseMono = webClient.method(HttpMethod.PUT)
-                .bodyValue(new CreateProjectRequestDto(codeRepo.getTeam().getName()+"-"+codeRepo.getName()))
+                .bodyValue(new CreateProjectRequestDto(codeRepo.getTeam().getName() + "-" + codeRepo.getName()))
                 .retrieve()
                 .toEntity(CreateProjectResponseDto.class);
 
@@ -157,15 +172,15 @@ public class DependencyTrackApiClientService {
 
         if (response != null && response.getStatusCode().equals(HttpStatus.CREATED)) {
             updateCodeRepoService.updateScaUUID(codeRepo, response.getBody().getUuid());
-
-            log.info("[Dependency Track] Create Project for {} - {}", codeRepo.getRepourl(), response.getBody().getUuid());
+            log.info("[Dependency Track] Created Project for {} - {}", codeRepo.getRepourl(), response.getBody().getUuid());
         }
     }
+
     /**
-     * Browse the given directory looking for a file named sbom.json.
+     * Searches for a file named sbom.json in the specified directory.
      *
      * @param dir The directory path to search.
-     * @return File representing the sbom.json file, or null if not found.
+     * @return The sbom.json file if found, or null if not found.
      */
     private File findSbom(String dir) {
         File directory = new File(dir);
@@ -184,7 +199,18 @@ public class DependencyTrackApiClientService {
         return null;
     }
 
-
+    /**
+     * Runs a scan for the specified code repository and branch using the Dependency Track API.
+     * If an SBOM file is found, it uploads the SBOM and processes vulnerabilities.
+     *
+     * @param dir           The directory to search for the SBOM file.
+     * @param codeRepo      The code repository entity.
+     * @param settings      The settings containing the API key.
+     * @param codeRepoBranch The branch of the code repository.
+     * @return True if the scan was performed, false if no SBOM was found.
+     * @throws IOException          If an I/O error occurs during the scan.
+     * @throws InterruptedException If the scan process is interrupted.
+     */
     public boolean runScan(String dir, CodeRepo codeRepo, Settings settings, CodeRepoBranch codeRepoBranch) throws IOException, InterruptedException {
         File sbomFile = findSbom(dir);
         if (sbomFile != null) {
@@ -199,12 +225,21 @@ public class DependencyTrackApiClientService {
         }
     }
 
+    /**
+     * Uploads the SBOM file to Dependency Track for the specified code repository.
+     *
+     * @param codeRepo  The code repository entity.
+     * @param bomPath   The path to the SBOM file.
+     * @param settings  The settings containing the API key.
+     * @throws IOException If an I/O error occurs during the upload.
+     */
     private void sendBomToDTrack(CodeRepo codeRepo, String bomPath, Settings settings) throws IOException {
         WebClient webClient = WebClient.builder()
                 .baseUrl(dependencyTrackUrl + Constants.DEPENDENCYTRACK_URL_UPLOAD_BOM)
                 .defaultHeader(Constants.DEPENDENCYTRACK_APIKEY_HEADER, settings.getScaApiKey())
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();
+
         Mono<ResponseEntity<String>> responseMono = webClient.method(HttpMethod.PUT)
                 .bodyValue(new SendBomRequestDto(codeRepo.getScaUUID(), encodeFileToBase64Binary(bomPath)))
                 .retrieve()
@@ -216,11 +251,13 @@ public class DependencyTrackApiClientService {
             log.info("[Dependency Track] Uploaded SBOM to Dependency Track for {}", codeRepo.getRepourl());
         }
     }
+
     /**
-     * Encodes file content to base64
-     * @param fileName file name to encode
-     * @return return base64 string
-     * @throws IOException
+     * Encodes the content of the specified file to a Base64 string.
+     *
+     * @param fileName The file name to encode.
+     * @return The Base64 encoded string of the file content.
+     * @throws IOException If an I/O error occurs during encoding.
      */
     private static String encodeFileToBase64Binary(String fileName) throws IOException {
         File file = new File(fileName);
@@ -228,12 +265,21 @@ public class DependencyTrackApiClientService {
         return Base64.getEncoder().encodeToString(fileContent);
     }
 
-
-    private List<DTrackGetVulnResponseDto> loadVulnerabilities(CodeRepo codeRepo, Settings settings, CodeRepoBranch codeRepoBranch ){
+    /**
+     * Loads vulnerabilities for the specified code repository and branch from Dependency Track,
+     * and processes the vulnerabilities and components.
+     *
+     * @param codeRepo       The code repository entity.
+     * @param settings       The settings containing the API key.
+     * @param codeRepoBranch The branch of the code repository.
+     * @return A list of vulnerabilities.
+     */
+    private List<DTrackGetVulnResponseDto> loadVulnerabilities(CodeRepo codeRepo, Settings settings, CodeRepoBranch codeRepoBranch) {
         WebClient webClient = WebClient.builder()
                 .baseUrl(dependencyTrackUrl + Constants.DEPENDENCYTRACK_URL_VULNS + codeRepo.getScaUUID())
                 .defaultHeader(Constants.DEPENDENCYTRACK_APIKEY_HEADER, settings.getScaApiKey())
                 .build();
+
         Mono<ResponseEntity<List<DTrackGetVulnResponseDto>>> responseMono = webClient.method(HttpMethod.GET)
                 .retrieve()
                 .toEntityList(DTrackGetVulnResponseDto.class);
@@ -249,11 +295,18 @@ public class DependencyTrackApiClientService {
         return new ArrayList<>();
     }
 
+    /**
+     * Retrieves and processes the components for the specified code repository from Dependency Track.
+     *
+     * @param codeRepo  The code repository entity.
+     * @param settings  The settings containing the API key.
+     */
     private void getComponents(CodeRepo codeRepo, Settings settings) {
         WebClient webClient = WebClient.builder()
-                .baseUrl(dependencyTrackUrl + Constants.DEPENDENCYTRACK_URL_GET_COMPONENTS + codeRepo.getScaUUID() +"?limit=2000&offset=0")
+                .baseUrl(dependencyTrackUrl + Constants.DEPENDENCYTRACK_URL_GET_COMPONENTS + codeRepo.getScaUUID() + "?limit=2000&offset=0")
                 .defaultHeader(Constants.DEPENDENCYTRACK_APIKEY_HEADER, settings.getScaApiKey())
                 .build();
+
         Mono<ResponseEntity<List<DTrackGetVulnResponseDto.Component>>> responseMono = webClient.method(HttpMethod.GET)
                 .retrieve()
                 .toEntityList(DTrackGetVulnResponseDto.Component.class);
@@ -264,5 +317,4 @@ public class DependencyTrackApiClientService {
             processDTrackVulnDataService.processComponents(response.getBody(), codeRepo);
         }
     }
-
 }
