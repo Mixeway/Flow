@@ -13,7 +13,7 @@ RUN npm install
 COPY . .
 
 # Build the Angular application with the production environment
-RUN npm run build --prod --output-path=dist
+RUN npm run build -- --configuration production --output-path=dist
 
 # Stage 2: Setup Nginx and SSL
 FROM nginx:alpine
