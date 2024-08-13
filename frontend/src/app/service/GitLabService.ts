@@ -35,12 +35,11 @@ export class GitLabService {
 
         return this.getProjects(token).pipe(
             expand((response: any[], index: number) => {
-                return response.length ? this.getProjects(token, index + 2) : of([]);
+                return response.length && index < 9 ? this.getProjects(token, index + 2) : of([]);
             }),
-            takeWhile((response: any[]) => response.length > 0),
+            takeWhile((response: any[], index: number) => response.length > 0 && index < 10),
             reduce((acc: any[], curr: any) => acc.concat(curr), []),
             map((projects) => {
-                console.log('All projects fetched:', projects);
                 return projects.map((proj: any) => ({
                     id: proj.id,
                     name: proj.name,
@@ -49,6 +48,7 @@ export class GitLabService {
                 }));
             })
         );
+
     }
     getProjectDetailsFromUrl(repoUrl: string, token: string): Observable<{ id: number; name: string } | null> {
         const projectPath = this.extractProjectPath(repoUrl);
