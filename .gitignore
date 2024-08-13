@@ -1,3 +1,4 @@
 /backend/target/
 /frontend/.angular
 /frontend/node_modules
+.idea
