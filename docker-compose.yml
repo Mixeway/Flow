@@ -2,13 +2,13 @@ version: '3.8'
 
 services:
   backend:
-    image: flowapi
+    image: mixeway/flow-api:latest
     container_name: flowapi_backend
     ports:
       - "8888:8888"
       - "8443:8443"
     environment:
-      SSL: TRUE
+      SSL: "TRUE"
     volumes:
       - pki_data:/etc/pki
       - dependency_track_data:/root/.dependency-track
