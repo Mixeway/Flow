@@ -13,6 +13,7 @@ import {FormBuilder, FormGroup, FormsModule, NgForm, NgModel, Validators} from "
 import {AuthService} from "../../../service/AuthService";
 import {Route, Router} from "@angular/router";
 import {CommonModule} from "@angular/common";
+import {getNavItems, navItems} from "../../../layout/default-layout/_nav";
 
 @Component({
   selector: 'app-change-password',
@@ -82,6 +83,21 @@ export class ChangePasswordComponent {
                     this.toastStatus = "success";
                     this.toastMessage = "Password changed successfully"
                     this.toggleToast();
+
+                    const payloadBase64 = response.accessToken.split('.')[1];
+                    const decodedPayload = atob(payloadBase64);
+
+                    // Parse the JSON string
+                    const payloadObject = JSON.parse(decodedPayload);
+
+                    // Access the role
+                    const userRole = payloadObject.roles; // Assuming roles is an array and you need the first role
+                    localStorage.setItem('userRole', userRole); // Store the role in localStorage
+
+                    // Reinitialize the navItems
+                    navItems.length = 0; // Clear existing items
+                    navItems.push(...getNavItems()); // Push updated items
+
                     this.router.navigate(['/dashboard']);
                     // Handle success response
                 },
