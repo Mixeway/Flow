@@ -1,15 +1,12 @@
 name: Docker Build and Push
 
-on:
-  push:
-    paths:
-      - 'backend/**'
-      - 'frontend/**'
-
 jobs:
   build-and-push-backend:
     runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.message, 'backend') || contains(github.event.head_commit.message, 'Backend')
+    on:
+      push:
+        paths:
+          - 'backend/**'
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -31,7 +28,10 @@ jobs:
 
   build-and-push-frontend:
     runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.message, 'frontend') || contains(github.event.head_commit.message, 'Frontend')
+    on:
+      push:
+        paths:
+          - 'frontend/**'
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
