@@ -8,14 +8,6 @@
 
 ## application.properties
  change to your needs
- 
-```properties
-proxy.host=126.179.0.206
-proxy.port=9090
-
-kics.queries.dir=/opt/tools/kics/assets/queries
-bearer.queries.dir=/opt/tools/bearer-rules/rules
-```
 
 ## First login
 `admin:admin` - then forced change
