@@ -18,7 +18,7 @@ import java.util.function.Function;
 @Component
 public class JwtService {
 
-    public static final String SECRET = UUID.randomUUID().toString();
+    public static final String SECRET = UUID.randomUUID().toString().replace("-","");
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
