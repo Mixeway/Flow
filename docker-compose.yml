@@ -27,7 +27,7 @@ services:
     volumes:
       - flowdb_data:/var/lib/postgresql/data
   flow:
-    image: flow
+    image: mixeway/flow:latest
     container_name: flow_frontend
     ports:
       - "443:443"
