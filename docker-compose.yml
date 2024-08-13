@@ -33,6 +33,8 @@ services:
       - "443:443"
     volumes:
       - flow_data:/etc/nginx/ssl
+    depends_on:
+      - backend
 
 volumes:
   flowdb_data:

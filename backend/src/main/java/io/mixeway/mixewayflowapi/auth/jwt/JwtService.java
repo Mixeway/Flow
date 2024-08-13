@@ -12,13 +12,13 @@ import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.Function;
 
 @Component
 public class JwtService {
 
-    public static final String SECRET = UUID.randomUUID().toString().replace("-","");
+    //todo dynamic secret
+    public static final String SECRET = Keys.secretKeyFor(SignatureAlgorithm.HS256).toString();
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
