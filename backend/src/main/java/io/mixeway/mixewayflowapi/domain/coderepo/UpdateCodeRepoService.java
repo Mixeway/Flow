@@ -29,6 +29,7 @@ public class UpdateCodeRepoService {
     private final CodeRepoRepository codeRepoRepository;
     private final FindingRepository findingRepository;
     private final CreateScanInfoService createScanInfoService;
+    private final FindCodeRepoService findCodeRepoService;
 
     /**
      * Updates the SCA UUID for a given {@link CodeRepo}.
@@ -63,6 +64,7 @@ public class UpdateCodeRepoService {
      */
     @Transactional
     public void updateCodeRepoStatus(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, boolean scaScanPerformed, String commitId) {
+        codeRepo = findCodeRepoService.findByRemoteId((long)codeRepo.getRemoteId());
         // Update status for SECRETS
         int secretsHigh = updateStatusForSource(Finding.Source.SECRETS, codeRepo, codeRepoBranch, false);
 
