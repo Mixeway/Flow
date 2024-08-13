@@ -1,8 +1,8 @@
 # Mixeway Flow
 
 [![License](https://img.shields.io/badge/license-FlowLicense-blue.svg)](LICENSE.md)
-![Build Status](https://github.com/github/docs/actions/workflows/docker-build-backend.yml/badge.svg)
-[![Discord](https://img.shields.io/discord/mixeway.svg)](https://discord.gg/76RY2Y82)
+![example workflow](https://github.com/mixeway/flow/actions/workflows/docker-build-backend.yml/badge.svg)
+[![Discord](https://img.shields.io/discord/1272884200323944550)](https://discord.gg/76RY2Y82)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 ## Introduction
