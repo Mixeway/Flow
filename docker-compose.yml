@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  backend:
+    image: flowapi
+    container_name: flowapi_backend
+    ports:
+      - "8888:8888"
+      - "8443:8443"
+    environment:
+      SSL: TRUE
+    volumes:
+      - pki_data:/etc/pki
+      - dependency_track_data:/root/.dependency-track
+    depends_on:
+      - flowdb
+
+  flowdb:
+    image: postgres:latest
+    container_name: flowdb
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: flow
+      POSTGRES_USER: flow_user
+      POSTGRES_PASSWORD: flow_pass
+    volumes:
+      - flowdb_data:/var/lib/postgresql/data
+  flow:
+    image: flow
+    container_name: flow_frontend
+    ports:
+      - "443:443"
+    volumes:
+      - flow_data:/etc/nginx/ssl
+
+volumes:
+  flowdb_data:
+  flow_data:
+  pki_data:
+  dependency_track_data:

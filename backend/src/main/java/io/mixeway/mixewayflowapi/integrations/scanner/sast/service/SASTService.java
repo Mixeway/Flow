@@ -54,8 +54,17 @@ public class SASTService {
         File securityReportFile = new File(repoDir, "bearer_scan_security.json");
         File dataflowReportFile = new File(repoDir, "bearer_scan_dataflow.json");
 
-        ProcessBuilder securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir", bearerRulesDir, "--skip-path=.git", "--report=security", "--format=json", "--output=bearer_scan_security.json");
-        ProcessBuilder dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir", bearerRulesDir, "--report=dataflow", "--format=json", "--skip-path=.git", "--output=bearer_scan_dataflow.json");
+        ProcessBuilder securityPb;
+        ProcessBuilder dataflowPb;
+
+        // Check if bearerRulesDir is null or empty, and adjust the ProcessBuilder commands accordingly
+        if (bearerRulesDir == null || bearerRulesDir.isEmpty()) {
+            securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--skip-path=.git", "--report=security", "--format=json", "--output=bearer_scan_security.json");
+            dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--skip-path=.git", "--report=dataflow", "--format=json", "--output=bearer_scan_dataflow.json");
+        } else {
+            securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir", bearerRulesDir, "--skip-path=.git", "--report=security", "--format=json", "--output=bearer_scan_security.json");
+            dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir", bearerRulesDir, "--skip-path=.git", "--report=dataflow", "--format=json", "--output=bearer_scan_dataflow.json");
+        }
         securityPb.directory(new File(repoDir));
         dataflowPb.directory(new File(repoDir));
 

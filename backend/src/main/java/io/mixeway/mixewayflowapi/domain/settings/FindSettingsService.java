@@ -12,6 +12,6 @@ public class FindSettingsService {
 
     // ASUME Settings have only one row
     public Settings get(){
-        return settingsRepository.findAll().getFirst();
+        return settingsRepository.findAll().stream().findFirst().orElse(null);
     }
 }
