@@ -23,7 +23,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "outputPath": "dist/coreui-free-angular-admin-template",
+            "outputPath": "dist/mixeway-flow",
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": [
