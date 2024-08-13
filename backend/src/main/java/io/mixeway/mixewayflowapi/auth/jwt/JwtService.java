@@ -8,6 +8,7 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
+import javax.crypto.SecretKey;
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
@@ -18,7 +19,8 @@ import java.util.function.Function;
 public class JwtService {
 
     //todo dynamic secret
-    public static final String SECRET = Keys.secretKeyFor(SignatureAlgorithm.HS256).toString().replaceAll("[^A-Za-z0-9]","");
+    //public static final String SECRET = Keys.secretKeyFor(SignatureAlgorithm.HS256).toString().replaceAll("[^A-Za-z0-9]","");
+    private static final SecretKey SECRET_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS256);
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -36,7 +38,7 @@ public class JwtService {
     private Claims extractAllClaims(String token) {
         return Jwts
                 .parserBuilder()
-                .setSigningKey(getSignKey())
+                .setSigningKey(SECRET_KEY)
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
@@ -68,11 +70,11 @@ public class JwtService {
                 .setSubject(username)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis()+ 1000 * 60 * 100))
-                .signWith(getSignKey(), SignatureAlgorithm.HS256).compact();
+                .signWith(SECRET_KEY).compact();
     }
 
-    private Key getSignKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(SECRET);
-        return Keys.hmacShaKeyFor(keyBytes);
-    }
+//    private Key getSignKey() {
+//        byte[] keyBytes = Decoders.BASE64.decode(SECRET);
+//        return Keys.hmacShaKeyFor(keyBytes);
+//    }
 }
