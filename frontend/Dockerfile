@@ -21,6 +21,9 @@ FROM nginx:alpine
 # Install OpenSSL
 RUN apk add --no-cache openssl
 
+RUN rm -rf /usr/share/nginx/html/*
+
+
 # Copy the build output to the Nginx web directory
 COPY --from=build /app/dist /usr/share/nginx/html
 
