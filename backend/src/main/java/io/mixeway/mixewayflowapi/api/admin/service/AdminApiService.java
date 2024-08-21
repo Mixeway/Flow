@@ -5,6 +5,7 @@ import io.mixeway.mixewayflowapi.api.admin.dto.ConfigSmtpRequestDto;
 import io.mixeway.mixewayflowapi.db.entity.Settings;
 import io.mixeway.mixewayflowapi.domain.settings.FindSettingsService;
 import io.mixeway.mixewayflowapi.domain.settings.UpdateSettingsService;
+import io.mixeway.mixewayflowapi.exceptions.SettingsException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -15,7 +16,7 @@ public class AdminApiService {
     private final FindSettingsService findSettingsService;
 
 
-    public void scaConfig(ConfigScaRequestDto configScaRequestDto) {
+    public void scaConfig(ConfigScaRequestDto configScaRequestDto) throws SettingsException {
         updateSettingsService.changeSettingsScaConfig(configScaRequestDto);
     }
 

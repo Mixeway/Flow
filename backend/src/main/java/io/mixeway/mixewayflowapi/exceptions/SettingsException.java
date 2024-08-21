@@ -1,7 +1,7 @@
 package io.mixeway.mixewayflowapi.exceptions;
 
 public class SettingsException
-        extends RuntimeException {
+        extends Exception {
     public SettingsException(String errorMessage) {
         super(errorMessage);
     }

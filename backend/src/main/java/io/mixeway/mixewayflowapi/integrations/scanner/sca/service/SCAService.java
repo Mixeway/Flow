@@ -5,6 +5,7 @@ import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.db.entity.Settings;
 import io.mixeway.mixewayflowapi.domain.settings.FindSettingsService;
 import io.mixeway.mixewayflowapi.domain.settings.UpdateSettingsService;
+import io.mixeway.mixewayflowapi.exceptions.SettingsException;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.apiclient.DependencyTrackApiClientService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -34,9 +35,8 @@ public class SCAService {
      * Initializes the SCA environment by setting up the Dependency Track instance and generating
      * the necessary API key if it is not already available. Logs the progress and outcome.
      *
-     * @throws URISyntaxException If there is an issue with the URI syntax during initialization.
      */
-    public void initialize() throws URISyntaxException {
+    public void initialize()  {
         try {
             Settings settings = findSettingsService.get();
             if (settings.isScaModeEmbeded() && settings.getScaApiKey() == null) {

@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import reactor.core.publisher.Mono;
 
 import java.io.File;
@@ -140,11 +141,15 @@ public class DependencyTrackApiClientService {
                 .retrieve()
                 .toEntity(String.class);
 
-        ResponseEntity<String> response = responseMono.block();
+        try {
+            ResponseEntity<String> response = responseMono.block();
 
-        if (response != null && response.getStatusCode().equals(HttpStatus.OK)) {
-            log.info("[Dependency Track] Default admin password changed");
-            return this.getApiKey();
+            if (response != null && response.getStatusCode().equals(HttpStatus.OK)) {
+                log.info("[Dependency Track] Default admin password changed");
+                return this.getApiKey();
+            }
+        } catch (WebClientRequestException e){
+            log.error("[Dependency Track] Error during initialization - {}", e.getLocalizedMessage());
         }
 
         return null;

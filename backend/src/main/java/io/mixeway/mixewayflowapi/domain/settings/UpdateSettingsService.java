@@ -20,7 +20,7 @@ public class UpdateSettingsService {
 
 
     @Transactional
-    public void changeSettingsScaConfig(ConfigScaRequestDto configScaRequestDto){
+    public void changeSettingsScaConfig(ConfigScaRequestDto configScaRequestDto) throws SettingsException {
         Settings settings = findSettingsService.get();
         if (configScaRequestDto.isScaTypeEmbedded()){
             settings.configScaEmbedded();
@@ -38,13 +38,13 @@ public class UpdateSettingsService {
     }
 
     @Transactional
-    public void changeSettingsScaConfig(String hostname, String apikey){
+    public void changeSettingsScaConfig(String hostname, String apikey) throws SettingsException {
         Settings settings = findSettingsService.get();
         if(hostname!= null && apikey!=null){
             settings.configScaEmbeddedInitialized(hostname, apikey);
             settingsRepository.save(settings);
         } else {
-            throw new SettingsException("SCA scanner when initialized must have hostname and apikey not null");
+            log.error("SCA scanner when initialized must have hostname and apikey not null");
         }
     }
 
