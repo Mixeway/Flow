@@ -18,8 +18,6 @@ import java.util.function.Function;
 @Component
 public class JwtService {
 
-    //todo dynamic secret
-    //public static final String SECRET = Keys.secretKeyFor(SignatureAlgorithm.HS256).toString().replaceAll("[^A-Za-z0-9]","");
     private static final SecretKey SECRET_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS256);
 
     public String extractUsername(String token) {

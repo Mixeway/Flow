@@ -1,5 +1,7 @@
 package io.mixeway.mixewayflowapi.config;
 
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -8,6 +10,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.transport.ProxyProvider;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+
+import javax.net.ssl.SSLException;
 
 @Configuration
 @Log4j2
@@ -28,6 +32,16 @@ public class WebClientConfig {
     @Bean
     public WebClient webClient() {
         HttpClient httpClient = HttpClient.create();
+        httpClient = httpClient.secure(sslContextSpec -> {
+            try {
+                sslContextSpec.sslContext(
+                        SslContextBuilder.forClient()
+                                .trustManager(InsecureTrustManagerFactory.INSTANCE)
+                                .build());
+            } catch (SSLException e) {
+                log.error("Unable to config trust on WebClient instance - {}",e.getLocalizedMessage());
+            }
+        });
 
         // Configure proxy only if both proxyHost and proxyPort are provided
         if (proxyHost != null && proxyPort != null) {

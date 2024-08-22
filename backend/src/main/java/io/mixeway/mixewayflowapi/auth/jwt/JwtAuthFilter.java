@@ -1,6 +1,7 @@
 package io.mixeway.mixewayflowapi.auth.jwt;
 
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.security.SignatureException;
 import io.mixeway.mixewayflowapi.auth.UserDetailsServiceImpl;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -57,7 +58,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (token != null) {
             try {
                 username = jwtService.extractUsername(token);
-            } catch (ExpiredJwtException | JwtValidationException e) {
+            } catch (ExpiredJwtException | JwtValidationException | SignatureException e) {
                 log.error("[JWT Auth] Problem validating JWT token");
             }
         }
