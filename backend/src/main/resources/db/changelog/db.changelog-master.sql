@@ -114,9 +114,9 @@ ADD CONSTRAINT fk_default_branch FOREIGN KEY (default_branch_id) REFERENCES code
 --changeset siewer:add_finding_vuln_component
 CREATE TABLE component (
                            id SERIAL PRIMARY KEY,
-                           groupid VARCHAR(60),
-                           name VARCHAR(60) NOT NULL,
-                           version VARCHAR(20) NOT NULL,
+                           groupid VARCHAR(160),
+                           name VARCHAR(160) NOT NULL,
+                           version VARCHAR(120) NOT NULL,
                            inserted_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

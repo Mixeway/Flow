@@ -3,7 +3,8 @@
 /frontend/node_modules
 .idea
 .DS_Store
-frontend/.DS_Store
-frontend/src/.DS_Store
-frontend/src/assets/.DS_Store
-backend/MixewayFlowAPI.iml
+/frontend/.DS_Store
+/frontend/src/.DS_Store
+/frontend/src/assets/.DS_Store
+/backend/MixewayFlowAPI.iml
+/frontend/src/environments

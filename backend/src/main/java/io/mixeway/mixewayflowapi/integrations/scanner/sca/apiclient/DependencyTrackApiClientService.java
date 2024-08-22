@@ -5,6 +5,7 @@ import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.db.entity.Settings;
 import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.dtrack.ProcessDTrackVulnDataService;
+import io.mixeway.mixewayflowapi.exceptions.ScanException;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.dto.*;
 import io.mixeway.mixewayflowapi.utils.Constants;
 import lombok.RequiredArgsConstructor;
@@ -248,12 +249,23 @@ public class DependencyTrackApiClientService {
         Mono<ResponseEntity<String>> responseMono = webClient.method(HttpMethod.PUT)
                 .bodyValue(new SendBomRequestDto(codeRepo.getScaUUID(), encodeFileToBase64Binary(bomPath)))
                 .retrieve()
+                .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(), clientResponse ->
+                        clientResponse.bodyToMono(String.class)
+                                .flatMap(errorBody -> {
+                                    log.error("[Dependency Track] Error uploading SBOM: {}", errorBody);
+                                    return Mono.error(new ScanException("Failed to upload SBOM: " + errorBody));
+                                })
+                )
                 .toEntity(String.class);
 
-        ResponseEntity<String> response = responseMono.block();
+        try {
+            ResponseEntity<String> response = responseMono.block();
 
-        if (response != null && response.getStatusCode().equals(HttpStatus.OK)) {
-            log.info("[Dependency Track] Uploaded SBOM to Dependency Track for {}", codeRepo.getRepourl());
+            if (response != null && response.getStatusCode().equals(HttpStatus.OK)) {
+                log.info("[Dependency Track] Uploaded SBOM to Dependency Track for {}", codeRepo.getRepourl());
+            }
+        } catch (Exception e ){
+            log.error("[Dependency Track] Error for uploading SBOM - {}", e.getMessage());
         }
     }
 
