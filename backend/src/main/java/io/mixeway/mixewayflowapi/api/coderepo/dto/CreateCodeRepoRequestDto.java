@@ -12,7 +12,7 @@ import lombok.Getter;
 public final class CreateCodeRepoRequestDto implements DTO {
 
     @NotBlank(message = "Name must not be blank")
-    @Pattern(regexp = "^[a-zA-Z0-9-_]+$", message = "Name must be alphanumeric with dashes allowed (e.g., test-repo123)")
+    @Pattern(regexp = "^[a-zA-Z0-9-_ ]+$", message = "Name must be alphanumeric with dashes allowed (e.g., test-repo123)")
     private final String name;
 
     @NotBlank(message = "Repository URL must not be blank")
