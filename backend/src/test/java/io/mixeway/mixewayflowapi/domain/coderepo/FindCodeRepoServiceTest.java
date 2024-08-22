@@ -4,6 +4,7 @@ import ch.qos.logback.core.spi.ScanException;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.CreateCodeRepoRequestDto;
 import io.mixeway.mixewayflowapi.api.user.dto.CreateUserRequestDto;
 import io.mixeway.mixewayflowapi.config.TestConfig;
+import io.mixeway.mixewayflowapi.config.TestDataPrepareService;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.Team;
 import io.mixeway.mixewayflowapi.db.entity.UserInfo;
@@ -58,6 +59,8 @@ class FindCodeRepoServiceTest {
     CreateCodeRepoService createCodeRepoService;
     @Autowired
     CreateUserService createUserService;
+    @Autowired
+    TestDataPrepareService testDataPrepareService;
 
     @Test
     void findCodeRepoByUrl() throws Exception {
