@@ -18,11 +18,14 @@ jobs:
           java-version: 22
       - name: Build and test with Maven and profile ut
         run: |
+          pwd
+          ls -la
           mvn clean test -Dspring.profiles.active=ut
   
 
   build-and-push-backend:
     runs-on: ubuntu-latest
+    needs: unit-testing
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
