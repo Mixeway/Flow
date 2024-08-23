@@ -18,8 +18,7 @@ jobs:
           java-version: 22
       - name: Build and test with Maven and profile ut
         run: |
-          pwd
-          ls -la
+          cd backend
           mvn clean test -Dspring.profiles.active=ut
   
 
