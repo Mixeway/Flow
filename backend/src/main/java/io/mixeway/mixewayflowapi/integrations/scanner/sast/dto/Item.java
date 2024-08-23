@@ -32,17 +32,5 @@ public class Item {
     private String codeExtract;
 }
 
-@Data
-@JsonIgnoreProperties(ignoreUnknown = true)
-class CodeLocation {
-    private int start;
-    private int end;
-    private Column column;
-}
 
-@Data
-@JsonIgnoreProperties(ignoreUnknown = true)
-class Column {
-    private int start;
-    private int end;
-}
+

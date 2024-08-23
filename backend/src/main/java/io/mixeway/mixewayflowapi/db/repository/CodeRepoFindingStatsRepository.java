@@ -21,6 +21,6 @@ public interface CodeRepoFindingStatsRepository extends CrudRepository<CodeRepoF
     @Query("SELECT c FROM CodeRepoFindingStats c WHERE (DATE(c.dateInserted) BETWEEN :startDate AND :endDate) AND c.codeRepo in :repos")
     List<CodeRepoFindingStats> findStatsBetweenDatesAndForCodeRepos(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate,
                                                                     @Param("repos") List<CodeRepo> repos);
-
+    List<CodeRepoFindingStats> findByCodeRepo(CodeRepo codeRepo);
 
 }

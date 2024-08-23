@@ -61,11 +61,11 @@ class FindCodeRepoServiceTest {
             findCodeRepoService.findById(999L, principal);
         });
 
-        Mockito.when(principal.getName()).thenReturn("user");
-        codeRepo  = findCodeRepoService.findById(1L, principal);
+        Mockito.when(principal.getName()).thenReturn("manager");
+        codeRepo  = findCodeRepoService.findById(5L, principal);
         assertNotNull(codeRepo);
         assertThrows(Exception.class, () -> {
-            findCodeRepoService.findById(3L, principal);
+            findCodeRepoService.findById(2L, principal);
         });
 
 

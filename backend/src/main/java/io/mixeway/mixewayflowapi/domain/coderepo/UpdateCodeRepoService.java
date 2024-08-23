@@ -48,6 +48,7 @@ public class UpdateCodeRepoService {
      * @param components the list of {@link Component} entities to associate with the {@link CodeRepo}
      * @param codeRepo   the {@link CodeRepo} entity to update
      */
+    @Transactional
     public void updateComponents(List<Component> components, CodeRepo codeRepo) {
         codeRepo.setComponents(components);
         codeRepoRepository.save(codeRepo);

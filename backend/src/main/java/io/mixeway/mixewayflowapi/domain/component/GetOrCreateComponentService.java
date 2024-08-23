@@ -25,12 +25,4 @@ public class GetOrCreateComponentService {
                 .orElseGet(() -> componentRepository.save(new Component(group, name, version, origin)));
     }
 
-    public List<Component> getOrCreateAndMap(BearerScanDataflow bearerScanDataflow){
-        List<Component> components = new ArrayList<>();
-        for (BearerScanDataflow.Dependency dependency : bearerScanDataflow.getDependencies()){
-            Component component = getOrCreate(dependency.getName(), null, dependency.getVersion(), dependency.getDetector());
-            components.add(component);
-        }
-        return componentRepository.saveAll(components);
-    }
 }

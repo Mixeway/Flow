@@ -1,11 +1,12 @@
 package io.mixeway.mixewayflowapi.integrations.scanner.secrets.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
 import lombok.Value;
 
 import java.util.List;
 
-@Value
+@Data
 public class Secret {
     @JsonProperty("Description")
     String description;

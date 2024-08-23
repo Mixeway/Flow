@@ -17,7 +17,7 @@ public class GetOrCreateCodeRepoBranchService {
                 .orElseGet(() -> createBranch(name, codeRepo));
     }
 
-    public CodeRepoBranch createBranch(String name, CodeRepo codeRepo) {
+    private CodeRepoBranch createBranch(String name, CodeRepo codeRepo) {
         return codeRepoBranchRepository.save(new CodeRepoBranch(name, codeRepo));
     }
 }

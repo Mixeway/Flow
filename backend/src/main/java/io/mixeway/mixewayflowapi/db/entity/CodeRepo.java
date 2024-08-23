@@ -79,7 +79,7 @@ public final class CodeRepo {
     @Column(name = "secrets_scan", nullable = false)
     private ScanStatus secretsScan;
 
-    @ManyToMany(fetch = FetchType.EAGER)
+    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinTable(
             name = "coderepo_component",
             joinColumns = @JoinColumn(name = "coderepo_id"),
@@ -114,6 +114,7 @@ public final class CodeRepo {
         this.iacScan = ScanStatus.NOT_PERFORMED;
         this.secretsScan = ScanStatus.NOT_PERFORMED;
         this.scaUUID = null;
+        this.appDataTypes = new ArrayList<>();
     }
 
     // Public constructor for creating new instances
@@ -131,6 +132,7 @@ public final class CodeRepo {
         this.iacScan = ScanStatus.NOT_PERFORMED;
         this.secretsScan = ScanStatus.NOT_PERFORMED;
         this.scaUUID = null;
+        this.appDataTypes = new ArrayList<>();
     }
 
     // Methods to change mutable fields
