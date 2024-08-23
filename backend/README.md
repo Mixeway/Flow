@@ -11,4 +11,3 @@
 
 ## First login
 `admin:admin` - then forced change
-
