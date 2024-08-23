@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1
+      author: siewer
+      changes:
+        - sqlFile:
+            path: "classpath:db/changelog/db.changelog-master.sql"
+            splitStatements: true
+            stripComments: true
+
+  - changeSet:
+      id: 2
+      author: siewer
+      changes:
+        - sqlFile:
+            path: "classpath:db/changelog/data_dump_test.sql"
+            splitStatements: true
+            stripComments: true

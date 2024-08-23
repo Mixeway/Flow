@@ -87,7 +87,7 @@ public final class CodeRepo {
     )
     private List<Component> components;
 
-    @OneToMany(mappedBy = "codeRepo", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "codeRepo", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<AppDataType> appDataTypes;
 
     @OneToMany(mappedBy = "codeRepo", fetch = FetchType.EAGER, cascade = CascadeType.ALL)

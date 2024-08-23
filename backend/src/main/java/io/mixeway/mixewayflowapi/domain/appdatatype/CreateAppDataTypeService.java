@@ -3,6 +3,7 @@ package io.mixeway.mixewayflowapi.domain.appdatatype;
 import io.mixeway.mixewayflowapi.db.entity.AppDataType;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.repository.AppDataTypeRepository;
+import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.BearerScanDataflow;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -20,15 +21,28 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CreateAppDataTypeService {
     private final AppDataTypeRepository appDataTypeRepository;
+    private final CodeRepoRepository codeRepoRepository;
 
     @Transactional
     public void getDataTypesForCodeRepo(CodeRepo codeRepo, BearerScanDataflow bearerScanDataflow){
         if (bearerScanDataflow.getDataTypes() != null ){
             log.info("[DataFlowAPI] Removing all data entities from {}", codeRepo.getRepourl());
-            appDataTypeRepository.deleteAllByCodeRepo(codeRepo);
+
+            // Clear the existing AppDataTypes from the CodeRepo to trigger orphan removal
+            codeRepo.getAppDataTypes().clear();
+
+            // Map the new AppDataTypes
             List<AppDataType> appDataTypeList = mapReportToAppData(codeRepo, bearerScanDataflow);
-            log.info("[DataFlowAPI] Saving new {} data entities from {}",appDataTypeList.size(), codeRepo.getRepourl());
+
+            // Add the new AppDataTypes to the CodeRepo
+            codeRepo.getAppDataTypes().addAll(appDataTypeList);
+
+            log.info("[DataFlowAPI] Saving new {} data entities from {}", appDataTypeList.size(), codeRepo.getRepourl());
+
+            // Save the CodeRepo entity, which will cascade the save operation to the AppDataTypes
             appDataTypeRepository.saveAll(appDataTypeList);
+            // todo: may cause problems on scanning
+            codeRepoRepository.save(codeRepo);
 
         }
     }

@@ -43,20 +43,25 @@ import static org.junit.Assert.*;
 public class CreateCodeRepoServiceTest {
     @Autowired
     CreateCodeRepoService createCodeRepoService;
+
     @Autowired
     FindTeamService findTeamService;
+
     @Autowired
     FindCodeRepoService findCodeRepoService;
+
     @MockBean
     GetCodeRepoInfoService getCodeRepoInfoService;
+
     @Autowired
     CreateTeamService createTeamService;
+
     @Mock
     Principal principal;
 
     @Test
     public void createCodeRepo() throws ScanException, IOException, InterruptedException {
-        //Mock Creation of CodeRepo and git integrations
+        // Mock Creation of CodeRepo and git integrations
         ImportCodeRepoResponseDto importCodeRepoResponseDto = new ImportCodeRepoResponseDto();
         importCodeRepoResponseDto.setId(1);
         importCodeRepoResponseDto.setDescription("desc");
@@ -70,7 +75,7 @@ public class CreateCodeRepoServiceTest {
 
         Mockito.when(principal.getName()).thenReturn("admin");
 
-        //Create Team verify if it is created
+        // Create Team verify if it is created
         createTeamService.createTeam("createCodeRepoTest","createCodeRepoTest", new ArrayList<>(), principal);
         List<Team> team1 = findTeamService.findAll().stream().filter(t -> t.getName().equals("createCodeRepoTest")).toList();
         assertFalse(team1.isEmpty());
@@ -93,5 +98,4 @@ public class CreateCodeRepoServiceTest {
         Optional<CodeRepo> codeRepo = findCodeRepoService.findCodeRepoByUrl("https://example.com/repo");
         assertTrue(codeRepo.isPresent());
     }
-
 }
