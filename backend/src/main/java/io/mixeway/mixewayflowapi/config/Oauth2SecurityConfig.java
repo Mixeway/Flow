@@ -22,7 +22,7 @@ import org.springframework.security.web.authentication.Http403ForbiddenEntryPoin
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@Profile("devsso | prodsso")
+@Profile("(devsso | prodsso) & !ut")
 @RequiredArgsConstructor
 public class Oauth2SecurityConfig {
 
