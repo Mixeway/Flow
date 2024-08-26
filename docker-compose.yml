@@ -9,6 +9,16 @@ services:
       - "8443:8443"
     environment:
       SSL: "TRUE"
+      # Uncomment and set these when using SSO
+      # SSO: "TRUE"
+      # SSO_CLIENT_ID: your_client_id
+      # SSO_CLIENT_SECRET: your_client_secret
+      # SSO_REDIRECT_URI: http://your-redirect-uri
+      # SSO_AUTHORIZATION_URI: http://your-authorization-uri
+      # SSO_TOKEN_URI: http://your-token-uri
+      # SSO_USER_INFO_URI: http://your-user-info-uri
+      # SSO_JWK_SET_URI: http://your-jwk-set-uri
+      # FRONTEND_URL: http://your-frontend-url
     volumes:
       - pki_data:/etc/pki
       - dependency_track_data:/root/.dependency-track

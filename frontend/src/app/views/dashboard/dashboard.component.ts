@@ -103,6 +103,7 @@ export class DashboardComponent implements OnInit {
   teams: Team[] = [];
   widgetStats: any;
   canManage: boolean = false;
+  @Output() userRoleSet: EventEmitter<string> = new EventEmitter<string>();
 
 
   rows: CodeRepo[] = [];
@@ -175,13 +176,21 @@ export class DashboardComponent implements OnInit {
     });
   }
   ngOnInit(): void {
+    let userRole = localStorage.getItem('userRole');
+
     this.authService.hc().subscribe({
-      next: () => {
-        const userRole = localStorage.getItem('userRole');
-        if (userRole === 'ADMIN' || userRole === 'TEAM_MANAGER'){
-          this.canManage = true;
-          this.loadTeams();
+      next: (response) => {
+        if (!userRole) {
+          localStorage.setItem('userRole', response.status.replace("ROLE_",""));
+          location.reload();
         }
+        // localStorage.setItem('userRole', response.status.replace("ROLE_",""));
+        // const userRole = localStorage.getItem('userRole') || 'USER';
+        // this.userRoleSet.emit(userRole); // Emit event after setting userRole
+        // if (userRole === 'ADMIN' || userRole === 'TEAM_MANAGER'){
+        //   this.canManage = true;
+        //   this.loadTeams();
+        // }
       },
       error: () => {
         // Health check failed, redirect to login

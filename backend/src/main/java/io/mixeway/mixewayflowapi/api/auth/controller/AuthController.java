@@ -15,6 +15,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -24,12 +26,14 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
 import java.security.Principal;
 
 @RestController
@@ -41,7 +45,7 @@ public class AuthController {
     private final JwtService jwtService;
     private final AuthService authService;
     private final FindUserService findUserService;
-
+    private final Environment environment;
 
     @PostMapping("/api/v1/login")
     public ResponseEntity<?> login(@Valid @RequestBody AuthRequestDTO authRequestDTO, HttpServletRequest request, HttpServletResponse response) {
@@ -95,13 +99,29 @@ public class AuthController {
 
     @PreAuthorize("hasAuthority('USER')")
     @GetMapping("/api/v1/hc")
-    public ResponseEntity<String> hc() {
+    public ResponseEntity<StatusDTO> hc(Principal principal) {
+        UserInfo userInfo = findUserService.findUser(principal.getName());
         try {
-            return new ResponseEntity<>("", HttpStatus.OK);
+            return new ResponseEntity<>(new StatusDTO(userInfo.getHighestRole()), HttpStatus.OK);
         } catch (Exception e){
             throw new RuntimeException(e);
         }
     }
+
+    @GetMapping("/api/v1/status")
+    public ResponseEntity<StatusDTO> status() {
+        String[] activeProfiles = environment.getActiveProfiles();
+        String profile = "";
+        if (activeProfiles.length > 0) {
+            profile = activeProfiles[0];
+        }
+        try {
+            return new ResponseEntity<>(new StatusDTO(profile), HttpStatus.OK);
+        } catch (Exception e){
+            throw new RuntimeException(e);
+        }
+    }
+
     @PreAuthorize("hasAuthority('ADMIN')")
     @GetMapping("/api/v1/hc/admin")
     public ResponseEntity<String> hcAdmin() {

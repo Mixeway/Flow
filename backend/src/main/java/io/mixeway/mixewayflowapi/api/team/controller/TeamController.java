@@ -43,7 +43,7 @@ public class TeamController {
         }
     }
 
-    @PreAuthorize("hasAuthority('TEAM_MANAGER')")
+    @PreAuthorize("hasAuthority('USER')")
     @GetMapping(value= "/api/v1/team")
     public ResponseEntity<List<TeamDto>> getTeams(Principal principal){
         try {

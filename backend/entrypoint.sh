@@ -1,5 +1,22 @@
 #!/bin/bash
 
+# Ensure required environment variables are set when SSO is enabled
+if [ "$(echo $SSO | tr '[:upper:]' '[:lower:]')" = "true" ]; then
+    : "${SSO_CLIENT_ID:?SSO_CLIENT_ID is required when SSO is true}"
+    : "${SSO_CLIENT_SECRET:?SSO_CLIENT_SECRET is required when SSO is true}"
+    : "${SSO_REDIRECT_URI:?SSO_REDIRECT_URI is required when SSO is true}"
+    : "${SSO_AUTHORIZATION_URI:?SSO_AUTHORIZATION_URI is required when SSO is true}"
+    : "${SSO_TOKEN_URI:?SSO_TOKEN_URI is required when SSO is true}"
+    : "${SSO_USER_INFO_URI:?SSO_USER_INFO_URI is required when SSO is true}"
+    : "${SSO_JWK_SET_URI:?SSO_JWK_SET_URI is required when SSO is true}"
+
+    # Set the active profile to prodsso
+    SPRING_PROFILE="prodsso"
+else
+    # Set the default profile
+    SPRING_PROFILE="prod"
+fi
+
 # Start Dependency-Track in the background with 4GB of memory and log output to a file
 LOG_FILE="/var/log/dtrack.log"
 echo "Starting Dependency-Track..."
@@ -72,11 +89,11 @@ if [ "$(echo $SSL | tr '[:upper:]' '[:lower:]')" = "true" ]; then
         git config --global https.proxy http://$PROXY_HOST:$PROXY_PORT
     fi
 
-    echo "Proceeding to run the application with SSL..."
+    echo "Proceeding to run the application with SSL and profile $SPRING_PROFILE..."
     if [ -n "$PROXY_HOST" ] && [ -n "$PROXY_PORT" ]; then
-        java -Dspring.profiles.active=prod -Dserver.ssl.key-store=/etc/pki/certificate.p12 -Dserver.ssl.key-store-password=$P12PASS -Dserver.ssl.key-alias=flow -Dproxy.host=$PROXY_HOST -Dproxy.port=$PROXY_PORT -jar /app/flowapi.jar
+        java -Dspring.profiles.active=$SPRING_PROFILE -Dserver.ssl.key-store=/etc/pki/certificate.p12 -Dserver.ssl.key-store-password=$P12PASS -Dserver.ssl.key-alias=flow -Dproxy.host=$PROXY_HOST -Dproxy.port=$PROXY_PORT -jar /app/flowapi.jar
     else
-        java -Dspring.profiles.active=prod -Dserver.ssl.key-store=/etc/pki/certificate.p12 -Dserver.ssl.key-store-password=$P12PASS -Dserver.ssl.key-alias=flow -jar /app/flowapi.jar
+        java -Dspring.profiles.active=$SPRING_PROFILE -Dserver.ssl.key-store=/etc/pki/certificate.p12 -Dserver.ssl.key-store-password=$P12PASS -Dserver.ssl.key-alias=flow -jar /app/flowapi.jar
     fi
 else
     echo "SSL is not enabled. Running the application without SSL..."

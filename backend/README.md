@@ -11,3 +11,9 @@
 
 ## First login
 `admin:admin` - then forced change
+
+
+### debug postgresql
+```shell
+docker run --name flow_db -e POSTGRES_PASSWORD=flow_pass -e POSTGRES_USER=flow_user -e POSTGRES_DB=flow -p 5433:5432 -v pgdata:/var/lib/postgresql/data -d postgres
+```

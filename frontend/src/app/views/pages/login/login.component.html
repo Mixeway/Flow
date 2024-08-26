@@ -3,7 +3,7 @@
     <c-row class="justify-content-center">
       <c-col lg="10" xl="8">
         <c-card-group>
-          <c-card class="p-4">
+          <c-card class="p-4" *ngIf="password">
             <c-card-body>
               <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
                 <h1>Login</h1>
@@ -36,6 +36,13 @@
               </form>
             </c-card-body>
           </c-card>
+            <c-card class="p-4" *ngIf="sso">
+                <c-card-body>
+                    <div class="button-container">
+                        <button class="primary-button" (click)="redirectToSSO()">Proceed with SSO Login</button>
+                    </div>
+                </c-card-body>
+            </c-card>
           <c-card [ngStyle]="{'minWidth.%': 44}" class="text-white bg-info-subtle py-5">
             <c-card-body class="text-center">
               <div class="image-container">

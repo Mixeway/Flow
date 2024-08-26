@@ -42,6 +42,8 @@ import {getNavItems, navItems} from "../../../layout/default-layout/_nav";
 })
 export class LoginComponent implements OnInit{
     loginForm: FormGroup;
+    password: boolean = true;
+    sso: boolean = false;
 
     constructor(private fb: FormBuilder, private authService: AuthService, private router: Router) {
         this.loginForm = this.fb.group({
@@ -97,6 +99,7 @@ export class LoginComponent implements OnInit{
         }
     }
     ngOnInit() {
+        this.getStatus();
         this.authService.hc().subscribe({
             next: () => {
                 this.router.navigate(['/dashboard']);
@@ -105,6 +108,22 @@ export class LoginComponent implements OnInit{
                 // Health check failed, stay on login page
             }
         });
+    }
+    getStatus() {
+        this.authService.status().subscribe({
+            next: (response) => {
+                if (response.status === 'prodsso' || response.status === 'devsso'){
+                    this.password = false;
+                    this.sso = true;
+                }
+            },
+            error: () => {
+                // Health check failed, stay on login page
+            }
+        });
+    }
+    redirectToSSO(): void {
+        window.location.href = 'http://localhost:8888/oauth2/authorization/sso';
     }
 
 }

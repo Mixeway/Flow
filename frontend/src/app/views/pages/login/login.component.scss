@@ -11,3 +11,23 @@
   max-height: 100%;
   object-fit: contain;
 }
+.button-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%; /* Adjust height as needed */
+}
+
+.primary-button {
+  background-color: #007bff; /* Primary color */
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.primary-button:hover {
+  background-color: #0056b3;
+}

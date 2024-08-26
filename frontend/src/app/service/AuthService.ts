@@ -17,6 +17,9 @@ export class AuthService {
     hc(): Observable<any> {
         return this.http.get<any>(this.loginUrl + '/api/v1/hc',{ withCredentials: true });
     }
+    status(): Observable<any> {
+        return this.http.get<any>(this.loginUrl + '/api/v1/status');
+    }
     hcAdmin(): Observable<any> {
         return this.http.get<any>(this.loginUrl + '/api/v1/hc/admin',{ withCredentials: true });
     }
