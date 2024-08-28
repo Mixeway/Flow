@@ -22,13 +22,13 @@ public final class Component {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private final long id;
 
-    @Column(length = 60)
+    @Column(length = 160)
     private final String groupid;
 
-    @Column(nullable = false, length = 60)
+    @Column(nullable = false, length = 160)
     private final String name;
 
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, length = 120)
     private final String version;
 
     @Column(length = 30)

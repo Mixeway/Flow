@@ -43,7 +43,7 @@ class GetOrCreateCodeRepoBranchServiceTest {
         CodeRepo codeRepo = findCodeRepoService.findByRemoteId(14493750L);
 
         assertThrows(Exception.class, () -> {
-            getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(StringUtils.repeat('x', 80), codeRepo);
+            getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(StringUtils.repeat('x', 250), codeRepo);
         });
     }
 }
