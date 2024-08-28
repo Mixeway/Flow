@@ -176,6 +176,7 @@ export class DashboardComponent implements OnInit {
     });
   }
   ngOnInit(): void {
+    this.loadTeams();
     let userRole = localStorage.getItem('userRole');
 
     this.authService.hc().subscribe({
@@ -196,7 +197,7 @@ export class DashboardComponent implements OnInit {
     this.updateChartOnColorModeChange();
     this.loadCodeRepos();
     this.loadWidgetStats();
-    this.loadTeams();
+
   }
 
   initColumns(): void {
