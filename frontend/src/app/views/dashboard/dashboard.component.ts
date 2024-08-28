@@ -122,6 +122,7 @@ export class DashboardComponent implements OnInit {
               private dashboardService: DashboardService, private teamService: TeamService) {
     // iconSet singleton
     iconSet.icons = { ...freeSet, ...iconSet, ...brandSet };
+    this.loadTeams();
     this.importRepoForm = this.fb.group({
       repoUrl: ['', [Validators.required, Validators.pattern('https?://.+')]],
       accessToken: ['', Validators.required],
