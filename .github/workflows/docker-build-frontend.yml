@@ -25,4 +25,6 @@ jobs:
         run: |
           cd frontend
           docker build -t mixeway/flow:latest .
+          docker build -t mixeway/flow:latest-beta .
           docker push mixeway/flow:latest
+          docker push mixeway/flow:latest-beta
