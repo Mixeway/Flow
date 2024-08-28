@@ -184,13 +184,7 @@ export class DashboardComponent implements OnInit {
           localStorage.setItem('userRole', response.status.replace("ROLE_",""));
           location.reload();
         }
-        // localStorage.setItem('userRole', response.status.replace("ROLE_",""));
-        // const userRole = localStorage.getItem('userRole') || 'USER';
-        // this.userRoleSet.emit(userRole); // Emit event after setting userRole
-        // if (userRole === 'ADMIN' || userRole === 'TEAM_MANAGER'){
-        //   this.canManage = true;
-        //   this.loadTeams();
-        // }
+        this.canManage = true;
       },
       error: () => {
         // Health check failed, redirect to login
