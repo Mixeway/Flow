@@ -331,3 +331,6 @@ CREATE TABLE scan_info (
                            CONSTRAINT fk_coderepo FOREIGN KEY (coderepo_id) REFERENCES coderepo(id),
                            CONSTRAINT fk_coderepo_branch FOREIGN KEY (coderepo_branch_id) REFERENCES coderepo_branch(id)
 );
+--changeset siewer:fixes
+ALTER TABLE vulnerability ALTER COLUMN name TYPE VARCHAR(200);
+alter table coderepo_branch alter column name TYPE VARCHAR(200);

@@ -18,7 +18,7 @@ public final class CodeRepoBranch {
     private final long id;
 
     @NotBlank
-    @Size(max = 60, message = "Name must be at most 60 characters long")
+    @Size(max = 200, message = "Name must be at most 200 characters long")
     @Column(nullable = false)
     private final String name;
 
