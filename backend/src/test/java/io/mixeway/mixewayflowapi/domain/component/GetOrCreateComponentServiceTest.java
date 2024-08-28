@@ -33,13 +33,13 @@ class GetOrCreateComponentServiceTest {
     void getOrCreate_nok() {
         Component component;
         assertThrows(Exception.class, () -> {
-            getOrCreateComponentService.getOrCreate(StringUtils.repeat('x', 80),"group","1.0.0", "api");
+            getOrCreateComponentService.getOrCreate(StringUtils.repeat('x', 180),"group","1.0.0", "api");
         });
         assertThrows(Exception.class, () -> {
-            getOrCreateComponentService.getOrCreate("name",StringUtils.repeat('x', 80),"1.0.0", "api");
+            getOrCreateComponentService.getOrCreate("name",StringUtils.repeat('x', 180),"1.0.0", "api");
         });
         assertThrows(Exception.class, () -> {
-            getOrCreateComponentService.getOrCreate("name","group",StringUtils.repeat('x', 120), "api");
+            getOrCreateComponentService.getOrCreate("name","group",StringUtils.repeat('x', 140), "api");
         });
     }
 
