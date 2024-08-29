@@ -54,9 +54,9 @@ RUN wget -O bearer.tar.gz https://github.com/Bearer/bearer/releases/download/v1.
     mv bearer /usr/local/bin/bearer && \
     rm bearer.tar.gz \
 
-RUN mkdir -p /opt/bearer
 # Download, extract, and copy bearer-rules
 RUN wget -O bearer-rules.tar.gz https://github.com/Bearer/bearer-rules/archive/refs/tags/v0.46.0.tar.gz && \
+    mkdir -p /opt/bearer && \
     tar -xzf bearer-rules.tar.gz -C /opt/bearer --strip-components=1 && \
     rm bearer-rules.tar.gz
 
