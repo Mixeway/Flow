@@ -62,8 +62,8 @@ public class SASTService {
             securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--skip-path=.git", "--report=security", "--format=json", "--output=bearer_scan_security.json");
             dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--skip-path=.git", "--report=dataflow", "--format=json", "--output=bearer_scan_dataflow.json");
         } else {
-            securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir", bearerRulesDir, "--skip-path=.git", "--report=security", "--format=json", "--output=bearer_scan_security.json");
-            dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir", bearerRulesDir, "--skip-path=.git", "--report=dataflow", "--format=json", "--output=bearer_scan_dataflow.json");
+            securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir="+ bearerRulesDir, "--skip-path=.git", "--report=security", "--format=json", "--output=bearer_scan_security.json");
+            dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir="+ bearerRulesDir, "--skip-path=.git", "--report=dataflow", "--format=json", "--output=bearer_scan_dataflow.json");
         }
         securityPb.directory(new File(repoDir));
         dataflowPb.directory(new File(repoDir));
