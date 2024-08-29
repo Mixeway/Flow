@@ -52,7 +52,7 @@ RUN wget -O gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/downlo
 RUN wget -O bearer.tar.gz https://github.com/Bearer/bearer/releases/download/v1.46.0/bearer_1.46.0_linux_amd64.tar.gz && \
     tar -xzf bearer.tar.gz && \
     mv bearer /usr/local/bin/bearer && \
-    rm bearer.tar.gz \
+    rm bearer.tar.gz
 
 # Create directory for Bearer rules
 RUN mkdir -p /opt/bearer
@@ -60,7 +60,7 @@ RUN mkdir -p /opt/bearer
 # Download, extract, and copy bearer-rules
 RUN wget -O bearer-rules.tar.gz https://github.com/Bearer/bearer-rules/archive/refs/tags/v0.46.0.tar.gz && \
     tar -xzf bearer-rules.tar.gz -C /opt/bearer --strip-components=1 && \
-    rm bearer-rules.tar.gz \
+    rm bearer-rules.tar.gz
 
 # Copy entrypoint script
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
