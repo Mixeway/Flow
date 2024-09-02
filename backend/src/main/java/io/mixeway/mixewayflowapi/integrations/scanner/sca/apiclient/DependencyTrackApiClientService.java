@@ -19,6 +19,7 @@ import reactor.core.publisher.Mono;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
@@ -174,11 +175,15 @@ public class DependencyTrackApiClientService {
                 .retrieve()
                 .toEntity(CreateProjectResponseDto.class);
 
-        ResponseEntity<CreateProjectResponseDto> response = responseMono.block();
+        try {
+            ResponseEntity<CreateProjectResponseDto> response = responseMono.block();
 
-        if (response != null && response.getStatusCode().equals(HttpStatus.CREATED)) {
-            updateCodeRepoService.updateScaUUID(codeRepo, response.getBody().getUuid());
-            log.info("[Dependency Track] Created Project for {} - {}", codeRepo.getRepourl(), response.getBody().getUuid());
+            if (response != null && response.getStatusCode().equals(HttpStatus.CREATED)) {
+                updateCodeRepoService.updateScaUUID(codeRepo, response.getBody().getUuid());
+                log.info("[Dependency Track] Created Project for {} - {}", codeRepo.getRepourl(), response.getBody().getUuid());
+            }
+        } catch (Exception e){
+            log.error("[SCA Service] Unable to connect with dTrack");
         }
     }
 

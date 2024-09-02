@@ -33,14 +33,15 @@ public class CreateCodeRepoService {
     private final ScanManagerService scanManagerService;
 
 
-    public void createCodeRepo(CreateCodeRepoRequestDto createCodeRepoRequestDto, String repo) throws IOException, ScanException, InterruptedException {
-        ImportCodeRepoResponseDto importCodeRepoResponseDto = getCodeRepoInfoService.getRepoResponse(createCodeRepoRequestDto, repo);
+    public void createCodeRepo(CreateCodeRepoRequestDto createCodeRepoRequestDto, CodeRepo.RepoType repoType) throws IOException, ScanException, InterruptedException {
+        ImportCodeRepoResponseDto importCodeRepoResponseDto = getCodeRepoInfoService.getRepoResponse(createCodeRepoRequestDto, repoType);
         Optional<Team> team = findTeamService.findById(createCodeRepoRequestDto.getTeam());
-        if (team.isPresent() && codeRepoRepository.findByRepourl(importCodeRepoResponseDto.getWebUrl()).isEmpty()){
+        Optional<CodeRepo> cr = codeRepoRepository.findByRepourl(importCodeRepoResponseDto.getWebUrl());
+        if (team.isPresent() && cr.isEmpty()){
            CodeRepo codeRepo = new CodeRepo(
-                   importCodeRepoResponseDto.getPathWithNamespace().substring(importCodeRepoResponseDto.getPathWithNamespace().lastIndexOf("/") + 1),
+                   createCodeRepoRequestDto.getName(),
                    importCodeRepoResponseDto.getWebUrl(), createCodeRepoRequestDto.getAccessToken(),team.get(),
-                   importCodeRepoResponseDto.getId());
+                   importCodeRepoResponseDto.getId(), repoType);
            codeRepo = codeRepoRepository.save(codeRepo);
            CodeRepoBranch codeRepoBranch = findOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(importCodeRepoResponseDto.getDefaultBranch(),codeRepo);
            codeRepo.updateBranch(codeRepoBranch);

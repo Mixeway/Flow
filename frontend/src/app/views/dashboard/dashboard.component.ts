@@ -45,6 +45,7 @@ import {GitLabService} from "../../service/GitLabService";
 import {DashboardService} from "../../service/DashboardService";
 import {TeamService} from "../../service/TeamService";
 import {gitRepoUrlValidator} from "../../utils/GitRepoUrlValidator";
+import {GitHubService} from "../../service/GitHubService";
 
 interface RepoRow{
   id: number;
@@ -119,7 +120,8 @@ export class DashboardComponent implements OnInit {
 
   constructor(public iconSet: IconSetService, private fb: FormBuilder, private router: Router,
               private authService: AuthService, private gitLabService: GitLabService,
-              private dashboardService: DashboardService, private teamService: TeamService) {
+              private dashboardService: DashboardService, private teamService: TeamService,
+              private gitHubService: GitHubService) {
     // iconSet singleton
     iconSet.icons = { ...freeSet, ...iconSet, ...brandSet };
     this.loadTeams();
@@ -311,31 +313,62 @@ export class DashboardComponent implements OnInit {
       this.accessToken = this.importRepoForm.value.accessToken;  // Store accessToken
 
       this.isLoading = true;  // Show the spinner
-      this.gitLabService.setApiUrl(this.repoUrl);
 
-      this.gitLabService.getAllProjects(this.accessToken).subscribe({
-        next: (projects) => {
-          this.repoRows = projects.map(proj => ({
-            id: proj.id,
-            name: proj.name,
-            repo_url: proj.web_url,
-            namespace: proj.path_with_namespace,
-            imported: false
-          }));
-          this.tempRepos = [...this.repoRows];  // Update the temp array with the new data
+      if (this.selectedRepo === 'GitLab') {
+        this.gitLabService.setApiUrl(this.repoUrl);
+        this.gitLabService.getAllProjects(this.accessToken).subscribe({
+          next: (projects) => {
+            this.repoRows = projects.map(proj => ({
+              id: proj.id,
+              name: proj.name,
+              repo_url: proj.web_url,
+              namespace: proj.path_with_namespace,
+              imported: false
+            }));
+            this.tempRepos = [...this.repoRows];  // Update the temp array with the new data
 
-          // Check if any repo in rows matches the URL and set imported to true
-          this.repoRows.forEach(repoRow => {
-            repoRow.imported = this.rows.some(row => row.repo_url === repoRow.repo_url);
-          });
-        },
-        error: (error) => {
-          console.error('Error fetching projects:', error);
-        },
-        complete: () => {
-          this.isLoading = false;  // Hide the spinner
-        }
-      });
+            // Check if any repo in rows matches the URL and set imported to true
+            this.repoRows.forEach(repoRow => {
+              repoRow.imported = this.rows.some(row => row.repo_url === repoRow.repo_url);
+            });
+          },
+          error: (error) => {
+            console.error('Error fetching projects:', error);
+          },
+          complete: () => {
+            this.isLoading = false;  // Hide the spinner
+          }
+        });
+      } else if (this.selectedRepo === 'GitHub'){
+        this.gitHubService.setApiUrl(this.repoUrl);
+        this.gitHubService.getAllRepositories(this.accessToken).subscribe({
+          next: (projects) => {
+            this.repoRows = projects.map(proj => ({
+              id: proj.id,
+              name: proj.name,
+              repo_url: proj.web_url,
+              namespace: proj.path_with_namespace,
+              imported: false
+            }));
+            this.tempRepos = [...this.repoRows];  // Update the temp array with the new data
+
+            // Check if any repo in rows matches the URL and set imported to true
+            this.repoRows.forEach(repoRow => {
+              repoRow.imported = this.rows.some(row => row.repo_url === repoRow.repo_url);
+            });
+          },
+          error: (error) => {
+            console.error('Error fetching projects:', error);
+          },
+          complete: () => {
+            this.isLoading = false;  // Hide the spinner
+          }
+        });
+      } else {
+        this.toastStatus = "danger"
+        this.toastMessage = "Unknown repo type."
+        this.toggleToast();
+      }
 
       this.closeModal();
       this.visibleList = true;
@@ -346,14 +379,17 @@ export class DashboardComponent implements OnInit {
 
   importRepo(row: any) {
     var repoObject: CreateRepo = {
-      name: row.name,
+      name: row.namespace,
       remoteId: row.id,
       repoUrl: this.repoUrl,
       accessToken: this.accessToken,
       team: this.importRepoForm.value.team,
     }
+    if (this.selectedRepo === 'GitHub'){
+      repoObject.repoUrl = this.gitHubService.gitHubApiUrl
+    }
     row.imported = true;
-    this.dashboardService.createRepo(repoObject, 'gitlab').subscribe({
+    this.dashboardService.createRepo(repoObject, this.selectedRepo.toLowerCase()).subscribe({
       next: (response) => {
         this.toastStatus = "success"
         this.toastMessage = "Successfully imported repo: " + this.repoUrl
@@ -434,41 +470,77 @@ export class DashboardComponent implements OnInit {
 
     const { repoUrl, accessToken, team } = this.importSingleRepoForm.value;
 
-    // Set the base API URL based on the repo URL
-    this.gitLabService.setApiUrl(repoUrl);
+    if (this.selectedRepo === 'GitLab') {
+      // Set the base API URL based on the repo URL
+      this.gitLabService.setApiUrl(repoUrl);
+      // Get the project details
+      this.gitLabService.getProjectDetailsFromUrl(repoUrl, accessToken).subscribe({
+        next: (response) => {
+          if (!response || !response.id) {
+            this.showToast("danger", "Problem loading Git repo details. Make sure that both URL to repo and AccessToken are correct.");
+            return;
+          }
+          const strippedRepoUrl = this.getBaseUrl(repoUrl);
 
-    // Get the project details
-    this.gitLabService.getProjectDetailsFromUrl(repoUrl, accessToken).subscribe({
-      next: (response) => {
-        if (!response || !response.id) {
+          const repoObject: CreateRepo = {
+            name: response.name,
+            remoteId: response.id,
+            repoUrl: strippedRepoUrl,
+            accessToken,
+            team,
+          };
+
+          this.dashboardService.createRepo(repoObject, this.selectedRepo.toLowerCase()).subscribe({
+            next: () => {
+              this.showToast("success", `Successfully imported repo: ${repoUrl}`);
+              this.loadCodeRepos();
+              this.visibleSingleRepoModal = false;
+            },
+            error: () => {
+              this.showToast("danger", "Problem during repo import. If it will keep occurring contact system administrator.");
+            },
+          });
+        },
+        error: () => {
           this.showToast("danger", "Problem loading Git repo details. Make sure that both URL to repo and AccessToken are correct.");
-          return;
         }
-        const strippedRepoUrl = this.getBaseUrl(repoUrl);
+      });
+    } else if (this.selectedRepo === 'GitHub'){
+      // Set the base API URL based on the repo URL
+      this.gitHubService.setApiUrl(repoUrl);
+      // Get the project details
+      this.gitHubService.getRepositoryDetailsFromUrl(repoUrl, accessToken).subscribe({
+        next: (response) => {
+          if (!response || !response.id) {
+            this.showToast("danger", "Problem loading Git repo details. Make sure that both URL to repo and AccessToken are correct.");
+            return;
+          }
+          const strippedRepoUrl = this.getBaseUrl(repoUrl);
 
-        const repoObject: CreateRepo = {
-          name: response.name,
-          remoteId: response.id,
-          repoUrl: strippedRepoUrl,
-          accessToken,
-          team,
-        };
+          const repoObject: CreateRepo = {
+            name: response.full_name,
+            remoteId: response.id,
+            repoUrl: strippedRepoUrl.replace("github.com","api.github.com"),
+            accessToken,
+            team,
+          };
 
-        this.dashboardService.createRepo(repoObject, 'gitlab').subscribe({
-          next: () => {
-            this.showToast("success", `Successfully imported repo: ${repoUrl}`);
-            this.loadCodeRepos();
-            this.visibleSingleRepoModal = false;
-          },
-          error: () => {
-            this.showToast("danger", "Problem during repo import. If it will keep occurring contact system administrator.");
-          },
-        });
-      },
-      error: () => {
-        this.showToast("danger", "Problem loading Git repo details. Make sure that both URL to repo and AccessToken are correct.");
-      }
-    });
+          this.dashboardService.createRepo(repoObject, this.selectedRepo.toLowerCase()).subscribe({
+            next: () => {
+              this.showToast("success", `Successfully imported repo: ${repoUrl}`);
+              this.loadCodeRepos();
+              this.visibleSingleRepoModal = false;
+            },
+            error: () => {
+              this.showToast("danger", "Problem during repo import. If it will keep occurring contact system administrator.");
+            },
+          });
+        },
+        error: () => {
+          this.showToast("danger", "Problem loading Git repo details. Make sure that both URL to repo and AccessToken are correct.");
+        }
+      });
+    }
   }
 
 // Helper method to show toast notifications

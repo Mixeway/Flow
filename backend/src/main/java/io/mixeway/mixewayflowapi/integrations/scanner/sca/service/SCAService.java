@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.URISyntaxException;
 
 /**
@@ -64,6 +65,7 @@ public class SCAService {
     public void createDtrackProject(CodeRepo codeRepo) {
         Settings settings = findSettingsService.get();
         dependencyTrackApiClientService.createProject(settings, codeRepo);
+
     }
 
     /**

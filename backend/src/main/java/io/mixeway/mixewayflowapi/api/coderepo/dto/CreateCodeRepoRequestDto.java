@@ -12,7 +12,7 @@ import lombok.Getter;
 public final class CreateCodeRepoRequestDto implements DTO {
 
     @NotBlank(message = "Name must not be blank")
-    @Pattern(regexp = "^[a-zA-Z0-9-_ ]+$", message = "Name must be alphanumeric with dashes allowed (e.g., test-repo123)")
+    @Pattern(regexp = "^[a-zA-Z0-9-_/ ]+$", message = "Name must be alphanumeric with dashes allowed (e.g., test-repo123)")
     private final String name;
 
     @NotBlank(message = "Repository URL must not be blank")
@@ -20,7 +20,7 @@ public final class CreateCodeRepoRequestDto implements DTO {
     private final String repoUrl;
 
     @NotBlank(message = "Access token must not be blank")
-    @Size(max = 30, message = "Access token must be at most 30 characters long")
+    @Size(max = 50, message = "Access token must be at most 30 characters long")
     @Pattern(regexp = "^[a-zA-Z0-9._-]+$", message = "Access token can contain alphanumeric characters, dots, and underscores")
     private final String accessToken;
 

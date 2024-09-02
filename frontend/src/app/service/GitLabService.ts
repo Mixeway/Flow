@@ -17,22 +17,7 @@ export class GitLabService {
         this.gitLabApiUrl = `${host}/api/v4/projects`;
     }
 
-    getProjects(token: string, page: number = 1, perPage: number = 100): Observable<any[]> {
-        const headers = new HttpHeaders({
-            'PRIVATE-TOKEN': token
-        });
-        const url = `${this.gitLabApiUrl}?page=${page}&per_page=${perPage}`;
-
-        return this.http.get<any[]>(url, { headers }).pipe(
-            catchError(this.handleError<any[]>('getProjects', []))
-        );
-    }
-
     getAllProjects(token: string): Observable<any[]> {
-        const headers = new HttpHeaders({
-            'PRIVATE-TOKEN': token
-        });
-
         return this.getProjects(token).pipe(
             expand((response: any[], index: number) => {
                 return response.length && index < 9 ? this.getProjects(token, index + 2) : of([]);
@@ -48,8 +33,21 @@ export class GitLabService {
                 }));
             })
         );
-
     }
+
+    getProjects(token: string, page: number = 1, perPage: number = 100): Observable<any[]> {
+        const headers = new HttpHeaders({
+            'PRIVATE-TOKEN': token
+        });
+
+        const url = `${this.gitLabApiUrl}?membership=true&page=${page}&per_page=${perPage}`;
+
+        return this.http.get<any[]>(url, { headers }).pipe(
+            catchError(this.handleError<any[]>('getProjects', []))
+        );
+    }
+
+
     getProjectDetailsFromUrl(repoUrl: string, token: string): Observable<{ id: number; name: string } | null> {
         const projectPath = this.extractProjectPath(repoUrl);
         const encodedProjectPath = encodeURIComponent(projectPath);

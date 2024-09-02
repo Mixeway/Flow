@@ -117,6 +117,9 @@
               class="btn btn-primary custom-btn"
               [class]="{'active': selectedRepo === 'GitLab'}"
               (click)="selectRepoType('GitLab')"
+              [cTooltip]="'GitLab Repo Type'"
+              cTooltipPlacement="top"
+
       >
         <svg cIcon name="cib-gitlab" size="4xl" class="custom-icon"></svg>
       </button>
@@ -126,9 +129,8 @@
               class="btn btn-primary ms-3 custom-btn"
               [class]="{'active': selectedRepo === 'GitHub'}"
               (click)="selectRepoType('GitHub')"
-              [cTooltip]="'This is a tooltip'"
+              [cTooltip]="'GitHub Repo Type'"
               cTooltipPlacement="top"
-              disabled
       >
         <svg cIcon name="cib-github" size="4xl" class="custom-icon"></svg>
       </button>
@@ -254,6 +256,9 @@
                     class="btn btn-primary custom-btn"
                     [class]="{'active': selectedRepo === 'GitLab'}"
                     (click)="selectRepoType('GitLab')"
+                    [cTooltip]="'Import Single GitLab repo'"
+                    cTooltipPlacement="top"
+
             >
                 <svg cIcon name="cib-gitlab" size="4xl" class="custom-icon"></svg>
             </button>
@@ -263,9 +268,8 @@
                     class="btn btn-primary ms-3 custom-btn"
                     [class]="{'active': selectedRepo === 'GitHub'}"
                     (click)="selectRepoType('GitHub')"
-                    [cTooltip]="'This is a tooltip'"
+                    [cTooltip]="'Import Single GitHub repo'"
                     cTooltipPlacement="top"
-                    disabled
             >
                 <svg cIcon name="cib-github" size="4xl" class="custom-icon"></svg>
             </button>
@@ -330,7 +334,7 @@
   <c-modal-body>
     <form [formGroup]="newTeamForm" (ngSubmit)="onSubmitNewTeam()" cForm>
       <c-input-group class="flex-nowrap">
-        <span cInputGroupText id="addon-wrapping">
+        <span cInputGroupText id="addon-wrapping1">
           <svg cIcon name="cil-people" class="icon"></svg>
         </span>
         <input

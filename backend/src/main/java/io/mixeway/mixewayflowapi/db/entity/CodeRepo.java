@@ -19,13 +19,17 @@ public final class CodeRepo {
     public enum ScanStatus {
         SUCCESS, DANGER, WARNING, NOT_PERFORMED
     }
+    public enum RepoType {
+        GITLAB, GITHUB
+    }
+
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private final long id;
 
     @NotBlank
-    @Pattern(regexp = "^[a-zA-Z0-9-_ ]+$", message = "Name must be alphanumeric with dashes allowed")
+    @Pattern(regexp = "^[a-zA-Z0-9-_/ ]+$", message = "Name must be alphanumeric with dashes allowed")
     @Column(nullable = false, unique = true)
     private final String name;
 
@@ -96,6 +100,10 @@ public final class CodeRepo {
     @Column(name = "sca_uuid", nullable = false)
     private String scaUUID;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false)
+    private RepoType type;
+
 
     // Private constructor for JPA
     protected CodeRepo() {
@@ -113,12 +121,13 @@ public final class CodeRepo {
         this.scaScan = ScanStatus.NOT_PERFORMED;
         this.iacScan = ScanStatus.NOT_PERFORMED;
         this.secretsScan = ScanStatus.NOT_PERFORMED;
+        this.type = RepoType.GITLAB;
         this.scaUUID = null;
         this.appDataTypes = new ArrayList<>();
     }
 
     // Public constructor for creating new instances
-    public CodeRepo(String name, String repourl, String accessToken, Team team, int remoteId) {
+    public CodeRepo(String name, String repourl, String accessToken, Team team, int remoteId, RepoType repoType) {
         this.id = 0;
         this.remoteId = remoteId;
         this.name = name;
@@ -133,6 +142,7 @@ public final class CodeRepo {
         this.secretsScan = ScanStatus.NOT_PERFORMED;
         this.scaUUID = null;
         this.appDataTypes = new ArrayList<>();
+        this.type = repoType;
     }
 
     // Methods to change mutable fields

@@ -31,7 +31,19 @@ public class CodeRepoController {
     @PostMapping(value= "/api/v1/coderepo/create/gitlab")
     public ResponseEntity<StatusDTO> createCodeRepoGitlab(@Valid @RequestBody CreateCodeRepoRequestDto createCodeRepoRequestDto, Principal principal){
         try {
-            createCodeRepoService.createCodeRepo(createCodeRepoRequestDto, "GITLAB");
+            createCodeRepoService.createCodeRepo(createCodeRepoRequestDto, CodeRepo.RepoType.GITLAB);
+            return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.CREATED);
+        } catch (Exception e){
+            e.printStackTrace();
+            log.error("[CodeRepo] Error Creating CodeRepo {} by {}", createCodeRepoRequestDto.getName(), principal.getName());
+            return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
+        }
+    }
+    @PreAuthorize("hasAuthority('TEAM_MANAGER')")
+    @PostMapping(value= "/api/v1/coderepo/create/github")
+    public ResponseEntity<StatusDTO> createCodeRepoGitHub(@Valid @RequestBody CreateCodeRepoRequestDto createCodeRepoRequestDto, Principal principal){
+        try {
+            createCodeRepoService.createCodeRepo(createCodeRepoRequestDto, CodeRepo.RepoType.GITHUB);
             return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.CREATED);
         } catch (Exception e){
             e.printStackTrace();
