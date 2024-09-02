@@ -83,7 +83,7 @@ class UpdateCodeRepoServiceTest {
         importCodeRepoResponseDto.setDefaultBranch("main");
         importCodeRepoResponseDto.setPathWithNamespace("pathwithnamespace321");
 
-        when(getCodeRepoInfoService.getRepoResponse(any(CreateCodeRepoRequestDto.class), any(String.class)))
+        when(getCodeRepoInfoService.getRepoResponse(any(CreateCodeRepoRequestDto.class), any(CodeRepo.RepoType.class)))
                 .thenReturn(importCodeRepoResponseDto);
         when(getCodeRepoInfoService.getRepoLanguages(any(CodeRepo.class))).thenReturn(new HashMap<>());
 
@@ -106,7 +106,7 @@ class UpdateCodeRepoServiceTest {
         CreateCodeRepoRequestDto dto = CreateCodeRepoRequestDto.of(name, repoUrl, accessToken, remoteId, team.getId());
 
         // Call the createRepo method to create repository
-        createCodeRepoService.createCodeRepo(dto, "GITLAB");
+        createCodeRepoService.createCodeRepo(dto, CodeRepo.RepoType.GITLAB);
 
         CodeRepo codeRepo = findCodeRepoService.findByRemoteId(9999L);
 

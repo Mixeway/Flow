@@ -69,7 +69,7 @@ public class CreateCodeRepoServiceTest {
         importCodeRepoResponseDto.setDefaultBranch("main");
         importCodeRepoResponseDto.setPathWithNamespace("pathwithnamespace");
 
-        when(getCodeRepoInfoService.getRepoResponse(any(CreateCodeRepoRequestDto.class), any(String.class)))
+        when(getCodeRepoInfoService.getRepoResponse(any(CreateCodeRepoRequestDto.class), any(CodeRepo.RepoType.class)))
                 .thenReturn(importCodeRepoResponseDto);
         when(getCodeRepoInfoService.getRepoLanguages(any(CodeRepo.class))).thenReturn(new HashMap<>());
 
@@ -92,7 +92,7 @@ public class CreateCodeRepoServiceTest {
         CreateCodeRepoRequestDto dto = CreateCodeRepoRequestDto.of(name, repoUrl, accessToken, remoteId, team.getId());
 
         // Call the createRepo method to create repository
-        createCodeRepoService.createCodeRepo(dto, "GITLAB");
+        createCodeRepoService.createCodeRepo(dto, CodeRepo.RepoType.GITLAB);
 
         // https://example.com/repo taken from TestConfig.class Mocked method
         Optional<CodeRepo> codeRepo = findCodeRepoService.findCodeRepoByUrl("https://example.com/repo");

@@ -341,3 +341,6 @@ ALTER TABLE coderepo
 
 --changeset siewer:constraints
 alter table coderepo drop constraint if exists coderepo_name_check;
+
+--changeset siewer:if_not_exists
+ALTER TABLE coderepo ADD COLUMN IF NOT EXISTS type text;
