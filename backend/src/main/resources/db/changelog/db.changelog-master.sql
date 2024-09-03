@@ -335,10 +335,6 @@ CREATE TABLE scan_info (
 ALTER TABLE vulnerability ALTER COLUMN name TYPE VARCHAR(200);
 alter table coderepo_branch alter column name TYPE VARCHAR(200);
 
---changeset siewer:change_repo_constraint
-ALTER TABLE coderepo
-    DROP CONSTRAINT IF EXISTS coderepo_name_check, ADD CONSTRAINT coderepo_name_check CHECK (name ~ '^[a-zA-Z0-9-_\/ ]+$');
-
 --changeset siewer:constraints
 alter table coderepo drop constraint if exists coderepo_name_check;
 
