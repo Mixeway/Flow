@@ -12,6 +12,7 @@ public class GHMergeEventDTO {
         private Long id;
         private HeadDTO head;
         private BaseDTO base;
+        private String state;
 
         @Data
         public static class HeadDTO {

@@ -19,7 +19,7 @@ import java.util.List;
 @Log4j2
 public class GitCommentService {
     private final FindFindingService findFindingService;
-    @Value("frontend.url")
+    @Value("${frontend.url}")
     String frontendUrl;
     private final GitLabApiClientService gitLabApiClientService;
     private final GitHubApiClientService gitHubApiClientService;
@@ -62,6 +62,7 @@ public class GitCommentService {
             gitLabApiClientService.commentMergeRequest(codeRepo, iid, message).block();
         } else if (codeRepo.getType().equals(CodeRepo.RepoType.GITHUB)){
             log.info("[Git Comment Service] About to put comment for Pull Request for {}", codeRepo.getName());
+            gitHubApiClientService.commentMergeRequest(codeRepo, iid, message).block();
         }
 
     }

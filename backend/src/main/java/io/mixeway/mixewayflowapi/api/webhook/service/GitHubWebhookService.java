@@ -40,8 +40,10 @@ public class GitHubWebhookService {
     public void processMerge(GHMergeEventDTO ghMergeEventDTO) throws ScanException, IOException, InterruptedException {
         CodeRepo codeRepo = findCodeRepoService.findByRemoteId(ghMergeEventDTO.getRepository().getId());
         CodeRepoBranch codeRepoBranch = getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(ghMergeEventDTO.getPullRequest().getHead().getRef(), codeRepo);
-        scanManagerService.scanRepository(codeRepo,codeRepoBranch, ghMergeEventDTO.getPullRequest().getHead().getSha(),
-                ghMergeEventDTO.getPullRequest().getId());
-        // TODO Comment merge request
+        if (ghMergeEventDTO.getPullRequest().getState().equals("open")) {
+            log.info("[GitHub Webhook] Received open Pull Request event, proceeding with scan..");
+            scanManagerService.scanRepository(codeRepo, codeRepoBranch, ghMergeEventDTO.getPullRequest().getHead().getSha(),
+                    ghMergeEventDTO.getPullRequest().getId());
+        }
     }
 }

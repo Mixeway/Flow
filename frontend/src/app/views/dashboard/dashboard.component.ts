@@ -152,6 +152,8 @@ export class DashboardComponent implements OnInit {
     this.dashboardService.getRepos().subscribe({
       next: (response) => {
         this.rows = response;
+        this.temp = [...this.rows]; // Keep a backup of the original rows for filtering
+
       },
       error: (error) => {
         // Handle login error
@@ -243,14 +245,29 @@ export class DashboardComponent implements OnInit {
   updateFilter(event: any) {
     const val = event.target.value.toLowerCase();
 
-    // filter our data
-    const temp = this.temp.filter(function(d) {
-      return d.target.toLowerCase().indexOf(val) !== -1 || !val;
+    // If there's no filter value, reset rows to full list
+    if (!val) {
+      this.rows = [...this.temp];
+      return;
+    }
+
+    // Filter our data based on multiple columns
+    const temp = this.temp.filter(row => {
+      // Ensure you filter based on all the relevant columns
+      return (
+          row.target.toLowerCase().includes(val) ||
+          row.team.toLowerCase().includes(val) ||
+          row.sast.toLowerCase().includes(val) ||
+          row.sca.toLowerCase().includes(val) ||
+          row.secrets.toLowerCase().includes(val) ||
+          row.iac.toLowerCase().includes(val)
+      );
     });
 
-    // update the rows
+    // Update the rows with the filtered data
     this.rows = temp;
   }
+
 
   tempRepos = [...this.repoRows]; // a copy of the original rows for filtering
 

@@ -25,6 +25,7 @@ public class GLMergeEventDTO {
         @JsonProperty("last_commit")
         private LastCommitDTO lastCommitDTO;
         private Long iid;
+        private String state;
 
         @Data
         public static class LastCommitDTO {

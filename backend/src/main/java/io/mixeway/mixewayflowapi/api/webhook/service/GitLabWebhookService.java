@@ -9,12 +9,15 @@ import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.coderepobranch.GetOrCreateCodeRepoBranchService;
 import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.java.Log;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 
 @Service
 @RequiredArgsConstructor
+@Log4j2
 public class GitLabWebhookService {
     private final ScanManagerService scanManagerService;
     private final FindCodeRepoService findCodeRepoService;
@@ -29,8 +32,10 @@ public class GitLabWebhookService {
     public void processMerge(GLMergeEventDTO gLMergeEventDTO) throws ScanException, IOException, InterruptedException {
         CodeRepo codeRepo = findCodeRepoService.findByRemoteId(gLMergeEventDTO.getProject().getId());
         CodeRepoBranch codeRepoBranch = getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(gLMergeEventDTO.getObjectAttributes().getSourceBranch(), codeRepo);
-        scanManagerService.scanRepository(codeRepo,codeRepoBranch, gLMergeEventDTO.getObjectAttributes().getLastCommitDTO().getId(),
-                gLMergeEventDTO.getObjectAttributes().getIid());
-        // TODO Comment merge request
+        if (gLMergeEventDTO.getObjectAttributes().getState().equals("opened")) {
+            log.info("[GitLab Webhook] Received open Merge Request event, proceeding with scan..");
+            scanManagerService.scanRepository(codeRepo, codeRepoBranch, gLMergeEventDTO.getObjectAttributes().getLastCommitDTO().getId(),
+                    gLMergeEventDTO.getObjectAttributes().getIid());
+        }
     }
 }
