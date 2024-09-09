@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
-public class MergeEventDTO {
+public class GLMergeEventDTO {
     private ProjectDTO project;
     @JsonProperty("object_attributes")
     private ObjectAttributesDTO objectAttributes;
@@ -24,6 +24,7 @@ public class MergeEventDTO {
         private String url;
         @JsonProperty("last_commit")
         private LastCommitDTO lastCommitDTO;
+        private Long iid;
 
         @Data
         public static class LastCommitDTO {

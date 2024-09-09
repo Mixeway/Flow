@@ -52,7 +52,7 @@ public class CreateCodeRepoService {
            finalCodeRepo = codeRepoRepository.save(finalCodeRepo);
            scaService.createDtrackProject(finalCodeRepo);
            log.info("[CodeRepoService] Creating intial scan for {} default branch {}", codeRepo.getRepourl(), codeRepoBranch.getName());
-           scanManagerService.scanRepository(finalCodeRepo, finalCodeRepo.getDefaultBranch(), null);
+           scanManagerService.scanRepository(finalCodeRepo, finalCodeRepo.getDefaultBranch(), null, null);
 
         } else {
             throw new TeamNotFoundException();

@@ -1,5 +1,6 @@
 package io.mixeway.mixewayflowapi.integrations.repo.service;
 
+import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.exceptions.GitException;
 import lombok.extern.log4j.Log4j2;

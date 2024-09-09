@@ -1,10 +1,9 @@
 package io.mixeway.mixewayflowapi.api.webhook.controller;
 
 import ch.qos.logback.core.spi.ScanException;
-import io.mixeway.mixewayflowapi.api.webhook.dto.MergeEventDTO;
-import io.mixeway.mixewayflowapi.api.webhook.dto.PushEventDTO;
+import io.mixeway.mixewayflowapi.api.webhook.dto.GLMergeEventDTO;
+import io.mixeway.mixewayflowapi.api.webhook.dto.GLPushEventDTO;
 import io.mixeway.mixewayflowapi.api.webhook.service.GitLabWebhookService;
-import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.http.HttpStatus;
@@ -24,16 +23,16 @@ public class GitlabWebhookController {
     private final GitLabWebhookService gitLabWebhookService;
 
     @PostMapping("/api/v1/webhook/gitlab/push")
-    public ResponseEntity<?> pushEvent( @RequestBody PushEventDTO pushEventDTO) throws ScanException, IOException, InterruptedException {
-        log.info("[Gitlab Push] Push event for {} - {}", pushEventDTO.getProject().getId(), pushEventDTO.getRef().replace("refs/heads/",""));
-        gitLabWebhookService.processPush(pushEventDTO);
+    public ResponseEntity<?> pushEvent( @RequestBody GLPushEventDTO gLPushEventDTO) throws ScanException, IOException, InterruptedException {
+        log.info("[Gitlab Push] Push event for {} - {}", gLPushEventDTO.getProject().getId(), gLPushEventDTO.getRef().replace("refs/heads/",""));
+        gitLabWebhookService.processPush(gLPushEventDTO);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @PostMapping("/api/v1/webhook/gitlab/merge")
-    public ResponseEntity<?> mergeEvent( @RequestBody MergeEventDTO mergeEventDTO) throws ScanException, IOException, InterruptedException {
-        log.info("[Gitlab Merge] Merge event for {}", mergeEventDTO.getProject());
-        gitLabWebhookService.processMerge(mergeEventDTO);
+    public ResponseEntity<?> mergeEvent( @RequestBody GLMergeEventDTO gLMergeEventDTO) throws ScanException, IOException, InterruptedException {
+        log.info("[Gitlab Merge] Merge event for {}", gLMergeEventDTO.getProject());
+        gitLabWebhookService.processMerge(gLMergeEventDTO);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 }

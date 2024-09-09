@@ -4,6 +4,7 @@ import ch.qos.logback.core.spi.ScanException;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
+import io.mixeway.mixewayflowapi.integrations.repo.service.GitCommentService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GitService;
 import io.mixeway.mixewayflowapi.integrations.scanner.iac.service.IaCService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.service.SASTService;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
@@ -36,6 +38,7 @@ public class ScanManagerService {
     private final ConcurrentHashMap<Long, Boolean> scanningRepos = new ConcurrentHashMap<>();
     private final UpdateCodeRepoService updateCodeRepoService;
     private final SCAService scaService;
+    private final GitCommentService gitCommentService;
 
     private final Semaphore semaphore = new Semaphore(5); // Limit concurrent scans to 5
     private final ConcurrentHashMap<Long, Lock> repoLocks = new ConcurrentHashMap<>(); // Ensure no parallel scans for the same repo
@@ -59,7 +62,7 @@ public class ScanManagerService {
      * @throws ScanException If a scanning error occurs.
      */
     @Async
-    public void scanRepository(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId)
+    public void scanRepository(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId, Long iid)
             throws IOException, InterruptedException, ScanException {
 
         // Acquire a lock specific to the codeRepo
@@ -120,6 +123,13 @@ public class ScanManagerService {
                 lock.unlock(); // Ensure the lock is released
                 semaphore.release(); // Release the semaphore permit
                 repoLocks.remove(codeRepo.getId()); // Clean up the lock from the map if no longer needed
+                if (iid != null && iid > 0){
+                    try {
+                        gitCommentService.processMergeComment(codeRepo, codeRepoBranch, iid);
+                    } catch (MalformedURLException e) {
+                        log.error("[Scan Service] Unable to process Merge request - {}", e.getLocalizedMessage());
+                    }
+                }
             }
         });
     }

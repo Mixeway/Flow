@@ -1,10 +1,9 @@
 package io.mixeway.mixewayflowapi.api.webhook.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
-public class PushEventDTO {
+public class GLPushEventDTO {
     private String ref;
     private String after;
     private ProjectDTO project;
