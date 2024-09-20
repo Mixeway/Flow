@@ -6,17 +6,21 @@ import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.component.GetOrCreateComponentService;
 import io.mixeway.mixewayflowapi.domain.finding.CreateFindingService;
 import io.mixeway.mixewayflowapi.domain.vulnerability.GetOrCreateVulnerabilityService;
+import io.mixeway.mixewayflowapi.exceptions.ComponentException;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.dto.DTrackGetVulnResponseDto;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
+@Log4j2
 public class ProcessDTrackVulnDataService {
     private final GetOrCreateComponentService getOrCreateComponentService;
     private final GetOrCreateVulnerabilityService getOrCreateVulnerabilityService;
@@ -87,12 +91,22 @@ public class ProcessDTrackVulnDataService {
     public void processComponents(List<DTrackGetVulnResponseDto.Component> body, CodeRepo codeRepo) {
         codeRepo = codeRepoRepository.findById(codeRepo.getId()).get();
         List<Component> components = body.stream()
-                .map(compDto -> getOrCreateComponentService.getOrCreate(
-                        compDto.getName(),
-                        compDto.getGroup(),
-                        compDto.getVersion(),
-                        "nvd"
-                ))
+                .map(compDto -> {
+                    try {
+                        return getOrCreateComponentService.getOrCreate(
+                                compDto.getName(),
+                                compDto.getGroup(),
+                                compDto.getVersion(),
+                                "nvd"
+                        );
+                    } catch (ComponentException e) {
+                        // Log the exception or handle it as needed
+                        log.warn("[ProcessDTrackVulnDataService] Skipping component: {}, group: {}, version: {}. Reason: {}",
+                                compDto.getName(), compDto.getGroup(), compDto.getVersion(), e.getMessage());
+                        return null; // Return null to indicate skipping
+                    }
+                })
+                .filter(Objects::nonNull) // Filter out null values (skipped components)
                 .toList();
         updateCodeRepoService.updateComponents(components, codeRepo);
     }
