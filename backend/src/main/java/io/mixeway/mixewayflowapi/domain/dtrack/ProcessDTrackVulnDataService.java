@@ -85,7 +85,7 @@ public class ProcessDTrackVulnDataService {
 
     @Transactional
     public void processComponents(List<DTrackGetVulnResponseDto.Component> body, CodeRepo codeRepo) {
-        codeRepo = codeRepoRepository.findByRemoteId(codeRepo.getId()).get();
+        codeRepo = codeRepoRepository.findById(codeRepo.getId()).get();
         List<Component> components = body.stream()
                 .map(compDto -> getOrCreateComponentService.getOrCreate(
                         compDto.getName(),
