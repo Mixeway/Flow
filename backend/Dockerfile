@@ -14,7 +14,19 @@ WORKDIR /app
 # Copy the built JAR file from the previous stage to the container
 COPY --from=maven_build /app/target/MixewayFlowAPI-0.0.1-SNAPSHOT.jar flowapi.jar
 
+# Install dependencies and Node.js
+RUN apt-get update && \
+    apt-get install -y curl && \
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y \
+        wget \
+        unzip \
+        git \
+        nodejs \
+    && apt-get clean
 
+# Install cdxgen globally
+RUN npm install -g @cyclonedx/cdxgen
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \

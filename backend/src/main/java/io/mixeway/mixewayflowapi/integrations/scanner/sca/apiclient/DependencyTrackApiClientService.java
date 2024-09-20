@@ -3,11 +3,14 @@ package io.mixeway.mixewayflowapi.integrations.scanner.sca.apiclient;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.db.entity.Settings;
+import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
 import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.dtrack.ProcessDTrackVulnDataService;
 import io.mixeway.mixewayflowapi.exceptions.ScanException;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.dto.*;
+import io.mixeway.mixewayflowapi.integrations.scanner.sca.service.CdxGenService;
 import io.mixeway.mixewayflowapi.utils.Constants;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,6 +41,8 @@ public class DependencyTrackApiClientService {
 
     private final UpdateCodeRepoService updateCodeRepoService;
     private final ProcessDTrackVulnDataService processDTrackVulnDataService;
+    private final CdxGenService cdxGenService;
+    private final CodeRepoRepository codeRepoRepository;
 
     @Value("${dependency-track.url}")
     private String dependencyTrackUrl;
@@ -224,13 +229,18 @@ public class DependencyTrackApiClientService {
      */
     public boolean runScan(String dir, CodeRepo codeRepo, Settings settings, CodeRepoBranch codeRepoBranch) throws IOException, InterruptedException {
         File sbomFile = findSbom(dir);
+        if (sbomFile == null) {
+            cdxGenService.generateBom(dir,codeRepo,codeRepoBranch);
+        }
+        sbomFile = findSbom(dir);
         if (sbomFile != null) {
             log.info("[Dependency Track] SBOM detected in {}, proceeding with SCA scan...", codeRepo.getRepourl());
             sendBomToDTrack(codeRepo, sbomFile.getPath(), settings);
-            TimeUnit.SECONDS.sleep(5);
+            TimeUnit.SECONDS.sleep(15);
             loadVulnerabilities(codeRepo, settings, codeRepoBranch);
             return true;
         } else {
+            codeRepo.updateScaScanStatus(CodeRepo.ScanStatus.NOT_PERFORMED);
             log.info("[Dependency Track] No SBOM in {}, skipping SCA scan", codeRepo.getRepourl());
             return false;
         }
@@ -324,6 +334,9 @@ public class DependencyTrackApiClientService {
      * @param settings  The settings containing the API key.
      */
     private void getComponents(CodeRepo codeRepo, Settings settings) {
+        codeRepo = codeRepoRepository.findById(codeRepo.getId())
+                .orElseThrow(() -> new EntityNotFoundException("CodeRepo not found with ID")) ;
+
         WebClient webClient = WebClient.builder()
                 .baseUrl(dependencyTrackUrl + Constants.DEPENDENCYTRACK_URL_GET_COMPONENTS + codeRepo.getScaUUID() + "?limit=2000&offset=0")
                 .defaultHeader(Constants.DEPENDENCYTRACK_APIKEY_HEADER, settings.getScaApiKey())

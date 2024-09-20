@@ -17,7 +17,7 @@ import java.util.*;
 public final class CodeRepo {
 
     public enum ScanStatus {
-        SUCCESS, DANGER, WARNING, NOT_PERFORMED
+        SUCCESS, DANGER, WARNING, NOT_PERFORMED, RUNNING
     }
     public enum RepoType {
         GITLAB, GITHUB
@@ -171,6 +171,13 @@ public final class CodeRepo {
 
     public void updateSecretsScanStatus(ScanStatus status) {
         this.secretsScan = status;
+    }
+
+    public void startScan(){
+        this.secretsScan = ScanStatus.RUNNING;
+        this.iacScan = ScanStatus.RUNNING;
+        this.scaScan = ScanStatus.RUNNING;
+        this.sastScan = ScanStatus.RUNNING;
     }
 
     public String getGitHostUrl() throws MalformedURLException {

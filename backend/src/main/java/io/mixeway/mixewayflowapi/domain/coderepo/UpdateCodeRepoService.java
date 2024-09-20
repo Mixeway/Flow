@@ -195,4 +195,9 @@ public class UpdateCodeRepoService {
                 .filter(finding -> finding.getSeverity() == Finding.Severity.CRITICAL)
                 .count();
     }
+
+    public void setScanRunning(CodeRepo codeRepo) {
+        codeRepo.startScan();
+        codeRepoRepository.save(codeRepo);
+    }
 }

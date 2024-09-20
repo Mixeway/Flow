@@ -3,12 +3,14 @@ package io.mixeway.mixewayflowapi.scanmanager.scheduler;
 import ch.qos.logback.core.spi.ScanException;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
+import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GetCodeRepoInfoService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.service.SCAService;
 import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.aspectj.apache.bcel.classfile.Code;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -44,7 +46,7 @@ public class ScanScheduler {
      * @throws URISyntaxException If an error occurs related to URI syntax during initialization.
      */
     @PostConstruct
-    public void runAfterStartup() throws URISyntaxException {
+    public void runAfterStartup() {
         scaService.initialize();
     }
 

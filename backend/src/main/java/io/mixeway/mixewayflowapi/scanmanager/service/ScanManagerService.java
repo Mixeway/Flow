@@ -65,6 +65,7 @@ public class ScanManagerService {
     public void scanRepository(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId, Long iid)
             throws IOException, InterruptedException, ScanException {
 
+        updateCodeRepoService.setScanRunning(codeRepo);
         // Acquire a lock specific to the codeRepo
         Lock lock = repoLocks.computeIfAbsent(codeRepo.getId(), k -> new ReentrantLock());
 
