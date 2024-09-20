@@ -1,9 +1,8 @@
 package io.mixeway.mixewayflowapi.api.coderepo.controller;
 
-import io.mixeway.mixewayflowapi.api.coderepo.CodeRepoApiService;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.CreateCodeRepoRequestDto;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.GetCodeReposResponseDto;
-import io.mixeway.mixewayflowapi.api.team.dto.CreateTeamRequestDto;
+import io.mixeway.mixewayflowapi.api.coderepo.service.CodeRepoApiService;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.domain.coderepo.CreateCodeRepoService;
 import io.mixeway.mixewayflowapi.utils.StatusDTO;
@@ -69,6 +68,18 @@ public class CodeRepoController {
             return new ResponseEntity<>(codeRepoApiService.getRepo(id, principal), HttpStatus.OK);
         } catch (Exception e){
             return new ResponseEntity<>( HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @GetMapping(value= "/api/v1/coderepo/{id}/run")
+    public ResponseEntity<StatusDTO> runScan(@PathVariable("id") Long id, Principal principal){
+        try {
+            codeRepoApiService.runScan(id, principal);
+            return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.OK);
+        } catch (Exception e){
+            log.error("[CodeRepo] Error Running scan for {}", id);
+            return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
         }
     }
 }

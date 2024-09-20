@@ -61,8 +61,6 @@ Most severe incidents in the Public Cloud (but not only) occurred due to misconf
 
 ## Installation
 
-Explain how to install Mixeway Flow. This section could include:
-
 - Prerequisites: access to docker hub, docker-compose command
 - Hardware requirements: minimal 2CPU, 16GB ram 50GB disk space. Recommended: 4CPU, 32GB RAM 100 GB Disk space
 

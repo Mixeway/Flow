@@ -183,6 +183,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
         version: ''
     };
     scanRunning: boolean = false;
+    userRole: string = 'USER';
 
     filteredComponents: any[] = [];
     scanInfos: any[] = [];
@@ -277,6 +278,8 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
     }
 
     ngOnInit(): void {
+        // @ts-ignore
+        this.userRole = localStorage.getItem('userRole');
         this.cdr.detectChanges();
 
         this.route.paramMap.subscribe(params => {
@@ -643,4 +646,14 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
     }
 
     protected readonly JSON = JSON;
+
+    runScan() {
+        this.repoService.runScan(+this.repoId).subscribe({
+            next: (response) => {
+                this.toastStatus = "success"
+                this.toastMessage = "Successfully requested a scan"
+                this.toggleToast();
+            }
+        });
+    }
 }

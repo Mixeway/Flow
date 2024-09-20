@@ -71,7 +71,7 @@ public class CdxGenService {
         Process process = pb.start();
 
         // Wait for the process to finish with a timeout of 2 minutes
-        boolean finished = process.waitFor(5, TimeUnit.MINUTES);
+        boolean finished = process.waitFor(10, TimeUnit.MINUTES);
         if (!finished) {
             process.destroyForcibly(); // Terminate the process
             log.warn("[CdxGen] Process timed out and was terminated");

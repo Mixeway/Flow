@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.0] - TBA
+
+### Changed
+- Merge request and Pull Request commenting
+- Full Webhook support for both GitLab and GitHub
+- It is visible when scan is currently running
+- Added Possibility to run scan manually form UI
+- Possibility to generate sbom on the fly without needing it to be existing in the repository
+
+### Fixed
+- Filtering main table with repos now work properly
+- Problem related with scans done with Bearer due to missing rules
+
 
 ## [0.9.2] - 2024-09-02
 

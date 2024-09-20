@@ -18,6 +18,8 @@
                 <!-- Date of Creation -->
                 <small style="margin-top: 1rem;">Default branch: {{repoData?.defaultBranch.name}}</small>
                 <small style="margin-top: 1rem;">Created: {{repoData?.insertedDate | date }}</small>
+                <button *ngIf="!scanRunning && userRole==='ADMIN'" cButton color="info" shape="rounded-pill" style="margin-top:10px;" (click)="runScan()">Run Scan</button>
+
                 <br/>
             </div>
             <c-card-footer>

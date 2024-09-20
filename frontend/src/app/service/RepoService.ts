@@ -38,4 +38,7 @@ export class RepoService {
     getFindingsBranch(id: number, branch: number): Observable<any> {
         return this.http.get<any>(this.loginUrl + '/api/v1/coderepo/' + id + '/findings/branch/' + branch,{ withCredentials: true });
     }
+    runScan(id: number): Observable<any> {
+        return this.http.get<any>(this.loginUrl + '/api/v1/coderepo/' + id + '/run',{ withCredentials: true });
+    }
 }
