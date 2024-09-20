@@ -1,6 +1,7 @@
 package io.mixeway.mixewayflowapi.domain.dtrack;
 
 import io.mixeway.mixewayflowapi.db.entity.*;
+import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
 import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.component.GetOrCreateComponentService;
 import io.mixeway.mixewayflowapi.domain.finding.CreateFindingService;
@@ -21,6 +22,7 @@ public class ProcessDTrackVulnDataService {
     private final GetOrCreateVulnerabilityService getOrCreateVulnerabilityService;
     private final CreateFindingService createFindingService;
     private final UpdateCodeRepoService updateCodeRepoService;
+    private final CodeRepoRepository codeRepoRepository;
 
     @Transactional
     public void processVulnerabilities(List<DTrackGetVulnResponseDto> vulnerabilityData, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
@@ -81,7 +83,9 @@ public class ProcessDTrackVulnDataService {
         };
     }
 
+    @Transactional
     public void processComponents(List<DTrackGetVulnResponseDto.Component> body, CodeRepo codeRepo) {
+        codeRepo = codeRepoRepository.findByRemoteId(codeRepo.getId()).get();
         List<Component> components = body.stream()
                 .map(compDto -> getOrCreateComponentService.getOrCreate(
                         compDto.getName(),
