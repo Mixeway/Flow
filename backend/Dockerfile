@@ -14,7 +14,7 @@ WORKDIR /app
 # Copy the built JAR file from the previous stage to the container
 COPY --from=maven_build /app/target/MixewayFlowAPI-0.0.1-SNAPSHOT.jar flowapi.jar
 
-# Install dependencies and Node.js
+# Install dependencies, Node.js, Maven, Python, and pip
 RUN apt-get update && \
     apt-get install -y curl && \
     curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
@@ -23,6 +23,9 @@ RUN apt-get update && \
         unzip \
         git \
         nodejs \
+        maven \
+        python3 \
+        python3-pip \
     && apt-get clean
 
 # Install cdxgen globally
@@ -45,6 +48,15 @@ RUN wget -O jdk22.tar.gz https://download.oracle.com/java/22/latest/jdk-22_linux
 # Set environment variables for Java
 ENV JAVA_HOME=/usr/local/jdk-22
 ENV PATH="$JAVA_HOME/bin:$PATH"
+
+# Install Gradle
+ENV GRADLE_VERSION=8.4
+RUN wget https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -P /tmp \
+    && unzip /tmp/gradle-${GRADLE_VERSION}-bin.zip -d /opt/gradle \
+    && rm /tmp/gradle-${GRADLE_VERSION}-bin.zip
+ENV GRADLE_HOME=/opt/gradle/gradle-${GRADLE_VERSION}
+ENV PATH="$PATH:$GRADLE_HOME/bin"
+
 
 RUN mkdir /opt/kics
 RUN mkdir /opt/dtrack
