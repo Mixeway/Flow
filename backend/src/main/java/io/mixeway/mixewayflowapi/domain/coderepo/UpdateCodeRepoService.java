@@ -10,6 +10,7 @@ import io.mixeway.mixewayflowapi.domain.scaninfo.CreateScanInfoService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -199,5 +200,11 @@ public class UpdateCodeRepoService {
     public void setScanRunning(CodeRepo codeRepo) {
         codeRepo.startScan();
         codeRepoRepository.save(codeRepo);
+    }
+
+    @Modifying
+    @Transactional
+    public void setScaPending(CodeRepo codeRepo) {
+        codeRepoRepository.updateScaScanToNotPerformed(codeRepo.getId());
     }
 }

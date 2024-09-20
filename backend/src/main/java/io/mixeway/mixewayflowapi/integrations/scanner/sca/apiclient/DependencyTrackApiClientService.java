@@ -240,7 +240,7 @@ public class DependencyTrackApiClientService {
             loadVulnerabilities(codeRepo, settings, codeRepoBranch);
             return true;
         } else {
-            codeRepo.updateScaScanStatus(CodeRepo.ScanStatus.NOT_PERFORMED);
+            updateCodeRepoService.setScaPending(codeRepo);
             log.info("[Dependency Track] No SBOM in {}, skipping SCA scan", codeRepo.getRepourl());
             return false;
         }
