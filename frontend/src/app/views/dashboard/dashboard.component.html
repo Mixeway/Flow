@@ -72,6 +72,7 @@
               <svg cIcon *ngIf="row.sast === 'SUCCESS'" name="cil-happy" size="3xl" style="color: #72d321"></svg>
               <svg cIcon *ngIf="row.sast === 'WARNING'" name="cil-warning" size="3xl" style="color: #e86333"></svg>
               <svg cIcon *ngIf="row.sast === 'NOT_PERFORMED'" name="cil-deaf" size="3xl" style="color: #e3d0d0"></svg>
+                <c-spinner *ngIf="row.sast === 'RUNNING'" style="color: #c1a7a7"></c-spinner>
             </ng-template>
           </ngx-datatable-column>
           <ngx-datatable-column name="SCA">
@@ -80,6 +81,8 @@
               <svg cIcon *ngIf="row.sca === 'SUCCESS'" name="cil-happy" size="3xl" style="color: #72d321"></svg>
               <svg cIcon *ngIf="row.sca === 'WARNING'" name="cil-warning" size="3xl" style="color: #e86333"></svg>
               <svg cIcon *ngIf="row.sca === 'NOT_PERFORMED'" name="cil-deaf" size="3xl" style="color: #e3d0d0"></svg>
+                <c-spinner *ngIf="row.sast === 'RUNNING'" style="color: #c1a7a7"></c-spinner>
+
             </ng-template>
           </ngx-datatable-column>
           <ngx-datatable-column name="Secrets">
@@ -88,6 +91,8 @@
               <svg cIcon *ngIf="row.secrets === 'SUCCESS'" name="cil-happy" size="3xl" style="color: #72d321"></svg>
               <svg cIcon *ngIf="row.secrets === 'WARNING'" name="cil-warning" size="3xl" style="color: #e86333"></svg>
               <svg cIcon *ngIf="row.secrets === 'NOT_PERFORMED'" name="cil-deaf" size="3xl" style="color: #e3d0d0"></svg>
+                <c-spinner *ngIf="row.sast === 'RUNNING'" style="color: #c1a7a7"></c-spinner>
+
             </ng-template>
           </ngx-datatable-column>
           <ngx-datatable-column name="IaC">
@@ -96,6 +101,8 @@
               <svg cIcon *ngIf="row.iac === 'SUCCESS'" name="cil-happy" size="3xl" style="color: #72d321"></svg>
               <svg cIcon *ngIf="row.iac === 'WARNING'" name="cil-warning" size="3xl" style="color: #e86333"></svg>
               <svg cIcon *ngIf="row.iac === 'NOT_PERFORMED'" name="cil-deaf" size="3xl" style="color: #e3d0d0"></svg>
+                <c-spinner *ngIf="row.sast === 'RUNNING'" style="color: #c1a7a7"></c-spinner>
+
             </ng-template>
           </ngx-datatable-column>
           <!-- Add other columns as needed -->

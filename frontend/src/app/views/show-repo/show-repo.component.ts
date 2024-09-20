@@ -32,7 +32,12 @@ import {
     ToastComponent,
     ToastHeaderComponent,
     ToasterComponent,
-    AccordionItemComponent, AccordionButtonDirective, AccordionComponent, ListGroupDirective, ListGroupItemDirective
+    AccordionItemComponent,
+    AccordionButtonDirective,
+    AccordionComponent,
+    ListGroupDirective,
+    ListGroupItemDirective,
+    TooltipDirective
 } from "@coreui/angular";
 import {IconComponent, IconDirective, IconSetService} from "@coreui/icons-angular";
 import {brandSet, cilArrowRight, cilBug, cilCenterFocus, cilChartPie, cilCommentSquare, freeSet} from "@coreui/icons";
@@ -149,7 +154,8 @@ export interface CodeRepoFindingStats {
         AccordionButtonDirective,
         AccordionComponent,
         ListGroupDirective,
-        ListGroupItemDirective
+        ListGroupItemDirective,
+        TooltipDirective
     ],
     templateUrl: './show-repo.component.html',
     styleUrls: ['./show-repo.component.scss'],
@@ -176,6 +182,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
         name: '',
         version: ''
     };
+    scanRunning: boolean = false;
 
     filteredComponents: any[] = [];
     scanInfos: any[] = [];
@@ -299,9 +306,12 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
                 this.filteredComponents = [...this.repoData?.components];
                 this.scanInfos = response.scanInfos;
                 this.scanInfosFiltered = [ ...this.scanInfos];
+                if (response.sastScan === 'RUNNING' || response.scaScan === 'RUNNING' ||
+                    response.secretsScan === 'RUNNING' || response.iacScan === 'RUNNING' ){
+                    this.scanRunning = true;
+                }
             }
         });
-
     }
     loadFindings(){
         this.repoService.getFindingsDefBranch(+this.repoId).subscribe({
@@ -632,4 +642,5 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
         });
     }
 
+    protected readonly JSON = JSON;
 }

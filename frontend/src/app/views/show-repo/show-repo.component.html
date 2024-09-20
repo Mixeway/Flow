@@ -3,7 +3,8 @@
         <c-card class="mb-4 h-100">
             <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
                 <!-- Project Name -->
-                <h2 style="margin-bottom: 1rem;"><strong>{{repoData?.name}}</strong></h2>
+                <h2 style="margin-bottom: 1rem;"><strong>{{repoData?.name}}</strong> &nbsp;
+                    <c-spinner *ngIf="scanRunning" [cTooltip]="'There is a scan currently running for this repository'"  style="color: #c1a7a7"></c-spinner></h2>
 
                 <button
                         color="secondary"
@@ -12,6 +13,7 @@
                     <svg cIcon class="me-2" name="cib-github"></svg>
                     {{repoData?.repourl}}
                 </button>
+
 
                 <!-- Date of Creation -->
                 <small style="margin-top: 1rem;">Default branch: {{repoData?.defaultBranch.name}}</small>
