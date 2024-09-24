@@ -653,6 +653,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
                 this.toastStatus = "success"
                 this.toastMessage = "Successfully requested a scan"
                 this.toggleToast();
+                this.loadRepoInfo();
             }
         });
     }
