@@ -179,7 +179,7 @@ public class ScanManagerService {
             log.info("[ScanManagerService] Starting SCA scan... [for: {}]", repoDir);
             try {
                 scaScanPerformed.set(scaService.runScan(repoDir, codeRepo, codeRepoBranch));
-            } catch (IOException | InterruptedException e) {
+            } catch (Exception e) {
                 if (Thread.currentThread().isInterrupted()) {
                     log.warn("[ScanManagerService] SCA scan interrupted for {}.", codeRepo.getRepourl());
                     Thread.currentThread().interrupt();
@@ -197,7 +197,7 @@ public class ScanManagerService {
             log.info("[ScanManagerService] Starting SAST scan... [for: {}]", repoDir);
             try {
                 sastService.runBearerScan(repoDir, codeRepo, codeRepoBranch);
-            } catch (IOException | InterruptedException | ScanException e) {
+            } catch (Exception e) {
                 if (Thread.currentThread().isInterrupted()) {
                     log.warn("[ScanManagerService] SAST scan interrupted for {}.", codeRepo.getRepourl());
                     Thread.currentThread().interrupt();
@@ -215,7 +215,7 @@ public class ScanManagerService {
             log.info("[ScanManagerService] Starting IAC scan... [for: {}]", repoDir);
             try {
                 iaCService.runKics(repoDir, codeRepo, codeRepoBranch);
-            } catch (IOException | InterruptedException | ScanException e) {
+            } catch (Exception e) {
                 if (Thread.currentThread().isInterrupted()) {
                     log.warn("[ScanManagerService] IAC scan interrupted for {}.", codeRepo.getRepourl());
                     Thread.currentThread().interrupt();
