@@ -115,7 +115,7 @@ class UpdateCodeRepoServiceTest {
 
         assertFalse(codeRepo.getIacScan().equals(CodeRepo.ScanStatus.NOT_PERFORMED));
         assertFalse(codeRepo.getSastScan().equals(CodeRepo.ScanStatus.NOT_PERFORMED));
-        assertFalse(codeRepo.getScaScan().equals(CodeRepo.ScanStatus.NOT_PERFORMED));
+        assertTrue(codeRepo.getScaScan().equals(CodeRepo.ScanStatus.NOT_PERFORMED));
         assertFalse(codeRepo.getSecretsScan().equals(CodeRepo.ScanStatus.NOT_PERFORMED));
     }
 
