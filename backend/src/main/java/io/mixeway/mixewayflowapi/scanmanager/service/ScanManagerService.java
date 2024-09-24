@@ -184,7 +184,8 @@ public class ScanManagerService {
                     log.warn("[ScanManagerService] SCA scan interrupted for {}.", codeRepo.getRepourl());
                     Thread.currentThread().interrupt();
                 } else {
-                    log.error("[ScanManagerService] An error occurred during SCA scan for {}.", codeRepo.getRepourl());
+                    log.error("[ScanManagerService] An error occurred during SCA scan for {} - {}.", codeRepo.getRepourl(), e.getLocalizedMessage());
+                    e.printStackTrace();
                 }
             }
             return null;
