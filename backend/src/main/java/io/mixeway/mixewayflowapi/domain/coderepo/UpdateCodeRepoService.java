@@ -82,6 +82,9 @@ public class UpdateCodeRepoService {
 
         // Update status for SCA if the scan was performed
         if (!codeRepo.getComponents().isEmpty()) {
+            scaHigh = updateStatusForSource(Finding.Source.SCA, codeRepo, codeRepoBranch, false);
+            scaCritical = countCriticalFindings(Finding.Source.SCA, codeRepo, codeRepoBranch);
+        } else {
             scaHigh = updateStatusForSource(Finding.Source.SCA, codeRepo, codeRepoBranch, true);
             scaCritical = countCriticalFindings(Finding.Source.SCA, codeRepo, codeRepoBranch);
         }
@@ -135,6 +138,9 @@ public class UpdateCodeRepoService {
 
         // Update the scan status based on the source
         updateScanStatus(codeRepo, source, scanStatus);
+        if (isSCA){
+            updateScanStatus(codeRepo, source, CodeRepo.ScanStatus.NOT_PERFORMED);
+        }
 
         // Return the count of high severity findings
         return (int) countNewOrExisting;
