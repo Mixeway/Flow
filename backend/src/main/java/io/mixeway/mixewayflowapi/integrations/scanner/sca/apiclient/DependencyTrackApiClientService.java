@@ -54,6 +54,9 @@ public class DependencyTrackApiClientService {
      */
     public String getOAuthToken() {
         WebClient webClient = WebClient.builder()
+                .codecs(configurer -> configurer
+                        .defaultCodecs()
+                        .maxInMemorySize(32 * 1024 * 1024))
                 .baseUrl(dependencyTrackUrl + Constants.DEPENDENCYTRACK_URL_LOGIN)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE)
                 .build();
@@ -256,6 +259,9 @@ public class DependencyTrackApiClientService {
      */
     private void sendBomToDTrack(CodeRepo codeRepo, String bomPath, Settings settings) throws IOException {
         WebClient webClient = WebClient.builder()
+                .codecs(configurer -> configurer
+                        .defaultCodecs()
+                        .maxInMemorySize(32 * 1024 * 1024))
                 .baseUrl(dependencyTrackUrl + Constants.DEPENDENCYTRACK_URL_UPLOAD_BOM)
                 .defaultHeader(Constants.DEPENDENCYTRACK_APIKEY_HEADER, settings.getScaApiKey())
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
@@ -308,6 +314,9 @@ public class DependencyTrackApiClientService {
      */
     private List<DTrackGetVulnResponseDto> loadVulnerabilities(CodeRepo codeRepo, Settings settings, CodeRepoBranch codeRepoBranch) {
         WebClient webClient = WebClient.builder()
+                .codecs(configurer -> configurer
+                        .defaultCodecs()
+                        .maxInMemorySize(32 * 1024 * 1024))
                 .baseUrl(dependencyTrackUrl + Constants.DEPENDENCYTRACK_URL_VULNS + codeRepo.getScaUUID())
                 .defaultHeader(Constants.DEPENDENCYTRACK_APIKEY_HEADER, settings.getScaApiKey())
                 .build();
@@ -338,6 +347,9 @@ public class DependencyTrackApiClientService {
                 .orElseThrow(() -> new EntityNotFoundException("CodeRepo not found with ID")) ;
 
         WebClient webClient = WebClient.builder()
+                .codecs(configurer -> configurer
+                        .defaultCodecs()
+                        .maxInMemorySize(32 * 1024 * 1024))
                 .baseUrl(dependencyTrackUrl + Constants.DEPENDENCYTRACK_URL_GET_COMPONENTS + codeRepo.getScaUUID() + "?limit=2000&offset=0")
                 .defaultHeader(Constants.DEPENDENCYTRACK_APIKEY_HEADER, settings.getScaApiKey())
                 .build();
