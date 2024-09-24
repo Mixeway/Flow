@@ -84,7 +84,7 @@ public class CdxGenService {
         }
 
         // Validate the bom.json file
-        File bomFile = new File(repoDir, "bom.json");
+        File bomFile = new File(repoDir, "sbom.json");
         if (bomFile.exists()) {
             if (bomFile.length() > 0) {
                 log.info("[CdxGen] SBOM generated successfully: {}", bomFile.getAbsolutePath());

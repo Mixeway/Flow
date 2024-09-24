@@ -63,13 +63,7 @@ public class ScanScheduler {
             List<Future<?>> futures = new ArrayList<>();
             codeRepos.forEach(repo -> {
                 Future<?> future = executorService.submit(() -> {
-                    try {
-                        scanManagerService.scanRepository(repo, repo.getDefaultBranch(), null, null);
-                    } catch (IOException | InterruptedException e) {
-                        log.error("Error scanning repository: {}", repo.getName(), e);
-                    } catch (ScanException e) {
-                        throw new RuntimeException(e);
-                    }
+                    scanManagerService.scanRepository(repo, repo.getDefaultBranch(), null, null);
                 });
                 futures.add(future);
             });

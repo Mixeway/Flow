@@ -42,7 +42,7 @@ public final class Component {
     @JsonIgnore
     private List<Vulnerability> vulnerabilities;
 
-    @ManyToMany(mappedBy = "components", fetch = FetchType.EAGER)
+    @ManyToMany(mappedBy = "components", fetch = FetchType.LAZY)
     @JsonIgnore
     private List<CodeRepo> codeRepos = new ArrayList<>();
 

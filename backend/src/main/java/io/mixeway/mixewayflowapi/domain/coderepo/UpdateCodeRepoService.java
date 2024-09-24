@@ -81,7 +81,7 @@ public class UpdateCodeRepoService {
         int scaCritical = 0;
 
         // Update status for SCA if the scan was performed
-        if (scaScanPerformed) {
+        if (!codeRepo.getComponents().isEmpty()) {
             scaHigh = updateStatusForSource(Finding.Source.SCA, codeRepo, codeRepoBranch, true);
             scaCritical = countCriticalFindings(Finding.Source.SCA, codeRepo, codeRepoBranch);
         }

@@ -18,6 +18,8 @@ import org.springframework.stereotype.Service;
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
@@ -44,12 +46,11 @@ public class ScanManagerService {
     private final ConcurrentHashMap<Long, Lock> repoLocks = new ConcurrentHashMap<>(); // Ensure no parallel scans for the same repo
 
 
-    private final ExecutorService executorService = new ThreadPoolExecutor(
-            5, 5, 0L, TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<>(100),
-            Executors.defaultThreadFactory(),
-            new ThreadPoolExecutor.CallerRunsPolicy()
-    );
+
+    private final ExecutorService executorService = Executors.newFixedThreadPool(5);
+    private final ExecutorService scanExecutorService = Executors.newFixedThreadPool(10);
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
 
     /**
      * Asynchronously initiates a scan for a given repository and branch.
@@ -62,8 +63,7 @@ public class ScanManagerService {
      * @throws ScanException If a scanning error occurs.
      */
     @Async
-    public void scanRepository(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId, Long iid)
-            throws IOException, InterruptedException, ScanException {
+    public void scanRepository(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId, Long iid) {
 
         updateCodeRepoService.setScanRunning(codeRepo);
         // Acquire a lock specific to the codeRepo
@@ -73,6 +73,7 @@ public class ScanManagerService {
             String repoDir = "/tmp/" + codeRepo.getName();
             String commit = "";
             AtomicBoolean scaScanPerformed = new AtomicBoolean(false);
+            Future<?> timeoutFuture = null;
 
             try {
                 semaphore.acquire(); // Acquire a permit to limit concurrency
@@ -89,42 +90,62 @@ public class ScanManagerService {
                 commit = fetchRepository(commitId, repoUrl, accessToken, codeRepoBranch, repoDir);
 
                 // Run scans in parallel
-                CompletableFuture<Void> secretScan = runSecretScan(repoDir, codeRepo, codeRepoBranch);
-                CompletableFuture<Void> scaScan = runSCAScan(repoDir, codeRepo, codeRepoBranch, scaScanPerformed);
-                CompletableFuture<Void> sastScan = runSASTScan(repoDir, codeRepo, codeRepoBranch);
-                CompletableFuture<Void> iacScan = runIACScan(repoDir, codeRepo, codeRepoBranch);
+                Future<Void> secretScanFuture = runSecretScan(repoDir, codeRepo, codeRepoBranch);
+                Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo, codeRepoBranch, scaScanPerformed);
+                Future<Void> sastScanFuture = runSASTScan(repoDir, codeRepo, codeRepoBranch);
+                Future<Void> iacScanFuture = runIACScan(repoDir, codeRepo, codeRepoBranch);
+
+                List<Future<Void>> scanFutures = Arrays.asList(secretScanFuture, scaScanFuture, sastScanFuture, iacScanFuture);
+
+                // Schedule a timeout task to cancel scans
+                timeoutFuture = scheduler.schedule(() -> {
+                    // Cancel the scans
+                    for (Future<Void> future : scanFutures) {
+                        future.cancel(true);
+                    }
+                    log.error("[ScanManagerService] Scan timed out for repo {}.", codeRepo.getName());
+                }, 2, TimeUnit.HOURS);
 
                 // Wait for all scans to complete
-                CompletableFuture<Void> allScans = CompletableFuture.allOf(secretScan, scaScan, sastScan, iacScan);
-
-                // Add the completion stage to ensure cleanup and status update
-                String finalCommit = commit;
-                allScans.whenComplete((result, ex) -> {
-                    if (ex != null) {
-                        log.error("[ScanManagerService] Problem with scan: {}", ex.getMessage(), ex);
-                    }
-
+                for (Future<Void> future : scanFutures) {
                     try {
-                        updateCodeRepoService.updateCodeRepoStatus(codeRepo, codeRepoBranch, scaScanPerformed.get(), finalCommit);
-                    } catch (Exception updateEx) {
-                        log.error("[ScanManagerService] Failed to update CodeRepo status for {}: {}", codeRepo.getName(), updateEx.getMessage(), updateEx);
+                        future.get(); // Wait for scan to complete
+                    } catch (CancellationException ce) {
+                        log.warn("[ScanManagerService] Scan task was cancelled.");
+                    } catch (InterruptedException ie) {
+                        log.warn("[ScanManagerService] Scan task was interrupted.");
+                        Thread.currentThread().interrupt();
+                    } catch (ExecutionException ee) {
+                        log.error("[ScanManagerService] Exception during scan task: {}", ee.getMessage(), ee);
                     }
+                }
 
-                    try {
-                        cleanUp(repoDir);
-                    } catch (IOException cleanupEx) {
-                        log.error("[ScanManagerService] Failed to clean up repository directory {}: {}", repoDir, cleanupEx.getMessage(), cleanupEx);
-                    }
-                }).join(); // Ensure this step waits for completion before continuing
+                // If scans completed before timeout, cancel the timeout task
+                if (timeoutFuture != null && !timeoutFuture.isDone()) {
+                    timeoutFuture.cancel(false);
+                }
 
-            } catch (InterruptedException | IOException e) {
-                log.error("[ScanManagerService] Scan for repo {} was interrupted: {}", codeRepo.getName(), e.getMessage());
-                Thread.currentThread().interrupt();
+            } catch (Exception e) {
+                log.error("[ScanManagerService] Exception during scan: {}", e.getMessage(), e);
             } finally {
+                // Update status
+                try {
+                    updateCodeRepoService.updateCodeRepoStatus(codeRepo, codeRepoBranch, scaScanPerformed.get(), commit);
+                } catch (Exception updateEx) {
+                    log.error("[ScanManagerService] Failed to update CodeRepo status for {}: {}", codeRepo.getName(), updateEx.getMessage(), updateEx);
+                }
+
+                // Clean up
+                try {
+                    cleanUp(repoDir);
+                } catch (IOException cleanupEx) {
+                    log.error("[ScanManagerService] Failed to clean up repository directory {}: {}", repoDir, cleanupEx.getMessage(), cleanupEx);
+                }
+
                 lock.unlock(); // Ensure the lock is released
                 semaphore.release(); // Release the semaphore permit
                 repoLocks.remove(codeRepo.getId()); // Clean up the lock from the map if no longer needed
-                if (iid != null && iid > 0){
+                if (iid != null && iid > 0) {
                     try {
                         gitCommentService.processMergeComment(codeRepo, codeRepoBranch, iid);
                     } catch (MalformedURLException e) {
@@ -134,6 +155,79 @@ public class ScanManagerService {
             }
         });
     }
+
+    private Future<Void> runSecretScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
+        Callable<Void> task = () -> {
+            log.info("[ScanManagerService] Starting Secret scan... [for: {}]", repoDir);
+            try {
+                secretsService.runGitleaks(repoDir, codeRepo, codeRepoBranch);
+            } catch (IOException | InterruptedException e) {
+                if (Thread.currentThread().isInterrupted()) {
+                    log.warn("[ScanManagerService] Secret scan interrupted for {}.", codeRepo.getRepourl());
+                    Thread.currentThread().interrupt();
+                } else {
+                    log.error("[ScanManagerService] An error occurred during Secret scan for {}.", codeRepo.getRepourl());
+                }
+            }
+            return null;
+        };
+        return scanExecutorService.submit(task);
+    }
+
+    private Future<Void> runSCAScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, AtomicBoolean scaScanPerformed) {
+        Callable<Void> task = () -> {
+            log.info("[ScanManagerService] Starting SCA scan... [for: {}]", repoDir);
+            try {
+                scaScanPerformed.set(scaService.runScan(repoDir, codeRepo, codeRepoBranch));
+            } catch (IOException | InterruptedException e) {
+                if (Thread.currentThread().isInterrupted()) {
+                    log.warn("[ScanManagerService] SCA scan interrupted for {}.", codeRepo.getRepourl());
+                    Thread.currentThread().interrupt();
+                } else {
+                    log.error("[ScanManagerService] An error occurred during SCA scan for {}.", codeRepo.getRepourl());
+                }
+            }
+            return null;
+        };
+        return scanExecutorService.submit(task);
+    }
+
+    private Future<Void> runSASTScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
+        Callable<Void> task = () -> {
+            log.info("[ScanManagerService] Starting SAST scan... [for: {}]", repoDir);
+            try {
+                sastService.runBearerScan(repoDir, codeRepo, codeRepoBranch);
+            } catch (IOException | InterruptedException | ScanException e) {
+                if (Thread.currentThread().isInterrupted()) {
+                    log.warn("[ScanManagerService] SAST scan interrupted for {}.", codeRepo.getRepourl());
+                    Thread.currentThread().interrupt();
+                } else {
+                    log.error("[ScanManagerService] An error occurred during SAST scan for {}.", codeRepo.getRepourl());
+                }
+            }
+            return null;
+        };
+        return scanExecutorService.submit(task);
+    }
+
+    private Future<Void> runIACScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
+        Callable<Void> task = () -> {
+            log.info("[ScanManagerService] Starting IAC scan... [for: {}]", repoDir);
+            try {
+                iaCService.runKics(repoDir, codeRepo, codeRepoBranch);
+            } catch (IOException | InterruptedException | ScanException e) {
+                if (Thread.currentThread().isInterrupted()) {
+                    log.warn("[ScanManagerService] IAC scan interrupted for {}.", codeRepo.getRepourl());
+                    Thread.currentThread().interrupt();
+                } else {
+                    log.error("[ScanManagerService] An error occurred during IAC scan for {}.", codeRepo.getRepourl());
+                }
+            }
+            return null;
+        };
+        return scanExecutorService.submit(task);
+    }
+
 
 
     /**
@@ -179,16 +273,16 @@ public class ScanManagerService {
      * @param codeRepoBranch The branch of the code repository.
      * @return A CompletableFuture representing the asynchronous operation.
      */
-    private CompletableFuture<Void> runSecretScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
-        return CompletableFuture.runAsync(() -> {
-            log.info("[ScanManagerService] Starting Secret scan... [for: {}]", repoDir);
-            try {
-                secretsService.runGitleaks(repoDir, codeRepo, codeRepoBranch);
-            } catch (IOException | InterruptedException e) {
-                log.error("[ScanManagerService] An error occurred during Secret scan for {}.", codeRepo.getRepourl());
-            }
-        });
-    }
+//    private CompletableFuture<Void> runSecretScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
+//        return CompletableFuture.runAsync(() -> {
+//            log.info("[ScanManagerService] Starting Secret scan... [for: {}]", repoDir);
+//            try {
+//                secretsService.runGitleaks(repoDir, codeRepo, codeRepoBranch);
+//            } catch (IOException | InterruptedException e) {
+//                log.error("[ScanManagerService] An error occurred during Secret scan for {}.", codeRepo.getRepourl());
+//            }
+//        });
+//    }
 
     /**
      * Runs the SCA scan asynchronously.
@@ -199,17 +293,17 @@ public class ScanManagerService {
      * @param scaScanPerformed The AtomicBoolean to track if the SCA scan was performed.
      * @return A CompletableFuture representing the asynchronous operation.
      */
-    private CompletableFuture<Void> runSCAScan(String repoDir, CodeRepo codeRepo,
-                                               CodeRepoBranch codeRepoBranch, AtomicBoolean scaScanPerformed) {
-        return CompletableFuture.runAsync(() -> {
-            log.info("[ScanManagerService] Starting SCA scan... [for: {}]", repoDir);
-            try {
-                scaScanPerformed.set(scaService.runScan(repoDir, codeRepo, codeRepoBranch));
-            } catch (IOException | InterruptedException e) {
-                log.error("[ScanManagerService] An error occurred during SCA scan for {}.", codeRepo.getRepourl());
-            }
-        });
-    }
+//    private CompletableFuture<Void> runSCAScan(String repoDir, CodeRepo codeRepo,
+//                                               CodeRepoBranch codeRepoBranch, AtomicBoolean scaScanPerformed) {
+//        return CompletableFuture.runAsync(() -> {
+//            log.info("[ScanManagerService] Starting SCA scan... [for: {}]", repoDir);
+//            try {
+//                scaScanPerformed.set(scaService.runScan(repoDir, codeRepo, codeRepoBranch));
+//            } catch (IOException | InterruptedException e) {
+//                log.error("[ScanManagerService] An error occurred during SCA scan for {}.", codeRepo.getRepourl());
+//            }
+//        });
+//    }
 
     /**
      * Runs the SAST scan asynchronously.
@@ -219,17 +313,17 @@ public class ScanManagerService {
      * @param codeRepoBranch The branch of the code repository.
      * @return A CompletableFuture representing the asynchronous operation.
      */
-    private CompletableFuture<Void> runSASTScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
-        return CompletableFuture.runAsync(() -> {
-            log.info("[ScanManagerService] Starting SAST scan... [for: {}]", repoDir);
-            try {
-                sastService.runBearerScan(repoDir, codeRepo, codeRepoBranch);
-            } catch (IOException | InterruptedException | ScanException e) {
-                e.printStackTrace();
-                log.error("[ScanManagerService] An error occurred during SAST scan for {}.", codeRepo.getRepourl());
-            }
-        });
-    }
+//    private CompletableFuture<Void> runSASTScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
+//        return CompletableFuture.runAsync(() -> {
+//            log.info("[ScanManagerService] Starting SAST scan... [for: {}]", repoDir);
+//            try {
+//                sastService.runBearerScan(repoDir, codeRepo, codeRepoBranch);
+//            } catch (IOException | InterruptedException | ScanException e) {
+//                e.printStackTrace();
+//                log.error("[ScanManagerService] An error occurred during SAST scan for {}.", codeRepo.getRepourl());
+//            }
+//        });
+//    }
 
     /**
      * Runs the IAC scan asynchronously.
@@ -239,16 +333,16 @@ public class ScanManagerService {
      * @param codeRepoBranch The branch of the code repository.
      * @return A CompletableFuture representing the asynchronous operation.
      */
-    private CompletableFuture<Void> runIACScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
-        return CompletableFuture.runAsync(() -> {
-            log.info("[ScanManagerService] Starting IAC scan... [for: {}]", repoDir);
-            try {
-                iaCService.runKics(repoDir, codeRepo, codeRepoBranch);
-            } catch (IOException | InterruptedException | ScanException e) {
-                log.error("[ScanManagerService] An error occurred during IAC scan for {}.", codeRepo.getRepourl());
-            }
-        });
-    }
+//    private CompletableFuture<Void> runIACScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
+//        return CompletableFuture.runAsync(() -> {
+//            log.info("[ScanManagerService] Starting IAC scan... [for: {}]", repoDir);
+//            try {
+//                iaCService.runKics(repoDir, codeRepo, codeRepoBranch);
+//            } catch (IOException | InterruptedException | ScanException e) {
+//                log.error("[ScanManagerService] An error occurred during IAC scan for {}.", codeRepo.getRepourl());
+//            }
+//        });
+//    }
 
     /**
      * Waits for all scan tasks to complete.
