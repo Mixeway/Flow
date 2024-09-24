@@ -50,7 +50,7 @@ ENV JAVA_HOME=/usr/local/jdk-22
 ENV PATH="$JAVA_HOME/bin:$PATH"
 
 # Install Gradle
-ENV GRADLE_VERSION=8.4
+ENV GRADLE_VERSION=8.6
 RUN wget https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -P /tmp \
     && unzip /tmp/gradle-${GRADLE_VERSION}-bin.zip -d /opt/gradle \
     && rm /tmp/gradle-${GRADLE_VERSION}-bin.zip
