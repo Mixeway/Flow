@@ -57,4 +57,8 @@ public class FindCodeRepoService {
         Optional<CodeRepo> codeRepo = codeRepoRepository.findByRemoteId(id);
         return codeRepo.orElseThrow();
     }
+
+    public Optional<CodeRepo> findById(long id) {
+        return codeRepoRepository.findById(id);
+    }
 }

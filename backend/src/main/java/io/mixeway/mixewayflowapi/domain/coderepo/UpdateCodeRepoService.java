@@ -66,7 +66,7 @@ public class UpdateCodeRepoService {
      */
     @Transactional
     public void updateCodeRepoStatus(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, boolean scaScanPerformed, String commitId) {
-        codeRepo = findCodeRepoService.findByRemoteId((long)codeRepo.getRemoteId());
+        codeRepo = findCodeRepoService.findById(codeRepo.getId()).get();
         // Update status for SECRETS
         int secretsHigh = updateStatusForSource(Finding.Source.SECRETS, codeRepo, codeRepoBranch, false);
 
