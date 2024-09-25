@@ -45,6 +45,11 @@ RUN wget -O jdk22.tar.gz https://download.oracle.com/java/22/latest/jdk-22_linux
     && tar -xzf jdk22.tar.gz -C /usr/local/jdk-22 --strip-components=1 \
     && rm jdk22.tar.gz
 
+RUN wget -O jdk17.tar.gz https://download.oracle.com/java/17/latest/jdk-17_linux-x64_bin.tar.gz \
+    && mkdir -p /usr/local/jdk-17 \
+    && tar -xzf jdk17.tar.gz -C /usr/local/jdk-17 --strip-components=1 \
+    && rm jdk17.tar.gz
+
 # Set environment variables for Java
 ENV JAVA_HOME=/usr/local/jdk-22
 ENV PATH="$JAVA_HOME/bin:$PATH"
