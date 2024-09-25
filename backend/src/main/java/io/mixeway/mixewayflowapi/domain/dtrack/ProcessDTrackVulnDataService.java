@@ -11,6 +11,7 @@ import io.mixeway.mixewayflowapi.integrations.scanner.sca.dto.DTrackGetVulnRespo
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.hibernate.Hibernate;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -99,7 +100,7 @@ public class ProcessDTrackVulnDataService {
                                 compDto.getVersion(),
                                 "nvd"
                         );
-                    } catch (ComponentException e) {
+                    } catch (ComponentException | DataIntegrityViolationException e) {
                         // Log the exception or handle it as needed
                         log.warn("[ProcessDTrackVulnDataService] Skipping component: {}, group: {}, version: {}. Reason: {}",
                                 compDto.getName(), compDto.getGroup(), compDto.getVersion(), e.getMessage());

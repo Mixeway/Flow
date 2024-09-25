@@ -15,14 +15,16 @@ import java.util.List;
 @Getter
 @ToString
 @RequiredArgsConstructor
-@Table(name = "component")
+@Table(name = "component", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"name", "version", "groupid"})
+})
 public final class Component {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private final long id;
 
-    @Column(length = 160)
+    @Column(nullable = false, length = 160)
     private final String groupid;
 
     @Column(nullable = false, length = 160)
@@ -59,7 +61,7 @@ public final class Component {
     // Public constructor for creating new instances
     public Component(String groupid, String name, String version, String origin) {
         this.id = 0;
-        this.groupid = groupid;
+        this.groupid = groupid != null ? groupid : "";;
         this.name = name;
         this.version = version;
         this.origin = origin;

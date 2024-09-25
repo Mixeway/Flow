@@ -5,6 +5,7 @@ import io.mixeway.mixewayflowapi.db.repository.ComponentRepository;
 import io.mixeway.mixewayflowapi.exceptions.ComponentException;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.BearerScanDataflow;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -21,8 +22,24 @@ public class GetOrCreateComponentService {
             throw new ComponentException("Either name or version is null");
         }
 
-        return componentRepository.findByNameAndVersionAndGroupid(name, version, group)
-                .orElseGet(() -> componentRepository.save(new Component(group, name, version, origin)));
+        group = group != null ? group : "";
+
+        // Attempt to find the existing component
+        Optional<Component> existingComponent = componentRepository.findByNameAndVersionAndGroupid(name, version, group);
+        if (existingComponent.isPresent()) {
+            return existingComponent.get();
+        }
+
+        // If not found, attempt to create a new component
+        try {
+            return componentRepository.save(new Component(group, name, version, origin));
+        } catch (DataIntegrityViolationException e) {
+            // This exception occurs if another thread created the component concurrently
+            // Fetch the existing component after the exception
+            return componentRepository.findByNameAndVersionAndGroupid(name, version, group)
+                    .orElseThrow(() -> new ComponentException("Component not found after DataIntegrityViolationException"));
+        }
     }
+
 
 }
