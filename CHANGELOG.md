@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.0.0] - TBA
+## [1.0.0] - 2024-09-25
 
 ### Changed
 - Merge request and Pull Request commenting
@@ -14,6 +14,8 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Filtering main table with repos now work properly
 - Problem related with scans done with Bearer due to missing rules
+- Race condition during component creation
+- Problem with setting status of a scan when something wrong
 
 
 ## [0.9.2] - 2024-09-02
