@@ -63,7 +63,7 @@ public class WebClientConfig {
         return WebClient.builder()
                 .codecs(configurer -> configurer
                         .defaultCodecs()
-                        .maxInMemorySize(32 * 1024 * 1024))
+                        .maxInMemorySize(24 * 1024 * 1024))
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .build();
     }
