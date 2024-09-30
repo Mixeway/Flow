@@ -18,7 +18,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import java.io.*;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -102,31 +104,53 @@ public class SASTService {
      * @throws InterruptedException  If the process is interrupted while waiting.
      */
     private void runProcess(ProcessBuilder pb) throws IOException, InterruptedException {
-        pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
-        pb.redirectError(ProcessBuilder.Redirect.DISCARD);
+        pb.redirectOutput(ProcessBuilder.Redirect.PIPE);
+        pb.redirectError(ProcessBuilder.Redirect.PIPE);
 
         Process process = pb.start();
 
-        Executors.newSingleThreadExecutor().submit(() -> {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                while (reader.readLine() != null) {
-                    // Do nothing with the output
-                }
-            } catch (IOException e) {
-                log.error("Error reading process output", e);
-            }
-        });
+        ExecutorService executor = Executors.newFixedThreadPool(2);
 
-        Executors.newSingleThreadExecutor().submit(() -> {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-                while (reader.readLine() != null) {
-                    // Do nothing with the error output
+        try {
+            // Stream gobbler for process output
+            executor.submit(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    while (!Thread.currentThread().isInterrupted()) {
+                        String line = reader.readLine();
+                        if (line == null) break;
+                        // Optionally process the output
+                    }
+                } catch (IOException e) {
+                    log.error("Error reading process output", e);
                 }
-            } catch (IOException e) {
-                log.error("Error reading process error", e);
-            }
-        });
+            });
 
-        process.waitFor();
+            // Stream gobbler for process error
+            executor.submit(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                    while (!Thread.currentThread().isInterrupted()) {
+                        String line = reader.readLine();
+                        if (line == null) break;
+                        // Optionally process the error output
+                    }
+                } catch (IOException e) {
+                    log.error("Error reading process error", e);
+                }
+            });
+
+            // Wait for the process to finish with a timeout
+            boolean finished = process.waitFor(20, TimeUnit.MINUTES);
+            if (!finished) {
+                log.warn("[SASTService] Process did not finish within 20 minutes. Terminating process.");
+                process.destroyForcibly(); // Terminate the process
+                process.waitFor(); // Wait for the process to terminate
+            }
+        } finally {
+            executor.shutdownNow(); // Shutdown the executor to stop stream gobblers
+            if (process.isAlive()) {
+                process.destroyForcibly();
+            }
+        }
     }
+
 }

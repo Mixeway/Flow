@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Service responsible for running IaC (Infrastructure as Code) scans using KICS (Keeping Infrastructure as Code Secure).
@@ -49,45 +50,64 @@ public class IaCService {
     public void runKics(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) throws IOException, InterruptedException, ScanException {
         log.info("[KicsService] Starting KICS scan for repository: {} branch: {}", codeRepo.getName(), codeRepoBranch.getName());
         File reportFile = new File(repoDir, "kics/results.json");
+
         ProcessBuilder pb = new ProcessBuilder("kics", "scan", "-p", repoDir, "-q", kicsQueriesDir, "-o", reportFile.getParent());
         pb.directory(new File(repoDir));
+        pb.redirectOutput(ProcessBuilder.Redirect.PIPE);
+        pb.redirectError(ProcessBuilder.Redirect.PIPE);
 
         Process process = pb.start();
 
-        // Create an ExecutorService to handle the streams concurrently
         ExecutorService executorService = Executors.newFixedThreadPool(2);
 
-        // Consume standard output stream silently
-        executorService.submit(() -> {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                while (reader.readLine() != null) {
-                    // Silently consume the output
+        try {
+            // Consume standard output stream silently
+            executorService.submit(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    while (!Thread.currentThread().isInterrupted()) {
+                        String line = reader.readLine();
+                        if (line == null) break;
+                        // Silently consume the output
+                    }
+                } catch (IOException e) {
+                    log.error("Error reading output stream", e);
                 }
-            } catch (IOException e) {
-                log.error("Error reading output stream", e);
-            }
-        });
+            });
 
-        // Consume error stream silently
-        executorService.submit(() -> {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-                while (reader.readLine() != null) {
-                    // Silently consume the error stream
+            // Consume error stream silently
+            executorService.submit(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                    while (!Thread.currentThread().isInterrupted()) {
+                        String line = reader.readLine();
+                        if (line == null) break;
+                        // Silently consume the error stream
+                    }
+                } catch (IOException e) {
+                    log.error("[KicsService] Error reading error stream", e);
                 }
-            } catch (IOException e) {
-                log.error("Error reading error stream", e);
-            }
-        });
+            });
 
-        process.waitFor();
-        executorService.shutdown(); // Ensure executor service is properly shut down
+            // Wait for the process to finish with a timeout
+            boolean finished = process.waitFor(20, TimeUnit.MINUTES);
+            if (!finished) {
+                log.warn("[KicsService] KICS scan did not finish within 20 minutes. Terminating process.");
+                process.destroyForcibly(); // Terminate the process
+                process.waitFor(); // Wait for the process to terminate
+            }
+        } finally {
+            executorService.shutdownNow(); // Ensure executor service is properly shut down
+            if (process.isAlive()) {
+                process.destroyForcibly();
+            }
+        }
 
         if (!reportFile.exists()) {
-            throw new ScanException("KICS scan did not produce a report file.");
+            throw new ScanException("[KicsService] KICS scan did not produce a report file.");
         }
 
         KicsReport kicsReport = objectMapper.readValue(reportFile, KicsReport.class);
         createFindingService.saveFindings(createFindingService.mapKicsReportToFindings(kicsReport, codeRepo, codeRepoBranch), codeRepoBranch, codeRepo, Finding.Source.IAC);
         log.info("[KicsService] KICS scan completed for repository: {} branch: {}. Report saved at: {}", codeRepo.getName(), codeRepoBranch.getName(), reportFile.getAbsolutePath());
     }
+
 }

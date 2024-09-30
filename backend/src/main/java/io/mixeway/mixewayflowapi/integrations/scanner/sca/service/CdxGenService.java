@@ -7,9 +7,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -65,21 +69,64 @@ public class CdxGenService {
         // Use 'sh -c' to execute the command in a shell
         ProcessBuilder pb = new ProcessBuilder("sh", "-c", command);
         pb.directory(new File(repoDir));
-       // pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
-        pb.redirectError(ProcessBuilder.Redirect.DISCARD);
+        pb.redirectOutput(ProcessBuilder.Redirect.PIPE); // Redirect output to PIPE
+        pb.redirectError(ProcessBuilder.Redirect.PIPE);  // Redirect error to PIPE
 
         Process process = pb.start();
 
-        // Wait for the process to finish with a timeout of 2 minutes
-        boolean finished = process.waitFor(10, TimeUnit.MINUTES);
-        if (!finished) {
-            process.destroyForcibly(); // Terminate the process
-            log.warn("[CdxGen] Process timed out and was terminated");
-        } else {
-            // Check the exit code if the process finished normally
-            int exitCode = process.exitValue();
-            if (exitCode != 0) {
-                log.warn("[CdxGen] Process exited with code {}", exitCode);
+        ExecutorService executorService = Executors.newFixedThreadPool(2); // Executor for stream consumption
+
+        try {
+            // Stream Gobbler for Standard Output
+            executorService.submit(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    String line;
+                    while (!Thread.currentThread().isInterrupted() && (line = reader.readLine()) != null) {
+                        // Optionally process the output
+                        // For now, we're silently consuming it
+                    }
+                } catch (IOException e) {
+                    log.error("[CdxGen] Error reading standard output stream", e);
+                }
+            });
+
+            // Stream Gobbler for Error Output
+            executorService.submit(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                    String line;
+                    while (!Thread.currentThread().isInterrupted() && (line = reader.readLine()) != null) {
+                        // Optionally process the error output
+                        // For now, we're silently consuming it
+                    }
+                } catch (IOException e) {
+                    log.error("[CdxGen] Error reading error output stream", e);
+                }
+            });
+
+            // Wait for the process to finish with a timeout of 20 minutes
+            boolean finished = process.waitFor(20, TimeUnit.MINUTES);
+            if (!finished) {
+                log.warn("[CdxGen] SBOM generation did not finish within 20 minutes. Terminating process.");
+                process.destroyForcibly(); // Forcefully terminate the process
+                boolean terminated = process.waitFor(1, TimeUnit.MINUTES); // Wait a bit for termination
+                if (!terminated) {
+                    log.error("[CdxGen] Process could not be terminated gracefully.");
+                }
+            } else {
+                // Check the exit code if the process finished normally
+                int exitCode = process.exitValue();
+                if (exitCode != 0) {
+                    log.warn("[CdxGen] SBOM generation process exited with non-zero exit code: {}", exitCode);
+                }
+            }
+
+        } finally {
+            executorService.shutdownNow(); // Ensure the executor service is shut down
+
+            // Additional check to ensure the process is terminated
+            if (process.isAlive()) {
+                log.warn("[CdxGen] Process is still alive after termination attempt. Forcibly destroying it.");
+                process.destroyForcibly();
             }
         }
 
@@ -95,5 +142,6 @@ public class CdxGenService {
             log.warn("[CdxGen] SBOM file not found: {}", bomFile.getAbsolutePath());
         }
     }
+
 
 }
