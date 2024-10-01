@@ -198,6 +198,20 @@ public final class CodeRepo {
         }
     }
 
+    public boolean isScanRunning(){
+        return this.sastScan.equals(ScanStatus.RUNNING) &&
+                this.iacScan.equals(ScanStatus.RUNNING) &&
+                this.secretsScan.equals(ScanStatus.RUNNING) &&
+                this.scaScan.equals(ScanStatus.RUNNING);
+    }
+
+    public boolean isScanNotRunning(){
+        return !this.sastScan.equals(ScanStatus.RUNNING) &&
+                !this.iacScan.equals(ScanStatus.RUNNING) &&
+                !this.secretsScan.equals(ScanStatus.RUNNING) &&
+                !this.scaScan.equals(ScanStatus.RUNNING);
+    }
+
 
     public void setScaUUID(String uuid){
         this.scaUUID = uuid;

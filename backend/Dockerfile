@@ -16,7 +16,7 @@ COPY --from=maven_build /app/target/MixewayFlowAPI-0.0.1-SNAPSHOT.jar flowapi.ja
 
 # Install dependencies, Node.js, Maven, Python, and pip
 RUN apt-get update && \
-    apt-get install -y curl && \
+    apt-get install -y curl cron && \
     curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
     apt-get install -y \
         wget \
@@ -35,6 +35,7 @@ RUN npm install -g @cyclonedx/cdxgen
 RUN apt-get update && apt-get install -y \
     wget \
     curl \
+    cron \
     unzip \
     git \
     && apt-get clean
@@ -90,6 +91,19 @@ RUN mkdir -p /opt/bearer
 RUN wget -O bearer-rules.tar.gz https://github.com/Bearer/bearer-rules/archive/refs/tags/v0.46.0.tar.gz && \
     tar -xzf bearer-rules.tar.gz -C /opt/bearer --strip-components=1 && \
     rm bearer-rules.tar.gz
+
+# Create a script to remove old files in /tmp
+RUN echo '#!/bin/bash\nfind /tmp -mmin +39 -type f -exec rm -fv {} \;' > /usr/local/bin/cleanup_tmp.sh && chmod +x /usr/local/bin/cleanup_tmp.sh
+
+# Add cron job to execute the cleanup script every 5 minutes
+RUN echo "*/5 * * * * /usr/local/bin/cleanup_tmp.sh" > /etc/cron.d/cleanup_tmp
+
+# Give execution rights on the cron job file
+RUN chmod 0644 /etc/cron.d/cleanup_tmp
+
+# Apply the cron job and start cron service in the background
+RUN crontab /etc/cron.d/cleanup_tmp
+
 
 # Copy entrypoint script
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
