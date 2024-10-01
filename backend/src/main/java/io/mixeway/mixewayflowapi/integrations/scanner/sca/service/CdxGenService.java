@@ -104,7 +104,7 @@ public class CdxGenService {
             });
 
             // Wait for the process to finish with a timeout of 20 minutes
-            boolean finished = process.waitFor(20, TimeUnit.MINUTES);
+            boolean finished = process.waitFor(30, TimeUnit.MINUTES);
             if (!finished) {
                 log.warn("[CdxGen] SBOM generation did not finish within 20 minutes. Terminating process.");
                 process.destroyForcibly(); // Forcefully terminate the process

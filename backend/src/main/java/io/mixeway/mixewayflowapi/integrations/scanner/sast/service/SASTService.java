@@ -139,7 +139,7 @@ public class SASTService {
             });
 
             // Wait for the process to finish with a timeout
-            boolean finished = process.waitFor(20, TimeUnit.MINUTES);
+            boolean finished = process.waitFor(30, TimeUnit.MINUTES);
             if (!finished) {
                 log.warn("[SASTService] Process did not finish within 20 minutes. Terminating process.");
                 process.destroyForcibly(); // Terminate the process
