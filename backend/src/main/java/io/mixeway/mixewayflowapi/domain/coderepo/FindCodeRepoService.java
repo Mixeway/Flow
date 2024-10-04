@@ -1,5 +1,6 @@
 package io.mixeway.mixewayflowapi.domain.coderepo;
 
+import io.mixeway.mixewayflowapi.api.coderepo.dto.GetCodeReposResponseDto;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.db.entity.Team;
@@ -12,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.security.Principal;
+import java.security.PublicKey;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -35,6 +38,12 @@ public class FindCodeRepoService {
             userTeams = userInfo.getTeams().stream().toList();
         }
         return codeRepoRepository.findByTeamIn(userTeams);
+    }
+    public List<GetCodeReposResponseDto> getCodeReposResponseDtos(Principal principal){
+        UserInfo userInfo = findUserService.findUser(principal.getName());
+        List<Team> userTeams = userInfo.getHighestRole().equals("ADMIN") ? findTeamService.findAll() : new ArrayList<>(userInfo.getTeams());
+        return codeRepoRepository.findCodeRepoDtosByTeamIn(userTeams);
+
     }
 
     public CodeRepo findById(Long id, Principal principal) {

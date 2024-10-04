@@ -1,6 +1,7 @@
 package io.mixeway.mixewayflowapi.domain.coderepofindingstats;
 
 import io.mixeway.mixewayflowapi.api.coderepo.dto.AggregatedRepoStatsDTO;
+import io.mixeway.mixewayflowapi.api.coderepo.dto.GetCodeReposResponseDto;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoFindingStats;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoFindingStatsRepository;
@@ -29,7 +30,7 @@ public class FindCodeRepoFindingStatsService {
         LocalDate startDate = endDate.minusDays(6);
 
         List<CodeRepoFindingStats> statsList = codeRepoFindingStatsRepository
-                .findStatsBetweenDatesAndForCodeRepos(startDate, endDate, findCodeRepoService.findCodeRepoForUser(principal));
+                .findStatsBetweenDatesAndForCodeRepos(startDate, endDate, findCodeRepoService.getCodeReposResponseDtos(principal).stream().map(GetCodeReposResponseDto::getId).toList());
 
         Map<LocalDate, List<CodeRepoFindingStats>> groupedByDate = statsList.stream()
                 .collect(Collectors.groupingBy(stats -> stats.getDateInserted().toLocalDate()));

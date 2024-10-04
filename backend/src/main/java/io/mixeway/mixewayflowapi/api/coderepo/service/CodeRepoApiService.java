@@ -22,9 +22,7 @@ public class CodeRepoApiService {
     private final ScanManagerService scanManagerService;
 
     public List<GetCodeReposResponseDto> getRepos(Principal principal) {
-        return findCodeRepoService.findCodeRepoForUser(principal).stream()
-                .map(GetCodeReposResponseDto::new)
-                .collect(Collectors.toList());
+        return findCodeRepoService.getCodeReposResponseDtos(principal);
     }
 
     public CodeRepo getRepo(Long id, Principal principal) {

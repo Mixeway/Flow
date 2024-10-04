@@ -12,7 +12,12 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class GetComponentsResponseDto {
-    Component component;
+    ComponentDto component;
+    Long componentId;
+    String componentName;
+    String componentVersion;
+    String componentGroupId;
+    List<String> vulnerabilityNames;
     List<String> vulnerabilities;
     List<String> affectedReposUrl;
 }

@@ -1,5 +1,7 @@
 package io.mixeway.mixewayflowapi.api.components.service;
 
+import io.mixeway.mixewayflowapi.api.components.dto.ComponentDto;
+import io.mixeway.mixewayflowapi.api.components.dto.ComponentRawDataDto;
 import io.mixeway.mixewayflowapi.api.components.dto.GetComponentsResponseDto;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.Component;
@@ -12,7 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.Principal;
-import java.util.List;
+import java.util.*;
 
 /**
  * Service class responsible for managing and retrieving information about components,
@@ -32,37 +34,53 @@ public class ComponentsService {
      * @param principal the security principal representing the currently authenticated user
      * @return a list of GetComponentsResponseDto, each containing a component, a list of vulnerability names, and a list of affected repository URLs
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public List<GetComponentsResponseDto> getComponentsWithVulnerabilitiesAndRepos(Principal principal) {
-        // Fetch all components from the service
-        List<Component> components = findComponentService.findAll();
-
-        // Get the list of repositories the user can access
+        // Fetch accessible repositories for the user
         List<CodeRepo> accessibleRepos = findCodeRepoService.findCodeRepoForUser(principal);
 
-        // Map each component to a GetComponentsResponseDto
-        return components.stream().map(component -> {
-            // Initialize the component's associated repositories and vulnerabilities
-            Hibernate.initialize(component.getCodeRepos());
-            Hibernate.initialize(component.getVulnerabilities());
+        // Fetch raw data
+        List<ComponentRawDataDto> rawData = findComponentService.findComponentData(accessibleRepos);
 
-            // Filter the repositories to only include those the user can access
-            List<String> affectedRepoUrls = component.getCodeRepos().stream()
-                    .filter(accessibleRepos::contains) // Only include repos in the accessibleRepos list
-                    .map(CodeRepo::getRepourl)
-                    .toList();
+        // Group data by component ID
+        Map<Long, GetComponentsResponseDto> componentsMap = new LinkedHashMap<>();
 
-            // Extract the names of the vulnerabilities associated with this component
-            List<String> vulnerabilityNames = component.getVulnerabilities().stream()
-                    .map(Vulnerability::getName)
-                    .toList();
+        for (ComponentRawDataDto dto : rawData) {
+            GetComponentsResponseDto componentDto = componentsMap.get(dto.getComponentId());
+            if (componentDto == null) {
+                // Create new DTO for the component
+                componentDto = new GetComponentsResponseDto();
+                ComponentDto dtoC = new ComponentDto();
+                dtoC.setName(dto.getComponentName());
+                dtoC.setVersion(dto.getComponentVersion());
+                dtoC.setGroupId(dto.getComponentGroupId());
+                dtoC.setId(dto.getComponentId());
+                componentDto.setComponent(dtoC);
+                componentDto.setVulnerabilities(new ArrayList<>());
+                componentDto.setAffectedReposUrl(new ArrayList<>());
+                componentsMap.put(dto.getComponentId(), componentDto);
+            }
 
-            // Create and return the DTO
-            return new GetComponentsResponseDto(
-                    component,
-                    vulnerabilityNames,
-                    affectedRepoUrls
-            );
-        }).toList();
+            // Add vulnerability name if present
+            if (dto.getVulnerabilityName() != null) {
+                componentDto.getVulnerabilities().add(dto.getVulnerabilityName());
+            }
+
+            // Add repository URL if present
+            if (dto.getRepoUrl() != null) {
+                componentDto.getAffectedReposUrl().add(dto.getRepoUrl());
+            }
+            Set<String> set = new HashSet<>(componentDto.getVulnerabilities());
+            componentDto.getVulnerabilities().clear();
+            componentDto.getVulnerabilities().addAll(set);
+
+            set = new HashSet<>(componentDto.getAffectedReposUrl());
+            componentDto.getAffectedReposUrl().clear();
+            componentDto.getAffectedReposUrl().addAll(set);
+
+        }
+
+        // Convert the map values to a list
+        return new ArrayList<>(componentsMap.values());
     }
 }

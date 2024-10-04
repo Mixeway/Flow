@@ -24,5 +24,16 @@ public class GetCodeReposResponseDto {
         this.secrets = codeRepo.getSecretsScan().name();
         this.sca = codeRepo.getScaScan().name();
     }
+    public GetCodeReposResponseDto(Long id, String target, String repoUrl, String team, CodeRepo.ScanStatus sast, CodeRepo.ScanStatus iac, CodeRepo.ScanStatus secrets, CodeRepo.ScanStatus sca) {
+        this.id = id;
+        this.target = target;
+        this.repo_url = repoUrl;
+        this.team = team;
+        this.sast = sast.toString();
+        this.iac = iac.toString();
+        this.secrets = secrets.toString();
+        this.sca = sca.toString();
+    }
+
 
 }

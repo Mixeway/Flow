@@ -1,5 +1,7 @@
 package io.mixeway.mixewayflowapi.domain.component;
 
+import io.mixeway.mixewayflowapi.api.components.dto.ComponentRawDataDto;
+import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.Component;
 import io.mixeway.mixewayflowapi.db.repository.ComponentRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,5 +16,9 @@ public class FindComponentService {
 
     public List<Component> findAll(){
         return componentRepository.findAll();
+    }
+
+    public List<ComponentRawDataDto> findComponentData(List<CodeRepo> accessibleRepos) {
+        return componentRepository.findComponentData(accessibleRepos);
     }
 }
