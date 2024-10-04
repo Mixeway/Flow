@@ -30,9 +30,10 @@ sleep 30
 
 # Configure Maven proxy settings if PROXY_HOST and PROXY_PORT are set
 if [ -n "$PROXY_HOST" ] && [ -n "$PROXY_PORT" ]; then
-    echo "Proxy settings detected. Configuring Maven proxy..."
-    mkdir -p /root/.m2
-    cat <<EOF > /root/.m2/settings.xml
+    if [ ! -f /root/.m2/settings.xml ]; then
+        echo "Proxy settings detected. Configuring Maven proxy..."
+        mkdir -p /root/.m2
+        cat <<EOF > /root/.m2/settings.xml
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
@@ -47,6 +48,9 @@ if [ -n "$PROXY_HOST" ] && [ -n "$PROXY_PORT" ]; then
   </proxies>
 </settings>
 EOF
+    else
+        echo "Maven settings.xml already exists. Skipping proxy configuration."
+    fi
 fi
 
 # Check if SSL environment variable is set to true
