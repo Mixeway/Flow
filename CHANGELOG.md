@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2024-09-25
+
+### Fixed
+- Performance issues that occurs while having 300+ imported repositories on dashboard and component view
+
+
+
 ## [1.0.0] - 2024-09-25
 
 ### Changed

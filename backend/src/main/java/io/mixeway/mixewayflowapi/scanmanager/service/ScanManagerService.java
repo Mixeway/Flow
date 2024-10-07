@@ -47,7 +47,7 @@ public class ScanManagerService {
     private final Semaphore semaphore = new Semaphore(maxConcurrentScans); // Limit concurrent scans
     private final ConcurrentHashMap<Long, Lock> repoLocks = new ConcurrentHashMap<>(); // Ensure no parallel scans for the same repo
 
-    private final ExecutorService executorService = Executors.newFixedThreadPool(5);
+    private final ExecutorService executorService = Executors.newFixedThreadPool(8);
     private final ExecutorService scanExecutorService = Executors.newFixedThreadPool(10);
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
