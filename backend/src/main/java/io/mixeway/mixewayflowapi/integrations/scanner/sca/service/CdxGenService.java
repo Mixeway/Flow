@@ -11,7 +11,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -52,6 +51,49 @@ public class CdxGenService {
             throws IOException, InterruptedException {
         log.info("[CdxGen] Starting SBOM generation for: {} branch: {}", codeRepo.getName(), codeRepoBranch.getName());
 
+        // Step 1: Verify if 'pipreqs' command is available
+        boolean isPipreqsAvailable = false;
+        try {
+            ProcessBuilder pbCheckPipreqs = new ProcessBuilder("sh", "-c", "command -v pipreqs");
+            pbCheckPipreqs.redirectErrorStream(true);
+            Process pCheckPipreqs = pbCheckPipreqs.start();
+            int exitCode = pCheckPipreqs.waitFor();
+            if (exitCode == 0) {
+                isPipreqsAvailable = true;
+                log.info("[CdxGen] 'pipreqs' is available.");
+            } else {
+                log.info("[CdxGen] 'pipreqs' is not available.");
+            }
+        } catch (IOException e) {
+            // Command not found
+            log.warn("[CdxGen] Exception while checking for 'pipreqs': {}", e.getMessage());
+        }
+
+        // Step 2: If available, execute 'pipreqs .' in repoDir
+        if (isPipreqsAvailable) {
+            log.info("[CdxGen] Executing 'pipreqs .' in {}", repoDir);
+            ProcessBuilder pbPipreqs = new ProcessBuilder("pipreqs", ".");
+            pbPipreqs.directory(new File(repoDir));
+            pbPipreqs.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+            pbPipreqs.redirectError(ProcessBuilder.Redirect.INHERIT);
+            Process pPipreqs = pbPipreqs.start();
+
+            // Wait for 'pipreqs' to finish
+            boolean finished = pPipreqs.waitFor(10, TimeUnit.MINUTES);
+            if (!finished) {
+                log.warn("[CdxGen] 'pipreqs' did not finish within 10 minutes. Terminating process.");
+                pPipreqs.destroyForcibly();
+            } else {
+                int exitCode = pPipreqs.exitValue();
+                if (exitCode != 0) {
+                    log.warn("[CdxGen] 'pipreqs' exited with non-zero exit code: {}", exitCode);
+                } else {
+                    log.info("[CdxGen] 'pipreqs' executed successfully.");
+                }
+            }
+        }
+
+        // Step 3: Proceed with executing 'cdxgen'
         String proxyHost = System.getProperty("proxy.host");
         String proxyPort = System.getProperty("proxy.port");
         String command;
@@ -69,12 +111,12 @@ public class CdxGenService {
         // Use 'sh -c' to execute the command in a shell
         ProcessBuilder pb = new ProcessBuilder("sh", "-c", command);
         pb.directory(new File(repoDir));
-        pb.redirectOutput(ProcessBuilder.Redirect.PIPE); // Redirect output to PIPE
-        pb.redirectError(ProcessBuilder.Redirect.PIPE);  // Redirect error to PIPE
+        pb.redirectOutput(ProcessBuilder.Redirect.PIPE);
+        pb.redirectError(ProcessBuilder.Redirect.PIPE);
 
         Process process = pb.start();
 
-        ExecutorService executorService = Executors.newFixedThreadPool(2); // Executor for stream consumption
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
 
         try {
             // Stream Gobbler for Standard Output
@@ -83,7 +125,6 @@ public class CdxGenService {
                     String line;
                     while (!Thread.currentThread().isInterrupted() && (line = reader.readLine()) != null) {
                         // Optionally process the output
-                        // For now, we're silently consuming it
                     }
                 } catch (IOException e) {
                     log.error("[CdxGen] Error reading standard output stream", e);
@@ -96,24 +137,22 @@ public class CdxGenService {
                     String line;
                     while (!Thread.currentThread().isInterrupted() && (line = reader.readLine()) != null) {
                         // Optionally process the error output
-                        // For now, we're silently consuming it
                     }
                 } catch (IOException e) {
                     log.error("[CdxGen] Error reading error output stream", e);
                 }
             });
 
-            // Wait for the process to finish with a timeout of 20 minutes
+            // Wait for 'cdxgen' to finish with a timeout of 30 minutes
             boolean finished = process.waitFor(30, TimeUnit.MINUTES);
             if (!finished) {
-                log.warn("[CdxGen] SBOM generation did not finish within 20 minutes. Terminating process.");
-                process.destroyForcibly(); // Forcefully terminate the process
-                boolean terminated = process.waitFor(1, TimeUnit.MINUTES); // Wait a bit for termination
+                log.warn("[CdxGen] SBOM generation did not finish within 30 minutes. Terminating process.");
+                process.destroyForcibly();
+                boolean terminated = process.waitFor(1, TimeUnit.MINUTES);
                 if (!terminated) {
                     log.error("[CdxGen] Process could not be terminated gracefully.");
                 }
             } else {
-                // Check the exit code if the process finished normally
                 int exitCode = process.exitValue();
                 if (exitCode != 0) {
                     log.warn("[CdxGen] SBOM generation process exited with non-zero exit code: {}", exitCode);
@@ -121,16 +160,14 @@ public class CdxGenService {
             }
 
         } finally {
-            executorService.shutdownNow(); // Ensure the executor service is shut down
-
-            // Additional check to ensure the process is terminated
+            executorService.shutdownNow();
             if (process.isAlive()) {
                 log.warn("[CdxGen] Process is still alive after termination attempt. Forcibly destroying it.");
                 process.destroyForcibly();
             }
         }
 
-        // Validate the bom.json file
+        // Validate the 'sbom.json' file
         File bomFile = new File(repoDir, "sbom.json");
         if (bomFile.exists()) {
             if (bomFile.length() > 0) {
@@ -142,6 +179,7 @@ public class CdxGenService {
             log.warn("[CdxGen] SBOM file not found: {}", bomFile.getAbsolutePath());
         }
     }
+
 
 
 }

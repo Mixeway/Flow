@@ -1,6 +1,5 @@
 package io.mixeway.mixewayflowapi.scanmanager.service;
 
-import ch.qos.logback.core.spi.ScanException;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
