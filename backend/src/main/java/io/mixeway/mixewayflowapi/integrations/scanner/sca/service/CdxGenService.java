@@ -60,18 +60,18 @@ public class CdxGenService {
             int exitCode = pCheckPipreqs.waitFor();
             if (exitCode == 0) {
                 isPipreqsAvailable = true;
-                log.info("[CdxGen] 'pipreqs' is available.");
+                log.debug("[CdxGen] 'pipreqs' is available.");
             } else {
-                log.info("[CdxGen] 'pipreqs' is not available.");
+                log.debug("[CdxGen] 'pipreqs' is not available.");
             }
         } catch (IOException e) {
             // Command not found
-            log.warn("[CdxGen] Exception while checking for 'pipreqs': {}", e.getMessage());
+            log.debug("[CdxGen] Exception while checking for 'pipreqs': {}", e.getMessage());
         }
 
         // Step 2: If available, execute 'pipreqs .' in repoDir
         if (isPipreqsAvailable) {
-            log.info("[CdxGen] Executing 'pipreqs .' in {}", repoDir);
+            log.debug("[CdxGen] Executing 'pipreqs .' in {}", repoDir);
             ProcessBuilder pbPipreqs = new ProcessBuilder("pipreqs", ".");
             pbPipreqs.directory(new File(repoDir));
             pbPipreqs.redirectOutput(ProcessBuilder.Redirect.INHERIT);
@@ -81,14 +81,14 @@ public class CdxGenService {
             // Wait for 'pipreqs' to finish
             boolean finished = pPipreqs.waitFor(10, TimeUnit.MINUTES);
             if (!finished) {
-                log.warn("[CdxGen] 'pipreqs' did not finish within 10 minutes. Terminating process.");
+                log.debug("[CdxGen] 'pipreqs' did not finish within 10 minutes. Terminating process.");
                 pPipreqs.destroyForcibly();
             } else {
                 int exitCode = pPipreqs.exitValue();
                 if (exitCode != 0) {
-                    log.warn("[CdxGen] 'pipreqs' exited with non-zero exit code: {}", exitCode);
+                    log.debug("[CdxGen] 'pipreqs' exited with non-zero exit code: {}", exitCode);
                 } else {
-                    log.info("[CdxGen] 'pipreqs' executed successfully.");
+                    log.debug("[CdxGen] 'pipreqs' executed successfully.");
                 }
             }
         }
