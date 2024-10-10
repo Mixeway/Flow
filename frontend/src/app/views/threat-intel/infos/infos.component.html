@@ -1,0 +1,54 @@
+<c-card class="h-100">
+    <c-card-body class="h-100 p-3">
+        <c-row class="h-100 g-3">
+            <c-col xs="6" class="d-flex">
+                <c-widget-stat-f
+                        [title]="'Number of repositories covered'"
+                        class="flex-fill"
+                        color="primary"
+                        value="123"
+                >
+                    <ng-template cTemplateId="widgetIconTemplate">
+                        <svg [cIcon]="icons.cilChartPie" size="xl" width="24"></svg>
+                    </ng-template>
+                </c-widget-stat-f>
+            </c-col>
+            <c-col xs="6" class="d-flex">
+                <c-widget-stat-f
+                        [title]="'Number of Teams'"
+                        class="flex-fill"
+                        color="warning"
+                        value="1"
+                >
+                    <ng-template cTemplateId="widgetIconTemplate">
+                        <svg [cIcon]="icons.cilPeople" size="xl" width="24"></svg>
+                    </ng-template>
+                </c-widget-stat-f>
+            </c-col>
+            <c-col xs="6" class="d-flex">
+                <c-widget-stat-f
+                        [title]="'Number of opened vulnerabilities'"
+                        class="flex-fill"
+                        color="success"
+                        value="12332"
+                >
+                    <ng-template cTemplateId="widgetIconTemplate">
+                        <svg [cIcon]="icons.cilBug" size="xl" width="24"></svg>
+                    </ng-template>
+                </c-widget-stat-f>
+            </c-col>
+            <c-col xs="6" class="d-flex">
+                <c-widget-stat-f
+                        [title]="'Repositories at risk'"
+                        class="flex-fill"
+                        color="danger"
+                        value="45%"
+                >
+                    <ng-template cTemplateId="widgetIconTemplate">
+                        <svg [cIcon]="icons.cilChart" size="xl" width="24"></svg>
+                    </ng-template>
+                </c-widget-stat-f>
+            </c-col>
+        </c-row>
+    </c-card-body>
+</c-card>
