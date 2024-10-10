@@ -36,7 +36,7 @@ public class ScanScheduler {
     private final CodeRepoRepository codeRepoRepository;
     private final ScanManagerService scanManagerService;
     private final SCAService scaService;
-    private static final int THREAD_POOL_SIZE = 5; // Adjust the pool size as needed
+    private static final int THREAD_POOL_SIZE = 15; // Adjust the pool size as needed
     private final GetCodeRepoInfoService getCodeRepoInfoService;
 
     /**
@@ -54,7 +54,7 @@ public class ScanScheduler {
      * Scheduled task that runs every day at 3 AM.
      * This method scans all code repositories concurrently using a fixed thread pool.
      */
-    @Scheduled(cron = "0 0 3 * * ?")
+    @Scheduled(cron = "0 0 1 * * ?")
     public void runEveryDayAt3AM() {
         Iterable<CodeRepo> codeRepos = codeRepoRepository.findAll();
         ExecutorService executorService = Executors.newFixedThreadPool(THREAD_POOL_SIZE);

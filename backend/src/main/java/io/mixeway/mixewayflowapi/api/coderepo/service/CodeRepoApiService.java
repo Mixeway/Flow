@@ -29,7 +29,7 @@ public class CodeRepoApiService {
         return findCodeRepoService.findById(id, principal);
     }
 
-    public void runScan(Long id, Principal principal) throws ScanException, IOException, InterruptedException {
+    public void runScan(Long id, Principal principal) {
         CodeRepo repo = findCodeRepoService.findById(id, principal);
         if (repo != null){
             scanManagerService.scanRepository(repo, repo.getDefaultBranch(),null, null);

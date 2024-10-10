@@ -71,7 +71,7 @@ public class CodeRepoController {
         }
     }
 
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('TEAM_MANAGER')")
     @GetMapping(value= "/api/v1/coderepo/{id}/run")
     public ResponseEntity<StatusDTO> runScan(@PathVariable("id") Long id, Principal principal){
         try {
