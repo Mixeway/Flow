@@ -1,4 +1,5 @@
 import {AfterViewInit, ChangeDetectorRef, Component, OnInit} from '@angular/core';
+import {MarkdownComponent, MarkdownModule, provideMarkdown} from 'ngx-markdown';
 import {
     AlertComponent,
     BadgeComponent,
@@ -155,11 +156,12 @@ export interface CodeRepoFindingStats {
         AccordionComponent,
         ListGroupDirective,
         ListGroupItemDirective,
-        TooltipDirective
+        TooltipDirective,
+        MarkdownModule,
     ],
     templateUrl: './show-repo.component.html',
     styleUrls: ['./show-repo.component.scss'],
-    providers: [DatePipe]
+    providers: [DatePipe, provideMarkdown()]
 })
 export class ShowRepoComponent implements OnInit, AfterViewInit{
     repoData: any;
@@ -322,6 +324,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
                 this.vulns = response;
                 this.filteredVulns = [...this.vulns];
                 this.counts = this.countFindings(this.vulns);
+                this.applyFilters();
 
             }
         });
@@ -364,6 +367,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
         this.repoService.getFinding(+this.repoId, this.selectedRowId).subscribe({
             next: (response) => {
                 this.singleVuln = response;
+                this.cdr.markForCheck();
             }
         });
     }
@@ -423,9 +427,6 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
 
     handleDetailsModal(visible: boolean) {
         this.detailsModal = visible;
-        if (this.detailsModal && this.selectedRowId !== null) {
-            console.log(`Modal opened for Row ID: ${this.selectedRowId}`);
-        }
     }
 
     closeModal() {

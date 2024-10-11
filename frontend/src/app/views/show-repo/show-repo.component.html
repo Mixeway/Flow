@@ -614,7 +614,7 @@
             <br/>
             <c-row>
                 <c-col xs="12">
-                    <c-tabs [activeItemKey]="1" >
+                    <c-tabs [activeItemKey]="0" *ngIf="singleVuln" >
                         <c-tabs-list variant="underline-border">
                             <button cTab [itemKey]="0">Description</button>
                             <button cTab [itemKey]="1">Recommendation</button>
@@ -622,17 +622,17 @@
                             <button cTab [itemKey]="3">References</button>
                         </c-tabs-list>
                         <c-tabs-content>
-                            <c-tab-panel class="p-3" [itemKey]="0" >
-                                {{singleVuln?.description? singleVuln?.description : 'No description available at this moment'}}
+                            <c-tab-panel class="p-3" [itemKey]="0">
+                                <markdown [data]="singleVuln?.description || 'No description available at this moment'"></markdown>
                             </c-tab-panel>
                             <c-tab-panel class="p-3" [itemKey]="1">
-                                {{singleVuln?.recommendation? singleVuln?.recommendation : 'No recommendation available at this moment'}}
+                                <markdown [data]="singleVuln?.recommendation || 'No recommendation available at this moment'"></markdown>
                             </c-tab-panel>
                             <c-tab-panel class="p-3" [itemKey]="2">
-                                {{singleVuln?.explanation? singleVuln?.explanation : 'No Explanation available at this moment'}}
+                                <markdown [data]="singleVuln?.explanation || 'No explanation available at this moment'"></markdown>
                             </c-tab-panel>
                             <c-tab-panel class="p-4" [itemKey]="3">
-                                {{singleVuln?.refs? singleVuln?.refs : 'No references available at this moment'}}
+                                <markdown [data]="singleVuln?.refs || 'No references available at this moment'"></markdown>
                             </c-tab-panel>
                         </c-tabs-content>
                     </c-tabs>

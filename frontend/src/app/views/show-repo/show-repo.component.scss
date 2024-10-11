@@ -66,3 +66,12 @@ ngx-datatable .datatable-row-center {
 c-card {
   margin-bottom: 10px;
 }
+/* In your styles.scss or component-specific styles */
+
+.markdown-body {
+  box-sizing: border-box;
+  min-width: 200px;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 45px;
+}
