@@ -56,7 +56,7 @@ public class ScanScheduler {
      * Scheduled task that runs every day at 3 AM.
      * This method scans all code repositories concurrently using a fixed thread pool.
      */
-    @Scheduled(cron = "0 0 3 * * ?")
+    @Scheduled(cron = "0 0 1 * * ?")
     public void runEveryDayAt3AM() {
         Iterable<CodeRepo> codeRepos = codeRepoRepository.findAll();
         ExecutorService executorService = Executors.newFixedThreadPool(THREAD_POOL_SIZE);

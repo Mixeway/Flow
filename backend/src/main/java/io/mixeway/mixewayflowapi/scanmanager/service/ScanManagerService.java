@@ -56,12 +56,12 @@ public class ScanManagerService {
     private final KEVApiClient kevApiClient;
     private final UpdateVulnerabilityService updateVulnerabilityService;
 
-    private final int maxConcurrentScans = 5; // Maximum number of concurrent scans
+    private final int maxConcurrentScans = 15; // Maximum number of concurrent scans
     private final Semaphore semaphore = new Semaphore(maxConcurrentScans); // Limit concurrent scans
     private final ConcurrentHashMap<Long, Lock> repoLocks = new ConcurrentHashMap<>(); // Ensure no parallel scans for the same repo
 
     private final ExecutorService executorService = Executors.newFixedThreadPool(8);
-    private final ExecutorService scanExecutorService = Executors.newFixedThreadPool(10);
+    private final ExecutorService scanExecutorService = Executors.newFixedThreadPool(15);
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     // Counters for tracking parallel scans
