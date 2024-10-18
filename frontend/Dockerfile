@@ -3,6 +3,10 @@ FROM node:18-alpine as build
 
 WORKDIR /app
 
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
+
+
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
