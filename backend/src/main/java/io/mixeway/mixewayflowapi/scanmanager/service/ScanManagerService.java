@@ -2,15 +2,23 @@ package io.mixeway.mixewayflowapi.scanmanager.service;
 
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
+import io.mixeway.mixewayflowapi.db.entity.Vulnerability;
 import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
+import io.mixeway.mixewayflowapi.domain.vulnerability.FindVulnerabilityService;
+import io.mixeway.mixewayflowapi.domain.vulnerability.UpdateVulnerabilityService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GitCommentService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GitService;
 import io.mixeway.mixewayflowapi.integrations.scanner.iac.service.IaCService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.service.SASTService;
+import io.mixeway.mixewayflowapi.integrations.scanner.sca.apiclient.KEVApiClient;
+import io.mixeway.mixewayflowapi.integrations.scanner.sca.dto.CatalogDto;
+import io.mixeway.mixewayflowapi.integrations.scanner.sca.dto.DTrackGetVulnResponseDto;
+import io.mixeway.mixewayflowapi.integrations.scanner.sca.dto.VulnerabilityDto;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.service.SCAService;
 import io.mixeway.mixewayflowapi.integrations.scanner.secrets.service.SecretsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -19,11 +27,15 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Service for managing and orchestrating code repository scans.
@@ -41,6 +53,8 @@ public class ScanManagerService {
     private final UpdateCodeRepoService updateCodeRepoService;
     private final SCAService scaService;
     private final GitCommentService gitCommentService;
+    private final KEVApiClient kevApiClient;
+    private final UpdateVulnerabilityService updateVulnerabilityService;
 
     private final int maxConcurrentScans = 15; // Maximum number of concurrent scans
     private final Semaphore semaphore = new Semaphore(maxConcurrentScans); // Limit concurrent scans
@@ -56,6 +70,7 @@ public class ScanManagerService {
     private final AtomicInteger scaScansRunning = new AtomicInteger(0);
     private final AtomicInteger iacScansRunning = new AtomicInteger(0);
     private final AtomicInteger secretScansRunning = new AtomicInteger(0);
+    private final FindVulnerabilityService findVulnerabilityService;
 
     /**
      * Asynchronously initiates a scan for a given repository and branch.
@@ -333,5 +348,47 @@ public class ScanManagerService {
         if (!dir.delete()) {
             throw new IOException("Failed to delete file or directory: " + dir.getAbsolutePath());
         }
+    }
+
+    public void processKEV(){
+        CatalogDto catalogDto = kevApiClient.loadKev().block();
+        log.info("[KEV] Processing KEV...");
+        // Extract all cveIDs from the vulnerabilities in the DTO
+        List<String> cveIds = catalogDto.getVulnerabilities().stream()
+                .map(VulnerabilityDto::getCveID)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        if (cveIds.isEmpty()) {
+            return;
+        }
+
+        // Fetch existing vulnerabilities from the database matching the cveIDs
+        List<Vulnerability> existingVulnerabilities = findVulnerabilityService.getByNameIn(cveIds);
+
+        // Map cveID to Vulnerability entity for quick lookup
+        Map<String, Vulnerability> vulnerabilityMap = existingVulnerabilities.stream()
+                .collect(Collectors.toMap(Vulnerability::getName, Function.identity()));
+
+        // Iterate over vulnerabilities in the DTO
+        for (VulnerabilityDto vulnerabilityDto : catalogDto.getVulnerabilities()) {
+            String cveID = vulnerabilityDto.getCveID();
+
+            if (cveID == null) {
+                continue; // Ignore vulnerabilities without cveID
+            }
+
+            Vulnerability vulnerability = vulnerabilityMap.get(cveID);
+
+            if (vulnerability != null) {
+                // Vulnerability found in database, execute addExploit
+                updateVulnerabilityService.addExploit(vulnerability,String.join(",", vulnerabilityDto.getCwes()));
+            } else {
+                // Vulnerability not found, ignore
+                log.debug("Vulnerability with cveID {} not found in database.", cveID);
+            }
+        }
+        log.info("[KEV] Done processing KEV...");
+
     }
 }

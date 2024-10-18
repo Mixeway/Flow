@@ -1,0 +1,15 @@
+<c-card class="h-100 flex-grow-1">
+    <c-card-header>
+        Threat Score
+    </c-card-header>
+    <c-card-body>
+        <apx-chart
+                [series]="chartOptions.series"
+                [chart]="chartOptions.chart"
+                [plotOptions]="chartOptions.plotOptions"
+                [fill]="chartOptions.fill"
+                [labels]="chartOptions.labels"
+                [grid]="chartOptions.grid">
+        </apx-chart>
+    </c-card-body>
+</c-card>

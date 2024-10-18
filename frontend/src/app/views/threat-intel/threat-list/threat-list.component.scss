@@ -1,0 +1,31 @@
+.urgency-label {
+  min-width: 100px; /* Ensures the column is at least 100px wide */
+}
+
+/* Set a fixed height and enable scrolling for the project list */
+.project-list {
+  max-height: 300px; /* Adjust the height as needed */
+  overflow-y: auto;
+}
+
+/* Optional: Ensure the modal doesn't exceed viewport height */
+.c-modal-content {
+  max-height: 80vh; /* 80% of the viewport height */
+}
+
+.c-modal-body {
+  overflow-y: auto;
+}
+.large-text {
+  font-size: 1.25rem; /* Adjust as needed */
+}
+
+.large-button {
+  font-size: 1.25rem;
+  padding: 0.5rem 1rem;
+}
+
+.large-badge {
+  font-size: 1.1rem;
+  padding: 0.5em 0.75em;
+}

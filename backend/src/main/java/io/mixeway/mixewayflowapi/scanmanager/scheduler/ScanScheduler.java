@@ -5,6 +5,7 @@ import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
 import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GetCodeRepoInfoService;
+import io.mixeway.mixewayflowapi.integrations.scanner.sca.apiclient.KEVApiClient;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.service.SCAService;
 import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import jakarta.annotation.PostConstruct;
@@ -38,6 +39,7 @@ public class ScanScheduler {
     private final SCAService scaService;
     private static final int THREAD_POOL_SIZE = 15; // Adjust the pool size as needed
     private final GetCodeRepoInfoService getCodeRepoInfoService;
+
 
     /**
      * Initializes the SCA environment after the application startup.
@@ -99,5 +101,11 @@ public class ScanScheduler {
             codeRepoRepository.save(codeRepo);
         }
         log.info("[Scheduler] Updated metadata of repositories");
+    }
+
+    @Scheduled(initialDelay = 0, fixedRate = 43200000)
+    public void processKEV() throws MalformedURLException {
+
+        scanManagerService.processKEV();
     }
 }

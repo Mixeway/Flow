@@ -14,6 +14,15 @@ export function getNavItems(): INavData[] {
       }
     },
     {
+      name: 'Threat Intelligence',
+      url: '/threat-intel',
+      iconComponent: { name: 'cil-eyedropper' },
+      badge: {
+        color: 'primary',
+        text: 'BETA'
+      }
+    },
+    {
       title: true,
       name: 'Details'
     },

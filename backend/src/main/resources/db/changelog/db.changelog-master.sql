@@ -343,3 +343,14 @@ ALTER TABLE coderepo ADD COLUMN IF NOT EXISTS type text;
 
 --changeset siewer:change_type
 ALTER TABLE finding ALTER COLUMN location TYPE TEXT;
+
+--changeset siewer:threat-intel
+ALTER TABLE vulnerability
+    ADD COLUMN epss DECIMAL(15,10),
+    ADD COLUMN epss_percentile DECIMAL(15,10),
+    ADD COLUMN vector VARCHAR(255),
+    ADD COLUMN updated_date TIMESTAMP;
+
+--changeset siewer:threat-intel2
+ALTER TABLE vulnerability ADD COLUMN IF NOT EXISTS exploit_exists BOOLEAN;
+update vulnerability set exploit_exists=false;

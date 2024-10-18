@@ -3,6 +3,7 @@ package io.mixeway.mixewayflowapi.integrations.scanner.sca.dto;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.List;
 
@@ -16,6 +17,8 @@ public class DTrackGetVulnResponseDto {
     private String recommendation;
     private String references;
     private String Severity;
+    private BigDecimal epssScore;
+    private BigDecimal epssPercentile;
     private List<Component> components;
 
     @Data
