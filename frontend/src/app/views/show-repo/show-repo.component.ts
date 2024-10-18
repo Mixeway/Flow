@@ -458,6 +458,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
             });
         }
         this.closeModal();
+        this.applyFilters();
     }
 
     position = 'top-end';

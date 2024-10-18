@@ -52,6 +52,7 @@ public class ProcessDTrackVulnDataService {
                     dto.getRecommendation(),
                     mapSeverity(dto.getSeverity())
             );
+            vulnerability.updateScoreInfos(dto.getEpssScore(), dto.getEpssPercentile(), null);
             Hibernate.initialize(vulnerability.getComponents());
 
             // Step 3: Link Vulnerability and Components

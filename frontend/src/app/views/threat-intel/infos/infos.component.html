@@ -6,7 +6,7 @@
                         [title]="'Number of repositories covered'"
                         class="flex-fill"
                         color="primary"
-                        value="123"
+                        [value]="allProjects"
                 >
                     <ng-template cTemplateId="widgetIconTemplate">
                         <svg [cIcon]="icons.cilChartPie" size="xl" width="24"></svg>
@@ -18,7 +18,7 @@
                         [title]="'Number of Teams'"
                         class="flex-fill"
                         color="warning"
-                        value="1"
+                        [value]="teams"
                 >
                     <ng-template cTemplateId="widgetIconTemplate">
                         <svg [cIcon]="icons.cilPeople" size="xl" width="24"></svg>
@@ -30,7 +30,7 @@
                         [title]="'Number of opened vulnerabilities'"
                         class="flex-fill"
                         color="success"
-                        value="12332"
+                        [value]="openedVulns"
                 >
                     <ng-template cTemplateId="widgetIconTemplate">
                         <svg [cIcon]="icons.cilBug" size="xl" width="24"></svg>
@@ -42,7 +42,7 @@
                         [title]="'Repositories at risk'"
                         class="flex-fill"
                         color="danger"
-                        value="45%"
+                        [value]="percentage + '%'"
                 >
                     <ng-template cTemplateId="widgetIconTemplate">
                         <svg [cIcon]="icons.cilChart" size="xl" width="24"></svg>

@@ -1,33 +1,94 @@
 <c-card class="w-100" style="height: 600px; overflow: auto;">
+    <c-card-header>
+        Threats that require attention (number corresponds to the number of resources affected)
+    </c-card-header>
     <c-card-body>
-        <!-- Content of the large card -->
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
-        Large Card Content <br/>
+
+
+        <div cListGroup>
+            <div
+                    *ngFor="let item of items"
+                    cListGroupItem
+                    class="d-flex justify-content-between align-items-center fs-4"
+            >
+                <div class="d-flex align-items-center">
+                    <!-- Info Button -->
+                    <button
+                            cButton
+                            color="info"
+                            variant="ghost"
+                            size="sm"
+                            class="me-2"
+                            (click)="openModal(item)"
+                    >
+                        <c-icon name="cil-info"></c-icon>
+                    </button>
+                    <!-- Name -->
+                    <div class="fs-4">{{ item.name }}</div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <div class="urgency-label me-2 fs-4">
+        <span *ngIf="item.urgency === 'urgent'" class="text-danger"
+        >🛑 Urgent</span
+        >
+                        <span *ngIf="item.urgency === 'notable'" class="text-warning"
+                        >⚠️ Notable</span
+                        >
+                    </div>
+                    <c-badge color="secondary" shape="rounded-pill">{{item.count}}</c-badge>
+
+                </div>
+            </div>
+        </div>
+
+
+
     </c-card-body>
 </c-card>
+
+<!-- ... existing list code ... -->
+
+<!-- Modal -->
+<!-- Modal -->
+<c-modal
+        [(visible)]="modalVisible"
+        [backdrop]="true"
+        size="lg"
+        alignment="center"
+>
+<c-modal-header>
+    <h5 class="modal-title">Details for {{ selectedItem?.name }}</h5>
+    <button type="button" class="btn-close" aria-label="Close" (click)="closeModal()"></button>
+</c-modal-header>
+<c-modal-body>
+    <!-- First Section: Row with 3 Columns -->
+    <div class="row text-center mb-3">
+        <div class="col">
+            EPSS > 0.5 <br/>{{ getEpssStatus() }}
+        </div>
+        <div class="col">
+            PII in the project <br/>{{ getPiiStatus() }}
+        </div>
+        <div class="col">
+            Exploit available <br/>{{ getExploitStatus() }}
+        </div>
+    </div>
+    <!-- Second Section: List of Links with Buttons -->
+    <br/><br/>
+    <h5><u>Affected resources:</u></h5>
+    <div class="list-group project-list">
+        <div
+                *ngFor="let project of selectedItem?.projects"
+                class="list-group-item d-flex justify-content-between align-items-center"
+        >
+            <span>{{ project.name }}</span>
+            <a [href]="project.href" target="_blank">
+                <button cButton color="primary" size="sm">Go</button>
+            </a>
+        </div>
+    </div>
+</c-modal-body>
+<c-modal-footer>
+    <button cButton color="secondary" (click)="closeModal()">Close</button>
+</c-modal-footer>
+</c-modal>

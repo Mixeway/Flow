@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import {AfterViewInit, Component, Input, OnChanges, SimpleChanges} from '@angular/core';
 import {
   CardBodyComponent,
   CardComponent,
@@ -24,7 +24,35 @@ import {IconDirective} from "@coreui/icons-angular";
   templateUrl: './infos.component.html',
   styleUrl: './infos.component.scss'
 })
-export class InfosComponent {
+export class InfosComponent implements AfterViewInit, OnChanges{
+  @Input()
+  teams: number | undefined;
+  @Input()
+  allProjects: number = 0;
+  @Input()
+  affectedProjects: number = 0;
+  @Input()
+  openedVulns: number = 0;
+  percentage: string = '0';
+
   icons = { cilChartPie, cilArrowRight, cilBug, cilChart, cilPeople};
 
+  calculatePercentage() {
+
+    const allProjects = this.allProjects ?? 0;
+    const affectedProjects = this.affectedProjects ?? 0;
+
+    if (allProjects > 0) {
+      this.percentage = ((affectedProjects / allProjects) * 100).toFixed(0);
+    } else {
+      this.percentage = '0';
+    }
+  }
+
+  ngAfterViewInit(): void {
+    this.calculatePercentage();
+  }
+  ngOnChanges(changes: SimpleChanges): void {
+    this.calculatePercentage();
+  }
 }

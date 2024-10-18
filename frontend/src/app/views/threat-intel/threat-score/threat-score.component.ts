@@ -1,5 +1,5 @@
-import { Component } from '@angular/core';
-import {CardBodyComponent, CardComponent, CardHeaderComponent} from "@coreui/angular";
+import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { CardBodyComponent, CardComponent, CardHeaderComponent } from '@coreui/angular';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import {
     ApexChart,
@@ -8,8 +8,6 @@ import {
     ApexPlotOptions,
     ApexNonAxisChartSeries
 } from 'ng-apexcharts';
-
-
 
 export type ChartOptions = {
     series: ApexNonAxisChartSeries;
@@ -20,26 +18,26 @@ export type ChartOptions = {
     labels: string[];
 };
 
-
 @Component({
-  selector: 'app-threat-score',
-  standalone: true,
+    selector: 'app-threat-score',
+    standalone: true,
     imports: [
         CardComponent,
         CardHeaderComponent,
         CardBodyComponent,
         NgApexchartsModule
     ],
-  templateUrl: './threat-score.component.html',
-  styleUrl: './threat-score.component.scss'
+    templateUrl: './threat-score.component.html',
+    styleUrls: ['./threat-score.component.scss']
 })
-export class ThreatScoreComponent {
+export class ThreatScoreComponent implements OnChanges {
+    @Input()
+    threatScore: string = '';
     public chartOptions: Partial<ChartOptions>;
 
     constructor() {
-        // @ts-ignore
+        // Initialize chartOptions without threatScore
         this.chartOptions = {
-            series: [20], // Replace with your data
             chart: {
                 type: 'radialBar',
                 offsetY: -20,
@@ -52,9 +50,9 @@ export class ThreatScoreComponent {
                     startAngle: -90,
                     endAngle: 90,
                     track: {
-                        background: '#e7e7e7',
+                        background: '#86df68',
                         strokeWidth: '97%',
-                        margin: 5, // Margin is in pixels
+                        margin: 5,
                         dropShadow: {
                             enabled: true,
                             top: 2,
@@ -77,6 +75,7 @@ export class ThreatScoreComponent {
             },
             fill: {
                 type: 'gradient',
+
                 gradient: {
                     shade: 'light',
                     shadeIntensity: 0.4,
@@ -95,4 +94,31 @@ export class ThreatScoreComponent {
         };
     }
 
+    ngOnChanges(changes: SimpleChanges) {
+        if (changes['threatScore']) {
+            this.updateChartOptions();
+        }
+    }
+
+    updateChartOptions() {
+        // Convert threatScore to a number and update series
+        const score = Number(this.threatScore) || 0; // Default to 0 if invalid
+        let color: string ='';
+        if (score > 80){
+            color = '#e60303';
+        } else if (score > 60){
+            color = '#e34848';
+        } else if (score > 40){
+            color = '#e47a3a';
+        } else if (score > 20){
+            color = '#bedf76';
+        } else {
+            color = '#55ec32';
+        }
+        this.chartOptions = {
+            ...this.chartOptions,
+            series: [score],
+            fill: {colors: [color]},
+        };
+    }
 }

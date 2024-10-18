@@ -1,9 +1,9 @@
 <c-row class="d-flex align-items-stretch">
     <c-col xs="4">
-        <app-threat-score />
+        <app-threat-score *ngIf="findings" [threatScore]="threatScore"/>
     </c-col>
     <c-col xs="8">
-        <app-infos />
+        <app-infos *ngIf="findings" [teams]="teams" [affectedProjects]="affectedProjects" [allProjects]="allProjects" [openedVulns]="openedVulns" />
     </c-col>
 </c-row>
 
@@ -11,7 +11,7 @@
 
 <c-row class="d-flex align-items-stretch">
     <c-col xs="8">
-        <app-threat-list />
+        <app-threat-list *ngIf="findings" [items]="findings" />
     </c-col>
     <c-col xs="4">
         <app-reviews />
@@ -25,5 +25,4 @@
         <app-waivers />
     </c-col>
 </c-row>
-
-
+<br/>

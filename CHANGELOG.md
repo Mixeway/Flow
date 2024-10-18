@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+
+## [1.0.2] - 2024-09-25
+
+### Introduced
+- Introduced Vulnerability Threat Detection dashboard and KEV downloading
+
+
 ## [1.0.1] - 2024-09-25
 
 ### Fixed

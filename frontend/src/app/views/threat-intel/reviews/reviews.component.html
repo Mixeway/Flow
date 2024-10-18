@@ -1,50 +1,82 @@
 <c-col xs="12" class="d-flex flex-column">
-    <c-card class="w-100 mb-3" style="height: 300px; overflow: auto;">
+    <c-card class="w-100 mb-3" style="height: 300px; overflow: auto;" >
+        <c-card-header>
+            Recently removed vulnerabilities
+        </c-card-header>
         <c-card-body>
-            <!-- Content of the first small card -->
-            Small Card 1 Content <br/>
-            Small Card 1 Content <br/>
-            Small Card 1 Content <br/>
-            Small Card 1 Content <br/>
-            Small Card 1 Content <br/>
-            Small Card 1 Content <br/>
-            Small Card 1 Content <br/>
-            Small Card 1 Content <br/>
-            Small Card 1 Content <br/>
-            Small Card 1 Content <br/>
-            Small Card 1 Content <br/>
-            Small Card 1 Content <br/>
-            Small Card 1 Content <br/>
-            Small Card 1 Content <br/>
-            Small Card 1 Content <br/>
-            Small Card 1 Content <br/>
-            Small Card 1 Content <br/>
-            Small Card 1 Content <br/>
+            <div class="list-group" *ngIf="removedVulnerabilities.length > 0">
+                <div
+                        *ngFor="let vuln of removedVulnerabilities"
+                        class="list-group-item"
+                >
+                    <div class="d-flex justify-content-between">
+                        <!-- Name of the Vulnerability -->
+                        <div>
+                            <strong>{{ vuln.name }}</strong>
+                        </div>
+                        <!-- Trash Icon -->
+                        <div>
+                            <span class="fs-4">🚮</span>
+                        </div>
+                    </div>
+                    <!-- Second Row -->
+                    <div class="d-flex justify-content-between small text-muted mt-1">
+                        <!-- Repository URL under the name -->
+                        <div>
+                            <a [href]="vuln.repositoryUrl" target="_blank">{{ vuln.repositoryUrl }}</a>
+                        </div>
+                        <!-- Date Deleted under the icon -->
+                        <div>
+                            {{ vuln.dateDeleted | date: 'mediumDate' }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <c-alert color="success" class="d-flex align-items-center" *ngIf="!removedVulnerabilities ||removedVulnerabilities.length == 0">
+                <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Info:">
+                    <use xlink:href="#info-fill" />
+                </svg>
+                <div>There are no removed vulnerabilities at this moment to display.</div>
+            </c-alert>
+
         </c-card-body>
     </c-card>
 
     <!-- Second Small Card -->
     <c-card class="w-100" style="height: 280px; overflow: auto;">
+        <c-card-header>
+            Recently reviewed vulnerabilities
+        </c-card-header>
         <c-card-body>
-            <!-- Content of the second small card -->
-            Small Card 2 Content <Br/>
-            Small Card 2 Content <Br/>
-            Small Card 2 Content <Br/>
-            Small Card 2 Content <Br/>
-            Small Card 2 Content <Br/>
-            Small Card 2 Content <Br/>
-            Small Card 2 Content <Br/>
-            Small Card 2 Content <Br/>
-            Small Card 2 Content <Br/>
-            Small Card 2 Content <Br/>
-            Small Card 2 Content <Br/>
-            Small Card 2 Content <Br/>
-            Small Card 2 Content <Br/>
-            Small Card 2 Content <Br/>
-            Small Card 2 Content <Br/>
-            Small Card 2 Content <Br/>
-            Small Card 2 Content <Br/>
-
+            <div class="list-group"  *ngIf="reviewedVulnerabilities.length > 0">
+                <div
+                        *ngFor="let vuln of reviewedVulnerabilities"
+                        class="list-group-item"
+                >
+                    <div class="d-flex justify-content-between align-items-center">
+                        <!-- Name of the Vulnerability -->
+                        <div>
+                            <strong>{{ vuln.name }}</strong>
+                            <!-- Small link below the name -->
+                            <div class="small text-muted">
+                                <a [href]="vuln.repositoryUrl" target="_blank">{{ vuln.repositoryUrl }}</a>
+                            </div>
+                        </div>
+                        <!-- Status with Emoji -->
+                        <div class="d-flex align-items-center">
+                            <span class="me-2 fs-4">{{ getStatusEmoji(vuln.status) }}</span>
+                            <span>{{ vuln.status }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <c-alert color="success" class="d-flex align-items-center" *ngIf="!reviewedVulnerabilities ||reviewedVulnerabilities.length == 0">
+                <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Info:">
+                    <use xlink:href="#info-fill" />
+                </svg>
+                <div>There are no reviewed vulnerabilities at this moment to display.</div>
+            </c-alert>
         </c-card-body>
     </c-card>
+
 </c-col>
