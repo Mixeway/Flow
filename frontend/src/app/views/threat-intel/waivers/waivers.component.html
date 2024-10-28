@@ -1,14 +1,121 @@
-<c-card class="h-300" style="height: 300px;">
+<c-card class="mb-4">
     <c-card-header>
-        Supress findings rules
+        Suppress Findings Rules
+        <button cButton color="primary" class="float-end" (click)="openCreateRuleModal()">Create New Rule</button>
     </c-card-header>
     <c-card-body>
-        <c-alert color="primary" class="d-flex align-items-center">
-            <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Info:">
-                <use xlink:href="#info-fill" />
-            </svg>
-            <div>This part will be developed in next releases.
-                In this section You will be able to create flexible rules for supress issues</div>
-        </c-alert>
+        <div>
+            <c-input-group class="mb-3">
+        <span cInputGroupText id="filterTable">
+          <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
+        </span>
+                <input
+                        aria-describedby="addon-wrapping"
+                        aria-label="Filter"
+                        type="text"
+                        class="form-control"
+                        placeholder="Filter results"
+                        (input)="updateFilter($event)"
+                />
+            </c-input-group>
+        </div>
+        <ngx-datatable
+                class="bootstrap"
+                [rows]="filteredSuppressRules"
+                [columnMode]="'force'"
+                [footerHeight]="50"
+                [headerHeight]="50"
+                [rowHeight]="'auto'"
+                [limit]="10"
+        >
+            <ngx-datatable-column name="Actions" [width]="80">
+                <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-row="row">
+                    <button type="button" class="btn btn-outline-danger" (click)="deleteRule(row)">
+                        <svg cIcon name="cil-trash"></svg>
+                    </button>
+                </ng-template>
+            </ngx-datatable-column>
+            <ngx-datatable-column name="Vulnerability Name" prop="vulnerabilityName"></ngx-datatable-column>
+            <ngx-datatable-column name="Scope" prop="scope"></ngx-datatable-column>
+            <ngx-datatable-column name="Scope Detail" prop="scopeDetail"></ngx-datatable-column>
+            <ngx-datatable-column name="Inserted By" prop="insertedBy"></ngx-datatable-column>
+            <ngx-datatable-column name="Inserted Date" prop="insertedDate">
+                <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-row="row">
+                    {{ row.insertedDate | date }}
+                </ng-template>
+            </ngx-datatable-column>
+        </ngx-datatable>
     </c-card-body>
 </c-card>
+
+<!-- Create Rule Modal -->
+<c-modal
+        size="lg"
+        id="createRuleModal"
+        alignment="center"
+        [visible]="createRuleModalVisible"
+        (visibleChange)="handleCreateRuleModalChange($event)"
+>
+    <c-modal-header>
+        <h5 cModalTitle>Create Suppress Rule</h5>
+    </c-modal-header>
+    <c-modal-body>
+        <form [formGroup]="createRuleForm" (ngSubmit)="onCreateRuleSubmit()" cForm>
+            <div class="mb-3">
+                <label for="vulnerabilityName" class="form-label">Vulnerability Name</label>
+                <input
+                        type="text"
+                        class="form-control"
+                        id="vulnerabilityName"
+                        formControlName="vulnerabilityName"
+                        required
+                />
+            </div>
+            <div class="mb-3">
+                <label for="scope" class="form-label">Scope</label>
+                <select
+                        id="scope"
+                        class="form-select"
+                        formControlName="scope"
+                        (change)="onScopeChange($event)"
+                        required
+                >
+                    <option value="">Select Scope...</option>
+                    <option value="GLOBAL">Global</option>
+                    <option value="PROJECT">Project</option>
+                    <option value="TEAM">Team</option>
+                </select>
+            </div>
+            <div *ngIf="showProjectSelect" class="mb-3">
+                <label for="project" class="form-label">Project</label>
+                <ng-select
+                        id="project"
+                        formControlName="project"
+                        [items]="rows"
+                        bindLabel="target"
+                        bindValue="id"
+                        placeholder="Select Project..."
+                        [searchable]="true"
+                ></ng-select>
+            </div>
+            <div *ngIf="showTeamSelect" class="mb-3">
+                <label for="team" class="form-label">Team</label>
+                <ng-select
+                        id="team"
+                        formControlName="team"
+                        [items]="teams"
+                        bindLabel="name"
+                        bindValue="id"
+                        placeholder="Select Team..."
+                        [searchable]="true"
+                ></ng-select>
+            </div>
+        </form>
+    </c-modal-body>
+    <c-modal-footer>
+        <button (click)="createRuleModalVisible = false" cButton color="secondary">Close</button>
+        <button (click)="onCreateRuleSubmit()" cButton color="primary" [disabled]="createRuleForm.invalid">
+            Create Rule
+        </button>
+    </c-modal-footer>
+</c-modal>

@@ -5,7 +5,7 @@
     <c-card-body>
 
 
-        <div cListGroup>
+        <div cListGroup *ngIf="items">
             <div
                     *ngFor="let item of items"
                     cListGroupItem
@@ -40,6 +40,17 @@
                 </div>
             </div>
         </div>
+
+        <div *ngIf="!items" class="d-flex justify-content-center align-items-center h-100">
+            <c-spinner color="primary" />
+
+        </div>
+        <c-alert color="success" class="d-flex align-items-center" *ngIf="items && items.length == 0">
+            <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Info:">
+                <use xlink:href="#info-fill" />
+            </svg>
+            <div>There are no removed vulnerabilities at this moment to display.</div>
+        </c-alert>
 
 
 

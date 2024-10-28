@@ -53,6 +53,7 @@ public class SuppressRuleController {
             suppressRuleService.createRule(suppressRuleDTO, principal);
             return new ResponseEntity<>(new StatusDTO(""), HttpStatus.CREATED);
         } catch (Exception e) {
+            e.printStackTrace();
             return new ResponseEntity<>(new StatusDTO(""), HttpStatus.BAD_REQUEST);
         }
     }

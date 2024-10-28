@@ -46,6 +46,8 @@ public class CreateSuppressRuleService {
                 }
                 codeRepo = findCodeRepoService.findById(suppressRuleDTO.getCodeRepoId())
                         .orElseThrow(() -> new IllegalArgumentException("[SuppressRule] Invalid CodeRepo ID"));
+                log.info("[SuppressRule] Creating Suppress Rule for project {} with vulnerability {}", codeRepo.getName(), vulnerability.getName() );
+
                 break;
             case TEAM:
                 if (suppressRuleDTO.getTeamId() == null) {
@@ -53,9 +55,12 @@ public class CreateSuppressRuleService {
                 }
                 team = findTeamService.findById(suppressRuleDTO.getTeamId())
                         .orElseThrow(() -> new IllegalArgumentException("[SuppressRule] Invalid Team ID"));
+                log.info("[SuppressRule] Creating Suppress Rule for Team {} with vulnerability {}", team.getName(), vulnerability.getName() );
+
                 break;
             case GLOBAL:
                 // No additional checks needed for GLOBAL scope
+                log.info("[SuppressRule] Creating GLOBAL suppress Rule with vulnerability {}", vulnerability.getName() );
                 break;
         }
 

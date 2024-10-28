@@ -1,10 +1,18 @@
-import {AfterViewInit, Component, Input} from '@angular/core';
+import {AfterViewInit, Component, Input, OnChanges, SimpleChanges} from '@angular/core';
 import {
-    BadgeComponent, ButtonDirective,
+    AlertComponent,
+    BadgeComponent,
+    ButtonDirective,
     CardBodyComponent,
-    CardComponent, CardHeaderComponent,
+    CardComponent,
+    CardHeaderComponent,
     ListGroupDirective,
-    ListGroupItemDirective, ModalBodyComponent, ModalComponent, ModalFooterComponent, ModalHeaderComponent
+    ListGroupItemDirective,
+    ModalBodyComponent,
+    ModalComponent,
+    ModalFooterComponent,
+    ModalHeaderComponent,
+    SpinnerComponent
 } from "@coreui/angular";
 import {IconComponent} from "@coreui/icons-angular";
 import {NgForOf, NgIf} from "@angular/common";
@@ -42,12 +50,14 @@ interface Project {
         ModalComponent,
         ModalHeaderComponent,
         ModalBodyComponent,
-        ModalFooterComponent
+        ModalFooterComponent,
+        SpinnerComponent,
+        AlertComponent
     ],
   templateUrl: './threat-list.component.html',
   styleUrl: './threat-list.component.scss'
 })
-export class ThreatListComponent implements AfterViewInit{
+export class ThreatListComponent implements AfterViewInit, OnChanges{
     @Input()
     items: Item[] = [];
 
@@ -85,7 +95,9 @@ export class ThreatListComponent implements AfterViewInit{
     }
 
     ngAfterViewInit(): void {
-        this.sortItems();
+        if (this.items) {
+            this.sortItems();
+        }
     }
 
     sortItems() {
@@ -105,6 +117,15 @@ export class ThreatListComponent implements AfterViewInit{
             return b.count - a.count;
         });
 
+    }
+
+    ngOnChanges(changes: SimpleChanges): void {
+        if (changes['items']) {
+            const currentItems = changes['items'].currentValue;
+            if (currentItems && currentItems.length > 0) {
+                this.sortItems();
+            }
+        }
     }
 
 

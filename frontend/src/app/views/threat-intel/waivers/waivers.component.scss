@@ -1,0 +1,88 @@
+/* waivers.component.scss */
+@import "@ng-select/ng-select/themes/default.theme.css";
+
+/* Ensure the styles are applied globally within the component */
+:host ::ng-deep .ng-select {
+  width: 100%;
+  font-size: 1rem;
+}
+
+:host ::ng-deep .ng-select .ng-select-container {
+  display: block;
+  width: 100%;
+  height: calc(1.5em + 0.75rem + 2px);
+  padding: 0.375rem 0.75rem;
+  font-size: 1rem;
+  color: #495057;
+  background-color: #fff; /* White background */
+  background-clip: padding-box;
+  border: 1px solid #ced4da; /* Default border color */
+  border-radius: 0.25rem;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+:host ::ng-deep .ng-select .ng-select-container .ng-value-container {
+  padding: 0;
+}
+
+:host ::ng-deep .ng-select .ng-select-container .ng-input {
+  margin: 0;
+  padding: 0;
+}
+
+:host ::ng-deep .ng-select .ng-select-container .ng-arrow-wrapper {
+  margin-right: 0;
+}
+
+:host ::ng-deep .ng-select.ng-select-focused .ng-select-container {
+  border-color: #86b7fe; /* Focus border color */
+  outline: 0;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); /* Focus shadow */
+}
+
+:host ::ng-deep .ng-select .ng-select-container:hover {
+  border-color: #86b7fe; /* Hover border color */
+}
+
+/* Dropdown Panel Styles */
+:host ::ng-deep .ng-select .ng-dropdown-panel {
+  border: 1px solid #ced4da;
+  border-radius: 0.25rem;
+  background-color: #fff; /* White background */
+  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1); /* Subtle shadow */
+}
+
+:host ::ng-deep .ng-select .ng-dropdown-panel .ng-option {
+  padding: 0.375rem 0.75rem;
+  color: #495057;
+}
+
+:host ::ng-deep .ng-select .ng-dropdown-panel .ng-option:hover {
+  background-color: #e9ecef; /* Hover background color */
+}
+
+:host ::ng-deep .ng-select .ng-dropdown-panel .ng-option-selected {
+  background-color: #e9ecef; /* Selected option background */
+}
+
+/* Adjust the scrollbar for the dropdown panel if necessary */
+:host ::ng-deep .ng-select .ng-dropdown-panel .ng-dropdown-panel-items {
+  max-height: 200px; /* Adjust the max height if necessary */
+  overflow-y: auto;
+}
+
+/* Optional: Style the scrollbar */
+:host ::ng-deep .ng-select .ng-dropdown-panel .ng-dropdown-panel-items::-webkit-scrollbar {
+  width: 8px;
+}
+
+:host ::ng-deep .ng-select .ng-dropdown-panel .ng-dropdown-panel-items::-webkit-scrollbar-thumb {
+  background-color: #adb5bd;
+  border-radius: 4px;
+}
+/* waivers.component.scss */
+
+:host ::ng-deep .ng-select .ng-select-container .ng-value-container .ng-input>input {
+  color: black;
+  padding-left: 2%;
+}

@@ -1,9 +1,29 @@
 <c-row class="d-flex align-items-stretch">
     <c-col xs="4">
-        <app-threat-score *ngIf="findings" [threatScore]="threatScore"/>
+        <!-- Display the threat score component when data is available -->
+        <app-threat-score *ngIf="threatScore" [threatScore]="threatScore"></app-threat-score>
+
+        <!-- Centered spinner button when data is loading -->
+        <div *ngIf="!threatScore" class="d-flex justify-content-center align-items-center h-100">
+            <c-spinner color="primary"/>
+        </div>
     </c-col>
+
     <c-col xs="8">
-        <app-infos *ngIf="findings" [teams]="teams" [affectedProjects]="affectedProjects" [allProjects]="allProjects" [openedVulns]="openedVulns" />
+        <!-- Display the infos component when data is available -->
+        <app-infos
+                *ngIf="findings"
+                [teams]="teams"
+                [affectedProjects]="affectedProjects"
+                [allProjects]="allProjects"
+                [openedVulns]="openedVulns"
+        ></app-infos>
+
+        <!-- Centered spinner button when data is loading -->
+        <div *ngIf="!findings" class="d-flex justify-content-center align-items-center h-100">
+            <c-spinner color="primary" />
+
+        </div>
     </c-col>
 </c-row>
 
@@ -11,7 +31,7 @@
 
 <c-row class="d-flex align-items-stretch">
     <c-col xs="8">
-        <app-threat-list *ngIf="findings" [items]="findings" />
+        <app-threat-list [items]="findings" />
     </c-col>
     <c-col xs="4">
         <app-reviews />

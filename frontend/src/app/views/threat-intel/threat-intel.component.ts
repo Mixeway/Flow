@@ -1,5 +1,5 @@
 import {ChangeDetectorRef, Component, OnInit} from '@angular/core';
-import {ColComponent, RowComponent} from "@coreui/angular";
+import {ButtonDirective, ColComponent, RowComponent, SpinnerComponent} from "@coreui/angular";
 import {ThreatScoreComponent} from "./threat-score/threat-score.component";
 import {InfosComponent} from "./infos/infos.component";
 import {ThreatListComponent} from "./threat-list/threat-list.component";
@@ -9,7 +9,7 @@ import {IconSetService} from "@coreui/icons-angular";
 import {RepoService} from "../../service/RepoService";
 import {AuthService} from "../../service/AuthService";
 import {ActivatedRoute, Router} from "@angular/router";
-import {DatePipe, NgIf} from "@angular/common";
+import {DatePipe, JsonPipe, NgIf} from "@angular/common";
 import {brandSet, freeSet} from "@coreui/icons";
 import {ThreatIntelService} from "../../service/ThreatIntelService";
 
@@ -24,7 +24,10 @@ import {ThreatIntelService} from "../../service/ThreatIntelService";
         ThreatListComponent,
         ReviewsComponent,
         WaiversComponent,
-        NgIf
+        NgIf,
+        ButtonDirective,
+        SpinnerComponent,
+        JsonPipe
     ],
   templateUrl: './threat-intel.component.html',
   styleUrl: './threat-intel.component.scss'
@@ -72,6 +75,8 @@ export class ThreatIntelComponent implements OnInit{
                 this.calculatePercentage()
             }
         });
+        this.cdr.detectChanges();
+
     }
     calculatePercentage() {
 
@@ -83,5 +88,7 @@ export class ThreatIntelComponent implements OnInit{
         } else {
             this.threatScore = '0';
         }
+        this.cdr.detectChanges();
+
     }
 }

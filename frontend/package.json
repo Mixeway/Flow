@@ -35,9 +35,10 @@
     "@coreui/icons": "^3.0.1",
     "@coreui/icons-angular": "~5.2.16",
     "@coreui/utils": "^2.0.2",
-    "chart.js": "^4.4.4",
-
+    "@ng-select/ng-select": "^13.9.1",
+    "@swimlane/ngx-datatable": "^20.1.0",
     "apexcharts": "^3.54.0",
+    "chart.js": "^4.4.4",
     "jwt-decode": "^4.0.0",
     "lodash-es": "^4.17.21",
     "ng-apexcharts": "^1.12.0",
@@ -45,7 +46,6 @@
     "ngx-scrollbar": "^13.0.3",
     "rxjs": "~7.8.1",
     "tslib": "^2.6.3",
-    "@swimlane/ngx-datatable": "^20.1.0",
     "zone.js": "~0.14.7"
   },
   "devDependencies": {
