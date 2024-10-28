@@ -5,63 +5,64 @@ import io.mixeway.mixewayflowapi.api.coderepo.dto.CreateCodeRepoRequestDto;
 import io.mixeway.mixewayflowapi.config.TestConfig;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.Team;
+import io.mixeway.mixewayflowapi.db.repository.TeamRepository;
 import io.mixeway.mixewayflowapi.domain.team.CreateTeamService;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
+import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
 import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoResponseDto;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GetCodeRepoInfoService;
-import jakarta.inject.Inject;
-import lombok.RequiredArgsConstructor;
-import org.junit.Test;
-import org.junit.jupiter.api.Order;
-import org.junit.runner.RunWith;
-import static org.mockito.Mockito.*;
-
-import org.mockito.InjectMocks;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.security.Principal;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest
-@RunWith(SpringRunner.class)
 @ActiveProfiles("ut")
 @Import(TestConfig.class)
-public class CreateCodeRepoServiceTest {
-    @Autowired
-    CreateCodeRepoService createCodeRepoService;
+@Transactional // Ensures that database changes are rolled back after each test
+class CreateCodeRepoServiceTest {
 
     @Autowired
-    FindTeamService findTeamService;
+    private CreateCodeRepoService createCodeRepoService;
 
     @Autowired
-    FindCodeRepoService findCodeRepoService;
+    private FindTeamService findTeamService;
+
+    @Autowired
+    private FindCodeRepoService findCodeRepoService;
 
     @MockBean
-    GetCodeRepoInfoService getCodeRepoInfoService;
+    private GetCodeRepoInfoService getCodeRepoInfoService;
 
     @Autowired
-    CreateTeamService createTeamService;
+    private CreateTeamService createTeamService;
+
+    @Autowired
+    private TeamRepository teamRepository;
 
     @Mock
-    Principal principal;
+    private Principal principal;
 
-    @Test
-    public void createCodeRepo() throws ScanException, IOException, InterruptedException {
-        // Mock Creation of CodeRepo and git integrations
+    private Team team;
+    private CreateCodeRepoRequestDto dto;
+
+    @BeforeEach
+    void setUp() throws IOException, InterruptedException {
+        // Mock external services
         ImportCodeRepoResponseDto importCodeRepoResponseDto = new ImportCodeRepoResponseDto();
         importCodeRepoResponseDto.setId(1);
         importCodeRepoResponseDto.setDescription("desc");
@@ -75,27 +76,99 @@ public class CreateCodeRepoServiceTest {
 
         Mockito.when(principal.getName()).thenReturn("admin");
 
-        // Create Team verify if it is created
-        createTeamService.createTeam("createCodeRepoTest","createCodeRepoTest", new ArrayList<>(), principal);
-        List<Team> team1 = findTeamService.findAll().stream().filter(t -> t.getName().equals("createCodeRepoTest")).toList();
-        assertFalse(team1.isEmpty());
-        assertEquals(1, team1.size());
-        Team team = team1.get(0);
+        // Clean up any existing team with the same name to ensure test isolation
+        //teamRepository.deleteAll();
 
-        // Create repo with given parameters
+        // Create Team for testing
+        createTeamService.createTeam("createCodeRepoTest", "createCodeRepoTest", new ArrayList<>(), principal);
+
+        team = findTeamService.findAll().stream()
+                .filter(t -> t.getName().equals("createCodeRepoTest"))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Team not found in setup"));
+
+        // Prepare DTO based on parameters
         String name = "test-repo";
         String repoUrl = "https://createCodeRepo.com";
         String accessToken = "token123";
         Long remoteId = 1L;
 
-        // Prepare DTO based on those parameters
-        CreateCodeRepoRequestDto dto = CreateCodeRepoRequestDto.of(name, repoUrl, accessToken, remoteId, team.getId());
+        dto = CreateCodeRepoRequestDto.of(name, repoUrl, accessToken, remoteId, team.getId());
+    }
 
-        // Call the createRepo method to create repository
+    /**
+     * Test that a team is successfully created and can be retrieved.
+     */
+    @Test
+    void testTeamCreation() {
+        List<Team> teams = findTeamService.findAll().stream()
+                .filter(t -> t.getName().equals("createCodeRepoTest"))
+                .toList();
+
+        assertFalse(teams.isEmpty(), "Team list should not be empty");
+        assertEquals(1, teams.size(), "There should be exactly one team with the given name");
+        assertEquals("createCodeRepoTest", teams.get(0).getName(), "Team name should match");
+    }
+
+    /**
+     * Test that createCodeRepo successfully creates a code repository.
+     */
+    @Test
+    void testCreateCodeRepo() throws IOException, InterruptedException, ScanException {
         createCodeRepoService.createCodeRepo(dto, CodeRepo.RepoType.GITLAB);
 
-        // https://example.com/repo taken from TestConfig.class Mocked method
         Optional<CodeRepo> codeRepo = findCodeRepoService.findCodeRepoByUrl("https://example.com/repo");
-        assertTrue(codeRepo.isPresent());
+        assertTrue(codeRepo.isPresent(), "Code repository should be present after creation");
+        assertEquals("https://example.com/repo", codeRepo.get().getRepourl(), "Repository URL should match");
+    }
+
+    /**
+     * Test that the code repository is retrievable after creation.
+     */
+    @Test
+    void testFindCreatedCodeRepo() throws IOException, InterruptedException, ScanException {
+        createCodeRepoService.createCodeRepo(dto, CodeRepo.RepoType.GITLAB);
+
+        Optional<CodeRepo> codeRepo = findCodeRepoService.findCodeRepoByUrl("https://example.com/repo");
+        assertTrue(codeRepo.isPresent(), "Code repository should be found by URL");
+    }
+
+    /**
+     * Test that createCodeRepo throws an exception when provided with invalid parameters.
+     */
+    @Test
+    void testCreateCodeRepoWithInvalidParameters() throws IOException, InterruptedException {
+        // Prepare DTO with invalid parameters
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            CreateCodeRepoRequestDto invalidDto = CreateCodeRepoRequestDto.of(null, null, null, null, null);
+        });
+    }
+
+    /**
+     * Test that the getCodeRepoInfoService methods are called as expected during code repository creation.
+     */
+    @Test
+    void testGetCodeRepoInfoServiceCalled() throws IOException, InterruptedException, ScanException {
+        createCodeRepoService.createCodeRepo(dto, CodeRepo.RepoType.GITLAB);
+
+        Mockito.verify(getCodeRepoInfoService, Mockito.times(1))
+                .getRepoResponse(any(CreateCodeRepoRequestDto.class), any(CodeRepo.RepoType.class));
+        Mockito.verify(getCodeRepoInfoService, Mockito.times(1))
+                .getRepoLanguages(any(CodeRepo.class));
+    }
+
+    /**
+     * Test that creating a code repository with an existing URL does not duplicate entries.
+     */
+    @Test
+    void testCreateCodeRepoWithExistingUrl() throws IOException, InterruptedException, ScanException {
+        // First creation
+        createCodeRepoService.createCodeRepo(dto, CodeRepo.RepoType.GITLAB);
+        // Attempt to create the same repository again
+        assertThrows(TeamNotFoundException.class, () -> {
+            createCodeRepoService.createCodeRepo(dto, CodeRepo.RepoType.GITLAB);
+        });
+
     }
 }

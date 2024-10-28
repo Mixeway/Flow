@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.3] - 2024-09-25
+
+### Introduced
+- Bulk action on findings
+- Possibility to define supress rules
+
 
 ## [1.0.2] - 2024-09-25
 

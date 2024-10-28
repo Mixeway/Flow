@@ -52,7 +52,6 @@ class CreateFindingServiceTest {
         List<Finding> findingList = findFindingService.getCodeRepoFindings(codeRepo, codeRepo.getDefaultBranch());
         assertTrue(findings.size() > 10);
 
-
     }
 
     @Test

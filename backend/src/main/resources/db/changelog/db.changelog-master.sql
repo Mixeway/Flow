@@ -354,3 +354,23 @@ ALTER TABLE vulnerability
 --changeset siewer:threat-intel2
 ALTER TABLE vulnerability ADD COLUMN IF NOT EXISTS exploit_exists BOOLEAN;
 update vulnerability set exploit_exists=false;
+
+--changeset siewer:supress-rule
+CREATE TABLE suppress_rule (
+                               id SERIAL PRIMARY KEY,
+                               owner_id BIGINT NOT NULL,
+                               scope VARCHAR(10) NOT NULL CHECK (scope IN ('GLOBAL', 'TEAM', 'PROJECT')),
+                               vulnerability_id BIGINT NOT NULL,
+                               team_id BIGINT,
+                               coderepo_id BIGINT,
+                               created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                               FOREIGN KEY (owner_id) REFERENCES users(ID),
+                               FOREIGN KEY (vulnerability_id) REFERENCES vulnerability(ID),
+                               FOREIGN KEY (team_id) REFERENCES team(ID),
+                               FOREIGN KEY (coderepo_id) REFERENCES coderepo(ID)
+);
+
+CREATE INDEX idx_suppress_rule_owner ON suppress_rule(owner_id);
+CREATE INDEX idx_suppress_rule_vulnerability ON suppress_rule(vulnerability_id);
+CREATE INDEX idx_suppress_rule_team ON suppress_rule(team_id);
+CREATE INDEX idx_suppress_rule_coderepo ON suppress_rule(coderepo_id);

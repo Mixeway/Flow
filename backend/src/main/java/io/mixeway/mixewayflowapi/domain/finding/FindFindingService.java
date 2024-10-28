@@ -4,10 +4,7 @@ import io.mixeway.mixewayflowapi.api.coderepo.dto.VulnStatsResponseDto;
 import io.mixeway.mixewayflowapi.api.threatintel.dto.ItemListResponse;
 import io.mixeway.mixewayflowapi.api.threatintel.dto.RemovedVulnerabilityDTO;
 import io.mixeway.mixewayflowapi.api.threatintel.dto.ReviewedVulnerabilityDTO;
-import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
-import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
-import io.mixeway.mixewayflowapi.db.entity.Finding;
-import io.mixeway.mixewayflowapi.db.entity.Vulnerability;
+import io.mixeway.mixewayflowapi.db.entity.*;
 import io.mixeway.mixewayflowapi.db.projection.*;
 import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
 import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
@@ -150,5 +147,13 @@ public class FindFindingService {
                         proj.getStatus()
                 ))
                 .collect(Collectors.toList());
+    }
+
+    public List<Finding> findByVulnerabilityAndTeam(Team team, Vulnerability vulnerability){
+        return findingRepository.findByVulnerabilityAndCodeRepoIn(vulnerability, findCodeRepoService.findByTeam(team));
+    }
+
+    public List<Finding> findbyVulnerabilityAndCodeRepo(CodeRepo codeRepo, Vulnerability vulnerability) {
+        return findingRepository.findByCodeRepoAndVulnerability(codeRepo, vulnerability);
     }
 }

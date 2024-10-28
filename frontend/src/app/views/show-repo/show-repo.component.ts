@@ -1,5 +1,14 @@
-import {AfterViewInit, ChangeDetectorRef, Component, OnInit} from '@angular/core';
-import {MarkdownComponent, MarkdownModule, provideMarkdown} from 'ngx-markdown';
+import {
+    AfterViewInit,
+    ChangeDetectorRef,
+    Component,
+    OnInit,
+} from '@angular/core';
+import {
+    MarkdownComponent,
+    MarkdownModule,
+    provideMarkdown,
+} from 'ngx-markdown';
 import {
     AlertComponent,
     BadgeComponent,
@@ -38,21 +47,33 @@ import {
     AccordionComponent,
     ListGroupDirective,
     ListGroupItemDirective,
-    TooltipDirective
-} from "@coreui/angular";
-import {IconComponent, IconDirective, IconSetService} from "@coreui/icons-angular";
-import {brandSet, cilArrowRight, cilBug, cilCenterFocus, cilChartPie, cilCommentSquare, freeSet} from "@coreui/icons";
-import { ChartjsComponent } from "@coreui/angular-chartjs";
-import { ChartData } from "chart.js/dist/types";
-import { ChartOptions } from "chart.js";
-import { NgxDatatableModule } from "@swimlane/ngx-datatable";
-import {DatePipe, NgForOf, NgIf} from "@angular/common";
-import {RepoService} from "../../service/RepoService";
-import {AuthService} from "../../service/AuthService";
-import {ActivatedRoute, Router} from "@angular/router";
-import {FindingSourceStatDTO} from "../../model/FindingSourceStatDTO";
-import {FindingDTO, SingleFindingDTO} from "../../model/FindingDTO";
-import {FormsModule} from "@angular/forms";
+    TooltipDirective,
+} from '@coreui/angular';
+import { IconComponent, IconDirective, IconSetService } from '@coreui/icons-angular';
+import {
+    brandSet,
+    cilArrowRight,
+    cilBug,
+    cilCenterFocus,
+    cilChartPie,
+    cilCommentSquare,
+    cilBurn,
+    cilGraph,
+    cilTrash,
+    cilVolumeOff,
+    freeSet,
+} from '@coreui/icons';
+import { ChartjsComponent } from '@coreui/angular-chartjs';
+import { ChartData } from 'chart.js/dist/types';
+import { ChartOptions } from 'chart.js';
+import { NgxDatatableModule } from '@swimlane/ngx-datatable';
+import { DatePipe, NgForOf, NgIf } from '@angular/common';
+import { RepoService } from '../../service/RepoService';
+import { AuthService } from '../../service/AuthService';
+import { ActivatedRoute, Router } from '@angular/router';
+import { FindingSourceStatDTO } from '../../model/FindingSourceStatDTO';
+import { FindingDTO, SingleFindingDTO } from '../../model/FindingDTO';
+import { FormsModule } from '@angular/forms';
 
 interface Vulnerability {
     id: number;
@@ -161,16 +182,26 @@ export interface CodeRepoFindingStats {
     ],
     templateUrl: './show-repo.component.html',
     styleUrls: ['./show-repo.component.scss'],
-    providers: [DatePipe, provideMarkdown()]
+    providers: [DatePipe, provideMarkdown()],
 })
-export class ShowRepoComponent implements OnInit, AfterViewInit{
+export class ShowRepoComponent implements OnInit, AfterViewInit {
     repoData: any;
-    repoId: string = "";
+    repoId: string = '';
     findings: FindingDTO | undefined;
-    icons = { cilChartPie, cilArrowRight, cilBug, cilCenterFocus, cilCommentSquare };
+    icons = {
+        cilChartPie,
+        cilArrowRight,
+        cilBug,
+        cilCenterFocus,
+        cilCommentSquare,
+        cilBurn,
+        cilGraph,
+        cilTrash,
+        cilVolumeOff,
+    };
     sourceStats: FindingSourceStatDTO = new FindingSourceStatDTO();
     //topLanguages: { name: string, value: number }[] = [];
-    topLanguages: { name: string, value: number, color: string }[] = [];
+    topLanguages: { name: string; value: number; color: string }[] = [];
     chartPieData: ChartData | undefined;
     singleVuln: SingleFindingDTO | undefined;
     suppressReason: string = '';
@@ -182,7 +213,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
     filtersNew: { [key: string]: string } = {
         group: '',
         name: '',
-        version: ''
+        version: '',
     };
     scanRunning: boolean = false;
     userRole: string = 'USER';
@@ -191,22 +222,34 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
     scanInfos: any[] = [];
     scanInfosFiltered: any[] = [];
 
-
     options = {
-        maintainAspectRatio: false
+        maintainAspectRatio: false,
     };
-    months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    months = [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
+    ];
 
     public options2: ChartOptions<'line'> = {
         responsive: true,
         scales: {
             x: {
-                stacked: true
+                stacked: true,
             },
             y: {
-                stacked: true
-            }
-        }
+                stacked: true,
+            },
+        },
     };
 
     chartLineData: ChartData<'line'> = {
@@ -218,7 +261,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
                 borderColor: 'rgba(220, 220, 220, 1)',
                 pointBackgroundColor: 'rgba(220, 220, 220, 1)',
                 pointBorderColor: '#fff',
-                data: []
+                data: [],
             },
             {
                 label: 'IaC',
@@ -226,7 +269,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
                 borderColor: 'rgb(71, 180, 234)',
                 pointBackgroundColor: 'rgb(71, 163, 211)',
                 pointBorderColor: '#bd7777',
-                data: []
+                data: [],
             },
             {
                 label: 'Secrets',
@@ -234,7 +277,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
                 borderColor: 'rgb(28, 197, 45)',
                 pointBackgroundColor: 'rgb(102, 190, 107)',
                 pointBorderColor: '#bd7777',
-                data: []
+                data: [],
             },
             {
                 label: 'SCA',
@@ -242,13 +285,12 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
                 borderColor: 'rgb(210, 124, 56)',
                 pointBackgroundColor: 'rgb(128, 101, 56)',
                 pointBorderColor: '#bd7777',
-                data: []
-            }
-        ]
+                data: [],
+            },
+        ],
     };
 
-
-    vulns: Vulnerability[] = []
+    vulns: Vulnerability[] = [];
     filteredVulns = [...this.vulns]; // a copy of the original rows for filtering
 
     filters: { [key: string]: string } = {
@@ -258,7 +300,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
         source: '',
         status: '',
         severity: '',
-        dates: ''
+        dates: '',
     };
 
     showRemoved: boolean = false;
@@ -266,17 +308,25 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
     detailsModal: boolean = false;
     selectedRowId: number | null = null;
 
-    constructor(public iconSet: IconSetService, private repoService: RepoService,
-                private authService: AuthService, private router: Router, private route: ActivatedRoute,
-                private cdr: ChangeDetectorRef, private datePipe: DatePipe) {
-        iconSet.icons = { ...freeSet, ...iconSet, ...brandSet }
+    bulkActionMode: boolean = false;
+    selectedFindings: number[] = [];
+
+    constructor(
+        public iconSet: IconSetService,
+        private repoService: RepoService,
+        private authService: AuthService,
+        private router: Router,
+        private route: ActivatedRoute,
+        private cdr: ChangeDetectorRef,
+        private datePipe: DatePipe
+    ) {
+        iconSet.icons = { ...freeSet, ...iconSet, ...brandSet };
 
         this.applyFilters(); // Apply initial filters to exclude Removed and Suppressed
     }
 
     ngAfterViewInit() {
         //this.cdr.detectChanges();
-
     }
 
     ngOnInit(): void {
@@ -284,8 +334,8 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
         this.userRole = localStorage.getItem('userRole');
         this.cdr.detectChanges();
 
-        this.route.paramMap.subscribe(params => {
-            this.repoId = params.get('id') || "";
+        this.route.paramMap.subscribe((params) => {
+            this.repoId = params.get('id') || '';
         });
         this.authService.hc().subscribe({
             next: () => {
@@ -294,52 +344,59 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
             error: () => {
                 // Health check failed, redirect to login
                 this.router.navigate(['/login']);
-            }
+            },
         });
-        this.loadRepoInfo()
+        this.loadRepoInfo();
         this.loadSourceStats();
         this.loadFindings();
         this.loadFindingStats();
     }
 
-    loadRepoInfo(){
+    loadRepoInfo() {
         this.repoService.getRepo(+this.repoId).subscribe({
             next: (response) => {
                 this.repoData = response;
-                this.grouppedDataTypes = this.groupAppDataTypesByCategory(this.repoData.appDataTypes)
+                this.grouppedDataTypes = this.groupAppDataTypesByCategory(
+                    this.repoData.appDataTypes
+                );
                 this.topLanguages = this.getTopLanguages(this.repoData.languages);
                 this.filteredComponents = [...this.repoData?.components];
                 this.scanInfos = response.scanInfos;
-                this.scanInfosFiltered = [ ...this.scanInfos];
-                if (response.sastScan === 'RUNNING' || response.scaScan === 'RUNNING' ||
-                    response.secretsScan === 'RUNNING' || response.iacScan === 'RUNNING' ){
+                this.scanInfosFiltered = [...this.scanInfos];
+                if (
+                    response.sastScan === 'RUNNING' ||
+                    response.scaScan === 'RUNNING' ||
+                    response.secretsScan === 'RUNNING' ||
+                    response.iacScan === 'RUNNING'
+                ) {
                     this.scanRunning = true;
                 }
-            }
+            },
         });
     }
-    loadFindings(){
+    loadFindings() {
         this.repoService.getFindingsDefBranch(+this.repoId).subscribe({
             next: (response) => {
                 this.vulns = response;
                 this.filteredVulns = [...this.vulns];
                 this.counts = this.countFindings(this.vulns);
                 this.applyFilters();
-
-            }
+            },
         });
     }
-    loadFindingStats(){
+    loadFindingStats() {
         this.repoService.getFindingStats(+this.repoId).subscribe({
             next: (response) => {
-                this.codeRepoFindingStats = response.sort((a: CodeRepoFindingStats, b: CodeRepoFindingStats) =>
-                    new Date(a.dateInserted).getTime() - new Date(b.dateInserted).getTime()
+                this.codeRepoFindingStats = response.sort(
+                    (a: CodeRepoFindingStats, b: CodeRepoFindingStats) =>
+                        new Date(a.dateInserted).getTime() -
+                        new Date(b.dateInserted).getTime()
                 );
                 this.prepareChartData();
-            }
+            },
         });
     }
-    loadSourceStats(){
+    loadSourceStats() {
         this.repoService.getSourceStats(+this.repoId).subscribe({
             next: (response) => {
                 this.sourceStats = response;
@@ -347,15 +404,29 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
                     labels: ['SAST', 'SCA', 'Secrets', 'IaC'],
                     datasets: [
                         {
-                            data: [this.sourceStats.sast, this.sourceStats.sca, this.sourceStats.secrets, this.sourceStats.iac],
-                            backgroundColor: ['#FF6384', '#36A2EB', '#3eabb7', '#FFCE12'],
-                            hoverBackgroundColor: ['#FF6384', '#36A2EB', '#449a77', '#FFCE12']
-                        }
-                    ]
+                            data: [
+                                this.sourceStats.sast,
+                                this.sourceStats.sca,
+                                this.sourceStats.secrets,
+                                this.sourceStats.iac,
+                            ],
+                            backgroundColor: [
+                                '#FF6384',
+                                '#36A2EB',
+                                '#3eabb7',
+                                '#FFCE12',
+                            ],
+                            hoverBackgroundColor: [
+                                '#FF6384',
+                                '#36A2EB',
+                                '#449a77',
+                                '#FFCE12',
+                            ],
+                        },
+                    ],
                 };
-            }
+            },
         });
-
     }
     get randomData() {
         return Math.round(Math.random() * 100);
@@ -368,7 +439,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
             next: (response) => {
                 this.singleVuln = response;
                 this.cdr.markForCheck();
-            }
+            },
         });
     }
 
@@ -409,21 +480,24 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
     }
 
     applyFilters() {
-        this.filteredVulns = this.vulns.filter(vuln => {
-            const matchesFilters = Object.keys(this.filters).every(key => {
+        this.filteredVulns = this.vulns.filter((vuln) => {
+            const matchesFilters = Object.keys(this.filters).every((key) => {
                 const filterValue = this.filters[key];
                 if (!filterValue) return true;
                 const vulnValue = (vuln as any)[key];
-                return vulnValue.toString().toLowerCase().includes(filterValue.toLowerCase());
+                return vulnValue
+                    .toString()
+                    .toLowerCase()
+                    .includes(filterValue.toLowerCase());
             });
 
-            const matchesStatus = (this.showRemoved || vuln.status !== 'REMOVED') && (this.showSuppressed || vuln.status !== 'SUPRESSED');
+            const matchesStatus =
+                (this.showRemoved || vuln.status !== 'REMOVED') &&
+                (this.showSuppressed || vuln.status !== 'SUPRESSED');
 
             return matchesFilters && matchesStatus;
         });
     }
-
-
 
     handleDetailsModal(visible: boolean) {
         this.detailsModal = visible;
@@ -433,8 +507,12 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
         this.detailsModal = false;
     }
 
-    getTopLanguages(languages: { [name: string]: number }): { name: string, value: number, color: string }[] {
-        const colors = [ 'success', 'warning', 'primary', 'secondary', 'info'];
+    getTopLanguages(languages: { [name: string]: number }): {
+        name: string;
+        value: number;
+        color: string;
+    }[] {
+        const colors = ['success', 'warning', 'primary', 'secondary', 'info'];
 
         return Object.entries(languages)
             .map(([name, value], index) => ({ name, value, color: colors[index] }))
@@ -442,21 +520,22 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
             .slice(0, 4); // Take the top 4 entries
     }
 
-
     refreshData() {
-        alert("clicked")
+        alert('clicked');
     }
     suppressFinding() {
         // Implement your logic to handle the suppression of the finding here
         if (this.selectedRowId && this.suppressReason) {
-            this.repoService.supressFinding(+this.repoId, this.selectedRowId, this.suppressReason).subscribe({
-                next: (response) => {
-                    this.toastStatus = "success"
-                    this.toastMessage = "Successfully Suppressed finding"
-                    this.toggleToast();
-                    this.loadFindings();
-                }
-            });
+            this.repoService
+                .supressFinding(+this.repoId, this.selectedRowId, this.suppressReason)
+                .subscribe({
+                    next: (response) => {
+                        this.toastStatus = 'success';
+                        this.toastMessage = 'Successfully Suppressed finding';
+                        this.toggleToast();
+                        this.loadFindings();
+                    },
+                });
         }
         this.closeModal();
         this.applyFilters();
@@ -465,8 +544,8 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
     position = 'top-end';
     visible = false;
     percentage = 0;
-    toastMessage: string = ""
-    toastStatus: string = ""
+    toastMessage: string = '';
+    toastStatus: string = '';
 
     toggleToast() {
         this.visible = !this.visible;
@@ -478,14 +557,16 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
 
     reactivateFinding() {
         if (this.selectedRowId) {
-            this.repoService.reActivateFinding(+this.repoId, this.selectedRowId).subscribe({
-                next: (response) => {
-                    this.toastStatus = "success"
-                    this.toastMessage = "Successfully Re-Activated finding"
-                    this.toggleToast();
-                    this.loadFindings();
-                }
-            });
+            this.repoService
+                .reActivateFinding(+this.repoId, this.selectedRowId)
+                .subscribe({
+                    next: (response) => {
+                        this.toastStatus = 'success';
+                        this.toastMessage = 'Successfully Re-Activated finding';
+                        this.toggleToast();
+                        this.loadFindings();
+                    },
+                });
         }
         this.closeModal();
     }
@@ -498,10 +579,10 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
                 this.filteredVulns = [...this.vulns];
                 this.counts = this.countFindings(this.vulns);
                 this.applyFilters();
-                this.toastStatus = "success"
-                this.toastMessage = "Successfully switched to another branch"
+                this.toastStatus = 'success';
+                this.toastMessage = 'Successfully switched to another branch';
                 this.toggleToast();
-            }
+            },
         });
         // Call a method to handle the selected branch ID
     }
@@ -510,11 +591,11 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
         const counts = {
             critical: 0,
             high: 0,
-            rest: 0
+            rest: 0,
         };
 
-        vulnerabilities.forEach(vuln => {
-            if ((vuln.status === 'EXISTING' || vuln.status === 'NEW')) {
+        vulnerabilities.forEach((vuln) => {
+            if (vuln.status === 'EXISTING' || vuln.status === 'NEW') {
                 if (vuln.severity === 'CRITICAL') {
                     counts.critical++;
                 } else if (vuln.severity === 'HIGH') {
@@ -531,15 +612,17 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
     groupAppDataTypesByCategory(appDataTypes: AppDataType[]): GroupedAppDataType[] {
         const categoryGroupMap: { [key: string]: AppDataType[] } = {};
 
-        appDataTypes.forEach(appDataType => {
-            appDataType.categoryGroups.forEach(categoryGroup => {
+        appDataTypes.forEach((appDataType) => {
+            appDataType.categoryGroups.forEach((categoryGroup) => {
                 if (!categoryGroupMap[categoryGroup]) {
                     categoryGroupMap[categoryGroup] = [];
                 }
 
                 // Check if appDataType already exists in the category group based on a unique property
-                const isDuplicate = categoryGroupMap[categoryGroup].some(existingAppDataType =>
-                    existingAppDataType.id === appDataType.id || existingAppDataType.name === appDataType.name
+                const isDuplicate = categoryGroupMap[categoryGroup].some(
+                    (existingAppDataType) =>
+                        existingAppDataType.id === appDataType.id ||
+                        existingAppDataType.name === appDataType.name
                 );
 
                 if (!isDuplicate) {
@@ -548,13 +631,11 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
             });
         });
 
-        return Object.keys(categoryGroupMap).map(categoryGroup => ({
+        return Object.keys(categoryGroupMap).map((categoryGroup) => ({
             categoryGroup,
-            appDataTypes: categoryGroupMap[categoryGroup]
+            appDataTypes: categoryGroupMap[categoryGroup],
         }));
     }
-
-
 
     toggleAccordion(index: number): void {
         this.isAccordionVisible[index] = !this.isAccordionVisible[index];
@@ -564,11 +645,22 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
         return Object.keys(obj);
     }
     prepareChartData() {
-        const labels = this.codeRepoFindingStats.map(stat => this.datePipe.transform(stat.dateInserted, 'dd MMM'));
-        const sastData = this.codeRepoFindingStats.map(stat => stat.sastCritical + stat.sastHigh + stat.sastMedium + stat.sastRest);
-        const iacData = this.codeRepoFindingStats.map(stat => stat.iacCritical + stat.iacHigh + stat.iacMedium + stat.iacRest);
-        const secretsData = this.codeRepoFindingStats.map(stat => stat.secretsCritical + stat.secretsHigh + stat.secretsMedium + stat.secretsRest);
-        const scaData = this.codeRepoFindingStats.map(stat => stat.scaCritical + stat.scaHigh + stat.scaMedium + stat.scaRest);
+        const labels = this.codeRepoFindingStats.map((stat) =>
+            this.datePipe.transform(stat.dateInserted, 'dd MMM')
+        );
+        const sastData = this.codeRepoFindingStats.map(
+            (stat) => stat.sastCritical + stat.sastHigh + stat.sastMedium + stat.sastRest
+        );
+        const iacData = this.codeRepoFindingStats.map(
+            (stat) => stat.iacCritical + stat.iacHigh + stat.iacMedium + stat.iacRest
+        );
+        const secretsData = this.codeRepoFindingStats.map(
+            (stat) =>
+                stat.secretsCritical + stat.secretsHigh + stat.secretsMedium + stat.secretsRest
+        );
+        const scaData = this.codeRepoFindingStats.map(
+            (stat) => stat.scaCritical + stat.scaHigh + stat.scaMedium + stat.scaRest
+        );
 
         this.chartLineData = {
             labels: labels,
@@ -579,7 +671,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
                     borderColor: 'rgba(220, 220, 220, 1)',
                     pointBackgroundColor: 'rgba(220, 220, 220, 1)',
                     pointBorderColor: '#fff',
-                    data: sastData
+                    data: sastData,
                 },
                 {
                     label: 'IaC',
@@ -587,7 +679,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
                     borderColor: 'rgb(71, 180, 234)',
                     pointBackgroundColor: 'rgb(71, 163, 211)',
                     pointBorderColor: '#bd7777',
-                    data: iacData
+                    data: iacData,
                 },
                 {
                     label: 'Secrets',
@@ -595,7 +687,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
                     borderColor: 'rgb(28, 197, 45)',
                     pointBackgroundColor: 'rgb(102, 190, 107)',
                     pointBorderColor: '#bd7777',
-                    data: secretsData
+                    data: secretsData,
                 },
                 {
                     label: 'SCA',
@@ -603,22 +695,30 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
                     borderColor: 'rgb(210, 124, 56)',
                     pointBackgroundColor: 'rgb(128, 101, 56)',
                     pointBorderColor: '#bd7777',
-                    data: scaData
-                }
-            ]
+                    data: scaData,
+                },
+            ],
         };
     }
     getLastOpenedFindings(): number {
-        return this.codeRepoFindingStats.length > 0 ? this.codeRepoFindingStats[this.codeRepoFindingStats.length - 1].openedFindings : 0;
+        return this.codeRepoFindingStats.length > 0
+            ? this.codeRepoFindingStats[this.codeRepoFindingStats.length - 1].openedFindings
+            : 0;
     }
     getLastRemovedFinding(): number {
-        return this.codeRepoFindingStats.length > 0 ? this.codeRepoFindingStats[this.codeRepoFindingStats.length - 1].removedFindings : 0;
+        return this.codeRepoFindingStats.length > 0
+            ? this.codeRepoFindingStats[this.codeRepoFindingStats.length - 1].removedFindings
+            : 0;
     }
     getLastFixTime(): number {
-        return this.codeRepoFindingStats.length > 0 ? this.codeRepoFindingStats[this.codeRepoFindingStats.length - 1].averageFixTime : 0;
+        return this.codeRepoFindingStats.length > 0
+            ? this.codeRepoFindingStats[this.codeRepoFindingStats.length - 1].averageFixTime
+            : 0;
     }
     getLastRevievedFinding(): number {
-        return this.codeRepoFindingStats.length > 0 ? this.codeRepoFindingStats[this.codeRepoFindingStats.length - 1].reviewedFindings : 0;
+        return this.codeRepoFindingStats.length > 0
+            ? this.codeRepoFindingStats[this.codeRepoFindingStats.length - 1].reviewedFindings
+            : 0;
     }
 
     updateFilterGroup(event: any) {
@@ -640,11 +740,18 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
     }
 
     applyFiltersNew() {
-        this.filteredComponents = this.repoData?.components.filter((component: { groupid: string; name: string; version: string; }) => {
-            return (!this.filtersNew['group'] || component.groupid?.toLowerCase().includes(this.filtersNew['group']))
-                && (!this.filtersNew['name'] || component.name?.toLowerCase().includes(this.filtersNew['name']))
-                && (!this.filtersNew['version'] || component.version?.toLowerCase().includes(this.filtersNew['version']));
-        });
+        this.filteredComponents = this.repoData?.components.filter(
+            (component: { groupid: string; name: string; version: string }) => {
+                return (
+                    (!this.filtersNew['group'] ||
+                        component.groupid?.toLowerCase().includes(this.filtersNew['group'])) &&
+                    (!this.filtersNew['name'] ||
+                        component.name?.toLowerCase().includes(this.filtersNew['name'])) &&
+                    (!this.filtersNew['version'] ||
+                        component.version?.toLowerCase().includes(this.filtersNew['version']))
+                );
+            }
+        );
     }
 
     protected readonly JSON = JSON;
@@ -652,11 +759,69 @@ export class ShowRepoComponent implements OnInit, AfterViewInit{
     runScan() {
         this.repoService.runScan(+this.repoId).subscribe({
             next: (response) => {
-                this.toastStatus = "success"
-                this.toastMessage = "Successfully requested a scan"
+                this.toastStatus = 'success';
+                this.toastMessage = 'Successfully requested a scan';
                 this.toggleToast();
                 this.loadRepoInfo();
-            }
+            },
         });
+    }
+
+    toggleBulkAction() {
+        this.bulkActionMode = !this.bulkActionMode;
+        if (!this.bulkActionMode) {
+            this.selectedFindings = [];
+        }
+    }
+
+    onSelectFinding(id: number, event: any) {
+        if (event.target.checked) {
+            if (!this.selectedFindings.includes(id)) {
+                this.selectedFindings.push(id);
+            }
+        } else {
+            this.selectedFindings = this.selectedFindings.filter(
+                (findingId) => findingId !== id
+            );
+        }
+    }
+
+    isSelected(id: number): boolean {
+        return this.selectedFindings.includes(id);
+    }
+
+    selectAllFindings(event: any) {
+        if (event.target.checked) {
+            this.selectedFindings = this.filteredVulns.map((vuln) => vuln.id);
+        } else {
+            this.selectedFindings = [];
+        }
+    }
+
+    suppressSelectedFindings() {
+        console.log('Selected Findings IDs:', this.selectedFindings);
+        // Implement suppression logic here
+        // For example, call a service method to suppress these findings
+        if (this.selectedFindings.length > 0) {
+            const suppressReason = 'FALSE_POSITIVE'; // As per your requirement
+            this.repoService
+                .suppressMultipleFindings(+this.repoId, this.selectedFindings)
+                .subscribe({
+                    next: (response) => {
+                        this.toastStatus = 'success';
+                        this.toastMessage = 'Successfully Suppressed selected findings';
+                        this.toggleToast();
+                        this.loadFindings();
+                        // Reset selections
+                        this.selectedFindings = [];
+                        this.bulkActionMode = false;
+                    },
+                    error: (error) => {
+                        this.toastStatus = 'danger';
+                        this.toastMessage = 'Failed to suppress selected findings';
+                        this.toggleToast();
+                    },
+                });
+        }
     }
 }

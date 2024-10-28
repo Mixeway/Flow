@@ -33,4 +33,5 @@ public interface CodeRepoRepository extends CrudRepository<CodeRepo, Long> {
     @Query("SELECT c FROM CodeRepo c JOIN FETCH c.team WHERE c.team IN :teams")
     List<CodeRepo> findByTeamIn(@Param("teams") List<Team> teams);
 
+    List<CodeRepo> findByTeam(Team team);
 }

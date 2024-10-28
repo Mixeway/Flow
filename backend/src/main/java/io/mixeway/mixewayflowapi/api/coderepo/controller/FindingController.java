@@ -12,9 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.List;
@@ -62,6 +60,15 @@ public class FindingController {
     public ResponseEntity<StatusDTO> supressFinding(@PathVariable("id") Long id, @PathVariable("finding") Long findingId, @PathVariable("reason") String reason, Principal principal){
         try {
             return new ResponseEntity<>(findingService.supressFinding(id,findingId,reason,principal), HttpStatus.OK);
+        } catch (Exception e){
+            return new ResponseEntity<>( HttpStatus.BAD_REQUEST);
+        }
+    }
+    @PreAuthorize("hasAuthority('USER')")
+    @PostMapping(value= "/api/v1/coderepo/{id}/supress")
+    public ResponseEntity<StatusDTO> supressFindingList(@PathVariable("id") Long id, @RequestBody List<Long> findingIds, Principal principal){
+        try {
+            return new ResponseEntity<>(findingService.supressFindingBulk(id,findingIds,principal), HttpStatus.OK);
         } catch (Exception e){
             return new ResponseEntity<>( HttpStatus.BAD_REQUEST);
         }

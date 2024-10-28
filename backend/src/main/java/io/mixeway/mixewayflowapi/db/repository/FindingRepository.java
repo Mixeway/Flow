@@ -100,5 +100,9 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
         LIMIT 10
         """, nativeQuery = true)
     List<ReviewedVulnerabilityProjection> findTop10SuppressedFindingsByCoderepoIds(@Param("coderepoIds") List<Long> coderepoIds);
+
+    List<Finding> findByVulnerabilityAndCodeRepoIn(Vulnerability vulnerability, List<CodeRepo> byTeam);
+
+    List<Finding> findByCodeRepoAndVulnerability(CodeRepo codeRepo, Vulnerability vulnerability);
 }
 

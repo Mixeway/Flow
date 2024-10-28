@@ -41,4 +41,9 @@ export class RepoService {
     runScan(id: number): Observable<any> {
         return this.http.get<any>(this.loginUrl + '/api/v1/coderepo/' + id + '/run',{ withCredentials: true });
     }
+
+    suppressMultipleFindings(number: number, selectedFindings: number[]) {
+        return this.http.post<any>(this.loginUrl + '/api/v1/coderepo/' + number+ '/supress', selectedFindings,{ withCredentials: true });
+
+    }
 }

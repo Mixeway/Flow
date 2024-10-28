@@ -84,4 +84,15 @@ public class FindingService {
             return null;
         }
     }
+
+    public StatusDTO supressFindingBulk(Long id, List<Long> findingIds, Principal principal) {
+        CodeRepo codeRepo = findCodeRepoService.findById(id, principal);
+        for (Long findingId: findingIds) {
+            Optional<Finding> finding = findFindingService.findById(findingId);
+            if (finding.isPresent() && finding.get().getCodeRepo().equals(codeRepo)) {
+                updateFindingService.suppressFinding(finding.get(), Finding.SuppressedReason.FALSE_POSITIVE.toString());
+            }
+        }
+        return new StatusDTO("OK");
+    }
 }

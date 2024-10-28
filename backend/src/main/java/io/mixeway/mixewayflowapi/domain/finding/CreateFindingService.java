@@ -5,6 +5,7 @@ import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.db.entity.Finding;
 import io.mixeway.mixewayflowapi.db.entity.Vulnerability;
 import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
+import io.mixeway.mixewayflowapi.domain.suppressrule.CheckSuppressRuleService;
 import io.mixeway.mixewayflowapi.domain.vulnerability.GetOrCreateVulnerabilityService;
 import io.mixeway.mixewayflowapi.integrations.scanner.iac.dto.KicsReport;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.BearerScanSecurity;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 public class CreateFindingService {
     private final FindingRepository findingRepository;
     private final GetOrCreateVulnerabilityService getOrCreateVulnerabilityService;
+    private final CheckSuppressRuleService checkSuppressRuleService;
 
     @Transactional
     public void saveFindings(List<Finding> newFindings, CodeRepoBranch repoWhereFindingWasFound, CodeRepo repoInWhichFindingWasFound, Finding.Source source) {
@@ -52,7 +54,7 @@ public class CreateFindingService {
                 existingFindingsMap.remove(key);
             } else {
                 newFinding.updateStatus(Finding.Status.NEW, null);
-                findingRepository.save(newFinding);
+                checkSuppressRuleService.validate(findingRepository.save(newFinding));
             }
         }
 
