@@ -11,7 +11,7 @@ RUN apk add --no-cache python3 make g++
 COPY package.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 # Copy Angular application code
 COPY . .
