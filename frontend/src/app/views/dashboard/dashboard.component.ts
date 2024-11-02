@@ -138,7 +138,8 @@ export class DashboardComponent implements OnInit {
       repoType: ['gitlab', Validators.required]
     });
     this.newTeamForm = this.fb.group({
-      name: ['', Validators.required]
+      name: ['', Validators.required],
+      remoteIdentifier: ['']
     });
   }
 

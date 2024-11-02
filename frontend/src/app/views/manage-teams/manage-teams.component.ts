@@ -1,24 +1,24 @@
 import {Component, OnInit} from '@angular/core';
 import {
-  ButtonDirective,
-  CardBodyComponent,
-  CardComponent,
-  CardHeaderComponent,
-  ColComponent,
-  ListGroupDirective,
-  ListGroupItemDirective,
-  ModalBodyComponent,
-  ModalComponent,
-  ModalFooterComponent,
-  ModalHeaderComponent,
-  ModalTitleDirective,
-  RowComponent,
-  InputGroupComponent,
-  InputGroupTextDirective,
-  ToasterComponent,
-  ToastComponent,
-  ToastBodyComponent,
-  ToastHeaderComponent,
+    ButtonDirective,
+    CardBodyComponent,
+    CardComponent,
+    CardHeaderComponent,
+    ColComponent,
+    ListGroupDirective,
+    ListGroupItemDirective,
+    ModalBodyComponent,
+    ModalComponent,
+    ModalFooterComponent,
+    ModalHeaderComponent,
+    ModalTitleDirective,
+    RowComponent,
+    InputGroupComponent,
+    InputGroupTextDirective,
+    ToasterComponent,
+    ToastComponent,
+    ToastBodyComponent,
+    ToastHeaderComponent, FormControlDirective,
 } from "@coreui/angular";
 import {NgxDatatableModule} from "@swimlane/ngx-datatable";
 import {IconDirective, IconSetService} from "@coreui/icons-angular";
@@ -53,6 +53,7 @@ interface Team {
 interface TeamDto {
   name: string;
   users: number[];
+  remoteIdentifier: string;
 }
 interface ChangeTeamDto {
   id: number;
@@ -62,34 +63,35 @@ interface ChangeTeamDto {
 @Component({
   selector: 'app-manage-teams',
   standalone: true,
-  imports: [
-    RowComponent,
-    ColComponent,
-    CardComponent,
-    CardBodyComponent,
-    CardHeaderComponent,
-    NgxDatatableModule,
-    IconDirective,
-    ListGroupDirective,
-    ListGroupItemDirective,
-    NgForOf,
-    ModalComponent,
-    ModalHeaderComponent,
-    ModalTitleDirective,
-    ModalBodyComponent,
-    ModalFooterComponent,
-    ButtonDirective,
-    InputGroupComponent,
-    FormsModule,
-    ReactiveFormsModule,
-    CommonModule,
-    AsyncPipe,
-    InputGroupTextDirective,
-    ToasterComponent,
-    ToastComponent,
-    ToastBodyComponent,
-    ToastHeaderComponent,
-  ],
+    imports: [
+        RowComponent,
+        ColComponent,
+        CardComponent,
+        CardBodyComponent,
+        CardHeaderComponent,
+        NgxDatatableModule,
+        IconDirective,
+        ListGroupDirective,
+        ListGroupItemDirective,
+        NgForOf,
+        ModalComponent,
+        ModalHeaderComponent,
+        ModalTitleDirective,
+        ModalBodyComponent,
+        ModalFooterComponent,
+        ButtonDirective,
+        InputGroupComponent,
+        FormsModule,
+        ReactiveFormsModule,
+        CommonModule,
+        AsyncPipe,
+        InputGroupTextDirective,
+        ToasterComponent,
+        ToastComponent,
+        ToastBodyComponent,
+        ToastHeaderComponent,
+        FormControlDirective,
+    ],
   templateUrl: './manage-teams.component.html',
   styleUrls: ['./manage-teams.component.scss']
 })
@@ -107,6 +109,7 @@ export class ManageTeamsComponent implements OnInit{
 
   addTeamForm = this.fb.group({
     name: ['', Validators.required],
+    remoteIdentifier: [''],
     users: [[] as number[]],
     userInput: new FormControl()
   });
@@ -201,7 +204,8 @@ export class ManageTeamsComponent implements OnInit{
     if (this.addTeamForm.valid) {
       const team: TeamDto = {
         users: this.addTeamForm.value.users || [],
-        name: this.addTeamForm.value.name || ""
+        name: this.addTeamForm.value.name || "",
+        remoteIdentifier: this.addTeamForm.value.remoteIdentifier || ""
       }
       this.teamService.create(team).subscribe({
         next: (response) => {

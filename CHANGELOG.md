@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 ## [1.0.3] - 2024-09-25
 
 ### Introduced
+- Change threat intel from SQL Query to view in order to increase the performance
+- Possibility to add Remote identifier for the teams
+
+### Fixed
+- Logging when webhook received for project that is not onboarded yet instead of stacktrace
+- Problem with link generation on threat intelligence view
+
+
+## [1.0.3] - 2024-09-25
+
+### Introduced
 - Bulk action on findings
 - Possibility to define supress rules
 

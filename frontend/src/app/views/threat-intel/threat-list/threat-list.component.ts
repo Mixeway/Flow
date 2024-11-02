@@ -127,6 +127,4 @@ export class ThreatListComponent implements AfterViewInit, OnChanges{
             }
         }
     }
-
-
 }

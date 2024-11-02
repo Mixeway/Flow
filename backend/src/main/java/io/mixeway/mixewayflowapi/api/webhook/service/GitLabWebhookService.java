@@ -23,19 +23,27 @@ public class GitLabWebhookService {
     private final FindCodeRepoService findCodeRepoService;
     private final GetOrCreateCodeRepoBranchService getOrCreateCodeRepoBranchService;
 
-    public void processPush(GLPushEventDTO gLPushEventDTO) throws ScanException, IOException, InterruptedException {
-        CodeRepo codeRepo = findCodeRepoService.findByRemoteId(gLPushEventDTO.getProject().getId());
-        CodeRepoBranch codeRepoBranch = getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(gLPushEventDTO.getRef().replace("refs/heads/",""), codeRepo);
-        scanManagerService.scanRepository(codeRepo,codeRepoBranch, gLPushEventDTO.getAfter(), null);
+    public void processPush(GLPushEventDTO gLPushEventDTO)  {
+        try {
+            CodeRepo codeRepo = findCodeRepoService.findByRemoteId(gLPushEventDTO.getProject().getId());
+            CodeRepoBranch codeRepoBranch = getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(gLPushEventDTO.getRef().replace("refs/heads/", ""), codeRepo);
+            scanManagerService.scanRepository(codeRepo, codeRepoBranch, gLPushEventDTO.getAfter(), null);
+        } catch (Exception e) {
+            log.error("[GitLab Push] There is a problem with processing push webhook for {}, probably repo need to be onboarded first.", gLPushEventDTO.getProject().getWeb_url());
+        }
     }
 
-    public void processMerge(GLMergeEventDTO gLMergeEventDTO) throws ScanException, IOException, InterruptedException {
-        CodeRepo codeRepo = findCodeRepoService.findByRemoteId(gLMergeEventDTO.getProject().getId());
-        CodeRepoBranch codeRepoBranch = getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(gLMergeEventDTO.getObjectAttributes().getSourceBranch(), codeRepo);
-        if (gLMergeEventDTO.getObjectAttributes().getState().equals("opened")) {
-            log.info("[GitLab Webhook] Received open Merge Request event, proceeding with scan..");
-            scanManagerService.scanRepository(codeRepo, codeRepoBranch, gLMergeEventDTO.getObjectAttributes().getLastCommitDTO().getId(),
-                    gLMergeEventDTO.getObjectAttributes().getIid());
+    public void processMerge(GLMergeEventDTO gLMergeEventDTO)  {
+        try {
+            CodeRepo codeRepo = findCodeRepoService.findByRemoteId(gLMergeEventDTO.getProject().getId());
+            CodeRepoBranch codeRepoBranch = getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(gLMergeEventDTO.getObjectAttributes().getSourceBranch(), codeRepo);
+            if (gLMergeEventDTO.getObjectAttributes().getState().equals("opened")) {
+                log.info("[GitLab Webhook] Received open Merge Request event, proceeding with scan..");
+                scanManagerService.scanRepository(codeRepo, codeRepoBranch, gLMergeEventDTO.getObjectAttributes().getLastCommitDTO().getId(),
+                        gLMergeEventDTO.getObjectAttributes().getIid());
+            }
+        } catch (Exception e) {
+            log.error("[GitLab Merge] There is a problem with processing push webhook for {}, probably repo need to be onboarded first.", gLMergeEventDTO.getProject().getWeb_url());
         }
     }
 }

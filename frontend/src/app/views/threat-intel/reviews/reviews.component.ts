@@ -7,6 +7,7 @@ import {brandSet, freeSet} from "@coreui/icons";
 
 interface Vulnerability {
     name: string;
+    repoId: number;
     repositoryUrl: string;
     dateDeleted?: Date;
     status?: string; // For reviewed vulnerabilities
@@ -73,4 +74,5 @@ export class ReviewsComponent implements OnInit{
             }
         });
     }
+
 }

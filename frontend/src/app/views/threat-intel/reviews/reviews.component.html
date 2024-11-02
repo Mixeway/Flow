@@ -23,7 +23,7 @@
                     <div class="d-flex justify-content-between small text-muted mt-1">
                         <!-- Repository URL under the name -->
                         <div>
-                            <a [href]="vuln.repositoryUrl" target="_blank">{{ vuln.repositoryUrl }}</a>
+                            <a [href]="'/#/show-repo/' + vuln.repoId" target="_blank">{{ vuln.repositoryUrl }}</a>
                         </div>
                         <!-- Date Deleted under the icon -->
                         <div>
@@ -59,7 +59,7 @@
                             <strong>{{ vuln.name }}</strong>
                             <!-- Small link below the name -->
                             <div class="small text-muted">
-                                <a [href]="vuln.repositoryUrl" target="_blank">{{ vuln.repositoryUrl }}</a>
+                                <a [href]="'/#/show-repo/' + vuln.repoId" target="_blank">{{ vuln.repositoryUrl }}</a>
                             </div>
                         </div>
                         <!-- Status with Emoji -->

@@ -3,6 +3,7 @@ package io.mixeway.mixewayflowapi.db.projection;
 import java.math.BigDecimal;
 
 public interface ItemProjection {
+    Long getCoderepoId();
     String getName();
     String getUrgency();
     int getCount();
@@ -10,5 +11,5 @@ public interface ItemProjection {
     boolean isPii();
     boolean isExploitAvailable();
     String[] getProjectNames();
-    Long[] getProjectIds();  // Updated to retrieve project IDs
+    Long[] getProjectIds();
 }

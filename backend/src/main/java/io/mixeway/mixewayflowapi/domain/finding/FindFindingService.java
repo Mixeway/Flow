@@ -127,7 +127,8 @@ public class FindFindingService {
                 .map(proj -> new RemovedVulnerabilityDTO(
                         proj.getName(),
                         proj.getRepositoryUrl(),
-                        proj.getDateDeleted()
+                        proj.getDateDeleted(),
+                        proj.getCodeRepoId()
                 ))
                 .collect(Collectors.toList());
     }
@@ -144,7 +145,8 @@ public class FindFindingService {
                 .map(proj -> new ReviewedVulnerabilityDTO(
                         proj.getName(),
                         proj.getRepositoryUrl(),
-                        proj.getStatus()
+                        proj.getStatus(),
+                        proj.getCodeRepoId()
                 ))
                 .collect(Collectors.toList());
     }

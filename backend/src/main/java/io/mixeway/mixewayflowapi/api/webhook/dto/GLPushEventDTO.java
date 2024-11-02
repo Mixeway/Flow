@@ -12,6 +12,7 @@ public class GLPushEventDTO {
     @Data
     public static class ProjectDTO {
         private Long id;
+        private String web_url;
 
     }
 }

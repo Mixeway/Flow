@@ -35,7 +35,7 @@ public class TeamController {
     @PostMapping(value= "/api/v1/team/create")
     public ResponseEntity<StatusDTO> createTeam(@Valid @RequestBody CreateTeamRequestDto createTeamRequestDto, Principal principal){
         try {
-            createTeamService.createTeam(createTeamRequestDto.getName(),"empty", createTeamRequestDto.getUsers(), principal);
+            createTeamService.createTeam(createTeamRequestDto.getName(),createTeamRequestDto.getRemoteIdentifier(), createTeamRequestDto.getUsers(), principal);
             return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.OK);
         } catch (Exception e){
             log.error("[Team] Error Creating team {} by {}", createTeamRequestDto.getName(), principal.getName());
