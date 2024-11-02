@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.0.3] - 2024-09-25
+## [1.0.4] - 2024-11-02
 
 ### Introduced
 - Change threat intel from SQL Query to view in order to increase the performance
