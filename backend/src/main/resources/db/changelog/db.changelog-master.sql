@@ -374,3 +374,47 @@ CREATE INDEX idx_suppress_rule_owner ON suppress_rule(owner_id);
 CREATE INDEX idx_suppress_rule_vulnerability ON suppress_rule(vulnerability_id);
 CREATE INDEX idx_suppress_rule_team ON suppress_rule(team_id);
 CREATE INDEX idx_suppress_rule_coderepo ON suppress_rule(coderepo_id);
+
+--changeset siewer:item-view
+CREATE VIEW combined_items_view AS
+SELECT
+    c.id AS coderepo_id,
+    v.name AS name,
+    CASE
+        WHEN
+            (v.epss > 0.5)
+                OR (v.epss > 0.2 AND v.epss < 0.5 AND COUNT(CASE WHEN adtcg.category_group = 'PII' THEN 1 END) > 0)
+                OR (v.epss > 0.1 AND v.exploit_exists = TRUE)
+                OR (MAX(CASE WHEN f.source IN ('IAC', 'SAST', 'SECRETS') AND f.severity = 'CRITICAL' THEN 1 ELSE 0 END) = 1)
+            THEN 'urgent'
+        WHEN
+            ((v.epss > 0.1 AND v.epss < 0.5) AND COUNT(CASE WHEN adtcg.category_group = 'PII' THEN 1 END) = 0 AND v.exploit_exists = FALSE)
+                OR (v.epss < 0.1 AND v.exploit_exists = TRUE)
+                OR (MAX(CASE WHEN f.source IN ('IAC', 'SAST', 'SECRETS') AND f.severity = 'HIGH' THEN 1 ELSE 0 END) = 1)
+            THEN 'notable'
+        ELSE NULL
+        END AS urgency,
+    COUNT(DISTINCT c.id) AS count,
+    v.epss AS epss,
+    CASE WHEN COUNT(CASE WHEN adtcg.category_group = 'PII' THEN 1 END) > 0 THEN TRUE ELSE FALSE END AS pii,
+    v.exploit_exists AS exploitAvailable,
+    ARRAY_AGG(DISTINCT c.name) AS projectNames,
+    ARRAY_AGG(DISTINCT c.id) AS projectIds
+FROM finding f
+         JOIN vulnerability v ON f.vulnerability_id = v.id
+         JOIN coderepo c ON f.coderepo_id = c.id
+         LEFT JOIN app_data_type adt ON adt.coderepo_id = c.id
+         LEFT JOIN app_data_type_category_groups adtcg ON adtcg.app_data_type_id = adt.id
+WHERE f.status IN ('NEW', 'EXISTING')
+GROUP BY c.id, v.name, v.epss, v.exploit_exists
+HAVING
+    (v.epss > 0.5)
+    OR (v.epss > 0.2 AND v.epss < 0.5 AND COUNT(CASE WHEN adtcg.category_group = 'PII' THEN 1 END) > 0)
+    OR (v.epss > 0.1 AND v.exploit_exists = TRUE)
+    OR ((v.epss > 0.1 AND v.epss < 0.5) AND COUNT(CASE WHEN adtcg.category_group = 'PII' THEN 1 END) = 0 AND v.exploit_exists = FALSE)
+    OR (v.epss < 0.1 AND v.exploit_exists = TRUE)
+    OR (MAX(CASE WHEN f.source IN ('IAC', 'SAST', 'SECRETS') AND f.severity = 'CRITICAL' THEN 1 ELSE 0 END) = 1)
+    OR (MAX(CASE WHEN f.source IN ('IAC', 'SAST', 'SECRETS') AND f.severity = 'HIGH' THEN 1 ELSE 0 END) = 1);
+
+--changeset siewer:change_location
+ALTER TABLE finding ALTER COLUMN location TYPE VARCHAR(600);
