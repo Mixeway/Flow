@@ -3,8 +3,6 @@ package io.mixeway.mixewayflowapi.api.webhook.service;
 import ch.qos.logback.core.spi.ScanException;
 import io.mixeway.mixewayflowapi.api.webhook.dto.GHMergeEventDTO;
 import io.mixeway.mixewayflowapi.api.webhook.dto.GHPushEventDTO;
-import io.mixeway.mixewayflowapi.api.webhook.dto.GLMergeEventDTO;
-import io.mixeway.mixewayflowapi.api.webhook.dto.GLPushEventDTO;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;

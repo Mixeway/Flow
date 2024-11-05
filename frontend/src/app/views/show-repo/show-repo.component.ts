@@ -2,7 +2,7 @@ import {
     AfterViewInit,
     ChangeDetectorRef,
     Component,
-    OnInit,
+    OnInit, ViewEncapsulation,
 } from '@angular/core';
 import {
     MarkdownComponent,
@@ -61,7 +61,7 @@ import {
     cilGraph,
     cilTrash,
     cilVolumeOff,
-    freeSet,
+    cilMagnifyingGlass, freeSet,
 } from '@coreui/icons';
 import { ChartjsComponent } from '@coreui/angular-chartjs';
 import { ChartData } from 'chart.js/dist/types';
@@ -183,6 +183,7 @@ export interface CodeRepoFindingStats {
     templateUrl: './show-repo.component.html',
     styleUrls: ['./show-repo.component.scss'],
     providers: [DatePipe, provideMarkdown()],
+    encapsulation: ViewEncapsulation.None
 })
 export class ShowRepoComponent implements OnInit, AfterViewInit {
     repoData: any;
@@ -198,9 +199,9 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         cilGraph,
         cilTrash,
         cilVolumeOff,
+        cilMagnifyingGlass,
     };
     sourceStats: FindingSourceStatDTO = new FindingSourceStatDTO();
-    //topLanguages: { name: string, value: number }[] = [];
     topLanguages: { name: string; value: number; color: string }[] = [];
     chartPieData: ChartData | undefined;
     singleVuln: SingleFindingDTO | undefined;
@@ -252,7 +253,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         },
     };
 
-    chartLineData: ChartData<'line'> = {
+    chartLineData: ChartData = {
         labels: [],
         datasets: [
             {
@@ -311,6 +312,18 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
     bulkActionMode: boolean = false;
     selectedFindings: number[] = [];
 
+    // New properties for loading indicators and limits
+    vulnerabilitiesLoading: boolean = false;
+    vulnerabilitiesLimit: number = 15;
+
+    scanInfoLoading: boolean = false;
+    scanInfoLimit: number = 15;
+
+    componentsLimit: number = 10;
+
+    // Search filter for Scan Info
+    scanInfoFilter: string = '';
+
     constructor(
         public iconSet: IconSetService,
         private repoService: RepoService,
@@ -320,7 +333,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         private cdr: ChangeDetectorRef,
         private datePipe: DatePipe
     ) {
-        iconSet.icons = { ...freeSet, ...iconSet, ...brandSet };
+        iconSet.icons = { ...brandSet, ...freeSet };
 
         this.applyFilters(); // Apply initial filters to exclude Removed and Suppressed
     }
@@ -353,6 +366,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
     }
 
     loadRepoInfo() {
+        this.scanInfoLoading = true;
         this.repoService.getRepo(+this.repoId).subscribe({
             next: (response) => {
                 this.repoData = response;
@@ -362,7 +376,8 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                 this.topLanguages = this.getTopLanguages(this.repoData.languages);
                 this.filteredComponents = [...this.repoData?.components];
                 this.scanInfos = response.scanInfos;
-                this.scanInfosFiltered = [...this.scanInfos];
+                this.applyScanInfoFilter(); // Apply filter after data is loaded
+                this.scanInfoLoading = false;
                 if (
                     response.sastScan === 'RUNNING' ||
                     response.scaScan === 'RUNNING' ||
@@ -372,15 +387,23 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                     this.scanRunning = true;
                 }
             },
+            error: () => {
+                this.scanInfoLoading = false;
+            },
         });
     }
     loadFindings() {
+        this.vulnerabilitiesLoading = true;
         this.repoService.getFindingsDefBranch(+this.repoId).subscribe({
             next: (response) => {
                 this.vulns = response;
                 this.filteredVulns = [...this.vulns];
                 this.counts = this.countFindings(this.vulns);
                 this.applyFilters();
+                this.vulnerabilitiesLoading = false;
+            },
+            error: () => {
+                this.vulnerabilitiesLoading = false;
             },
         });
     }
@@ -801,7 +824,6 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
     suppressSelectedFindings() {
         console.log('Selected Findings IDs:', this.selectedFindings);
         // Implement suppression logic here
-        // For example, call a service method to suppress these findings
         if (this.selectedFindings.length > 0) {
             const suppressReason = 'FALSE_POSITIVE'; // As per your requirement
             this.repoService
@@ -823,5 +845,21 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                     },
                 });
         }
+    }
+
+    // Scan Info Filter Methods
+    updateScanInfoFilter(event: any) {
+        const val = event.target.value.toLowerCase();
+        this.scanInfoFilter = val;
+        this.applyScanInfoFilter();
+    }
+
+    applyScanInfoFilter() {
+        this.scanInfosFiltered = this.scanInfos.filter((scanInfo) => {
+            return (
+                scanInfo.codeRepoBranch.name.toLowerCase().includes(this.scanInfoFilter) ||
+                scanInfo.commitId.toLowerCase().includes(this.scanInfoFilter)
+            );
+        });
     }
 }

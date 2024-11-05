@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.5] - 2024-11-05
+
+### Introduced
+- added selection of displayed rows in tables in show repository view
+- added and optimized the way of how scan info is displayed
+- added possibility to filter scan infos for branch or commit id
+
+### Fixed
+- Proper throttling and wait between tests executed via webhook
+- scan info default sort is date
+
 ## [1.0.4] - 2024-11-02
 
 ### Introduced

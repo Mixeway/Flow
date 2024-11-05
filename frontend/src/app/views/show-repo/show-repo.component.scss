@@ -36,22 +36,6 @@
   color: #47a3d3;
 }
 
-ngx-datatable {
-  --bs-table-cell-padding-x: 0.75rem;
-  --bs-table-cell-padding-y: 0.75rem;
-}
-
-.datatable-body-cell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-ngx-datatable .datatable-header-cell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
 ngx-datatable .datatable-row-center {
   display: flex;
@@ -74,4 +58,30 @@ c-card {
   max-width: 980px;
   margin: 0 auto;
   padding: 45px;
+}
+
+/* Styles for vertical alignment in ngx-datatable cells */
+
+::ng-deep .ngx-datatable .datatable-body-cell {
+  display: flex;
+  align-items: center;
+}
+
+::ng-deep .ngx-datatable .datatable-body-cell-label {
+  flex: 1;
+}
+
+.cell-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+}
+
+.vertical-align-multiple {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
 }
