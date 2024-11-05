@@ -1,7 +1,12 @@
 #!/bin/bash
 
 # Ensure required environment variables are set when SSO is enabled
-if [ "$(echo $SSO | tr '[:upper:]' '[:lower:]')" = "true" ]; then
+# Debugging statements
+echo "SSO variable is: '$SSO'"
+echo "SSO lowercased is: '${SSO,,}'"
+
+# Ensure required environment variables are set when SSO is enabled
+if [ "${SSO,,}" = "true" ]; then
     : "${SSO_CLIENT_ID:?SSO_CLIENT_ID is required when SSO is true}"
     : "${SSO_CLIENT_SECRET:?SSO_CLIENT_SECRET is required when SSO is true}"
     : "${SSO_REDIRECT_URI:?SSO_REDIRECT_URI is required when SSO is true}"
