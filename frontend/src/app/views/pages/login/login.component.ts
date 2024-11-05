@@ -123,7 +123,7 @@ export class LoginComponent implements OnInit{
         });
     }
     redirectToSSO(): void {
-        window.location.href = 'http://localhost:8888/oauth2/authorization/sso';
+        window.location.href = '/oauth2/authorization/sso';
     }
 
 }
