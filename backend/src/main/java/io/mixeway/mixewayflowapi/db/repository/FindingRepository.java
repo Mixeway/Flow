@@ -64,5 +64,8 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
 
     @Query(value = "SELECT * FROM combined_items_view WHERE coderepo_id IN (:coderepoIds)", nativeQuery = true)
     List<ItemProjection> findCombinedItems(@Param("coderepoIds") List<Long> coderepoIds);
+
+    @Query(value = "SELECT * FROM combined_items_view", nativeQuery = true)
+    List<ItemProjection> findCombinedItemsForAdmin();
 }
 

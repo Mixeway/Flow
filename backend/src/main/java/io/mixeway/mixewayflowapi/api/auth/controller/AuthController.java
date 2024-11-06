@@ -64,7 +64,7 @@ public class AuthController {
             // Determine the domain dynamically from the request
             String domain = request.getServerName();
 
-            log.info("[AuthController] loging from domain {}", domain);
+            log.info("[AuthController] Successfull user {} in role of {}", loggedUser.getUsername(), loggedUser.getHighestRole());
 
             // Set the JWT token in an HTTP-only and secure cookie
             Cookie cookie = new Cookie("flow-token", jwtResponseDTO.getAccessToken());

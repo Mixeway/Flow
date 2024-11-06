@@ -8,6 +8,7 @@ import io.mixeway.mixewayflowapi.db.entity.*;
 import io.mixeway.mixewayflowapi.db.projection.*;
 import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
 import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
+import io.mixeway.mixewayflowapi.domain.user.FindUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 public class FindFindingService {
     private final FindingRepository findingRepository;
     private final FindCodeRepoService findCodeRepoService;
+    private final FindUserService findUserService;
 
     public VulnStatsResponseDto countFindingStatsForRepo(CodeRepo codeRepo){
         return findingRepository.countFindingsBySource(codeRepo.getId());
@@ -40,9 +42,16 @@ public class FindFindingService {
     }
 
     public ItemListResponse getThreatIntelFindings(Principal principal){
+        UserInfo userInfo = findUserService.findUser(principal.getName());
+        List<ItemProjection> combinedProjections = new ArrayList<>();
 
-        List<ItemProjection> combinedProjections = findingRepository.findCombinedItems(findCodeRepoService.findCodeRepoForUser(principal).stream().map(CodeRepo::getId).toList());
-        return mapProjectionsToItems(combinedProjections);
+        if (userInfo.getHighestRole().equals("ROLE_ADMIN")){
+            combinedProjections = findingRepository.findCombinedItemsForAdmin();
+
+        } else {
+            combinedProjections = findingRepository.findCombinedItems(findCodeRepoService.findCodeRepoForUser(principal).stream().map(CodeRepo::getId).toList());
+
+        }return mapProjectionsToItems(combinedProjections);
     }
 
     private ItemListResponse mapProjectionsToItems(List<ItemProjection> projections) {
