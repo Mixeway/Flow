@@ -5,6 +5,7 @@ import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
 import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.dto.DTrackGetVulnResponseDto;
+import org.hibernate.Hibernate;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -42,6 +44,7 @@ class ProcessDTrackVulnDataServiceTest {
     }
 
     @Test
+    @Transactional
     void processComponents() {
         CodeRepo codeRepo = findCodeRepoService.findByRemoteId(14493750L);
         List<DTrackGetVulnResponseDto> dTrackGetVulnResponseDtos = generateDummyData();

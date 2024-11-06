@@ -10,6 +10,7 @@ import io.mixeway.mixewayflowapi.domain.team.CreateTeamService;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoResponseDto;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GetCodeRepoInfoService;
+import org.hibernate.Hibernate;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -20,6 +21,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.shaded.org.checkerframework.checker.units.qual.A;
 
 import java.io.IOException;
@@ -64,6 +66,7 @@ class UpdateCodeRepoServiceTest {
     }
 
     @Test
+    @Transactional
     void updateComponents() {
         CodeRepo codeRepo = findCodeRepoService.findByRemoteId(14493750L);
         List<Component> components = createDummyComponents();

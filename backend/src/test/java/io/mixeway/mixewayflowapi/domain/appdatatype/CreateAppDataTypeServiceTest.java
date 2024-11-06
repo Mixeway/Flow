@@ -5,6 +5,7 @@ import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
 import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.BearerScanDataflow;
+import org.hibernate.Hibernate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
@@ -68,6 +69,7 @@ class CreateAppDataTypeServiceTest {
      * when provided with null BearerScanDataflow.
      */
     @Test
+    @Transactional
     void testGetDataTypesForCodeRepo_WithNullData() {
         assertThrows(NullPointerException.class, () -> {
             createAppDataTypeService.getDataTypesForCodeRepo(codeRepo, null);
