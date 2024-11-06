@@ -1,5 +1,7 @@
 package io.mixeway.mixewayflowapi.db.repository;
 
+import io.mixeway.mixewayflowapi.api.coderepo.dto.AggregatedRepoStatsDTO;
+import io.mixeway.mixewayflowapi.api.coderepo.dto.DailyFindings;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoFindingStats;
 import io.mixeway.mixewayflowapi.db.entity.Team;
@@ -22,5 +24,44 @@ public interface CodeRepoFindingStatsRepository extends CrudRepository<CodeRepoF
     List<CodeRepoFindingStats> findStatsBetweenDatesAndForCodeRepos(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate,
                                                                     @Param("repos") List<Long> repos);
     List<CodeRepoFindingStats> findByCodeRepo(CodeRepo codeRepo);
+
+    @Query("SELECT new io.mixeway.mixewayflowapi.api.coderepo.dto.DailyFindings(" +
+            "DATE(c.dateInserted), SUM(c.openedFindings)) " +
+            "FROM CodeRepoFindingStats c " +
+            "WHERE DATE(c.dateInserted) BETWEEN :startDate AND :endDate " +
+            "AND c.codeRepo.id IN :repos " +
+            "GROUP BY DATE(c.dateInserted)")
+    List<DailyFindings> findOpenedFindingsBetweenDates(@Param("startDate") LocalDate startDate,
+                                                                              @Param("endDate") LocalDate endDate,
+                                                                              @Param("repos") List<Long> repos);
+    @Query("SELECT new io.mixeway.mixewayflowapi.api.coderepo.dto.DailyFindings(" +
+            "DATE(c.dateInserted), SUM(c.removedFindings)) " +
+            "FROM CodeRepoFindingStats c " +
+            "WHERE DATE(c.dateInserted) BETWEEN :startDate AND :endDate " +
+            "AND c.codeRepo.id IN :repos " +
+            "GROUP BY DATE(c.dateInserted)")
+    List<DailyFindings> findRemovedFindingsBetweenDates(@Param("startDate") LocalDate startDate,
+                                                        @Param("endDate") LocalDate endDate,
+                                                        @Param("repos") List<Long> repos);
+
+    @Query("SELECT new io.mixeway.mixewayflowapi.api.coderepo.dto.DailyFindings(" +
+            "DATE(c.dateInserted), SUM(c.reviewedFindings)) " +
+            "FROM CodeRepoFindingStats c " +
+            "WHERE DATE(c.dateInserted) BETWEEN :startDate AND :endDate " +
+            "AND c.codeRepo.id IN :repos " +
+            "GROUP BY DATE(c.dateInserted)")
+    List<DailyFindings> findReviewedFindingsBetweenDates(@Param("startDate") LocalDate startDate,
+                                                                               @Param("endDate") LocalDate endDate,
+                                                                               @Param("repos") List<Long> repos);
+
+    @Query("SELECT new io.mixeway.mixewayflowapi.api.coderepo.dto.DailyFindings(" +
+            "DATE(c.dateInserted), SUM(c.averageFixTime)) " +
+            "FROM CodeRepoFindingStats c " +
+            "WHERE DATE(c.dateInserted) BETWEEN :startDate AND :endDate " +
+            "AND c.codeRepo.id IN :repos " +
+            "GROUP BY DATE(c.dateInserted)")
+    List<DailyFindings> findETAFindingsBetweenDates(@Param("startDate") LocalDate startDate,
+                                                                                @Param("endDate") LocalDate endDate,
+                                                                                @Param("repos") List<Long> repos);
 
 }

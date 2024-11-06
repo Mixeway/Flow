@@ -61,7 +61,7 @@ public final class CodeRepo {
     @Column(name = "inserted_date", nullable = false, updatable = false)
     private final LocalDateTime insertedDate;
 
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "coderepo_languages", joinColumns = @JoinColumn(name = "coderepo_id"))
     @MapKeyColumn(name = "language")
     @Column(name = "percent_of_code")
@@ -83,7 +83,7 @@ public final class CodeRepo {
     @Column(name = "secrets_scan", nullable = false)
     private ScanStatus secretsScan;
 
-    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @ManyToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JoinTable(
             name = "coderepo_component",
             joinColumns = @JoinColumn(name = "coderepo_id"),
@@ -91,10 +91,10 @@ public final class CodeRepo {
     )
     private List<Component> components;
 
-    @OneToMany(mappedBy = "codeRepo", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "codeRepo", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<AppDataType> appDataTypes;
 
-    @OneToMany(mappedBy = "codeRepo", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "codeRepo", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<ScanInfo> scanInfos;
 
     @Column(name = "sca_uuid", nullable = false)

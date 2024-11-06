@@ -418,3 +418,7 @@ HAVING
 
 --changeset siewer:change_location
 ALTER TABLE finding ALTER COLUMN location TYPE VARCHAR(600);
+
+--changeset siewer:indexes-no
+CREATE INDEX idx_coderepofindingstats_dateinserted ON code_repo_finding_stats (date_inserted);
+CREATE INDEX idx_coderepofindingstats_coderepoid ON code_repo_finding_stats (coderepo_id);
