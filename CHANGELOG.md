@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.6] - 2024-11-21
+
+### Fixed
+- Solved performance issues for thereat intel module
+- Fixed link with merge request webhook comment
+- Adjusted merge request comment text
+
 ## [1.0.5] - 2024-11-05
 
 ### Introduced

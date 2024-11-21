@@ -56,7 +56,7 @@ public class GitCommentService {
         String message = generateSecurityReport(status, sastCritical, sastHigh, sastRest,
                 secretsCritical, secretsHigh, secretsRest, iacCritical, iacHigh, iacRest,
                 !codeRepo.getIacScan().equals(CodeRepo.ScanStatus.NOT_PERFORMED),scaCritical, scaHigh, scaRest,
-                "https://"+frontendUrl+"#/show-repo/"+codeRepo.getId());
+                (frontendUrl.startsWith("http") ? "":"https://") + frontendUrl+"#/show-repo/"+codeRepo.getId());
         if (codeRepo.getType().equals(CodeRepo.RepoType.GITLAB)){
             log.info("[Git Comment Service] About to put comment for Merge Request for {}", codeRepo.getName());
             gitLabApiClientService.commentMergeRequest(codeRepo, iid, message).block();
@@ -76,45 +76,27 @@ public class GitCommentService {
         String scaSection;
         if (scaEnabled) {
             scaSection = String.format(
-                    "#### 📦 SCA (Software Composition Analysis)\r\n" +
-                            "- **Critical vulnerabilities**: %d  \r\n" +
-                            "- **High vulnerabilities**: %d  \r\n" +
-                            "- **Medium/Low vulnerabilities**: %d  \r\n", scaCrit, scaHigh, scaRest);
+                    "📦 **SCA**: Critical: %d, High: %d\n",
+                    scaCrit, scaHigh);
         } else {
-            scaSection = "#### 📦 SCA (Software Composition Analysis)\r\n" +
-                    "SCA scan not performed! Results are not 100% precise. Make sure to support SCA scan config.\r\n";
+            scaSection = "📦 **SCA**: Scan not performed.\n";
         }
 
-        // Build the full report with or without SCA
+        // Build the report
         return String.format(
-                "# 🔒 Security Bot Report\r\n" +
-                        "Hello! 👋 This is a message from the **Security Bot** to provide the results of the latest security scan on this merge request. Please review the details below carefully.\r\n" +
-                        "---\r\n" +
-                        "## ✅ Security Scan Overview\r\n" +
-                        "The security scan has been completed, and the overall result is: **%s**  \r\n" +
-                        "(Result could be: `OK`, `⚠️ Warning`, or `🚨 Danger`)\r\n" +
-                        "---\r\n" +
-                        "### 📊 Test Details\r\n" +
-                        "#### 🛡️ SAST (Static Application Security Testing)\r\n" +
-                        "- **Critical vulnerabilities**: %d  \r\n" +
-                        "- **High vulnerabilities**: %d  \r\n" +
-                        "- **Medium/Low vulnerabilities**: %d  \r\n" +
-                        "#### 🔑 Secrets Scan\r\n" +
-                        "- **Critical vulnerabilities**: %d  \r\n" +
-                        "- **High vulnerabilities**: %d  \r\n" +
-                        "- **Medium/Low vulnerabilities**: %d  \r\n" +
-                        "#### 🏗️ IAC (Infrastructure as Code Scan)\r\n" +
-                        "- **Critical vulnerabilities**: %d  \r\n" +
-                        "- **High vulnerabilities**: %d  \r\n" +
-                        "- **Medium/Low vulnerabilities**: %d  \r\n" +
+                "# 🔒 Security Bot Report\n" +
+                        "**Outcome**: %s\n\n" +
+                        "## Scan Summary:\n" +
+                        "🛡️ **SAST**: Critical: %d, High: %d\n" +
+                        "🔑 **Secrets**: Critical: %d, High: %d\n" +
+                        "🏗️ **IAC**: Critical: %d, High: %d\n" +
                         scaSection +
-                        "---\r\n" +
-                        "### ⚠️ Next Steps\r\n" +
-                        "If there are any `critical` or `high` vulnerabilities, please prioritize fixing them before proceeding with the merge.\r\n" +
-                        "For questions or help, feel free to reach out to the security team!\r\n" +
-                        "Stay secure! 🔐\r\n" +
-                        "[Details link](%s)\r\n",
-                status, sastCrit, sastHigh, sastRest, secretsCrit, secretsHigh, secretsRest, iacCrit, iacHigh, iacRest, detailsLink);
+                        "\n[🔍 View Detailed Report](%s)",
+                status,
+                sastCrit, sastHigh,
+                secretsCrit, secretsHigh,
+                iacCrit, iacHigh,
+                detailsLink);
     }
 
     private int countFindings(List<Finding> findings, Finding.Source source, Finding.Severity severity, Finding.Status... statuses) {

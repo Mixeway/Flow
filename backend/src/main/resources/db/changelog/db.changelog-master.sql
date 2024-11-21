@@ -422,3 +422,78 @@ ALTER TABLE finding ALTER COLUMN location TYPE VARCHAR(600);
 --changeset siewer:indexes-no
 CREATE INDEX idx_coderepofindingstats_dateinserted ON code_repo_finding_stats (date_inserted);
 CREATE INDEX idx_coderepofindingstats_coderepoid ON code_repo_finding_stats (coderepo_id);
+
+--changeset siewer:change-view
+drop view combined_items_view;
+CREATE VIEW combined_items_view AS
+SELECT
+    c.id AS coderepo_id,
+    v.name AS name,
+    CASE
+        WHEN
+            v.epss > 0.5
+                OR (v.epss BETWEEN 0.2 AND 0.5 AND pii_flag = TRUE)
+                OR (v.epss > 0.1 AND v.exploit_exists = TRUE)
+                OR has_critical = TRUE
+            THEN 'urgent'
+        WHEN
+            ((v.epss BETWEEN 0.1 AND 0.5) AND pii_flag = FALSE AND v.exploit_exists = FALSE)
+                OR (v.epss < 0.1 AND v.exploit_exists = TRUE)
+                OR has_high = TRUE
+            THEN 'notable'
+        ELSE NULL
+        END AS urgency,
+    COUNT(*) AS count,
+    v.epss AS epss,
+    pii_flag AS pii,
+    v.exploit_exists AS exploitAvailable,
+    ARRAY_AGG(DISTINCT c.name) AS projectNames,
+    ARRAY_AGG(DISTINCT c.id) AS projectIds
+FROM (
+         SELECT
+             f.coderepo_id,
+             f.vulnerability_id,
+             MAX(CASE WHEN f.source IN ('IAC', 'SAST', 'SECRETS') AND f.severity = 'CRITICAL' THEN 1 ELSE 0 END) = 1 AS has_critical,
+             MAX(CASE WHEN f.source IN ('IAC', 'SAST', 'SECRETS') AND f.severity = 'HIGH' THEN 1 ELSE 0 END) = 1 AS has_high
+         FROM finding f
+         WHERE f.status IN ('NEW', 'EXISTING')
+         GROUP BY f.coderepo_id, f.vulnerability_id
+     ) AS sub_f
+         JOIN vulnerability v ON sub_f.vulnerability_id = v.id
+         JOIN coderepo c ON sub_f.coderepo_id = c.id
+         LEFT JOIN LATERAL (
+    SELECT EXISTS (
+        SELECT 1
+        FROM app_data_type adt
+                 JOIN app_data_type_category_groups adtcg ON adtcg.app_data_type_id = adt.id
+        WHERE adt.coderepo_id = c.id AND adtcg.category_group = 'PII'
+    ) AS pii_flag
+    ) AS pii_sub ON TRUE
+WHERE
+    v.epss > 0.1
+   OR v.exploit_exists = TRUE
+   OR sub_f.has_critical = TRUE
+   OR sub_f.has_high = TRUE
+GROUP BY
+    c.id,
+    v.name,
+    v.epss,
+    v.exploit_exists,
+    pii_sub.pii_flag,
+    sub_f.has_critical,
+    sub_f.has_high
+HAVING
+    CASE
+        WHEN
+            v.epss > 0.5
+                OR (v.epss BETWEEN 0.2 AND 0.5 AND pii_sub.pii_flag = TRUE)
+                OR (v.epss > 0.1 AND v.exploit_exists = TRUE)
+                OR sub_f.has_critical = TRUE
+            THEN 'urgent'
+        WHEN
+            ((v.epss BETWEEN 0.1 AND 0.5) AND pii_sub.pii_flag = FALSE AND v.exploit_exists = FALSE)
+                OR (v.epss < 0.1 AND v.exploit_exists = TRUE)
+                OR sub_f.has_high = TRUE
+            THEN 'notable'
+        ELSE NULL
+        END IS NOT NULL;
