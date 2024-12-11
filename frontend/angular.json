@@ -73,6 +73,9 @@
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
+          "options": {
+            "proxyConfig": "nginx/proxy.conf.json"
+          },
           "configurations": {
             "production": {
               "buildTarget": "coreui-free-angular-admin-template:build:production"

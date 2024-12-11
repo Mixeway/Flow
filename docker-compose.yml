@@ -24,6 +24,13 @@ services:
       - dependency_track_data:/root/.dependency-track
     depends_on:
       - flowdb
+    restart: always  # Add this line
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   flowdb:
     image: postgres:latest
