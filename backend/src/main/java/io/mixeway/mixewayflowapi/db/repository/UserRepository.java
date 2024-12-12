@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface UserRepository extends CrudRepository<UserInfo, Long> {
@@ -15,4 +16,6 @@ public interface UserRepository extends CrudRepository<UserInfo, Long> {
 
     @Query("SELECT u FROM UserInfo u JOIN u.teams t WHERE t.id = :teamId")
     List<UserInfo> getUsersByTeamId(@Param("teamId") Long teamId);
+
+    Optional<UserInfo> findByApiKey(String apiKey);
 }

@@ -3,6 +3,8 @@ package io.mixeway.mixewayflowapi.auth.jwt;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.security.SignatureException;
 import io.mixeway.mixewayflowapi.auth.UserDetailsServiceImpl;
+import io.mixeway.mixewayflowapi.db.entity.UserInfo;
+import io.mixeway.mixewayflowapi.domain.user.FindUserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -23,6 +25,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -31,11 +34,49 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsServiceImpl userDetailsServiceImpl;
+    private final FindUserService findUserService; // Add this so we can look up user by API key
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
+
         log.debug("JwtAuthFilter: Processing request " + request.getRequestURI());
 
+        Authentication existingAuth = SecurityContextHolder.getContext().getAuthentication();
+        if (existingAuth != null && existingAuth.isAuthenticated()) {
+            filterChain.doFilter(request, response);
+            return; // Already authenticated
+        }
+
+        // 1. Check if API key header is present
+        String apiKey = request.getHeader("X-API-KEY");
+        if (apiKey != null && !apiKey.isBlank()) {
+            log.debug("Attempting API key authentication");
+            Optional<UserInfo> userInfo = findUserService.findByApiKey(apiKey);
+            if (userInfo.isPresent()) {
+                // Validate user's roles and details
+                UserDetails userDetails = userDetailsServiceImpl.loadUserByUsername(userInfo.get().getUsername());
+                // Create an authentication token
+                UsernamePasswordAuthenticationToken authenticationToken =
+                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                // Set authentication context
+                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+
+                log.debug("API key authentication successful for user: " + userInfo.get().getUsername());
+                filterChain.doFilter(request, response);
+                return;
+            } else {
+                log.warn("Invalid API key provided");
+                // If invalid, we do not stop the chain here necessarily. You can choose to reject immediately or let
+                // the request continue and be rejected by other mechanisms.
+                // For security, you may want to set a response and return here:
+                // response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid API Key");
+                // return;
+            }
+        }
+
+        // 2. If no API key authentication, proceed with JWT authentication as before
         String token = null;
         String username = null;
 
@@ -67,17 +108,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
         }
 
-        // Authenticate the user
+        // Authenticate the user via JWT
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
                 UserDetails userDetails = userDetailsServiceImpl.loadUserByUsername(username);
                 if (jwtService.validateToken(token, userDetails)) {
-                    UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    UsernamePasswordAuthenticationToken authenticationToken =
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                     authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authenticationToken);
                 }
-            } catch (UsernameNotFoundException e){
-                log.error("[Auth] {}",e.getLocalizedMessage());
+            } catch (UsernameNotFoundException e) {
+                log.error("[Auth] {}", e.getLocalizedMessage());
             }
         }
 

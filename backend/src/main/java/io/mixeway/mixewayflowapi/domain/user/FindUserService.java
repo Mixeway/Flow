@@ -19,4 +19,5 @@ public class FindUserService {
     }
     public List<UserInfo> findAll(){ return userRepository.findAll();}
     public Optional<UserInfo> findById(Long id) { return userRepository.findById(id);}
+    public Optional<UserInfo> findByApiKey(String apiKey) { return userRepository.findByApiKey(apiKey);}
 }

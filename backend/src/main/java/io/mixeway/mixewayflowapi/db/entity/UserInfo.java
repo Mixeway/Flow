@@ -31,6 +31,7 @@ public class UserInfo {
     @Size(min = 8, message = "Password must be at least 8 characters long")
     private String password;
 
+
     @ManyToMany(fetch = FetchType.EAGER)
     private final Set<UserRole> roles = new HashSet<>();
 
@@ -42,6 +43,7 @@ public class UserInfo {
     )
     private final Set<Team> teams = new HashSet<>();
 
+    @JsonIgnore
     @Column(name = "api_key")
     private String apiKey;
 
