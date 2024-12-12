@@ -13,15 +13,6 @@
 --
 DELETE FROM public.databasechangeloglock WHERE id = 1;
 
-CREATE TABLE public.coderepo_languages (
-                                           coderepo_id bigint NOT NULL,
-                                           percent_of_code integer,
-                                           language character varying(255) NOT NULL,
-                                           PRIMARY KEY (coderepo_id, language),
-                                           CONSTRAINT fkssqutspukimdtipic5ne8in6q FOREIGN KEY (coderepo_id)
-                                               REFERENCES public.coderepo (id)
-);
-
 
 
 INSERT INTO public.team VALUES (1, 'Team A', 'empty');
@@ -697,20 +688,15 @@ INSERT INTO public.users_roles VALUES (3, 1);
 --
 -- Data for Name: users_teams; Type: TABLE DATA; Schema: public; Owner: flow_user
 --
-ALTER TABLE public.users_teams
-    ADD COLUMN teams_id bigint NOT NULL;
-
-ALTER TABLE public.users_teams
-    ADD CONSTRAINT fkqmu1hi060o8i7rewvbfm925yl FOREIGN KEY (teams_id) REFERENCES public.team(id);
 
 
-INSERT INTO public.users_teams (user_info_id, team_id, teams_id) VALUES (1, NULL, 1);
-INSERT INTO public.users_teams (user_info_id, team_id, teams_id) VALUES (2, NULL, 1);
-INSERT INTO public.users_teams (user_info_id, team_id, teams_id) VALUES (1, NULL, 2);
-INSERT INTO public.users_teams (user_info_id, team_id, teams_id) VALUES (3, NULL, 2);
-INSERT INTO public.users_teams (user_info_id, team_id, teams_id) VALUES (1, NULL, 3);
-INSERT INTO public.users_teams (user_info_id, team_id, teams_id) VALUES (3, NULL, 3);
-INSERT INTO public.users_teams (user_info_id, team_id, teams_id) VALUES (2, NULL, 3);
+INSERT INTO public.users_teams (user_info_id, team_id) VALUES (1, 1);
+INSERT INTO public.users_teams (user_info_id, team_id) VALUES (2, 1);
+INSERT INTO public.users_teams (user_info_id, team_id) VALUES (1, 2);
+INSERT INTO public.users_teams (user_info_id, team_id) VALUES (3, 2);
+INSERT INTO public.users_teams (user_info_id, team_id) VALUES (1, 3);
+INSERT INTO public.users_teams (user_info_id, team_id) VALUES (3, 3);
+INSERT INTO public.users_teams (user_info_id, team_id) VALUES (2, 3);
 
 
 --
