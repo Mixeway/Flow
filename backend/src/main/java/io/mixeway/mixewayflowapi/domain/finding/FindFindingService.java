@@ -106,7 +106,19 @@ public class FindFindingService {
 
             // Map project names and IDs to Project objects
             String[] projectNames = projection.getProjectNames().toArray(String[]::new);
-            Integer[] projectIds = projection.getProjectIds().toArray(Integer[]::new);
+            //Integer[] projectIds = projection.getProjectIds().toArray(Integer[]::new);
+            List<Object> projectIdObjects = projection.getProjectIds();
+            long[] projectIds = projectIdObjects.stream()
+                    .mapToLong(obj -> {
+                        // Assuming obj is a number that can be converted to long
+                        if (obj instanceof Number) {
+                            return ((Number) obj).longValue();
+                        } else {
+                            // handle unexpected type, or throw an exception
+                            throw new IllegalArgumentException("Project ID is not numeric.");
+                        }
+                    })
+                    .toArray();
            // allProjectIds.addAll(Arrays.stream(projectIds).toList());
 
             if (projectNames != null && projectIds != null) {

@@ -12,5 +12,5 @@ public interface ItemProjection {
     boolean isPii();
     boolean isExploitAvailable();
     List<String> getProjectNames();
-    List<Integer> getProjectIds();
+    List<Object> getProjectIds();
 }
