@@ -25,6 +25,9 @@ public class CreateAppDataTypeService {
 
     @Transactional
     public void getDataTypesForCodeRepo(CodeRepo codeRepo, BearerScanDataflow bearerScanDataflow){
+        codeRepo = codeRepoRepository.findById(codeRepo.getId())
+                .orElseThrow(() -> new IllegalArgumentException("CodeRepo not found"));
+
         if (bearerScanDataflow.getDataTypes() != null ){
             log.info("[DataFlowAPI] Removing all data entities from {}", codeRepo.getRepourl());
 

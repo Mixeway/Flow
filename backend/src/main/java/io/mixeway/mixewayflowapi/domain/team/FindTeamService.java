@@ -48,4 +48,8 @@ public class FindTeamService {
     public List<Team> findAll(){
         return teamRepository.findAll();
     }
+
+    public Team findByRemoteId(String remoteId) {
+        return teamRepository.findByRemoteIdentifier(remoteId).orElse(null);
+    }
 }

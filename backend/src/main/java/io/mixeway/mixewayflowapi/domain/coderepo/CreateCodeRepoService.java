@@ -55,7 +55,7 @@ public class CreateCodeRepoService {
            scanManagerService.scanRepository(finalCodeRepo, finalCodeRepo.getDefaultBranch(), null, null);
 
         } else {
-            throw new TeamNotFoundException();
+            throw new TeamNotFoundException("[CreateCodeRepoService] Team " + createCodeRepoRequestDto.getTeam() + " not found");
         }
         log.info("[CodeRepo] Imported Code repo from {} id {} name {}",
                 importCodeRepoResponseDto.getWebUrl(),

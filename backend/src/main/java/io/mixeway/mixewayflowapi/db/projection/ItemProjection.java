@@ -1,6 +1,7 @@
 package io.mixeway.mixewayflowapi.db.projection;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public interface ItemProjection {
     Long getCoderepoId();
@@ -10,6 +11,6 @@ public interface ItemProjection {
     BigDecimal getEpss();
     boolean isPii();
     boolean isExploitAvailable();
-    String[] getProjectNames();
-    Long[] getProjectIds();
+    List<String> getProjectNames();
+    List<Integer> getProjectIds();
 }

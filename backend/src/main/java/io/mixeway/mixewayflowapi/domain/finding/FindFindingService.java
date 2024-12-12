@@ -8,7 +8,9 @@ import io.mixeway.mixewayflowapi.db.entity.*;
 import io.mixeway.mixewayflowapi.db.projection.*;
 import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
 import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
+import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import io.mixeway.mixewayflowapi.domain.user.FindUserService;
+import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +24,7 @@ public class FindFindingService {
     private final FindingRepository findingRepository;
     private final FindCodeRepoService findCodeRepoService;
     private final FindUserService findUserService;
+    private final FindTeamService findTeamService;
 
     public VulnStatsResponseDto countFindingStatsForRepo(CodeRepo codeRepo){
         return findingRepository.countFindingsBySource(codeRepo.getId());
@@ -52,6 +55,18 @@ public class FindFindingService {
             combinedProjections = findingRepository.findCombinedItems(findCodeRepoService.findCodeRepoForUser(principal).stream().map(CodeRepo::getId).toList());
 
         }return mapProjectionsToItems(combinedProjections);
+    }
+
+    public ItemListResponse getThreatIntelFindingsForTeam(Principal principal, String remoteId){
+        Team team = findTeamService.findByRemoteId(remoteId);
+        if (team == null){
+            throw new TeamNotFoundException("[Threat Intell] Trying to find not existing team " + remoteId);
+        }
+        List<ItemProjection> combinedProjections = new ArrayList<>();
+
+        combinedProjections = findingRepository.findCombinedItems(findCodeRepoService.findByTeam(team).stream().map(CodeRepo::getId).toList());
+
+        return mapProjectionsToItems(combinedProjections);
     }
 
     private ItemListResponse mapProjectionsToItems(List<ItemProjection> projections) {
@@ -90,9 +105,9 @@ public class FindFindingService {
             }
 
             // Map project names and IDs to Project objects
-            String[] projectNames = projection.getProjectNames();
-            Long[] projectIds = projection.getProjectIds();
-            allProjectIds.addAll(Arrays.stream(projectIds).toList());
+            String[] projectNames = projection.getProjectNames().toArray(String[]::new);
+            Integer[] projectIds = projection.getProjectIds().toArray(Integer[]::new);
+           // allProjectIds.addAll(Arrays.stream(projectIds).toList());
 
             if (projectNames != null && projectIds != null) {
                 for (int i = 0; i < projectNames.length; i++) {
@@ -118,6 +133,7 @@ public class FindFindingService {
 
         return response;
     }
+
 
     public Long countOpenedVulnerabilities(Principal principal){
         return findingRepository.countAllByCodeRepoInAndStatusIn(findCodeRepoService.findCodeRepoForUser(principal), Arrays.asList("NEW", "EXISTING"));

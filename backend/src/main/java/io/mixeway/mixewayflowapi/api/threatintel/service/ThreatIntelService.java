@@ -35,4 +35,12 @@ public class ThreatIntelService {
     public ResponseEntity<List<ReviewedVulnerabilityDTO>> getSupressedThreats(Principal principal) {
         return new ResponseEntity<>(findFindingService.getTopReviewedVulns(principal),HttpStatus.OK);
     }
+
+    public ResponseEntity<ItemListResponse> getThreatsForTeam(Principal principal, String remoteId) {
+        ItemListResponse itemListResponse = findFindingService.getThreatIntelFindingsForTeam(principal,remoteId);
+        itemListResponse.setNumberOfTeams(findTeamService.findAllTeams(principal).size());
+        itemListResponse.setNumberOfAllProjects(findCodeRepoService.findCodeRepoForUser(principal).size());
+        itemListResponse.setOpenedVulnerabilities(findFindingService.countOpenedVulnerabilities(principal));
+        return new ResponseEntity<>(itemListResponse,HttpStatus.OK);
+    }
 }

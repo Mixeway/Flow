@@ -35,6 +35,11 @@ public class UserInfo {
     private final Set<UserRole> roles = new HashSet<>();
 
     @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "users_teams",
+            joinColumns = @JoinColumn(name = "user_info_id"),
+            inverseJoinColumns = @JoinColumn(name = "team_id")
+    )
     private final Set<Team> teams = new HashSet<>();
 
     @Column(name = "api_key")

@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.7] - 2024-12-12
+
+### Introduced
+- New API to get Threat Intell for a team
+
 ## [1.0.6] - 2024-11-21
 
 ### Fixed

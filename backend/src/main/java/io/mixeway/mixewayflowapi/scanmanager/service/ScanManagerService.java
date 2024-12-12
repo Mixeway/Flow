@@ -258,6 +258,7 @@ public class ScanManagerService {
                     log.warn("[ScanManagerService] SAST scan interrupted for {}.", codeRepo.getRepourl());
                     Thread.currentThread().interrupt();
                 } else {
+                    e.printStackTrace();
                     log.error("[ScanManagerService] An error occurred during SAST scan for {}.", codeRepo.getRepourl());
                 }
             } finally {
