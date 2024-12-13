@@ -49,7 +49,7 @@ public class FindTeamService {
         return teamRepository.findAll();
     }
 
-    public Team findByRemoteId(String remoteId) {
-        return teamRepository.findByRemoteIdentifier(remoteId).orElse(null);
+    public List<Team> findByRemoteId(String remoteId) {
+        return teamRepository.findByRemoteIdentifier(remoteId);
     }
 }

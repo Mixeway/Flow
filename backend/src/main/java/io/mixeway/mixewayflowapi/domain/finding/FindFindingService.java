@@ -58,13 +58,17 @@ public class FindFindingService {
     }
 
     public ItemListResponse getThreatIntelFindingsForTeam(Principal principal, String remoteId){
-        Team team = findTeamService.findByRemoteId(remoteId);
-        if (team == null){
+        List<Team> teams = findTeamService.findByRemoteId(remoteId);
+        if (teams == null){
             throw new TeamNotFoundException("[Threat Intell] Trying to find not existing team " + remoteId);
         }
         List<ItemProjection> combinedProjections = new ArrayList<>();
 
-        combinedProjections = findingRepository.findCombinedItems(findCodeRepoService.findByTeam(team).stream().map(CodeRepo::getId).toList());
+        combinedProjections = findingRepository.findCombinedItems(
+                teams.stream()
+                        .flatMap(team -> findCodeRepoService.findByTeam(team).stream())
+                        .map(CodeRepo::getId).toList()
+        );
 
         return mapProjectionsToItems(combinedProjections);
     }
