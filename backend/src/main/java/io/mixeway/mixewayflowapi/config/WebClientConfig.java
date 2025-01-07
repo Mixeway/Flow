@@ -12,6 +12,9 @@ import reactor.netty.transport.ProxyProvider;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 
 import javax.net.ssl.SSLException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 
 @Configuration
 @Log4j2
@@ -43,8 +46,16 @@ public class WebClientConfig {
             }
         });
 
+        // Retrieve the NO_PROXY environment variable
+        String noProxyEnv = Optional.ofNullable(System.getenv("NO_PROXY"))
+                .orElse(System.getenv("no_proxy")); // Check for lowercase variant
+
+        List<String> noProxyHosts = noProxyEnv != null ? Arrays.asList(noProxyEnv.split(",")) : List.of();
+
+
         // Configure proxy only if both proxyHost and proxyPort are provided
         if (proxyHost != null && proxyPort != null) {
+
             httpClient = httpClient.proxy(proxy -> {
                 ProxyProvider.Builder proxyBuilder = proxy.type(ProxyProvider.Proxy.HTTP)
                         .host(proxyHost)
@@ -54,6 +65,13 @@ public class WebClientConfig {
                     proxyBuilder.username(proxyUsername)
                             .password(ignored -> proxyPassword);
                 }
+                if (!noProxyHosts.isEmpty()) {
+                    // Join noProxyHosts with a pipe (|) separator
+                    String noProxyPattern = String.join("|", noProxyHosts);
+                    proxyBuilder.nonProxyHosts(noProxyPattern);
+                    log.info("[Config] No proxy for hosts: {}", noProxyPattern);
+                }
+
             });
             log.info("[Config] Proxy configured with host: {} and port: {}", proxyHost, proxyPort);
         } else {
