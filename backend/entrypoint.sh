@@ -26,7 +26,7 @@ fi
 LOG_FILE="/var/log/dtrack.log"
 echo "Starting Dependency-Track..."
 if [ -n "$PROXY_HOST" ] && [ -n "$PROXY_PORT" ]; then
-    java -Xmx4g -Dhttp.proxyHost=$PROXY_HOST -Dhttp.proxyPort=$PROXY_PORT -Dhttps.proxyHost=$PROXY_HOST -Dhttps.proxyPort=$PROXY_PORT -jar /opt/dtrack/dependency-track-bundled.jar >> $LOG_FILE 2>&1 &
+    java -Xmx4g -Dhttp.proxyHost=$PROXY_HOST -Dhttp.proxyPort=$PROXY_PORT -Dhttps.proxyHost=$PROXY_HOST -Dhttps.proxyPort=$PROXY_PORT -Dcom.sun.net.ssl.checkRevocation=false -Djavax.net.ssl.trustAll=true -Djavax.net.ssl.trustStore=/dev/null -jar /opt/dtrack/dependency-track-bundled.jar >> $LOG_FILE 2>&1 &
 else
     java -Xmx4g -jar /opt/dtrack/dependency-track-bundled.jar >> $LOG_FILE 2>&1 &
 fi
