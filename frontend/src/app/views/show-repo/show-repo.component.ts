@@ -5,7 +5,6 @@ import {
     OnInit, ViewEncapsulation,
 } from '@angular/core';
 import {
-    MarkdownComponent,
     MarkdownModule,
     provideMarkdown,
 } from 'ngx-markdown';
@@ -21,7 +20,6 @@ import {
     FormCheckComponent,
     FormCheckInputDirective,
     FormCheckLabelDirective,
-    FormControlDirective,
     FormLabelDirective,
     FormSelectDirective,
     InputGroupComponent,
@@ -85,6 +83,7 @@ interface Vulnerability {
     last_seen: string;
     status: string;
 }
+
 
 interface Location {
     [key: string]: string;
@@ -158,7 +157,6 @@ export interface CodeRepoFindingStats {
         InputGroupTextDirective,
         FormCheckComponent,
         FormLabelDirective,
-        FormControlDirective,
         FormSelectDirective,
         FormCheckLabelDirective,
         FormCheckInputDirective,
@@ -355,7 +353,6 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                 // Health check passed, proceed with loading the dashboard
             },
             error: () => {
-                // Health check failed, redirect to login
                 this.router.navigate(['/login']);
             },
         });
@@ -861,5 +858,124 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                 scanInfo.commitId.toLowerCase().includes(this.scanInfoFilter)
             );
         });
+    }
+    newComment: string = '';
+    isAddingComment: boolean = false;
+
+    addComment() {
+        if (!this.newComment?.trim() || this.isAddingComment || this.selectedRowId === null) {
+            return;
+        }
+
+        const findingId = this.selectedRowId; // Store in a const to ensure type safety
+        this.isAddingComment = true;
+
+        this.repoService.addComment(+this.repoId, findingId, this.newComment.trim())
+            .subscribe({
+                next: () => {
+                    // Refresh the finding details to get updated comments
+                    if (findingId !== null) { // Additional check to satisfy TypeScript
+                        this.repoService.getFinding(+this.repoId, findingId).subscribe({
+                            next: (response) => {
+                                this.singleVuln = response;
+                                this.newComment = '';
+                                this.toastStatus = 'success';
+                                this.toastMessage = 'Comment added successfully';
+                                this.toggleToast();
+                            }
+                        });
+                    }
+                },
+                error: (error) => {
+                    this.toastStatus = 'danger';
+                    this.toastMessage = 'Error adding comment';
+                    this.toggleToast();
+                },
+                complete: () => {
+                    this.isAddingComment = false;
+                }
+            });
+    }
+
+    selectedBranch: string | null = null;
+
+
+    getRepositoryLink(): string {
+        if (!this.singleVuln?.vulnsResponseDto?.location || !this.repoData?.repourl) {
+            return '#';
+        }
+
+        const location = this.singleVuln.vulnsResponseDto.location;
+        const repoUrl = this.repoData.repourl;
+        // Use selected branch, fall back to default branch
+        const branch = this.selectedBranch || this.repoData?.defaultBranch?.name;
+
+        // Extract file path and line number from location
+        const match = location.match(/(.*):(\d+)/);
+        if (!match) return repoUrl;
+
+        const [, filePath, lineNumber] = match;
+
+        if (repoUrl.includes('github.com')) {
+            return `${repoUrl}/blob/${branch}/${filePath}#L${lineNumber}`;
+        } else if (repoUrl.includes('gitlab.com')) {
+            const baseUrl = repoUrl.replace(/\/?$/, '');
+            return `${baseUrl}/-/blob/${branch}/${filePath}#L${lineNumber}`;
+        }
+
+        return repoUrl;
+    }
+    getFormattedLocation(): string {
+        if (!this.singleVuln?.vulnsResponseDto?.location) {
+            return 'Location not available';
+        }
+
+        const location = this.singleVuln.vulnsResponseDto.location;
+        // Extract file path and line number
+        const match = location.match(/(.*):(\d+)/);
+        if (!match) return location;
+
+        const [, filePath, lineNumber] = match;
+        // Show only the filename and line number for display
+        const fileName = filePath.split('/').pop();
+        return `${fileName}:${lineNumber}`;
+    }
+
+    getRepositoryLinkForRow(row: any): string {
+        if (!row?.location || !this.repoData?.repourl) {
+            return '#';
+        }
+
+        const location = row.location;
+        const repoUrl = this.repoData.repourl;
+        const branch = this.selectedBranch || this.repoData?.defaultBranch?.name;
+
+        const match = location.match(/(.*):(\d+)/);
+        if (!match) return repoUrl;
+
+        const [, filePath, lineNumber] = match;
+
+        if (repoUrl.includes('github.com')) {
+            return `${repoUrl}/blob/${branch}/${filePath}#L${lineNumber}`;
+        } else if (repoUrl.includes('gitlab.com')) {
+            const baseUrl = repoUrl.replace(/\/?$/, '');
+            return `${baseUrl}/-/blob/${branch}/${filePath}#L${lineNumber}`;
+        }
+
+        return repoUrl;
+    }
+
+    getFormattedLocationForRow(row: any): string {
+        if (!row?.location) {
+            return 'Location not available';
+        }
+
+        const location = row.location;
+        const match = location.match(/(.*):(\d+)/);
+        if (!match) return location;
+
+        const [, filePath, lineNumber] = match;
+        const fileName = filePath.split('/').pop();
+        return `${fileName}:${lineNumber}`;
     }
 }

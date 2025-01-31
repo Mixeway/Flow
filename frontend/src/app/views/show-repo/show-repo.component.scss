@@ -85,3 +85,34 @@ c-card {
   justify-content: center;
   height: 100%;
 }
+.comments-container {
+  .comment-item {
+    &:not(:last-child) {
+      border-bottom: 1px solid rgba(0,0,0,.125);
+      padding-bottom: 1rem;
+    }
+
+    .comment-avatar {
+      .rounded-circle {
+        background-color: #f8f9fa;
+        color: #6c757d;
+        font-weight: bold;
+      }
+    }
+
+    .comment-content {
+      background-color: #f8f9fa;
+      border-radius: 0.5rem;
+      padding: 0.5rem 1rem;
+    }
+  }
+}
+:host ::ng-deep {
+  .ngx-datatable {
+    .location-link {
+      &:hover {
+        text-decoration: underline !important;
+      }
+    }
+  }
+}

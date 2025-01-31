@@ -1,11 +1,12 @@
 package io.mixeway.mixewayflowapi.api.coderepo.controller;
 
-import io.mixeway.mixewayflowapi.api.coderepo.dto.GetCodeReposResponseDto;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.GetFindingResponseDto;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.VulnsResponseDto;
 import io.mixeway.mixewayflowapi.api.coderepo.service.FindingService;
-import io.mixeway.mixewayflowapi.db.entity.Finding;
+import io.mixeway.mixewayflowapi.api.coderepo.dto.CreateCommentRequestDto;
+import io.mixeway.mixewayflowapi.domain.comment.CreateCommentService;
 import io.mixeway.mixewayflowapi.utils.StatusDTO;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.http.HttpStatus;
@@ -23,6 +24,7 @@ import java.util.List;
 @Log4j2
 public class FindingController {
     private final FindingService findingService;
+    private final CreateCommentService createCommentService;
 
     @PreAuthorize("hasAuthority('USER')")
     @GetMapping(value= "/api/v1/coderepo/{id}/findings")
@@ -81,6 +83,26 @@ public class FindingController {
             return new ResponseEntity<>(findingService.reactivate(id,findingId,principal), HttpStatus.OK);
         } catch (Exception e){
             return new ResponseEntity<>( HttpStatus.BAD_REQUEST);
+        }
+    }
+    /**
+     * Adds a new comment to a finding
+     * Authorization is checked at the service level to ensure user has access to the finding
+     */
+    @PreAuthorize("hasAuthority('USER')")
+    @PostMapping("/api/v1/coderepo/{repoId}/finding/{findingId}/comment")
+    public ResponseEntity<StatusDTO> createComment(
+            @PathVariable("repoId") Long repoId,
+            @PathVariable("findingId") Long findingId,
+            @Valid @RequestBody CreateCommentRequestDto request,
+            Principal principal) {
+        try {
+            createCommentService.createComment(repoId, findingId, request.getMessage(), principal);
+            return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("[Comment] Error creating comment for finding {} in repo {} by user {}",
+                    findingId, repoId, principal.getName(), e);
+            return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
         }
     }
 }

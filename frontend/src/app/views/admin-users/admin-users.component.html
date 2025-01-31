@@ -5,17 +5,51 @@
                 User management
             </c-card-header>
             <c-card-body>
-                <button
-                        color="primary"
-                        cButton
-                        (click)="openAddNewUserModal()"
-                >
-                    <svg cIcon class="me-2" name="cil-user-plus"></svg>
-                    Add new User
-                </button>
+                <!-- Search row with improved styling -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <c-input-group class="input-group-lg">
+                    <span cInputGroupText class="bg-light">
+                        <svg cIcon name="cil-search" class="text-muted"></svg>
+                    </span>
+                            <input
+                                    type="text"
+                                    cFormControl
+                                    class="form-control form-control-lg shadow-none"
+                                    placeholder="Search users by name, role, team..."
+                                    [value]="searchTerm"
+                                    (input)="onSearch($event)"
+                            >
+                            <button
+                                    *ngIf="searchTerm"
+                                    cButton
+                                    color="secondary"
+                                    variant="outline"
+                                    class="px-4"
+                                    (click)="clearSearch()">
+                                <svg cIcon name="cil-x" class="me-0"></svg>
+                            </button>
+                        </c-input-group>
+                    </div>
+                </div>
+
+                <!-- Action buttons row -->
+                <div class="row mb-4">
+                    <div class="col">
+                        <button
+                                color="primary"
+                                cButton
+                                class="btn-lg"
+                                (click)="openAddNewUserModal()"
+                        >
+                            <svg cIcon class="me-2" name="cil-user-plus"></svg>
+                            Add new User
+                        </button>
+                    </div>
+                </div>
                 <ngx-datatable
                         class="bootstrap"
-                        [rows]="users"
+                        [rows]="filteredUsers"
                         [columnMode]="'force'"
                         [footerHeight]="50"
                         [headerHeight]="80"

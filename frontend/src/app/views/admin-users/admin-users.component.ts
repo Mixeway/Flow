@@ -95,6 +95,8 @@ export class AdminUsersComponent implements OnInit {
   ];
 
   filteredTeams: Observable<Team[]> | undefined;
+  searchTerm: string = '';
+  filteredUsers: User[] = [];
 
   visibleAddNewUser = false;
   visibleRoleModal = false;
@@ -148,6 +150,8 @@ export class AdminUsersComponent implements OnInit {
     this.userService.get().subscribe({
       next: (response) => {
         this.users = response;
+        this.filteredUsers = response; // Initialize filtered users
+
       },
       error: (error) => {
         // Handle login error
@@ -412,5 +416,29 @@ export class AdminUsersComponent implements OnInit {
         }
       });
     }
+  }
+  // Add this new method for filtering
+  onSearch(event: Event): void {
+    const searchTerm = (event.target as HTMLInputElement).value.toLowerCase();
+    this.searchTerm = searchTerm;
+
+    if (!searchTerm) {
+      this.filteredUsers = this.users;
+      return;
+    }
+
+    this.filteredUsers = this.users.filter(user => {
+      return (
+          user.username.toLowerCase().includes(searchTerm) ||
+          user.role.toLowerCase().includes(searchTerm) ||
+          user.teams.some(team => team.name.toLowerCase().includes(searchTerm)) ||
+          user.active.toString().toLowerCase().includes(searchTerm)
+      );
+    });
+  }
+
+  clearSearch(): void {
+    this.searchTerm = '';
+    this.filteredUsers = this.users;
   }
 }

@@ -48,6 +48,7 @@ interface SimpleUser {
 interface Team {
   id: number;
   name: string;
+  remoteIdentifier: string;
   users: SimpleUser[];
 }
 interface TeamDto {
@@ -100,6 +101,8 @@ export class ManageTeamsComponent implements OnInit{
   teams: Team[] = [];
 
   users: User[] = [];
+  searchTerm: string = '';
+  filteredTeams: Team[] = [];
 
   filteredUsers: Observable<User[]> | undefined;
   filteredUsersForAdd: Observable<User[]> | undefined;
@@ -131,6 +134,7 @@ export class ManageTeamsComponent implements OnInit{
     this.teamService.get().subscribe({
       next: (response) => {
         this.teams = response;
+        this.filteredTeams = response; // Initialize filtered teams
       },
       error: (error) => {
         // Handle login error
@@ -308,5 +312,29 @@ export class ManageTeamsComponent implements OnInit{
   onVisibleChange($event: boolean) {
     this.visible = $event;
     this.percentage = !this.visible ? 0 : this.percentage;
+  }
+
+  // Add this new method for filtering
+  onSearch(event: Event): void {
+    const searchTerm = (event.target as HTMLInputElement).value.toLowerCase();
+    this.searchTerm = searchTerm;
+
+    if (!searchTerm) {
+      this.filteredTeams = this.teams;
+      return;
+    }
+
+    this.filteredTeams = this.teams.filter(team => {
+      return (
+          team.name.toLowerCase().includes(searchTerm) ||
+          (team.remoteIdentifier && team.remoteIdentifier.toLowerCase().includes(searchTerm)) ||
+          team.users.some(user => user.username.toLowerCase().includes(searchTerm))
+      );
+    });
+  }
+
+  clearSearch(): void {
+    this.searchTerm = '';
+    this.filteredTeams = this.teams;
   }
 }

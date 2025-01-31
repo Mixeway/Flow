@@ -5,26 +5,60 @@
                 Team Management
             </c-card-header>
             <c-card-body>
-                <button
-                        color="primary"
-                        cButton
-                        (click)="openAddTeamModal()"
-                >
-                    <svg cIcon class="me-2" name="cil-plus"></svg>
-                    Create Team
-                </button>
-                &nbsp;
-                <button
-                        color="primary"
-                        cButton
-                        (click)="openAddUsersToTeamModal()"
-                >
-                    <svg cIcon class="me-2" name="cil-user-plus"></svg>
-                    Add Users to Team
-                </button>
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <c-input-group class="input-group-lg">
+                            <span cInputGroupText class="bg-light">
+                                <svg cIcon name="cil-search" class="text-muted"></svg>
+                            </span>
+                            <input
+                                    type="text"
+                                    cFormControl
+                                    class="form-control form-control-lg shadow-none"
+                                    placeholder="Search teams by name, identifier, or users..."
+                                    [value]="searchTerm"
+                                    (input)="onSearch($event)"
+                            >
+                            <button
+                                    *ngIf="searchTerm"
+                                    cButton
+                                    color="secondary"
+                                    variant="outline"
+                                    class="px-4"
+                                    (click)="clearSearch()">
+                                <svg cIcon name="cil-x" class="me-0"></svg>
+                            </button>
+                        </c-input-group>
+                    </div>
+                </div>
+
+                <!-- Action buttons row -->
+                <div class="row mb-4">
+                    <div class="col">
+                        <button
+                                color="primary"
+                                cButton
+                                class="btn-lg me-2"
+                                (click)="openAddTeamModal()"
+                        >
+                            <svg cIcon class="me-2" name="cil-plus"></svg>
+                            Create Team
+                        </button>
+
+                        <button
+                                color="primary"
+                                cButton
+                                class="btn-lg"
+                                (click)="openAddUsersToTeamModal()"
+                        >
+                            <svg cIcon class="me-2" name="cil-user-plus"></svg>
+                            Add Users to Team
+                        </button>
+                    </div>
+                </div>
                 <ngx-datatable
                         class="bootstrap"
-                        [rows]="teams"
+                        [rows]="filteredTeams"
                         [columnMode]="'force'"
                         [footerHeight]="50"
                         [headerHeight]="80"

@@ -61,6 +61,7 @@ public class WebClientConfig {
                         .host(proxyHost)
                         .port(proxyPort);
 
+
                 if (proxyUsername != null && proxyPassword != null) {
                     proxyBuilder.username(proxyUsername)
                             .password(ignored -> proxyPassword);

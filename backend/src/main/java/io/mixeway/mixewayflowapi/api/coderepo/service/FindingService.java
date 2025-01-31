@@ -1,5 +1,6 @@
 package io.mixeway.mixewayflowapi.api.coderepo.service;
 
+import io.mixeway.mixewayflowapi.api.coderepo.dto.CommentDto;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.GetFindingResponseDto;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.VulnsResponseDto;
 import io.mixeway.mixewayflowapi.api.coderepo.mapper.FindingMapper;
@@ -46,6 +47,9 @@ public class FindingService {
             getFindingResponseDto.setRecommendation(finding.get().getVulnerability().getRecommendation());
             getFindingResponseDto.setRefs(finding.get().getVulnerability().getRef());
             getFindingResponseDto.setExplanation(finding.get().getExplanation());
+            getFindingResponseDto.setComments(finding.get().getComments().stream()
+                    .map(comment -> new CommentDto(comment.getCreatedDate(), comment.getUser().getUsername(), comment.getMessage()))
+                    .toList());
             return getFindingResponseDto;
         } else {
             return null;

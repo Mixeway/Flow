@@ -2,6 +2,8 @@ package io.mixeway.mixewayflowapi.api.coderepo.dto;
 
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class GetFindingResponseDto {
     VulnsResponseDto vulnsResponseDto;
@@ -9,4 +11,5 @@ public class GetFindingResponseDto {
     String recommendation;
     String explanation;
     String refs;
+    List<CommentDto> comments;
 }

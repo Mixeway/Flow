@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+
+## [1.1.0] - 2025-01-31
+
+### Introduced
+- Filtering on the Team management
+- Filtering on the Manage Users
+- Finding commenting system
+- Links to the code to repo from the finding 
+
 ## [1.0.7] - 2024-12-12
 
 ### Introduced

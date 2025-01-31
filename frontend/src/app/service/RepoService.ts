@@ -46,4 +46,10 @@ export class RepoService {
         return this.http.post<any>(this.loginUrl + '/api/v1/coderepo/' + number+ '/supress', selectedFindings,{ withCredentials: true });
 
     }
+    addComment(repoId: number, findingId: number, message: string): Observable<any> {
+        return this.http.post(`${this.loginUrl}/api/v1/coderepo/${repoId}/finding/${findingId}/comment`,
+            { message: message },
+            { withCredentials: true }
+        );
+    }
 }

@@ -8,6 +8,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 @Entity
@@ -82,6 +84,9 @@ public final class Finding {
     @Column(name = "updated_date", nullable = false)
     private LocalDateTime updatedDate;
 
+    @OneToMany(mappedBy = "finding", cascade = CascadeType.ALL, orphanRemoval = true)
+    private final List<Comment> comments = new ArrayList<>();
+
     // Default constructor for JPA
     protected Finding() {
         this.id = 0;
@@ -94,6 +99,13 @@ public final class Finding {
         this.severity = null;
         this.status = Status.NEW;
         this.source = null;
+    }
+
+    public void addComment(Comment comment) {
+        comments.add(comment);
+    }
+    public void removeComment(Comment comment) {
+        comments.remove(comment);
     }
 
     // Public constructor for creating new instances
