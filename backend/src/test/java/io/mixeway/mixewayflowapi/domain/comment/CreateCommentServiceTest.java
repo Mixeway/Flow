@@ -48,7 +48,7 @@ class CreateCommentServiceTest {
         String message = "Test comment";
 
         // When
-        Comment comment = createCommentService.createComment(1L,1L, message, principal);
+        Comment comment = createCommentService.createComment(2L,1L, message, principal);
 
         // Then
         assertNotNull(comment);
@@ -68,7 +68,7 @@ class CreateCommentServiceTest {
         String message = "Test comment from team member";
 
         // When
-        Comment comment = createCommentService.createComment(1L,1L, message, principal);
+        Comment comment = createCommentService.createComment(2L,1L, message, principal);
 
         // Then
         assertNotNull(comment);
@@ -88,7 +88,7 @@ class CreateCommentServiceTest {
 
         // Then
         assertThrows(UnauthorizedAccessException.class, () ->
-                createCommentService.createComment(1L, 1L,message, principal)
+                createCommentService.createComment(2L, 1L,message, principal)
         );
     }
 

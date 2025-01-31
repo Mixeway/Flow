@@ -792,4 +792,8 @@ SELECT pg_catalog.setval('public.vulnerability_id_seq', 20, true);
 --
 -- PostgreSQL database dump complete
 --
+INSERT INTO users (username, password, active, reset_password)
+VALUES
+    ('team_user', '$2a$10$test', true, false),
+    ('unauthorized_user', '$2a$10$test', true, false);
 

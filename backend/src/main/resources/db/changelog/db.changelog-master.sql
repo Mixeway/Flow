@@ -583,3 +583,19 @@ HAVING
             THEN 'notable'
         ELSE NULL
 END IS NOT NULL;
+
+-- changeset siewer:add-comment
+CREATE TABLE comment (
+                         id BIGSERIAL PRIMARY KEY,
+                         message TEXT NOT NULL,
+                         finding_id BIGINT NOT NULL,
+                         user_id BIGINT NOT NULL,
+                         created_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                         updated_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                         FOREIGN KEY (finding_id) REFERENCES finding(id),
+                         FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Index for faster lookups
+CREATE INDEX idx_comment_finding ON comment(finding_id);
+CREATE INDEX idx_comment_user ON comment(user_id);

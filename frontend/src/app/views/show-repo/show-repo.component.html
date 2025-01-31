@@ -1125,7 +1125,7 @@
                                                 cButton
                                                 color="primary"
                                                 type="submit"
-                                                [disabled]="!newComment?.trim() || isAddingComment">
+                                                [disabled]="!newComment.trim() || isAddingComment">
                                             <c-spinner *ngIf="isAddingComment" size="sm" class="me-1"></c-spinner>
                                             Send
                                         </button>

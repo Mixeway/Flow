@@ -154,6 +154,9 @@ public class FindFindingService {
     public Long countOpenedVulnerabilities(Principal principal){
         return findingRepository.countAllByCodeRepoInAndStatusIn(findCodeRepoService.findCodeRepoForUser(principal), Arrays.asList("NEW", "EXISTING"));
     }
+    public Long countOpenedVulnerabilitiesForRepos(List<CodeRepo> codeRepos){
+        return findingRepository.countAllByCodeRepoInAndStatusIn(codeRepos, Arrays.asList("NEW", "EXISTING"));
+    }
 
     public List<RemovedVulnerabilityDTO> getTopRemovedVulns(Principal principal){
 

@@ -18,6 +18,7 @@ export type ChartOptions = {
     labels: string[];
 };
 
+
 @Component({
     selector: 'app-threat-score',
     standalone: true,
@@ -33,11 +34,11 @@ export type ChartOptions = {
 export class ThreatScoreComponent implements OnChanges {
     @Input()
     threatScore: string = '';
-    public chartOptions: Partial<ChartOptions>;
+    public chartOptions: ChartOptions;
 
     constructor() {
-        // Initialize chartOptions without threatScore
         this.chartOptions = {
+            series: [0], // Initialize with 0
             chart: {
                 type: 'radialBar',
                 offsetY: -20,
@@ -75,7 +76,6 @@ export class ThreatScoreComponent implements OnChanges {
             },
             fill: {
                 type: 'gradient',
-
                 gradient: {
                     shade: 'light',
                     shadeIntensity: 0.4,
@@ -102,23 +102,28 @@ export class ThreatScoreComponent implements OnChanges {
 
     updateChartOptions() {
         // Convert threatScore to a number and update series
-        const score = Number(this.threatScore) || 0; // Default to 0 if invalid
-        let color: string ='';
-        if (score > 80){
+        const score = Number(this.threatScore) || 0;
+        let color: string = '';
+        if (score > 80) {
             color = '#e60303';
-        } else if (score > 60){
+        } else if (score > 60) {
             color = '#e34848';
-        } else if (score > 40){
+        } else if (score > 40) {
             color = '#e47a3a';
-        } else if (score > 20){
+        } else if (score > 20) {
             color = '#bedf76';
         } else {
             color = '#55ec32';
         }
+
+        // Update only the necessary properties
         this.chartOptions = {
             ...this.chartOptions,
             series: [score],
-            fill: {colors: [color]},
+            fill: {
+                ...this.chartOptions.fill,
+                colors: [color]
+            }
         };
     }
 }

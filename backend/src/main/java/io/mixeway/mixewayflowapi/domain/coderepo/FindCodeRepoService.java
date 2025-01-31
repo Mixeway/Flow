@@ -77,4 +77,7 @@ public class FindCodeRepoService {
     }
 
 
+    public List<CodeRepo> findbyTeamIn(List<Team> team) {
+        return codeRepoRepository.findByTeamIn(team);
+    }
 }
