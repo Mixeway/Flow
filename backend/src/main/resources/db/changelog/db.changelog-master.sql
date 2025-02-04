@@ -599,3 +599,19 @@ CREATE TABLE comment (
 -- Index for faster lookups
 CREATE INDEX idx_comment_finding ON comment(finding_id);
 CREATE INDEX idx_comment_user ON comment(user_id);
+
+--changeset siewer:wiz
+ALTER TABLE settings
+    ADD COLUMN enable_wiz BOOLEAN NOT NULL DEFAULT FALSE,
+ADD COLUMN wiz_secret VARCHAR(255),
+ADD COLUMN wiz_client_id VARCHAR(255);
+
+--changeset siewer:cloud-subscription
+-- SQL to create the cloud_subscription table
+CREATE TABLE cloud_subscription (
+                                    id SERIAL PRIMARY KEY,
+                                    name VARCHAR(255) NOT NULL,
+                                    team_id BIGINT NOT NULL,
+                                    CONSTRAINT fk_team FOREIGN KEY (team_id) REFERENCES team(id),
+                                    CONSTRAINT uk_name_team UNIQUE (name, team_id)
+);

@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1] - 2025-02-04
+
+### Introduced
+- Possibility for CodeRepo to change teams
+- Settings preparation to Wiz integration
 
 ## [1.1.0] - 2025-01-31
 

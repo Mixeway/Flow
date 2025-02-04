@@ -31,6 +31,8 @@ import {map, startWith} from "rxjs/operators";
 import {AuthService} from "../../service/AuthService";
 import {TeamService} from "../../service/TeamService";
 import {UserService} from "../../service/UserService";
+import {SettingsService} from "../../service/SettingsService";
+import {CloudSubscriptionService} from "../../service/CloudSubscriptionService";
 
 interface User {
   id: number;
@@ -123,9 +125,17 @@ export class ManageTeamsComponent implements OnInit{
     userInput: new FormControl()
   });
 
+  wizEnabled: boolean = false;
+  visibleCloudSubscriptions = false;
+  selectedTeam: Team | null = null;
+  cloudSubscriptions: any[] = [];
+  newSubscriptionName: string = '';
+
+
   constructor(public iconSet: IconSetService, private fb: FormBuilder, private router: Router,
               private authService: AuthService, private teamService: TeamService,
-              private userService: UserService) {
+              private userService: UserService,private settingsService: SettingsService,
+              private cloudSubscriptionService: CloudSubscriptionService) {
     // iconSet singleton
     iconSet.icons = { ...freeSet, ...iconSet };
   }
@@ -177,12 +187,23 @@ export class ManageTeamsComponent implements OnInit{
     ).subscribe(filteredUsers => {
       this.filteredUsers = of(filteredUsers);
     });
+    this.loadScannerConfig();
 
     this.addUsersToTeamForm.controls.userInput.valueChanges.pipe(
         startWith(''),
         map(value => this._filterUsers(value))
     ).subscribe(filteredUsers => {
       this.filteredUsersForAdd = of(filteredUsers);
+    });
+  }
+  loadScannerConfig() {
+    this.settingsService.getAdditionalScannerConfig().subscribe({
+      next: (response) => {
+        this.wizEnabled = response.wizEnabled;
+      },
+      error: (error) => {
+        console.error('Error loading scanner config:', error);
+      }
     });
   }
 
@@ -336,5 +357,62 @@ export class ManageTeamsComponent implements OnInit{
   clearSearch(): void {
     this.searchTerm = '';
     this.filteredTeams = this.teams;
+  }
+  openCloudSubscriptionsModal(team: Team) {
+    this.selectedTeam = team;
+    this.loadCloudSubscriptions(team.id);
+    this.visibleCloudSubscriptions = true;
+  }
+  loadCloudSubscriptions(teamId: number) {
+    this.cloudSubscriptionService.getByTeam(teamId).subscribe({
+      next: (response) => {
+        this.cloudSubscriptions = response;
+      },
+      error: (error) => {
+        this.toastStatus = "danger";
+        this.toastMessage = "Error loading cloud subscriptions";
+        this.toggleToast();
+      }
+    });
+  }
+  createCloudSubscription() {
+    if (!this.selectedTeam || !this.newSubscriptionName.trim()) {
+      return;
+    }
+
+    this.cloudSubscriptionService.create(this.selectedTeam.id, this.newSubscriptionName).subscribe({
+      next: () => {
+        this.toastStatus = "success";
+        this.toastMessage = "Cloud subscription created successfully";
+        this.toggleToast();
+        this.loadCloudSubscriptions(this.selectedTeam!.id);
+        this.newSubscriptionName = '';
+      },
+      error: (error) => {
+        this.toastStatus = "danger";
+        this.toastMessage = "Error creating cloud subscription";
+        this.toggleToast();
+      }
+    });
+  }
+
+  deleteCloudSubscription(subscriptionId: number) {
+    if (!this.selectedTeam) {
+      return;
+    }
+
+    this.cloudSubscriptionService.delete(subscriptionId, this.selectedTeam.id).subscribe({
+      next: () => {
+        this.toastStatus = "success";
+        this.toastMessage = "Cloud subscription deleted successfully";
+        this.toggleToast();
+        this.loadCloudSubscriptions(this.selectedTeam!.id);
+      },
+      error: (error) => {
+        this.toastStatus = "danger";
+        this.toastMessage = "Error deleting cloud subscription";
+        this.toggleToast();
+      }
+    });
   }
 }

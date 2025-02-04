@@ -1,10 +1,14 @@
 package io.mixeway.mixewayflowapi.api.coderepo.controller;
 
+import io.mixeway.mixewayflowapi.api.coderepo.dto.ChangeTeamRequestDto;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.CreateCodeRepoRequestDto;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.GetCodeReposResponseDto;
 import io.mixeway.mixewayflowapi.api.coderepo.service.CodeRepoApiService;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.domain.coderepo.CreateCodeRepoService;
+import io.mixeway.mixewayflowapi.exceptions.CodeRepoNotFoundException;
+import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
+import io.mixeway.mixewayflowapi.exceptions.UnauthorizedException;
 import io.mixeway.mixewayflowapi.utils.StatusDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -80,6 +84,32 @@ public class CodeRepoController {
         } catch (Exception e){
             log.error("[CodeRepo] Error Running scan for {}", id);
             return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
+        }
+    }
+    @PreAuthorize("hasAuthority('TEAM_MANAGER')")
+    @PutMapping(value = "/api/v1/coderepo/{id}/team")
+    public ResponseEntity<StatusDTO> changeTeam(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody ChangeTeamRequestDto request,
+            Principal principal) {
+        try {
+            codeRepoApiService.changeTeam(id, request.getNewTeamId(), principal);
+            return new ResponseEntity<>(new StatusDTO("Team changed successfully"), HttpStatus.OK);
+        } catch (UnauthorizedException e) {
+            log.error("[CodeRepo] Unauthorized attempt to change team for repo {} by {}", id, principal.getName());
+            return new ResponseEntity<>(new StatusDTO("Unauthorized"), HttpStatus.FORBIDDEN);
+        } catch (TeamNotFoundException | CodeRepoNotFoundException e) {
+            log.error("[CodeRepo] Resource not found while changing team for repo {} by {}: {}",
+                    id, principal.getName(), e.getMessage());
+            return new ResponseEntity<>(new StatusDTO(e.getMessage()), HttpStatus.NOT_FOUND);
+        } catch (IllegalArgumentException e) {
+            log.error("[CodeRepo] Invalid request while changing team for repo {} by {}: {}",
+                    id, principal.getName(), e.getMessage());
+            return new ResponseEntity<>(new StatusDTO(e.getMessage()), HttpStatus.BAD_REQUEST);
+        } catch (Exception e) {
+            log.error("[CodeRepo] Error changing team for repo {} by {}: {}",
+                    id, principal.getName(), e.getMessage());
+            return new ResponseEntity<>(new StatusDTO("Internal server error"), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }

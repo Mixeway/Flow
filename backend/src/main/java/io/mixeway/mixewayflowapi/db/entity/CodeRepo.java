@@ -49,7 +49,7 @@ public final class CodeRepo {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "team_id", nullable = false)
-    private final Team team;
+    private Team team;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "default_branch_id", nullable = false)
@@ -215,6 +215,11 @@ public final class CodeRepo {
 
     public void setScaUUID(String uuid){
         this.scaUUID = uuid;
+    }
+
+    // Add method to update team
+    public void updateTeam(Team newTeam) {
+        this.team = newTeam;
     }
 
     @Override

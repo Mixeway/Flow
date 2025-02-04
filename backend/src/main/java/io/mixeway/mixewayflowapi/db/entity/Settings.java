@@ -65,6 +65,28 @@ public class Settings {
     @Column(name = "enable_smtp", nullable = false)
     private boolean enableSmtp = false;
 
+    @Column(name = "enable_wiz", nullable = false)
+    private boolean enableWiz = false;
+
+    @Column(name = "wiz_secret")
+    @JsonIgnore
+    private String wizSecret;
+
+    @Column(name = "wiz_client_id")
+    private String wizClientId;
+
+    public void enableWiz(String clientId, String secret) {
+        this.enableWiz = true;
+        this.wizClientId = clientId;
+        this.wizSecret = secret;
+    }
+
+    public void disableWiz() {
+        this.enableWiz = false;
+        this.wizClientId = null;
+        this.wizSecret = null;
+    }
+
     // Enable Authentication Login
     public void enableAuthLogin() {
         this.authTypeUserPass = true;

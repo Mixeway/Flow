@@ -73,13 +73,20 @@
                             </ul>
                         </ng-template>
                     </ngx-datatable-column>
-                    <ngx-datatable-column name="Actions" prop="actions" [width]="50">
-                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value"
-                                     let-row="row">
-                            <button type="button" class="btn btn-outline-danger"
-                                    (click)='deleteTeam(row)'>
-                                <svg cIcon name="cil-trash"></svg>
-                            </button>
+                    <ngx-datatable-column name="Actions" prop="actions" [width]="150">
+                        <ng-template ngx-datatable-cell-template let-row="row">
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-outline-danger"
+                                        (click)='deleteTeam(row)'>
+                                    <svg cIcon name="cil-trash"></svg>
+                                </button>
+                                <button *ngIf="wizEnabled"
+                                        type="button"
+                                        class="btn btn-outline-primary"
+                                        (click)='openCloudSubscriptionsModal(row)'>
+                                    <svg cIcon name="cil-cloud"></svg>
+                                </button>
+                            </div>
                         </ng-template>
                     </ngx-datatable-column>
 
@@ -207,3 +214,94 @@
         </c-toast-body>
     </c-toast>
 </c-toaster>
+
+<!-- Cloud Subscriptions Modal -->
+<c-modal size="lg"
+         id="cloudSubscriptionsModal"
+         alignment="center"
+         [visible]="visibleCloudSubscriptions"
+         (visibleChange)="visibleCloudSubscriptions = $event">
+    <c-modal-header>
+        <h5 cModalTitle>Cloud Subscriptions - {{ selectedTeam?.name }}</h5>
+    </c-modal-header>
+    <c-modal-body>
+        <!-- Add New Subscription Form -->
+        <div class="config-section p-4 mb-4 bg-light rounded shadow-sm">
+            <h6 class="text-primary mb-3">Add New Subscription</h6>
+            <div class="d-flex gap-2">
+                <c-input-group class="flex-grow-1">
+                    <span cInputGroupText>
+                        <svg cIcon name="cil-cloud"></svg>
+                    </span>
+                    <input type="text"
+                           cFormControl
+                           [(ngModel)]="newSubscriptionName"
+                           placeholder="Enter subscription name">
+                </c-input-group>
+                <button cButton
+                        color="primary"
+                        [disabled]="!newSubscriptionName.trim()"
+                        (click)="createCloudSubscription()"
+                        class="px-4">
+                    <svg cIcon name="cil-plus" class="me-1"></svg>
+                    Add
+                </button>
+            </div>
+        </div>
+
+        <!-- Existing Subscriptions List -->
+        <div class="config-section p-4 bg-light rounded shadow-sm">
+            <h6 class="text-primary mb-3">Existing Subscriptions</h6>
+            <ngx-datatable
+                    class="bootstrap"
+                    [rows]="cloudSubscriptions"
+                    [columnMode]="'force'"
+                    [headerHeight]="50"
+                    [footerHeight]="50"
+                    [rowHeight]="'auto'"
+                    [limit]="5"
+                    [scrollbarH]="true">
+
+                <ngx-datatable-column
+                        name="Name"
+                        prop="name"
+                        [flexGrow]="2">
+                    <ng-template ngx-datatable-cell-template let-row="row">
+                        <span class="d-flex align-items-center">
+                            <svg cIcon name="cil-cloud" class="me-2 text-primary"></svg>
+                            {{ row.name }}
+                        </span>
+                    </ng-template>
+                </ngx-datatable-column>
+
+                <ngx-datatable-column
+                        name="Actions"
+                        [flexGrow]="1"
+                        [sortable]="false">
+                    <ng-template ngx-datatable-cell-template let-row="row">
+                        <button cButton
+                                color="danger"
+                                variant="outline"
+                                size="sm"
+                                class="btn-icon"
+                                (click)="deleteCloudSubscription(row.id)">
+                            <svg cIcon name="cil-trash"></svg>
+                        </button>
+                    </ng-template>
+                </ngx-datatable-column>
+            </ngx-datatable>
+
+            <!-- Empty State -->
+            <div *ngIf="cloudSubscriptions.length === 0"
+                 class="text-center p-4 text-muted">
+                <svg cIcon name="cil-cloud-download" size="xl" class="mb-3"></svg>
+                <p class="mb-0">No cloud subscriptions found</p>
+            </div>
+        </div>
+    </c-modal-body>
+    <c-modal-footer>
+        <button (click)="visibleCloudSubscriptions = false" cButton color="secondary">
+            Close
+        </button>
+    </c-modal-footer>
+</c-modal>

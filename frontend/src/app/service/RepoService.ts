@@ -52,4 +52,11 @@ export class RepoService {
             { withCredentials: true }
         );
     }
+    changeTeam(repoId: number, newTeamId: number): Observable<any> {
+        return this.http.put<any>(
+            `${this.loginUrl}/api/v1/coderepo/${repoId}/team`,
+            { newTeamId },
+            { withCredentials: true }
+        );
+    }
 }

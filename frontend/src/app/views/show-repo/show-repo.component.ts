@@ -72,6 +72,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { FindingSourceStatDTO } from '../../model/FindingSourceStatDTO';
 import { FindingDTO, SingleFindingDTO } from '../../model/FindingDTO';
 import { FormsModule } from '@angular/forms';
+import {TeamService} from "../../service/TeamService";
 
 interface Vulnerability {
     id: number;
@@ -125,6 +126,16 @@ export interface CodeRepoFindingStats {
     removedFindings: number;
     reviewedFindings: number;
     averageFixTime: number;
+}
+interface Team {
+    id: number;
+    name: string;
+    remoteIdentifier: string | null;
+    users: TeamUser[];
+}
+interface TeamUser {
+    id: number;
+    username: string;
 }
 
 @Component({
@@ -322,6 +333,12 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
     // Search filter for Scan Info
     scanInfoFilter: string = '';
 
+    // New properties for team change functionality
+    changeTeamModalVisible: boolean = false;
+    confirmationModalVisible: boolean = false;
+    confirmationText: string = '';
+    availableTeams: Team[] = [];
+    selectedNewTeamId: number | null = null;
     constructor(
         public iconSet: IconSetService,
         private repoService: RepoService,
@@ -329,7 +346,8 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         private router: Router,
         private route: ActivatedRoute,
         private cdr: ChangeDetectorRef,
-        private datePipe: DatePipe
+        private datePipe: DatePipe,
+        private teamService: TeamService
     ) {
         iconSet.icons = { ...brandSet, ...freeSet };
 
@@ -977,5 +995,56 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         const [, filePath, lineNumber] = match;
         const fileName = filePath.split('/').pop();
         return `${fileName}:${lineNumber}`;
+    }
+    openChangeTeamModal() {
+        // Load available teams first
+        this.teamService.get().subscribe({
+            next: (teams: Team[]) => {
+                this.availableTeams = teams.filter(team => team.id !== this.repoData?.team?.id);
+                this.changeTeamModalVisible = true;
+            },
+            error: (error: any) => {
+                this.toastStatus = 'danger';
+                this.toastMessage = 'Error loading teams';
+                this.toggleToast();
+            }
+        });
+    }
+
+    executeTeamChange() {
+        if (this.confirmationText === 'accept' && this.selectedNewTeamId) {
+            this.repoService.changeTeam(this.repoData.id, this.selectedNewTeamId).subscribe({
+                next: () => {
+                    this.toastStatus = 'success';
+                    this.toastMessage = 'Team changed successfully';
+                    this.toggleToast();
+                    this.loadRepoInfo();
+                },
+                error: (error: any) => {
+                    this.toastStatus = 'danger';
+                    this.toastMessage = error.error?.message || 'Error changing team';
+                    this.toggleToast();
+                },
+                complete: () => {
+                    this.confirmationModalVisible = false;
+                    this.confirmationText = '';
+                    this.selectedNewTeamId = null;
+                }
+            });
+        }
+    }
+    closeChangeTeamModal() {
+        this.changeTeamModalVisible = false;
+        this.selectedNewTeamId = 0;
+    }
+
+    confirmTeamChange() {
+        this.changeTeamModalVisible = false;
+        this.confirmationModalVisible = true;
+    }
+
+    closeConfirmationModal() {
+        this.confirmationModalVisible = false;
+        this.confirmationText = '';
     }
 }

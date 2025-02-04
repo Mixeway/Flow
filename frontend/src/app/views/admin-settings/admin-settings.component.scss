@@ -1,1 +1,27 @@
 label {font-size: 16px; font-weight: bold}
+.config-section {
+  transition: all 0.3s ease;
+}
+
+.config-section:hover {
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.external-dt-config,
+.smtp-config {
+  transition: all 0.3s ease;
+  background-color: #ffffff;
+}
+
+.badge {
+  font-size: 0.75em;
+}
+
+.form-control:focus {
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.text-primary {
+  color: #321fdb !important;
+}

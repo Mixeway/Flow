@@ -2,6 +2,7 @@ package io.mixeway.mixewayflowapi.domain.settings;
 
 import io.mixeway.mixewayflowapi.api.admin.dto.ConfigScaRequestDto;
 import io.mixeway.mixewayflowapi.api.admin.dto.ConfigSmtpRequestDto;
+import io.mixeway.mixewayflowapi.api.admin.dto.ConfigWizRequestDto;
 import io.mixeway.mixewayflowapi.db.entity.Settings;
 import io.mixeway.mixewayflowapi.db.repository.SettingsRepository;
 import io.mixeway.mixewayflowapi.exceptions.SettingsException;
@@ -61,6 +62,24 @@ public class UpdateSettingsService {
             settings.disableSMTP();
             settingsRepository.save(settings);
             log.info("[Settings] Disabled SMTP Config");
+        }
+    }
+
+    @Transactional
+    public void changeSettingsWizConfig(ConfigWizRequestDto configWizRequestDto) throws SettingsException {
+        Settings settings = findSettingsService.get();
+        if (configWizRequestDto.isEnabled()) {
+            if (configWizRequestDto.getClientId() == null || configWizRequestDto.getSecret() == null) {
+                log.warn("[Settings] Error setting Wiz config - client ID and secret are required when enabling Wiz");
+                throw new SettingsException("Client ID and secret are required when enabling Wiz");
+            }
+            settings.enableWiz(configWizRequestDto.getClientId(), configWizRequestDto.getSecret());
+            settingsRepository.save(settings);
+            log.info("[Settings] Changed Wiz Config. Enabled Wiz scanner with client ID: {}", configWizRequestDto.getClientId());
+        } else {
+            settings.disableWiz();
+            settingsRepository.save(settings);
+            log.info("[Settings] Disabled Wiz Config");
         }
     }
 }

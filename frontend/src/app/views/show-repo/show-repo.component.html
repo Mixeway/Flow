@@ -24,16 +24,30 @@
                 <!-- Date of Creation -->
                 <small style="margin-top: 1rem;">Default branch: {{ repoData?.defaultBranch.name }}</small>
                 <small style="margin-top: 1rem;">Created: {{ repoData?.insertedDate | date }}</small>
-                <button
-                        *ngIf="!scanRunning && (userRole === 'ADMIN' || userRole === 'TEAM_MANAGER')"
-                        cButton
-                        color="info"
-                        shape="rounded-pill"
-                        style="margin-top: 10px;"
-                        (click)="runScan()"
-                >
-                    Run Scan
-                </button>
+                <div class="d-flex gap-2">
+                    <button
+                            *ngIf="!scanRunning && (userRole === 'ADMIN' || userRole === 'TEAM_MANAGER')"
+                            cButton
+                            color="info"
+                            shape="rounded-pill"
+                            style="margin-top: 10px;"
+                            (click)="runScan()"
+                    >
+                        <svg cIcon name="cil-media-play" class="me-2"></svg>
+                        Run Scan
+                    </button>
+                    <button
+                            *ngIf="(userRole === 'ADMIN' || userRole === 'TEAM_MANAGER')"
+                            cButton
+                            color="primary"
+                            shape="rounded-pill"
+                            style="margin-top: 10px;"
+                            (click)="openChangeTeamModal()"
+                    >
+                        <svg cIcon name="cil-people" class="me-2"></svg>
+                        Change Team
+                    </button>
+                </div>
 
                 <br />
             </div>
@@ -1171,3 +1185,77 @@
         </c-toast-body>
     </c-toast>
 </c-toaster>
+<!-- Add Change Team Modal -->
+<c-modal size="lg"
+         id="changeTeamModal"
+         alignment="center"
+         [visible]="changeTeamModalVisible"
+         (visibleChange)="changeTeamModalVisible = $event">
+    <c-modal-header>
+        <h5 cModalTitle>Change Team</h5>
+    </c-modal-header>
+    <c-modal-body>
+        <div class="mb-3">
+            <label cLabel for="newTeamSelect">Select New Team</label>
+            <select id="newTeamSelect"
+                    class="form-select"
+                    [(ngModel)]="selectedNewTeamId">
+                <option [ngValue]="null">Choose a team...</option>
+                <option *ngFor="let team of availableTeams"
+                        [ngValue]="team.id">
+                    {{ team.name }}
+                </option>
+            </select>
+        </div>
+    </c-modal-body>
+    <c-modal-footer>
+        <button (click)="closeChangeTeamModal()"
+                cButton
+                color="secondary">
+            Close
+        </button>
+        <button (click)="confirmTeamChange()"
+                cButton
+                color="primary"
+                [disabled]="!selectedNewTeamId">
+            Change Team
+        </button>
+    </c-modal-footer>
+</c-modal>
+
+<!-- Add Confirmation Modal -->
+<c-modal size="lg"
+         id="confirmationModal"
+         alignment="center"
+         [visible]="confirmationModalVisible"
+         (visibleChange)="confirmationModalVisible = $event">
+    <c-modal-header>
+        <h5 cModalTitle>Confirm Team Change</h5>
+    </c-modal-header>
+    <c-modal-body>
+        <div class="alert alert-warning">
+            <h4 class="alert-heading">Warning!</h4>
+            <p>You are about to change the team for this repository. This action cannot be undone.</p>
+            <p>Please type "accept" to confirm this change:</p>
+        </div>
+        <div class="mb-3">
+            <input type="text"
+                   class="form-control"
+                   [(ngModel)]="confirmationText"
+                   placeholder="Type 'accept' to confirm">
+        </div>
+    </c-modal-body>
+    <c-modal-footer>
+        <button (click)="closeConfirmationModal()"
+                cButton
+                color="secondary">
+            Cancel
+        </button>
+        <button (click)="executeTeamChange()"
+                cButton
+                color="danger"
+                [disabled]="confirmationText !== 'accept'">
+            Change Team
+        </button>
+    </c-modal-footer>
+</c-modal>

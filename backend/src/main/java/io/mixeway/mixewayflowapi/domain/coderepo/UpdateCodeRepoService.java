@@ -1,9 +1,6 @@
 package io.mixeway.mixewayflowapi.domain.coderepo;
 
-import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
-import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
-import io.mixeway.mixewayflowapi.db.entity.Component;
-import io.mixeway.mixewayflowapi.db.entity.Finding;
+import io.mixeway.mixewayflowapi.db.entity.*;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
 import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
 import io.mixeway.mixewayflowapi.domain.scaninfo.CreateScanInfoService;
@@ -212,5 +209,13 @@ public class UpdateCodeRepoService {
     @Transactional
     public void setScaPending(CodeRepo codeRepo) {
         codeRepoRepository.updateScaScanToNotPerformed(codeRepo.getId());
+    }
+
+    @Transactional
+    public void changeTeam(CodeRepo codeRepo, Team newTeam) {
+        // Simply update the team reference
+        codeRepo.updateTeam(newTeam);
+        codeRepoRepository.save(codeRepo);
+        log.info("Changed team for code repo {} from {} to {}", codeRepo.getId(), codeRepo.getTeam().getName(), newTeam.getName());
     }
 }

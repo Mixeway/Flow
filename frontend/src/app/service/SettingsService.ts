@@ -20,4 +20,11 @@ export class SettingsService {
     get(): Observable<any> {
         return this.http.get<any>(this.loginUrl + '/api/v1/admin/settings', {withCredentials: true});
     }
+    changeWiz(wizConfig: any): Observable<any> {
+        return this.http.post<any>(`${this.loginUrl}/api/v1/admin/settings/wizconfig`, wizConfig, { withCredentials: true });
+    }
+
+    getAdditionalScannerConfig(): Observable<any> {
+        return this.http.get<any>(`${this.loginUrl}/api/v1/admin/settings/additionalscannerconfig`, { withCredentials: true });
+    }
 }

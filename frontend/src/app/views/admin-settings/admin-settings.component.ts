@@ -133,6 +133,11 @@ export class AdminSettingsComponent implements OnInit{
     scaConfigForm: any;
     smtpConfigForm: any;
 
+    // For Wiz Configuration
+    isWizEnabled: boolean = false;
+    wizConfigForm: any;
+
+
     settings: any;
 
     // For Authentication Tab
@@ -155,6 +160,11 @@ export class AdminSettingsComponent implements OnInit{
             tls: [false],
             startls: [false]
         });
+        this.wizConfigForm = this.fb.group({
+            enabled: [false],
+            clientId: [''],
+            secret: ['']
+        });
     }
 
     ngOnInit() {
@@ -168,6 +178,27 @@ export class AdminSettingsComponent implements OnInit{
             }
         });
         this.loadSettings();
+    }
+    onWizToggleChange() {
+        this.isWizEnabled = !this.isWizEnabled;
+        this.wizConfigForm.patchValue({enabled: this.isWizEnabled});
+    }
+
+    configWiz() {
+        if (this.wizConfigForm.valid) {
+            this.settingsService.changeWiz(this.wizConfigForm.value).subscribe({
+                next: (response) => {
+                    this.toastStatus = "success";
+                    this.toastMessage = "Successfully changed Wiz Scanner Settings";
+                    this.toggleToast();
+                },
+                error: (error) => {
+                    this.toastStatus = "danger";
+                    this.toastMessage = "Problem changing configuration for Wiz Scanner. Please check your inputs.";
+                    this.toggleToast();
+                }
+            });
+        }
     }
 
     changeEmbededDT(){
@@ -261,6 +292,12 @@ export class AdminSettingsComponent implements OnInit{
                 this.smtpConfigForm.patchValue({startls: this.settings.smtpStarttls})
                 this.smtpEnabled = this.settings.enableSmtp;
                 this.isExternalDTChecked = this.settings.scaModeExternal;
+
+                // Add Wiz settings
+                this.wizConfigForm.patchValue({enabled: this.settings.enableWiz});
+                this.wizConfigForm.patchValue({clientId: this.settings.wizClientId});
+                this.wizConfigForm.patchValue({secret: "************"});
+                this.isWizEnabled = this.settings.enableWiz;
 
             }
         });

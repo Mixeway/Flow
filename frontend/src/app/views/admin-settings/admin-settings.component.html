@@ -4,206 +4,264 @@
             <c-card-body>
                 <c-tabs [activeItemKey]="0">
                     <c-tabs-list variant="underline-border">
-                        <button cTab [itemKey]="0">
+                        <button cTab [itemKey]="0" class="d-flex align-items-center">
                             <svg cIcon name="cil-bug" class="me-2"></svg> Scanner Configurations
                         </button>
-                        <button cTab [itemKey]="1">
+                        <button cTab [itemKey]="1" class="d-flex align-items-center">
                             <svg cIcon name="cil-envelope-closed" class="me-2"></svg> SMTP and Notifications
                         </button>
-                        <button cTab [itemKey]="2">
+                        <button cTab [itemKey]="2" class="d-flex align-items-center">
                             <svg cIcon name="cil-contact" class="me-2"></svg> Authentication
                         </button>
                     </c-tabs-list>
                     <c-tabs-content>
-                        <c-tab-panel class="p-3" [itemKey]="0">
+                        <c-tab-panel class="p-4" [itemKey]="0">
                             <!-- Scanner Configuration -->
+                            <div class="scanner-sections">
+                                <!-- Section 1: Software Component Analysis -->
+                                <div class="config-section p-4 mb-4 bg-light rounded shadow-sm">
+                                    <h4 class="mb-3 text-primary">Software Component Analysis</h4>
+                                    <form [gutter]="3" [formGroup]="scaConfigForm" novalidate cForm cRow class="needs-validation">
+                                        <div class="sca-options mb-4">
+                                            <c-form-check [switch]="true" class="mb-3">
+                                                <input
+                                                        cFormCheckInput
+                                                        id="embedded"
+                                                        formControlName="scaTypeEmbedded"
+                                                        type="checkbox"
+                                                        [checked]="isEmbededDTChecked"
+                                                        (change)="changeEmbededDT()"
+                                                />
+                                                <label cFormCheckLabel for="embedded" class="ms-2">Embedded Dependency Track</label>
+                                            </c-form-check>
 
-                            <!-- Section 1: Software Component Analysis -->
-                            <c-col [xs]="12" class="mb-3">
-                                <h1>Software Component Analysis</h1>
-                                <hr/>
-                                <form [gutter]="3" [formGroup]="scaConfigForm" novalidate cForm cRow class="needs-validation">
-                                    <c-form-check [switch]="true">
-                                        <input
-                                                cFormCheckInput
-                                                id="embedded"
-                                                value="embedded"
-                                                name="softwareComponent"
-                                                formControlName="scaTypeEmbedded"
-                                                type="checkbox"
-                                                [checked]="isEmbededDTChecked"
-                                                (change)="changeEmbededDT()"
-                                        />
-                                        <label cFormCheckLabel for="embedded">Embedded Dependency Track</label>
-                                    </c-form-check>
+                                            <c-form-check [switch]="true" class="mb-3">
+                                                <input
+                                                        cFormCheckInput
+                                                        id="external"
+                                                        formControlName="scaTypeExternal"
+                                                        type="checkbox"
+                                                        [checked]="isExternalDTChecked"
+                                                        (change)="changeExternalDT()"
+                                                />
+                                                <label cFormCheckLabel for="external" class="ms-2">External Dependency Track</label>
+                                            </c-form-check>
 
-                                    <c-form-check [switch]="true">
-                                        <input
-                                                cFormCheckInput
-                                                id="external"
-                                                value="external"
-                                                name="softwareComponent"
-                                                formControlName="scaTypeExternal"
-                                                type="checkbox"
-                                                [checked]="isExternalDTChecked"
-                                                (change)="changeExternalDT()"
-                                        />
-                                        <label cFormCheckLabel for="external">External Dependency Track</label>
-                                    </c-form-check>
+                                            <div *ngIf="isExternalDTChecked" class="external-dt-config p-3 border rounded bg-white">
+                                                <div class="mb-3">
+                                                    <label cLabel for="inputExternalDTUrl">Dependency Track URL</label>
+                                                    <input formControlName="scaApiUrl" cFormControl id="inputExternalDTUrl" type="url" class="form-control">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label cLabel for="inputExternalDTApiKey">API Key</label>
+                                                    <input formControlName="scaApiKey" cFormControl id="inputExternalDTApiKey" type="text" class="form-control">
+                                                </div>
+                                            </div>
 
-                                    <div *ngIf="isExternalDTChecked" style="margin-top: 15px; margin-bottom: 15px;">
-                                        <div class="mb-3">
-                                            <label cLabel for="inputExternalDTUrl">Dependency Track URL</label>
-                                            <input formControlName="scaApiUrl" cFormControl id="inputExternalDTUrl" type="url">
-
+                                            <c-form-check [switch]="true" class="mb-3">
+                                                <input
+                                                        cFormCheckInput
+                                                        id="otherTool"
+                                                        type="checkbox"
+                                                        disabled
+                                                />
+                                                <label cFormCheckLabel for="otherTool" class="ms-2 text-muted">
+                                                    Other External Tool
+                                                    <span class="badge bg-secondary ms-2">Coming Soon</span>
+                                                </label>
+                                            </c-form-check>
                                         </div>
-                                        <div class="mb-3">
-                                            <label cLabel for="inputExternalDTApiKey">ApiKey</label>
-                                            <input formControlName="scaApiKey" cFormControl id="inputExternalDTApiKey" type="text">
-                                        </div>
+                                        <button cButton color="primary" type="submit" (click)="configSca()" class="mt-3">
+                                            Save SCA Configuration
+                                        </button>
+                                    </form>
+                                </div>
 
+                                <!-- Section 2: SAST -->
+                                <div class="config-section p-4 mb-4 bg-light rounded shadow-sm">
+                                    <h4 class="mb-3 text-primary">Static Application Security Testing (SAST)</h4>
+                                    <div class="sast-options">
+                                        <c-form-check [switch]="true" class="mb-3">
+                                            <input cFormCheckInput id="bearer" name="sast" type="checkbox" [(ngModel)]="sast" [checked]="sast === 'bearer'" (change)="onSastChange('bearer')" disabled />
+                                            <label cFormCheckLabel for="bearer" class="ms-2">Bearer</label>
+                                        </c-form-check>
+                                        <c-form-check [switch]="true">
+                                            <input cFormCheckInput id="sastOtherTool" name="sast" type="checkbox" disabled />
+                                            <label cFormCheckLabel for="sastOtherTool" class="ms-2 text-muted">
+                                                Other External Tool
+                                                <span class="badge bg-secondary ms-2">Coming Soon</span>
+                                            </label>
+                                        </c-form-check>
                                     </div>
+                                </div>
 
-                                    <c-form-check [switch]="true" cTooltipPlacement="top">
-                                        <input
-                                                cFormCheckInput
-                                                id="otherTool"
-                                                name="softwareComponent"
-                                                type="checkbox"
-                                                disabled
-                                        />
-                                        <label
-                                                cFormCheckLabel
-                                                [cTooltip]="'Not supported in this version'"
-                                                for="otherTool"
-                                        >
-                                            Other External Tool
-                                        </label>
+                                <!-- Section 3: IAC -->
+                                <div class="config-section p-4 mb-4 bg-light rounded shadow-sm">
+                                    <h4 class="mb-3 text-primary">Infrastructure as Code (IAC)</h4>
+                                    <div class="iac-options">
+                                        <c-form-check [switch]="true" class="mb-3">
+                                            <input cFormCheckInput id="kics" name="iac" type="checkbox" [(ngModel)]="iac" [checked]="iac === 'kics'" (change)="onIacChange('kics')" disabled/>
+                                            <label cFormCheckLabel for="kics" class="ms-2">KICS</label>
+                                        </c-form-check>
+                                        <c-form-check [switch]="true">
+                                            <input cFormCheckInput id="iacOtherTool" name="iac" type="checkbox" disabled />
+                                            <label cFormCheckLabel for="iacOtherTool" class="ms-2 text-muted">
+                                                Other External Tool
+                                                <span class="badge bg-secondary ms-2">Coming Soon</span>
+                                            </label>
+                                        </c-form-check>
+                                    </div>
+                                </div>
 
-                                    </c-form-check>
-                                    <input cButton color="primary" type="submit" (click)="configSca()" value="Change SCA Config">
+                                <!-- Section 4: Secrets Leakage -->
+                                <div class="config-section p-4 mb-4 bg-light rounded shadow-sm">
+                                    <h4 class="mb-3 text-primary">Secrets Leakage Detection</h4>
+                                    <div class="secrets-options">
+                                        <c-form-check [switch]="true" class="mb-3">
+                                            <input cFormCheckInput id="gitleaks" name="secretsLeakage" type="checkbox" [(ngModel)]="secretsLeakage" [checked]="secretsLeakage === 'gitleaks'" (change)="onSecretsLeakageChange('gitleaks')" disabled/>
+                                            <label cFormCheckLabel for="gitleaks" class="ms-2">Gitleaks</label>
+                                        </c-form-check>
+                                        <c-form-check [switch]="true">
+                                            <input cFormCheckInput id="secretsOtherTool" name="secretsLeakage" type="checkbox" disabled />
+                                            <label cFormCheckLabel for="secretsOtherTool" class="ms-2 text-muted">
+                                                Other External Tool
+                                                <span class="badge bg-secondary ms-2">Coming Soon</span>
+                                            </label>
+                                        </c-form-check>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Section 5: Wiz Scanner -->
+                            <div class="config-section p-4 mb-4 bg-light rounded shadow-sm">
+                                <h4 class="mb-3 text-primary">Wiz Scanner Configuration</h4>
+                                <form [gutter]="3" [formGroup]="wizConfigForm" novalidate cForm cRow class="needs-validation">
+                                    <div class="wiz-options mb-4">
+                                        <c-form-check [switch]="true" class="mb-3">
+                                            <input
+                                                    cFormCheckInput
+                                                    id="wizEnabled"
+                                                    formControlName="enabled"
+                                                    type="checkbox"
+                                                    [checked]="isWizEnabled"
+                                                    (change)="onWizToggleChange()"
+                                            />
+                                            <label cFormCheckLabel for="wizEnabled" class="ms-2">Enable Wiz Scanner</label>
+                                        </c-form-check>
+
+                                        <div *ngIf="isWizEnabled" class="wiz-config p-3 border rounded bg-white">
+                                            <div class="mb-3">
+                                                <label cLabel for="wizClientId">Client ID</label>
+                                                <input formControlName="clientId" cFormControl id="wizClientId" type="text" class="form-control">
+                                                <c-form-feedback [valid]="false">Please provide a valid Client ID.</c-form-feedback>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label cLabel for="wizSecret">Secret</label>
+                                                <input formControlName="secret" cFormControl id="wizSecret" type="password" class="form-control">
+                                                <c-form-feedback [valid]="false">Please provide a valid Secret.</c-form-feedback>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button cButton color="primary" type="submit" (click)="configWiz()" class="mt-3">
+                                        Save Wiz Configuration
+                                    </button>
                                 </form>
-                            </c-col>
-
-
-                            <!-- Section 2: SAST -->
-                            <c-col [xs]="12" class="mb-3">
-                                <h1>SAST</h1>
-                                <hr/>
-                                <c-form-check [switch]="true">
-                                    <input cFormCheckInput id="bearer" name="sast" type="checkbox" [(ngModel)]="sast" [checked]="sast === 'bearer'" (change)="onSastChange('bearer')" disabled />
-                                    <label cFormCheckLabel for="bearer">Bearer</label>
-                                </c-form-check>
-                                <c-form-check [switch]="true" cTooltipPlacement="top">
-                                    <input cFormCheckInput id="sastOtherTool" name="sast" type="checkbox" disabled />
-                                    <label cFormCheckLabel for="sastOtherTool" [cTooltip]="'Not supported in this version'">Other External Tool</label>
-                                </c-form-check>
-                            </c-col>
-
-                            <!-- Section 3: IAC -->
-                            <c-col [xs]="12" class="mb-3">
-                                <h1>IAC</h1>
-                                <hr/>
-                                <c-form-check [switch]="true">
-                                    <input cFormCheckInput id="kics" name="iac" type="checkbox" [(ngModel)]="iac" [checked]="iac === 'kics'" (change)="onIacChange('kics')" disabled/>
-                                    <label cFormCheckLabel for="kics">KICS</label>
-                                </c-form-check>
-                                <c-form-check [switch]="true"  cTooltipPlacement="top">
-                                    <input cFormCheckInput id="iacOtherTool" name="iac" type="checkbox" disabled />
-                                    <label cFormCheckLabel [cTooltip]="'Not supported in this version'" for="iacOtherTool">Other External Tool</label>
-                                </c-form-check>
-                            </c-col>
-
-                            <!-- Section 4: Secrets Leakage -->
-                            <c-col [xs]="12" class="mb-3">
-                                <h1>Secrets Leakage</h1>
-                                <hr/>
-                                <c-form-check [switch]="true">
-                                    <input cFormCheckInput id="gitleaks" name="secretsLeakage" type="checkbox" [(ngModel)]="secretsLeakage" [checked]="secretsLeakage === 'gitleaks'" (change)="onSecretsLeakageChange('gitleaks')" disabled/>
-                                    <label cFormCheckLabel for="gitleaks">Gitleaks</label>
-                                </c-form-check>
-                                <c-form-check [switch]="true"  cTooltipPlacement="top">
-                                    <input cFormCheckInput id="secretsOtherTool" name="secretsLeakage" type="checkbox" disabled />
-                                    <label cFormCheckLabel [cTooltip]="'Not supported in this version'" for="secretsOtherTool">Other External Tool</label>
-                                </c-form-check>
-                            </c-col>
+                            </div>
                         </c-tab-panel>
 
-                        <c-tab-panel class="p-3" [itemKey]="1">
+                        <c-tab-panel class="p-4" [itemKey]="1">
                             <!-- SMTP and Notifications -->
+                            <div class="notification-sections">
+                                <!-- Section 1: SMTP -->
+                                <div class="config-section p-4 mb-4 bg-light rounded shadow-sm">
+                                    <h4 class="mb-3 text-primary">SMTP Configuration</h4>
+                                    <form [gutter]="3" novalidate cForm [formGroup]="smtpConfigForm" cRow class="needs-validation">
+                                        <c-form-check [switch]="true" class="mb-4">
+                                            <input formControlName="enabled" cFormCheckInput id="smtpToggle" type="checkbox" (change)="onSmtpToggleChange()" />
+                                            <label cFormCheckLabel for="smtpToggle" class="ms-2">Enable SMTP</label>
+                                        </c-form-check>
 
-                            <!-- Section 1: SMTP -->
-                            <c-col [xs]="12" class="mb-3">
-                                <form [gutter]="3" novalidate cForm [formGroup]="smtpConfigForm" cRow class="needs-validation">
-                                    <c-form-check [switch]="true">
-                                        <input formControlName="enabled" cFormCheckInput id="smtpToggle" type="checkbox" (change)="onSmtpToggleChange()" />
-                                        <label cFormCheckLabel for="smtpToggle">SMTP</label>
-                                    </c-form-check>
-                                    <div *ngIf="smtpEnabled" class="mt-3">
-                                        <c-col [md]="6" class="mb-3">
-                                            <label cLabel for="smtpHost">SMTP Host</label>
-                                            <input formControlName="hostname" cFormControl id="smtpHost" required type="text" />
-                                            <c-form-feedback [valid]="false">Please provide a valid SMTP host.</c-form-feedback>
-                                        </c-col>
-                                        <c-col [md]="6" class="mb-3">
-                                            <label cLabel for="smtpPort">SMTP Port</label>
-                                            <input formControlName="port" cFormControl id="smtpPort"required type="number" />
-                                            <c-form-feedback [valid]="false">Please provide a valid SMTP port.</c-form-feedback>
-                                        </c-col>
-                                        <c-col [md]="6" class="mb-3">
-                                            <label cLabel for="smtpUsername">SMTP Username</label>
-                                            <input formControlName="username" cFormControl id="smtpUsername" required type="text" />
-                                            <c-form-feedback [valid]="false">Please provide a valid username.</c-form-feedback>
-                                        </c-col>
-                                        <c-col [md]="6" class="mb-3">
-                                            <label cLabel for="smtpPassword">SMTP Password</label>
-                                            <input formControlName="password" cFormControl id="smtpPassword" required type="password" />
-                                            <c-form-feedback [valid]="false">Please provide a valid password.</c-form-feedback>
-                                        </c-col>
-                                        <c-form-check [switch]="true">
-                                            <input formControlName="tls" cFormCheckInput id="tls" type="checkbox" />
-                                            <label cFormCheckLabel for="tls">TLS</label>
+                                        <div *ngIf="smtpEnabled" class="smtp-config p-3 border rounded bg-white">
+                                            <div class="row">
+                                                <div class="col-md-6 mb-3">
+                                                    <label cLabel for="smtpHost">SMTP Host</label>
+                                                    <input formControlName="hostname" cFormControl id="smtpHost" required type="text" class="form-control" />
+                                                    <c-form-feedback [valid]="false">Please provide a valid SMTP host.</c-form-feedback>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label cLabel for="smtpPort">SMTP Port</label>
+                                                    <input formControlName="port" cFormControl id="smtpPort" required type="number" class="form-control" />
+                                                    <c-form-feedback [valid]="false">Please provide a valid SMTP port.</c-form-feedback>
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-6 mb-3">
+                                                    <label cLabel for="smtpUsername">SMTP Username</label>
+                                                    <input formControlName="username" cFormControl id="smtpUsername" required type="text" class="form-control" />
+                                                    <c-form-feedback [valid]="false">Please provide a valid username.</c-form-feedback>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label cLabel for="smtpPassword">SMTP Password</label>
+                                                    <input formControlName="password" cFormControl id="smtpPassword" required type="password" class="form-control" />
+                                                    <c-form-feedback [valid]="false">Please provide a valid password.</c-form-feedback>
+                                                </div>
+                                            </div>
+                                            <div class="row mt-3">
+                                                <div class="col-md-6">
+                                                    <c-form-check [switch]="true" class="mb-3">
+                                                        <input formControlName="tls" cFormCheckInput id="tls" type="checkbox" />
+                                                        <label cFormCheckLabel for="tls" class="ms-2">TLS</label>
+                                                    </c-form-check>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <c-form-check [switch]="true">
+                                                        <input formControlName="startls" cFormCheckInput id="startls" type="checkbox" />
+                                                        <label cFormCheckLabel for="startls" class="ms-2">STARTTLS</label>
+                                                    </c-form-check>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button cButton color="primary" type="submit" (click)="sonfigSMTP()" class="mt-4">
+                                            Save SMTP Configuration
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- Section 2: Other Notification Services -->
+                                <div class="config-section p-4 bg-light rounded shadow-sm">
+                                    <h4 class="mb-3 text-primary">Additional Notification Services</h4>
+                                    <div class="notification-options">
+                                        <c-form-check [switch]="true" class="mb-3">
+                                            <input cFormCheckInput disabled type="checkbox" />
+                                            <label cFormCheckLabel class="ms-2 text-muted">
+                                                Mattermost
+                                                <span class="badge bg-secondary ms-2">Coming Soon</span>
+                                            </label>
                                         </c-form-check>
                                         <c-form-check [switch]="true">
-                                            <input formControlName="startls" cFormCheckInput id="startls" type="checkbox" />
-                                            <label cFormCheckLabel for="startls">STARTTLS</label>
+                                            <input cFormCheckInput disabled type="checkbox" />
+                                            <label cFormCheckLabel class="ms-2 text-muted">
+                                                Slack
+                                                <span class="badge bg-secondary ms-2">Coming Soon</span>
+                                            </label>
                                         </c-form-check>
                                     </div>
-                                    <input cButton color="primary" type="submit" (click)="sonfigSMTP()" value="Change SMTP Config">
-
-                                </form>
-                            </c-col>
-
-                            <hr/>
-
-                            <!-- Section 2: Mattermost -->
-                            <c-col [xs]="12" class="mb-3">
-                                <c-form-check [switch]="true"  cTooltipPlacement="top">
-                                    <input cFormCheckInput disabled type="checkbox" />
-                                    <label [cTooltip]="'Not supported in this version'" cFormCheckLabel>Mattermost</label>
-                                </c-form-check>
-                            </c-col>
-                            <hr/>
-
-                            <!-- Section 3: Slack -->
-                            <c-col [xs]="12" class="mb-3">
-                                <c-form-check [switch]="true" cTooltipPlacement="top">
-                                    <input cFormCheckInput disabled type="checkbox" />
-                                    <label [cTooltip]="'Not supported in this version'" cFormCheckLabel>Slack</label>
-                                </c-form-check>
-                            </c-col>
+                                </div>
+                            </div>
                         </c-tab-panel>
 
-                        <c-tab-panel class="p-3" [itemKey]="2">
+                        <c-tab-panel class="p-4" [itemKey]="2">
                             <!-- Authentication -->
-                            <c-col [md]="6">
-                                <label cLabel for="authType">Authentication Type</label>
-                                <select cSelect id="authType" [(ngModel)]="authType" required>
-                                    <option value="userPass" selected>User + Pass Authentication</option>
-                                    <option value="sso" disabled>SSO (Not available in this version)</option>
-                                </select>
-                                <c-form-feedback [valid]="false">Please select an authentication type.</c-form-feedback>
-                            </c-col>
+                            <div class="config-section p-4 bg-light rounded shadow-sm">
+                                <h4 class="mb-3 text-primary">Authentication Settings</h4>
+                                <div class="col-md-6">
+                                    <label cLabel for="authType" class="mb-2">Authentication Type</label>
+                                    <select cSelect id="authType" [(ngModel)]="authType" required class="form-select">
+                                        <option value="userPass" selected>Username + Password Authentication</option>
+                                        <option value="sso" disabled>Single Sign-On (SSO) <span class="text-muted">- Coming Soon</span></option>
+                                    </select>
+                                    <c-form-feedback [valid]="false">Please select an authentication type.</c-form-feedback>
+                                </div>
+                            </div>
                         </c-tab-panel>
                     </c-tabs-content>
                 </c-tabs>
@@ -212,14 +270,13 @@
     </c-col>
 </c-row>
 
-
 <c-toaster [placement]="position" class="p-3" position="fixed">
     <c-toast
             [color]="toastStatus"
             (visibleChange)="onVisibleChange($event)"
             [visible]="visible">
         <c-toast-header>
-            Team Management
+            <strong class="me-auto">Configuration Status</strong>
         </c-toast-header>
         <c-toast-body>
             <p>{{toastMessage}}</p>
