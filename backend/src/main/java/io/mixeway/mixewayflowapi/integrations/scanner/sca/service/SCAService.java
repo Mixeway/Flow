@@ -5,6 +5,7 @@ import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.db.entity.Settings;
 import io.mixeway.mixewayflowapi.domain.settings.FindSettingsService;
 import io.mixeway.mixewayflowapi.domain.settings.UpdateSettingsService;
+import io.mixeway.mixewayflowapi.exceptions.ScanException;
 import io.mixeway.mixewayflowapi.exceptions.SettingsException;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.apiclient.DependencyTrackApiClientService;
 import lombok.RequiredArgsConstructor;
@@ -79,7 +80,7 @@ public class SCAService {
      * @throws IOException          If an I/O error occurs during the scan process.
      * @throws InterruptedException If the scan process is interrupted.
      */
-    public boolean runScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) throws IOException, InterruptedException {
+    public boolean runScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) throws IOException, InterruptedException, ScanException {
         Settings settings = findSettingsService.get();
         return dependencyTrackApiClientService.runScan(repoDir, codeRepo, settings, codeRepoBranch);
     }

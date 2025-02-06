@@ -230,7 +230,7 @@ public class DependencyTrackApiClientService {
      * @throws IOException          If an I/O error occurs during the scan.
      * @throws InterruptedException If the scan process is interrupted.
      */
-    public boolean runScan(String dir, CodeRepo codeRepo, Settings settings, CodeRepoBranch codeRepoBranch) throws IOException, InterruptedException {
+    public boolean runScan(String dir, CodeRepo codeRepo, Settings settings, CodeRepoBranch codeRepoBranch) throws IOException, InterruptedException, ScanException {
         File sbomFile = findSbom(dir);
         if (sbomFile == null) {
             cdxGenService.generateBom(dir,codeRepo,codeRepoBranch);
@@ -239,7 +239,7 @@ public class DependencyTrackApiClientService {
         if (sbomFile != null) {
             log.info("[Dependency Track] SBOM detected in {}, proceeding with SCA scan...", codeRepo.getRepourl());
             sendBomToDTrack(codeRepo, sbomFile.getPath(), settings);
-            TimeUnit.SECONDS.sleep(15);
+            TimeUnit.SECONDS.sleep(60);
             loadVulnerabilities(codeRepo, settings, codeRepoBranch);
             return true;
         } else {
@@ -251,13 +251,45 @@ public class DependencyTrackApiClientService {
 
     /**
      * Uploads the SBOM file to Dependency Track for the specified code repository.
+     * If the project doesn't exist, it creates it and retries the upload.
      *
      * @param codeRepo  The code repository entity.
      * @param bomPath   The path to the SBOM file.
      * @param settings  The settings containing the API key.
      * @throws IOException If an I/O error occurs during the upload.
      */
-    private void sendBomToDTrack(CodeRepo codeRepo, String bomPath, Settings settings) throws IOException {
+    private void sendBomToDTrack(CodeRepo codeRepo, String bomPath, Settings settings) throws IOException, ScanException {
+        try {
+            uploadBomToDTrack(codeRepo, bomPath, settings);
+        } catch (ScanException e) {
+            if (e.getMessage() != null && e.getMessage().contains("The project could not be found")) {
+                log.info("[Dependency Track] Project not found for {}. Creating project and retrying upload...", codeRepo.getRepourl());
+                createProject(settings, codeRepo);
+                // Wait a bit for project creation to complete
+                try {
+                    TimeUnit.SECONDS.sleep(5);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new ScanException("Upload interrupted during retry");
+                }
+                // Retry upload
+                uploadBomToDTrack(codeRepo, bomPath, settings);
+            } else {
+                throw e;
+            }
+        }
+    }
+
+    /**
+     * Helper method to perform the actual SBOM upload to Dependency Track.
+     *
+     * @param codeRepo The code repository entity.
+     * @param bomPath  The path to the SBOM file.
+     * @param settings The settings containing the API key.
+     * @throws IOException   If an I/O error occurs during the upload.
+     * @throws ScanException If the upload fails.
+     */
+    private void uploadBomToDTrack(CodeRepo codeRepo, String bomPath, Settings settings) throws IOException, ScanException {
         WebClient webClient = WebClient.builder()
                 .codecs(configurer -> configurer
                         .defaultCodecs()
@@ -274,7 +306,7 @@ public class DependencyTrackApiClientService {
                         clientResponse.bodyToMono(String.class)
                                 .flatMap(errorBody -> {
                                     log.error("[Dependency Track] Error uploading SBOM: {}", errorBody);
-                                    return Mono.error(new ScanException("Failed to upload SBOM: " + errorBody));
+                                    return Mono.error(new ScanException("Error uploading SBOM: " + errorBody));
                                 })
                 )
                 .toEntity(String.class);
@@ -285,8 +317,12 @@ public class DependencyTrackApiClientService {
             if (response != null && response.getStatusCode().equals(HttpStatus.OK)) {
                 log.info("[Dependency Track] Uploaded SBOM to Dependency Track for {}", codeRepo.getRepourl());
             }
-        } catch (Exception e ){
-            log.error("[Dependency Track] Error for uploading SBOM - {}", e.getMessage());
+        } catch (Exception e) {
+            if (e instanceof ScanException) {
+                throw (ScanException) e;
+            }
+            log.error("[Dependency Track] Error uploading SBOM - {}", e.getMessage());
+            throw new ScanException("Failed to upload SBOM: " + e.getMessage());
         }
     }
 
