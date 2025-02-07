@@ -954,9 +954,8 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         if (!match) return location;
 
         const [, filePath, lineNumber] = match;
-        // Show only the filename and line number for display
-        const fileName = filePath.split('/').pop();
-        return `${fileName}:${lineNumber}`;
+        // Return the full path with line number
+        return `${filePath}:${lineNumber}`;
     }
 
     getRepositoryLinkForRow(row: any): string {
@@ -993,8 +992,8 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         if (!match) return location;
 
         const [, filePath, lineNumber] = match;
-        const fileName = filePath.split('/').pop();
-        return `${fileName}:${lineNumber}`;
+        // Return the full path with line number
+        return `${filePath}:${lineNumber}`;
     }
     openChangeTeamModal() {
         // Load available teams first
