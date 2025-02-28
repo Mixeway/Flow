@@ -982,7 +982,6 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
             const cloudSubscriptionId = this.cloudSubscriptionsData.find(
                 (cloudSubscription: { external_project_name: string; id: string }) => cloudSubscription.external_project_name == target)?.id;
             this.cloudSubscriptionService.addComment(+cloudSubscriptionId, findingId, this.newComment.trim())
-            this.cloudSubscriptionService.addComment(+cloudSubscriptionId, findingId, this.newComment.trim())
                 .subscribe({
                     next: () => {
                         // Refresh the finding details to get updated comments
