@@ -1,12 +1,10 @@
 package io.mixeway.mixewayflowapi.domain.finding;
 
-import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
-import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
-import io.mixeway.mixewayflowapi.db.entity.Finding;
-import io.mixeway.mixewayflowapi.db.entity.Vulnerability;
+import io.mixeway.mixewayflowapi.db.entity.*;
 import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
 import io.mixeway.mixewayflowapi.domain.suppressrule.CheckSuppressRuleService;
 import io.mixeway.mixewayflowapi.domain.vulnerability.GetOrCreateVulnerabilityService;
+import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.dto.CloudScannerReport;
 import io.mixeway.mixewayflowapi.integrations.scanner.iac.dto.KicsReport;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.BearerScanSecurity;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.Item;
@@ -33,8 +31,17 @@ public class CreateFindingService {
     @Transactional
     public void saveFindings(List<Finding> newFindings, CodeRepoBranch repoWhereFindingWasFound, CodeRepo repoInWhichFindingWasFound, Finding.Source source) {
         newFindings = mergeFindings(newFindings);
-        List<Finding> existingFindings = findingRepository.findBySourceAndCodeRepoBranchAndCodeRepo(source, repoWhereFindingWasFound, repoInWhichFindingWasFound);
 
+        newFindings = mergeFindings(newFindings);
+        List<Finding> existingFindings;
+
+        // Handle different types of findings based on source
+        if (source == Finding.Source.CLOUD_SCANNER) {
+            CloudSubscription subscription = newFindings.get(0).getCloudSubscription();
+            existingFindings = findingRepository.findBySourceAndCloudSubscription(source, subscription);
+        } else {
+            existingFindings = findingRepository.findBySourceAndCodeRepoBranchAndCodeRepo(source, repoWhereFindingWasFound, repoInWhichFindingWasFound);
+        }
         // Create a map for quick lookup of existing findings by key (vulnerability, severity, location)
         var existingFindingsMap = existingFindings.stream()
                 .collect(Collectors.toMap(this::findingKey, finding -> finding));
@@ -65,7 +72,12 @@ public class CreateFindingService {
                 findingRepository.save(remainingFinding);
             }
         }
-        log.info("[Finding Service] Saved {} findings for {}. Source: {}", newFindings.size(), repoInWhichFindingWasFound.getName(), source.toString());
+        if (repoInWhichFindingWasFound != null) {
+            log.info("[Finding Service] Saved {} findings for {}. Source: {}", newFindings.size(), repoInWhichFindingWasFound.getName(), source.toString());
+        } else {
+            log.info("[Finding Service] Saved {} findings. Source: {}", newFindings.size(), source.toString());
+        }
+
     }
 
     private String findingKey(Finding finding) {
@@ -74,12 +86,13 @@ public class CreateFindingService {
 
     public List<Finding> mapSecretsToFindings(List<Secret> secrets, CodeRepoBranch codeRepoBranch, CodeRepo codeRepo) {
         return secrets.stream().map(secret -> {
-            Vulnerability vulnerability = getOrCreateVulnerabilityService.getOrCreate(secret.getDescription(), null, null, null, null);
+            Vulnerability vulnerability = getOrCreateVulnerabilityService.getOrCreate(secret.getDescription(), null, null, null, null, null, null, null);
             return new Finding(
                     vulnerability,
                     null,
                     codeRepoBranch,
                     codeRepo,
+                    null,
                     "Found Secret in file " + secret.getFile() + ". Full fingerprint: " + secret.getFingerprint(),
                     secret.getFile() + ":" + secret.getStartLine(),
                     Finding.Severity.CRITICAL,
@@ -97,6 +110,9 @@ public class CreateFindingService {
                                     query.getDescription(),
                                     query.getQueryUrl(),
                                     null,
+                                    null,
+                                    null,
+                                    null,
                                     null
                             );
                             return new Finding(
@@ -104,6 +120,7 @@ public class CreateFindingService {
                                     null,
                                     codeRepoBranch,
                                     codeRepo,
+                                    null,
                                     fileIssue.getSearchKey() + " - expected: " + fileIssue.getExpectedValue(),
                                     fileIssue.getFileName() + ":" + fileIssue.getLine(),
                                     mapSeverity(query.getSeverity()),
@@ -111,6 +128,37 @@ public class CreateFindingService {
                             );
                         })
                 ).collect(Collectors.toList());
+    }
+
+    public List<Finding> mapCloudScannerReportToFindings(CloudScannerReport cloudScannerReport, CloudSubscription cloudSubscription) {
+        return cloudScannerReport.getData().getVulnerabilityFindings().getNodes().stream()
+                .map(node -> {
+                    Vulnerability vulnerability = getOrCreateVulnerabilityService.getOrCreate(
+                            node.getDetailedName(),
+                            node.getCveDescription(),
+                            null,
+                            node.getRemediation(),
+                            mapSeverity(node.getSeverity()),
+                            node.getEpssProbability(),
+                            node.getEpssPercentile(),
+                            node.getHasExploit()
+                    );
+                    return new Finding(
+                            vulnerability,
+                            null,
+                            null,
+                            null,
+                            cloudSubscription,
+                            "Vulnerable Asset: " + node.getVulnerableAsset().getName() +
+                                    ", Vulnerability in: " + node.getDetailedName() +
+                                    ", Version: " + node.getVersion() +
+                                    ", Fixed Version: " + node.getFixedVersion(),
+                            node.getVulnerableAsset().getName(),
+                            mapSeverity(node.getSeverity()),
+                            Finding.Source.CLOUD_SCANNER
+                    );
+                })
+                .collect(Collectors.toList());
     }
 
     private Finding.Severity mapSeverity(String severity) {
@@ -167,12 +215,13 @@ public class CreateFindingService {
 
     private List<Finding> mapItemsToFindings(List<Item> items, CodeRepoBranch codeRepoBranch, CodeRepo codeRepo, Finding.Severity severity) {
         return items.stream().map(item -> {
-            Vulnerability vulnerability = getOrCreateVulnerabilityService.getOrCreate(item.getTitle(), item.getDescription(), null, item.getDocumentationUrl(), null);
+            Vulnerability vulnerability = getOrCreateVulnerabilityService.getOrCreate(item.getTitle(), item.getDescription(), null, item.getDocumentationUrl(), null, null, null, null);
             return new Finding(
                     vulnerability,
                     null,
                     codeRepoBranch,
                     codeRepo,
+                    null,
                     "Code where problem is found: " + item.getCodeExtract(),
                     item.getFilename() + ":" + item.getLineNumber(),
                     severity,

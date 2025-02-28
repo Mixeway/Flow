@@ -85,4 +85,16 @@ public class AdminController {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
     }
+
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @GetMapping(value = "/api/v1/admin/settings/wizenabled")
+    public ResponseEntity<Boolean> isWizEnabled() {
+        try {
+            boolean wizEnabled = adminApiService.isWizEnabled();
+            return new ResponseEntity<>(wizEnabled, HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("[AdminSettings] Error checking if Wiz is enabled {}", e.getLocalizedMessage());
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+    }
 }

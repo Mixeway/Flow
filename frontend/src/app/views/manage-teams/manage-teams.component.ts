@@ -364,7 +364,7 @@ export class ManageTeamsComponent implements OnInit{
     this.visibleCloudSubscriptions = true;
   }
   loadCloudSubscriptions(teamId: number) {
-    this.cloudSubscriptionService.getByTeam(teamId).subscribe({
+    this.cloudSubscriptionService.getCloudSubscriptionsByTeam(teamId).subscribe({
       next: (response) => {
         this.cloudSubscriptions = response;
       },

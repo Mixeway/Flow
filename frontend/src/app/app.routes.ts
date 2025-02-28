@@ -27,6 +27,14 @@ export const routes: Routes = [
         loadChildren: () => import('./views/show-repo/routes').then((m) => m.routes)
       },
       {
+        path: 'show-cloud-subscription/:id',
+        loadChildren: () => import('./views/show-cloud-subscription/routes').then((m) => m.routes)
+      },
+      {
+        path: 'show-team/:id',
+        loadChildren: () => import('./views/show-team/routes').then((m) => m.routes)
+      },
+      {
         path: 'admin/settings',
         loadChildren: () => import('./views/admin-settings/routes').then((m) => m.routes)
       },

@@ -42,6 +42,30 @@ public class FindTeamService {
         return  teamDtos;
     }
 
+    public TeamDto findTeamById(Long teamId, Principal principal) {
+        Optional<Team> teamOptional = permissionFactory.findById(teamId, principal);
+        if (teamOptional.isEmpty()) {
+            return null;
+        }
+
+        Team team = teamOptional.get();
+        List<SimpleUserDto> simpleUserDtos = new ArrayList<>();
+        for (UserInfo userInfo : userRepository.getUsersByTeamId(team.getId())) {
+            simpleUserDtos.add(SimpleUserDto.builder()
+                    .id(userInfo.getId())
+                    .username(userInfo.getUsername())
+                    .build());
+        }
+
+        return TeamDto.builder()
+                .name(team.getName())
+                .id(team.getId())
+                .remoteIdentifier(team.getRemoteIdentifier())
+                .users(simpleUserDtos)
+                .build();
+    }
+
+
     public Optional<Team> findById(Long id) {
         return teamRepository.findById(id);
     }

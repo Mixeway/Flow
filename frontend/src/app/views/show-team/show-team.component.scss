@@ -1,0 +1,124 @@
+.dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.critical {
+  background-color: red;
+}
+
+.high {
+  background-color: #f33d3d;
+}
+
+.medium {
+  background-color: #e38334;
+}
+
+.low {
+  background-color: #47a3d3;
+}
+
+.critical-t {
+  color: red;
+}
+
+.high-t {
+  color: #f33d3d;
+}
+
+.medium-t {
+  color: #e38334;
+}
+
+.low-t {
+  color: #47a3d3;
+}
+
+
+ngx-datatable .datatable-row-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.location-cell {
+  white-space: normal;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+c-card {
+  margin-bottom: 10px;
+}
+
+/* In your styles.scss or component-specific styles */
+
+.markdown-body {
+  box-sizing: border-box;
+  min-width: 200px;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 45px;
+}
+
+/* Styles for vertical alignment in ngx-datatable cells */
+
+::ng-deep .ngx-datatable .datatable-body-cell {
+  display: flex;
+  align-items: center;
+}
+
+::ng-deep .ngx-datatable .datatable-body-cell-label {
+  flex: 1;
+}
+
+.cell-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+}
+
+.vertical-align-multiple {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+}
+
+.comments-container {
+  .comment-item {
+    &:not(:last-child) {
+      border-bottom: 1px solid rgba(0, 0, 0, .125);
+      padding-bottom: 1rem;
+    }
+
+    .comment-avatar {
+      .rounded-circle {
+        background-color: #f8f9fa;
+        color: #6c757d;
+        font-weight: bold;
+      }
+    }
+
+    .comment-content {
+      background-color: #f8f9fa;
+      border-radius: 0.5rem;
+      padding: 0.5rem 1rem;
+    }
+  }
+}
+
+:host ::ng-deep {
+  .ngx-datatable {
+    .location-link {
+      &:hover {
+        text-decoration: underline !important;
+      }
+    }
+  }
+}

@@ -1,257 +1,510 @@
-<app-widgets-dropdown *ngIf="widgetStats" [stats]="widgetStats" />
+<app-widgets-dropdown *ngIf="widgetStats" [stats]="widgetStats"/>
 <br/>
 
 <c-row *ngIf="canManage">
-  <c-card class="mb-4">
-    <c-card-body>
-      <button color="primary" cButton (click)="importRepoModal()">
-        <svg cIcon class="me-2" name="cil-code"></svg>
-        Import new repositories (BULK)
-      </button>
-        &nbsp;
-        <button color="light" cButton (click)="importSingleRepoModal()">
-            <svg cIcon class="me-2" name="cil-clone"></svg>
-            Import single repo
-        </button>
-      &nbsp;
-      <button color="info" cButton (click)="createNewTeamModal()">
-        <svg cIcon class="me-2" name="cil-people"></svg>
-        Add new Team
-      </button>
-    </c-card-body>
-  </c-card>
+    <c-card class="mb-4">
+        <c-card-body>
+            <button color="primary" cButton (click)="importRepoModal()">
+                <svg cIcon class="me-2" name="cil-code"></svg>
+                Import new repositories (BULK)
+            </button>
+            &nbsp;
+            <button color="light" cButton (click)="importSingleRepoModal()">
+                <svg cIcon class="me-2" name="cil-clone"></svg>
+                Import single repo
+            </button>
+            &nbsp;
+            <button color="info" cButton (click)="createNewTeamModal()">
+                <svg cIcon class="me-2" name="cil-people"></svg>
+                Add new Team
+            </button>
+        </c-card-body>
+    </c-card>
 </c-row>
 
 <c-row>
-  <c-col xs>
-    <c-card class="mb-4">
-      <c-card-body>
-        <div>
-          <c-input-group class="mb-3">
-            <span cInputGroupText id="filterTable">
-              <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
-            </span>
-            <input
-                    aria-describedby="addon-wrapping"
-                    aria-label="Filter"
-                    type="text"
-                    class="form-control"
-                    placeholder="Filter results"
-                    (input)="updateFilter($event)"
-            />
-          </c-input-group>
-        </div>
-        <br/>
-        <ngx-datatable
-                class="bootstrap"
-                [rows]="rows"
-                [columns]="columns"
-                [columnMode]="'force'"
-                [footerHeight]="50"
-                [headerHeight]="50"
-                [rowHeight]="'auto'"
-                [limit]="10"
-        >
-          <ngx-datatable-column name="" prop="name2" [width]="50" [sortable]="false">
-            <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
-              <button type="button" class="btn btn-outline-info" (click)='click(row)'>
-                <svg cIcon name="cil-magnifying-glass"></svg>
-              </button>
-            </ng-template>
-          </ngx-datatable-column>
-          <ngx-datatable-column name="Target" prop="target" [width]="350">
-            <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
-              <b>{{ row.target }}</b><br/>
-              <small><a href="{{ row.repo_url }}">{{ row.repo_url }}</a></small>
-            </ng-template>
-          </ngx-datatable-column>
-          <ngx-datatable-column name="Team" prop="team"></ngx-datatable-column>
-          <ngx-datatable-column name="SAST">
-            <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
-              <svg cIcon *ngIf="row.sast === 'DANGER'" name="cil-face-dead" size="3xl" style="color: #b02424"></svg>
-              <svg cIcon *ngIf="row.sast === 'SUCCESS'" name="cil-happy" size="3xl" style="color: #72d321"></svg>
-              <svg cIcon *ngIf="row.sast === 'WARNING'" name="cil-warning" size="3xl" style="color: #e86333"></svg>
-              <svg cIcon *ngIf="row.sast === 'NOT_PERFORMED'" name="cil-deaf" size="3xl" style="color: #e3d0d0"></svg>
-                <c-spinner *ngIf="row.sast === 'RUNNING'" style="color: #c1a7a7"></c-spinner>
-            </ng-template>
-          </ngx-datatable-column>
-          <ngx-datatable-column name="SCA">
-            <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
-              <svg cIcon *ngIf="row.sca === 'DANGER'" name="cil-face-dead" size="3xl" style="color: #b02424"></svg>
-              <svg cIcon *ngIf="row.sca === 'SUCCESS'" name="cil-happy" size="3xl" style="color: #72d321"></svg>
-              <svg cIcon *ngIf="row.sca === 'WARNING'" name="cil-warning" size="3xl" style="color: #e86333"></svg>
-              <svg cIcon *ngIf="row.sca === 'NOT_PERFORMED'" name="cil-deaf" size="3xl" style="color: #e3d0d0"></svg>
-                <c-spinner *ngIf="row.sca === 'RUNNING'" style="color: #c1a7a7"></c-spinner>
+    <c-col class="xs-12">
+        <c-tabs [activeItemKey]="0">
+            <c-tabs-list variant="underline-border">
+                <button cTab [itemKey]="0">
+                    <svg cIcon name="cil-bug" class="me-2"></svg>
+                    Repositories
+                </button>
+                <button cTab [itemKey]="1">
+                    <svg cIcon name="cil-cloud" class="me-2"></svg>
+                    Cloud subscriptions
+                </button>
+                <button cTab [itemKey]="2">
+                    <svg cIcon name="cil-user" class="me-2"></svg>
+                    Teams
+                </button>
+            </c-tabs-list>
 
-            </ng-template>
-          </ngx-datatable-column>
-          <ngx-datatable-column name="Secrets">
-            <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
-              <svg cIcon *ngIf="row.secrets === 'DANGER'" name="cil-face-dead" size="3xl" style="color: #b02424"></svg>
-              <svg cIcon *ngIf="row.secrets === 'SUCCESS'" name="cil-happy" size="3xl" style="color: #72d321"></svg>
-              <svg cIcon *ngIf="row.secrets === 'WARNING'" name="cil-warning" size="3xl" style="color: #e86333"></svg>
-              <svg cIcon *ngIf="row.secrets === 'NOT_PERFORMED'" name="cil-deaf" size="3xl" style="color: #e3d0d0"></svg>
-                <c-spinner *ngIf="row.secrets === 'RUNNING'" style="color: #c1a7a7"></c-spinner>
+            <!-- Repositories Tab Content -->
+            <c-tabs-content>
+                <c-tab-panel class="p-3" [itemKey]="0">
+                    <c-col xs>
+                        <c-card class="mb-4">
+                            <c-card-body>
+                                <div>
+                                    <c-input-group class="mb-3">
+                  <span cInputGroupText id="filterTable">
+                    <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
+                  </span>
+                                        <input
+                                                aria-describedby="addon-wrapping"
+                                                aria-label="Filter"
+                                                type="text"
+                                                class="form-control"
+                                                placeholder="Filter results"
+                                                (input)="updateFilter($event)"
+                                        />
+                                    </c-input-group>
+                                </div>
+                                <br/>
+                                <ngx-datatable
+                                        class="bootstrap"
+                                        [rows]="rows"
+                                        [columns]="columns"
+                                        [columnMode]="'force'"
+                                        [footerHeight]="50"
+                                        [headerHeight]="50"
+                                        [rowHeight]="'auto'"
+                                        [limit]="10"
+                                >
+                                    <!-- Action Column -->
+                                    <ngx-datatable-column name="" prop="name2" [width]="50" [sortable]="false">
+                                        <ng-template ngx-datatable-cell-template let-row="row">
+                                            <button type="button" class="btn btn-outline-info" (click)="click(row)">
+                                                <svg cIcon name="cil-magnifying-glass"></svg>
+                                            </button>
+                                        </ng-template>
+                                    </ngx-datatable-column>
+                                    <!-- Target Column -->
+                                    <ngx-datatable-column name="Target" prop="target" [width]="350">
+                                        <ng-template ngx-datatable-cell-template let-row="row">
+                                            <b>{{ row.target }}</b><br/>
+                                            <small><a href="{{ row.repo_url }}"
+                                                      target="_blank">{{ row.repo_url }}</a></small>
+                                        </ng-template>
+                                    </ngx-datatable-column>
+                                    <!-- Team Column -->
+                                    <ngx-datatable-column name="Team" prop="team"></ngx-datatable-column>
+                                    <!-- SAST Column -->
+                                    <ngx-datatable-column name="SAST">
+                                        <ng-template ngx-datatable-cell-template let-row="row">
+                                            <svg cIcon *ngIf="row.sast === 'DANGER'" name="cil-face-dead" size="3xl"
+                                                 style="color: #b02424"></svg>
+                                            <svg cIcon *ngIf="row.sast === 'SUCCESS'" name="cil-happy" size="3xl"
+                                                 style="color: #72d321"></svg>
+                                            <svg cIcon *ngIf="row.sast === 'WARNING'" name="cil-warning" size="3xl"
+                                                 style="color: #e86333"></svg>
+                                            <svg cIcon *ngIf="row.sast === 'NOT_PERFORMED'" name="cil-deaf" size="3xl"
+                                                 style="color: #e3d0d0"></svg>
+                                            <c-spinner *ngIf="row.sast === 'RUNNING'"
+                                                       style="color: #c1a7a7"></c-spinner>
+                                        </ng-template>
+                                    </ngx-datatable-column>
+                                    <!-- SCA Column -->
+                                    <ngx-datatable-column name="SCA">
+                                        <ng-template ngx-datatable-cell-template let-row="row">
+                                            <svg cIcon *ngIf="row.sca === 'DANGER'" name="cil-face-dead" size="3xl"
+                                                 style="color: #b02424"></svg>
+                                            <svg cIcon *ngIf="row.sca === 'SUCCESS'" name="cil-happy" size="3xl"
+                                                 style="color: #72d321"></svg>
+                                            <svg cIcon *ngIf="row.sca === 'WARNING'" name="cil-warning" size="3xl"
+                                                 style="color: #e86333"></svg>
+                                            <svg cIcon *ngIf="row.sca === 'NOT_PERFORMED'" name="cil-deaf" size="3xl"
+                                                 style="color: #e3d0d0"></svg>
+                                            <c-spinner *ngIf="row.sca === 'RUNNING'" style="color: #c1a7a7"></c-spinner>
+                                        </ng-template>
+                                    </ngx-datatable-column>
+                                    <!-- Secrets Column -->
+                                    <ngx-datatable-column name="Secrets">
+                                        <ng-template ngx-datatable-cell-template let-row="row">
+                                            <svg cIcon *ngIf="row.secrets === 'DANGER'" name="cil-face-dead" size="3xl"
+                                                 style="color: #b02424"></svg>
+                                            <svg cIcon *ngIf="row.secrets === 'SUCCESS'" name="cil-happy" size="3xl"
+                                                 style="color: #72d321"></svg>
+                                            <svg cIcon *ngIf="row.secrets === 'WARNING'" name="cil-warning" size="3xl"
+                                                 style="color: #e86333"></svg>
+                                            <svg cIcon *ngIf="row.secrets === 'NOT_PERFORMED'" name="cil-deaf"
+                                                 size="3xl" style="color: #e3d0d0"></svg>
+                                            <c-spinner *ngIf="row.secrets === 'RUNNING'"
+                                                       style="color: #c1a7a7"></c-spinner>
+                                        </ng-template>
+                                    </ngx-datatable-column>
+                                    <!-- IaC Column -->
+                                    <ngx-datatable-column name="IaC">
+                                        <ng-template ngx-datatable-cell-template let-row="row">
+                                            <svg cIcon *ngIf="row.iac === 'DANGER'" name="cil-face-dead" size="3xl"
+                                                 style="color: #b02424"></svg>
+                                            <svg cIcon *ngIf="row.iac === 'SUCCESS'" name="cil-happy" size="3xl"
+                                                 style="color: #72d321"></svg>
+                                            <svg cIcon *ngIf="row.iac === 'WARNING'" name="cil-warning" size="3xl"
+                                                 style="color: #e86333"></svg>
+                                            <svg cIcon *ngIf="row.iac === 'NOT_PERFORMED'" name="cil-deaf" size="3xl"
+                                                 style="color: #e3d0d0"></svg>
+                                            <c-spinner *ngIf="row.iac === 'RUNNING'" style="color: #c1a7a7"></c-spinner>
+                                        </ng-template>
+                                    </ngx-datatable-column>
+                                    <!-- Add other columns as needed -->
+                                </ngx-datatable>
+                            </c-card-body>
+                        </c-card>
+                    </c-col>
+                </c-tab-panel>
+            </c-tabs-content>
 
-            </ng-template>
-          </ngx-datatable-column>
-          <ngx-datatable-column name="IaC">
-            <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
-              <svg cIcon *ngIf="row.iac === 'DANGER'" name="cil-face-dead" size="3xl" style="color: #b02424"></svg>
-              <svg cIcon *ngIf="row.iac === 'SUCCESS'" name="cil-happy" size="3xl" style="color: #72d321"></svg>
-              <svg cIcon *ngIf="row.iac === 'WARNING'" name="cil-warning" size="3xl" style="color: #e86333"></svg>
-              <svg cIcon *ngIf="row.iac === 'NOT_PERFORMED'" name="cil-deaf" size="3xl" style="color: #e3d0d0"></svg>
-                <c-spinner *ngIf="row.iac === 'RUNNING'" style="color: #c1a7a7"></c-spinner>
+            <!-- Cloud Tab Content -->
+            <c-tabs-content>
+                <c-tab-panel class="p-3" [itemKey]="1">
+                    <c-col xs>
+                        <c-card class="mb-4">
+                            <c-card-body>
+                                <div>
+                                    <c-input-group class="mb-3">
+                  <span cInputGroupText id="filterCloudSubscriptionsTable">
+                    <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
+                  </span>
+                                        <input
+                                                aria-describedby="addon-wrapping"
+                                                aria-label="Filter"
+                                                type="text"
+                                                class="form-control"
+                                                placeholder="Filter results"
+                                                (input)="updateCloudFilter($event)"
+                                        />
+                                    </c-input-group>
+                                </div>
+                                <br/>
+                                <ngx-datatable
+                                        class="bootstrap"
+                                        [rows]="cloudRows"
+                                        [columns]="cloudColumns"
+                                        [columnMode]="'force'"
+                                        [footerHeight]="50"
+                                        [headerHeight]="50"
+                                        [rowHeight]="'auto'"
+                                        [limit]="10"
+                                >
+                                    <!-- Cloud Subscription Column -->
+                                    <ngx-datatable-column name="" prop="name2" [width]="50" [sortable]="false">
+                                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value"
+                                                     let-row="row">
+                                            <button type="button" class="btn btn-outline-info" (click)="cloudClick(row)">
+                                                <svg cIcon name="cil-magnifying-glass"></svg>
+                                            </button>
+                                        </ng-template>
+                                    </ngx-datatable-column>
+                                    <ngx-datatable-column name="Cloud Subscription" prop="cloudSubscription" [width]="350">
+                                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value"
+                                                     let-row="row">
+                                            <b>{{ row.externalProjectName }}</b><br/>
+                                            <small>{{ row.cloudSubscription }}</small>
+                                        </ng-template>
+                                    </ngx-datatable-column>
+                                    <ngx-datatable-column name="Team" prop="team"></ngx-datatable-column>
+                                    <!-- Cloud Scan Column -->
+                                    <ngx-datatable-column name="Cloud Scan">
+                                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value"
+                                                     let-row="row">
+                                            <svg cIcon *ngIf="row.scanStatus === 'DANGER'" name="cil-face-dead" size="3xl"
+                                                 style="color: #b02424"></svg>
+                                            <svg cIcon *ngIf="row.scanStatus === 'SUCCESS'" name="cil-happy" size="3xl"
+                                                 style="color: #72d321"></svg>
+                                            <svg cIcon *ngIf="row.scanStatus === 'WARNING'" name="cil-warning" size="3xl"
+                                                 style="color: #e86333"></svg>
+                                            <svg cIcon *ngIf="row.scanStatus === 'NOT_PERFORMED'" name="cil-deaf" size="3xl"
+                                                 style="color: #e3d0d0"></svg>
+                                            <c-spinner *ngIf="row.scanStatus === 'RUNNING'" style="color: #c1a7a7"></c-spinner>
+                                        </ng-template>
+                                    </ngx-datatable-column>
+                                </ngx-datatable>
+                            </c-card-body>
+                        </c-card>
+                    </c-col>
+                </c-tab-panel>
+            </c-tabs-content>
 
-            </ng-template>
-          </ngx-datatable-column>
-          <!-- Add other columns as needed -->
-        </ngx-datatable>
-      </c-card-body>
-    </c-card>
-  </c-col>
+            <!-- Teams Tab Content -->
+            <c-tabs-content>
+                <c-tab-panel class="p-3" [itemKey]="2">
+                    <c-col xs>
+                        <c-card class="mb-4">
+                            <c-card-body>
+                                <div>
+                                    <c-input-group class="mb-3">
+                  <span cInputGroupText id="filterTeamsTable">
+                    <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
+                  </span>
+                                        <input
+                                                aria-describedby="addon-wrapping"
+                                                aria-label="Filter"
+                                                type="text"
+                                                class="form-control"
+                                                placeholder="Filter results"
+                                                (input)="updateTeamsFilter($event)"
+                                        />
+                                    </c-input-group>
+                                </div>
+                                <br/>
+                                <ngx-datatable
+                                        class="bootstrap"
+                                        [rows]="teams"
+                                        [columns]="teamsColumns"
+                                        [columnMode]="'force'"
+                                        [footerHeight]="50"
+                                        [headerHeight]="50"
+                                        [rowHeight]="'auto'"
+                                        [limit]="10"
+                                >
+                                    <!-- Teams Column -->
+                                    <ngx-datatable-column name="" prop="name2" [width]="50" [sortable]="false">
+                                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value"
+                                                     let-row="row">
+                                            <button type="button" class="btn btn-outline-info" (click)="teamClick(row)">
+                                                <svg cIcon name="cil-magnifying-glass"></svg>
+                                            </button>
+                                        </ng-template>
+                                    </ngx-datatable-column>
+                                    <ngx-datatable-column name="Team" prop="name" [width]="350">
+                                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value"
+                                                     let-row="row">
+                                            <b>{{ row.name }}</b><br/>
+                                            <small>{{ row.remoteIdentifier }}</small>
+                                        </ng-template>
+                                    </ngx-datatable-column>
+                                    <!-- SAST Column -->
+                                    <ngx-datatable-column name="SAST">
+                                        <ng-template ngx-datatable-cell-template let-row="row">
+                                            <svg cIcon *ngIf="row.sastStatus === 'DANGER'" name="cil-face-dead" size="3xl"
+                                                 style="color: #b02424"></svg>
+                                            <svg cIcon *ngIf="row.sastStatus === 'SUCCESS'" name="cil-happy" size="3xl"
+                                                 style="color: #72d321"></svg>
+                                            <svg cIcon *ngIf="row.sastStatus === 'WARNING'" name="cil-warning" size="3xl"
+                                                 style="color: #e86333"></svg>
+                                            <svg cIcon *ngIf="row.sastStatus === 'NOT_PERFORMED'" name="cil-deaf" size="3xl"
+                                                 style="color: #e3d0d0"></svg>
+                                            <c-spinner *ngIf="row.sastStatus === 'RUNNING'"
+                                                       style="color: #c1a7a7"></c-spinner>
+                                        </ng-template>
+                                    </ngx-datatable-column>
+                                    <!-- SCA Column -->
+                                    <ngx-datatable-column name="SCA">
+                                        <ng-template ngx-datatable-cell-template let-row="row">
+                                            <svg cIcon *ngIf="row.scaStatus === 'DANGER'" name="cil-face-dead" size="3xl"
+                                                 style="color: #b02424"></svg>
+                                            <svg cIcon *ngIf="row.scaStatus === 'SUCCESS'" name="cil-happy" size="3xl"
+                                                 style="color: #72d321"></svg>
+                                            <svg cIcon *ngIf="row.scaStatus === 'WARNING'" name="cil-warning" size="3xl"
+                                                 style="color: #e86333"></svg>
+                                            <svg cIcon *ngIf="row.scaStatus === 'NOT_PERFORMED'" name="cil-deaf" size="3xl"
+                                                 style="color: #e3d0d0"></svg>
+                                            <c-spinner *ngIf="row.scaStatus === 'RUNNING'" style="color: #c1a7a7"></c-spinner>
+                                        </ng-template>
+                                    </ngx-datatable-column>
+                                    <!-- Secrets Column -->
+                                    <ngx-datatable-column name="Secrets">
+                                        <ng-template ngx-datatable-cell-template let-row="row">
+                                            <svg cIcon *ngIf="row.secretsStatus === 'DANGER'" name="cil-face-dead" size="3xl"
+                                                 style="color: #b02424"></svg>
+                                            <svg cIcon *ngIf="row.secretsStatus === 'SUCCESS'" name="cil-happy" size="3xl"
+                                                 style="color: #72d321"></svg>
+                                            <svg cIcon *ngIf="row.secretsStatus === 'WARNING'" name="cil-warning" size="3xl"
+                                                 style="color: #e86333"></svg>
+                                            <svg cIcon *ngIf="row.secretsStatus === 'NOT_PERFORMED'" name="cil-deaf"
+                                                 size="3xl" style="color: #e3d0d0"></svg>
+                                            <c-spinner *ngIf="row.secretsStatus === 'RUNNING'"
+                                                       style="color: #c1a7a7"></c-spinner>
+                                        </ng-template>
+                                    </ngx-datatable-column>
+                                    <!-- IaC Column -->
+                                    <ngx-datatable-column name="IaC">
+                                        <ng-template ngx-datatable-cell-template let-row="row">
+                                            <svg cIcon *ngIf="row.iacStatus === 'DANGER'" name="cil-face-dead" size="3xl"
+                                                 style="color: #b02424"></svg>
+                                            <svg cIcon *ngIf="row.iacStatus === 'SUCCESS'" name="cil-happy" size="3xl"
+                                                 style="color: #72d321"></svg>
+                                            <svg cIcon *ngIf="row.iacStatus === 'WARNING'" name="cil-warning" size="3xl"
+                                                 style="color: #e86333"></svg>
+                                            <svg cIcon *ngIf="row.iacStatus === 'NOT_PERFORMED'" name="cil-deaf" size="3xl"
+                                                 style="color: #e3d0d0"></svg>
+                                            <c-spinner *ngIf="row.iacStatus === 'RUNNING'" style="color: #c1a7a7"></c-spinner>
+                                        </ng-template>
+                                    </ngx-datatable-column>
+                                    <!-- Cloud Scan Column -->
+                                    <ngx-datatable-column name="Cloud Scan">
+                                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value"
+                                                     let-row="row">
+                                            <svg cIcon *ngIf="row.cloudScanStatus === 'DANGER'" name="cil-face-dead" size="3xl"
+                                                 style="color: #b02424"></svg>
+                                            <svg cIcon *ngIf="row.cloudScanStatus === 'SUCCESS'" name="cil-happy" size="3xl"
+                                                 style="color: #72d321"></svg>
+                                            <svg cIcon *ngIf="row.cloudScanStatus === 'WARNING'" name="cil-warning" size="3xl"
+                                                 style="color: #e86333"></svg>
+                                            <svg cIcon *ngIf="row.cloudScanStatus === 'NOT_PERFORMED'" name="cil-deaf" size="3xl"
+                                                 style="color: #e3d0d0"></svg>
+                                            <c-spinner *ngIf="row.cloudScanStatus === 'RUNNING'" style="color: #c1a7a7"></c-spinner>
+                                        </ng-template>
+                                    </ngx-datatable-column>
+                                </ngx-datatable>
+                            </c-card-body>
+                        </c-card>
+                    </c-col>
+                </c-tab-panel>
+            </c-tabs-content>
+        </c-tabs>
+    </c-col>
 </c-row>
 
-<c-modal id="importRepoModal" alignment="center" [visible]="visible" (visibleChange)="handleImportRepoChange($event)">
-  <c-modal-header>
-    <h5 cModalTitle>Import repository</h5>
-  </c-modal-header>
-  <c-modal-body>
-    <div class="d-flex justify-content-center mb-3">
-      <button
-              cButton
-              type="button"
-              class="btn btn-primary custom-btn"
-              [class]="{'active': selectedRepo === 'GitLab'}"
-              (click)="selectRepoType('GitLab')"
-              [cTooltip]="'GitLab Repo Type'"
-              cTooltipPlacement="top"
 
-      >
-        <svg cIcon name="cib-gitlab" size="4xl" class="custom-icon"></svg>
-      </button>
-      <button
-              cButton
-              type="button"
-              class="btn btn-primary ms-3 custom-btn"
-              [class]="{'active': selectedRepo === 'GitHub'}"
-              (click)="selectRepoType('GitHub')"
-              [cTooltip]="'GitHub Repo Type'"
-              cTooltipPlacement="top"
-      >
-        <svg cIcon name="cib-github" size="4xl" class="custom-icon"></svg>
-      </button>
-    </div>
-    <form [formGroup]="importRepoForm" (ngSubmit)="onSubmit()" cForm>
-      <c-input-group class="flex-nowrap">
+<c-modal id="importRepoModal" alignment="center" [visible]="visible" (visibleChange)="handleImportRepoChange($event)">
+    <c-modal-header>
+        <h5 cModalTitle>Import repository</h5>
+    </c-modal-header>
+    <c-modal-body>
+        <div class="d-flex justify-content-center mb-3">
+            <button
+                    cButton
+                    type="button"
+                    class="btn btn-primary custom-btn"
+                    [class]="{'active': selectedRepo === 'GitLab'}"
+                    (click)="selectRepoType('GitLab')"
+                    [cTooltip]="'GitLab Repo Type'"
+                    cTooltipPlacement="top"
+
+            >
+                <svg cIcon name="cib-gitlab" size="4xl" class="custom-icon"></svg>
+            </button>
+            <button
+                    cButton
+                    type="button"
+                    class="btn btn-primary ms-3 custom-btn"
+                    [class]="{'active': selectedRepo === 'GitHub'}"
+                    (click)="selectRepoType('GitHub')"
+                    [cTooltip]="'GitHub Repo Type'"
+                    cTooltipPlacement="top"
+            >
+                <svg cIcon name="cib-github" size="4xl" class="custom-icon"></svg>
+            </button>
+        </div>
+        <form [formGroup]="importRepoForm" (ngSubmit)="onSubmit()" cForm>
+            <c-input-group class="flex-nowrap">
         <span cInputGroupText id="addon-wrapping">
           <svg cIcon name="cil-link" class="icon"></svg>
         </span>
-        <input
-                aria-describedby="addon-wrapping"
-                aria-label="Repository URL"
-                cFormControl
-                type="url"
-                class="form-control"
-                id="repoUrl"
-                formControlName="repoUrl"
-                placeholder="Repository URL"
-                required
-        />
-      </c-input-group>
-      <br/>
-      <c-input-group class="flex-nowrap">
+                <input
+                        aria-describedby="addon-wrapping"
+                        aria-label="Repository URL"
+                        cFormControl
+                        type="url"
+                        class="form-control"
+                        id="repoUrl"
+                        formControlName="repoUrl"
+                        placeholder="Repository URL"
+                        required
+                />
+            </c-input-group>
+            <br/>
+            <c-input-group class="flex-nowrap">
         <span cInputGroupText id="addon-wrapping2">
           <svg cIcon name="cil-lock-locked" class="icon"></svg>
         </span>
-        <input
-                aria-describedby="addon-wrapping"
-                aria-label="Access Token"
-                cFormControl
-                type="password"
-                class="form-control"
-                id="accessToken"
-                formControlName="accessToken"
-                placeholder="Access Token"
-                required
-        />
-      </c-input-group>
-      <br/>
-      <c-input-group class="mb-3">
+                <input
+                        aria-describedby="addon-wrapping"
+                        aria-label="Access Token"
+                        cFormControl
+                        type="password"
+                        class="form-control"
+                        id="accessToken"
+                        formControlName="accessToken"
+                        placeholder="Access Token"
+                        required
+                />
+            </c-input-group>
+            <br/>
+            <c-input-group class="mb-3">
         <span cInputGroupText id="addon-wrapping3">
           <svg cIcon name="cil-people" class="icon"></svg>
         </span>
-        <select cSelect id="inputGroupSelect01" formControlName="team">
-          <option value="" disabled selected>Select Team...</option>
-          <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
-        </select>
-      </c-input-group>
-    </form>
-  </c-modal-body>
-  <c-modal-footer>
-    <button (click)="closeModal()" cButton color="secondary">Close</button>
-    <button (click)="onSubmit()" cButton color="primary" [disabled]="importRepoForm.invalid">Select projects...</button>
-  </c-modal-footer>
+                <select cSelect id="inputGroupSelect01" formControlName="team">
+                    <option value="" disabled selected>Select Team...</option>
+                    <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
+                </select>
+            </c-input-group>
+        </form>
+    </c-modal-body>
+    <c-modal-footer>
+        <button (click)="closeModal()" cButton color="secondary">Close</button>
+        <button (click)="onSubmit()" cButton color="primary" [disabled]="importRepoForm.invalid">Select projects...
+        </button>
+    </c-modal-footer>
 </c-modal>
 
-<c-modal size="xl" id="repoListModal" alignment="center" [visible]="visibleList" (visibleChange)="handleListRepoChange($event)">
-  <c-modal-header>
-    <h5 cModalTitle>List of the repositories to import</h5>
-  </c-modal-header>
-  <c-modal-body>
-    <div *ngIf="isLoading; else tableTemplate" class="d-flex justify-content-center align-items-center" style="height: 200px;">
-      <div class="text-center">
-        <c-spinner></c-spinner>
-        <div>Loading...</div>
-      </div>
-    </div>
-    <ng-template #tableTemplate>
-      <div>
-        <c-input-group class="mb-3">
+<c-modal size="xl" id="repoListModal" alignment="center" [visible]="visibleList"
+         (visibleChange)="handleListRepoChange($event)">
+    <c-modal-header>
+        <h5 cModalTitle>List of the repositories to import</h5>
+    </c-modal-header>
+    <c-modal-body>
+        <div *ngIf="isLoading; else tableTemplate" class="d-flex justify-content-center align-items-center"
+             style="height: 200px;">
+            <div class="text-center">
+                <c-spinner></c-spinner>
+                <div>Loading...</div>
+            </div>
+        </div>
+        <ng-template #tableTemplate>
+            <div>
+                <c-input-group class="mb-3">
           <span cInputGroupText id="filterTableRepositories">
             <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
           </span>
-          <input aria-describedby="addon-wrapping"
-                 aria-label="Access Token"
-                 type="text" class="form-control" placeholder="Filter results" (input)="updateFilterRepo($event)"
-          />
-        </c-input-group>
-      </div>
-      <br/>
-      <ngx-datatable
-              class="bootstrap"
-              [rows]="repoRows"
-              [columns]="columns"
-              [columnMode]="'force'"
-              [footerHeight]="50"
-              [headerHeight]="50"
-              [rowHeight]="'auto'"
-              [limit]="10"
-      >
-        <ngx-datatable-column name="Name" prop="name"></ngx-datatable-column>
-        <ngx-datatable-column name="URL" prop="repo_url"></ngx-datatable-column>
-        <ngx-datatable-column name="Namespace" prop="namespace"></ngx-datatable-column>
-        <ngx-datatable-column name="Import" [width]="50">
-          <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
-            <button *ngIf="!row.imported" type="button" class="btn btn-outline-primary" (click)="importRepo(row)">
-              <svg cIcon name="cil-cloud-download"></svg>
-            </button>
-            <button *ngIf="row.imported" type="button" class="btn btn-success" disabled>
-              <svg cIcon name="cil-check"></svg>
-            </button>
-          </ng-template>
-        </ngx-datatable-column>
-      </ngx-datatable>
-    </ng-template>
-  </c-modal-body>
-  <c-modal-footer>
-    <button (click)="closeModal()" cButton color="secondary">
-      Close
-    </button>
-  </c-modal-footer>
+                    <input aria-describedby="addon-wrapping"
+                           aria-label="Access Token"
+                           type="text" class="form-control" placeholder="Filter results"
+                           (input)="updateFilterRepo($event)"
+                    />
+                </c-input-group>
+            </div>
+            <br/>
+            <ngx-datatable
+                    class="bootstrap"
+                    [rows]="repoRows"
+                    [columns]="columns"
+                    [columnMode]="'force'"
+                    [footerHeight]="50"
+                    [headerHeight]="50"
+                    [rowHeight]="'auto'"
+                    [limit]="10"
+            >
+                <ngx-datatable-column name="Name" prop="name"></ngx-datatable-column>
+                <ngx-datatable-column name="URL" prop="repo_url"></ngx-datatable-column>
+                <ngx-datatable-column name="Namespace" prop="namespace"></ngx-datatable-column>
+                <ngx-datatable-column name="Import" [width]="50">
+                    <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
+                        <button *ngIf="!row.imported" type="button" class="btn btn-outline-primary"
+                                (click)="importRepo(row)">
+                            <svg cIcon name="cil-cloud-download"></svg>
+                        </button>
+                        <button *ngIf="row.imported" type="button" class="btn btn-success" disabled>
+                            <svg cIcon name="cil-check"></svg>
+                        </button>
+                    </ng-template>
+                </ngx-datatable-column>
+            </ngx-datatable>
+        </ng-template>
+    </c-modal-body>
+    <c-modal-footer>
+        <button (click)="closeModal()" cButton color="secondary">
+            Close
+        </button>
+    </c-modal-footer>
 </c-modal>
 
-<c-modal id="importSingleRepoModal" alignment="center" [visible]="visibleSingleRepoModal" (visibleChange)="handleImportSingleRepoChange($event)">
+<c-modal id="importSingleRepoModal" alignment="center" [visible]="visibleSingleRepoModal"
+         (visibleChange)="handleImportSingleRepoChange($event)">
     <c-modal-header>
         <h5 cModalTitle>Import Single repository</h5>
     </c-modal-header>
@@ -329,66 +582,70 @@
     </c-modal-body>
     <c-modal-footer>
         <button (click)="closeModal()" cButton color="secondary">Close</button>
-        <button (click)="onSubmitSingleRepo()" cButton color="primary" [disabled]="importSingleRepoForm.invalid">Import single repo</button>
+        <button (click)="onSubmitSingleRepo()" cButton color="primary" [disabled]="importSingleRepoForm.invalid">Import
+            single repo
+        </button>
     </c-modal-footer>
 </c-modal>
 
 
-<c-modal size="lg" id="newTeamModal" alignment="center" [visible]="visibleNewTeam" (visibleChange)="handleNewTeam($event)">
-  <c-modal-header>
-    <h5 cModalTitle>Add new Team</h5>
-  </c-modal-header>
-  <c-modal-body>
-    <form [formGroup]="newTeamForm" (ngSubmit)="onSubmitNewTeam()" cForm>
-      <c-input-group class="flex-nowrap">
+<c-modal size="lg" id="newTeamModal" alignment="center" [visible]="visibleNewTeam"
+         (visibleChange)="handleNewTeam($event)">
+    <c-modal-header>
+        <h5 cModalTitle>Add new Team</h5>
+    </c-modal-header>
+    <c-modal-body>
+        <form [formGroup]="newTeamForm" (ngSubmit)="onSubmitNewTeam()" cForm>
+            <c-input-group class="flex-nowrap">
         <span cInputGroupText id="addon-wrapping1">
           <svg cIcon name="cil-people" class="icon"></svg>
         </span>
-        <input
-                aria-describedby="addon-wrapping"
-                aria-label="Team Name"
-                cFormControl
-                type="text"
-                class="form-control"
-                id="teamName"
-                formControlName="name"
-                placeholder="Team name"
-                required
-        />
-      </c-input-group>
-        <br/>
-        <c-input-group class="flex-nowrap">
+                <input
+                        aria-describedby="addon-wrapping"
+                        aria-label="Team Name"
+                        cFormControl
+                        type="text"
+                        class="form-control"
+                        id="teamName"
+                        formControlName="name"
+                        placeholder="Team name"
+                        required
+                />
+            </c-input-group>
+            <br/>
+            <c-input-group class="flex-nowrap">
         <span cInputGroupText id="remoteId">
           <svg cIcon name="cil-blur" class="icon"></svg>
         </span>
-            <input
-                    aria-describedby="addon-wrapping"
-                    aria-label="Remote Identifier"
-                    cFormControl
-                    type="text"
-                    class="form-control"
-                    id="remoteIdentifier"
-                    formControlName="remoteIdentifier"
-                    placeholder="Remote Identifier"
-            />
-        </c-input-group>
-    </form>
-  </c-modal-body>
-  <c-modal-footer>
-    <button (click)="closeNewTeamModal()" cButton color="secondary">Close</button>
-    <button (click)="onSubmitNewTeam()" cButton color="primary" [disabled]="newTeamForm.invalid">Add new Team</button>
-  </c-modal-footer>
+                <input
+                        aria-describedby="addon-wrapping"
+                        aria-label="Remote Identifier"
+                        cFormControl
+                        type="text"
+                        class="form-control"
+                        id="remoteIdentifier"
+                        formControlName="remoteIdentifier"
+                        placeholder="Remote Identifier"
+                />
+            </c-input-group>
+        </form>
+    </c-modal-body>
+    <c-modal-footer>
+        <button (click)="closeNewTeamModal()" cButton color="secondary">Close</button>
+        <button (click)="onSubmitNewTeam()" cButton color="primary" [disabled]="newTeamForm.invalid">Add new Team
+        </button>
+    </c-modal-footer>
 </c-modal>
 <c-toaster [placement]="position" class="p-3" position="fixed">
-  <c-toast
-          [color]="toastStatus"
-          (visibleChange)="onVisibleChange($event)"
-          [visible]="visibleToast">
-    <c-toast-header>
-      Dashboard notification
-    </c-toast-header>
-    <c-toast-body>
-      <p>{{toastMessage}}</p>
-    </c-toast-body>
-  </c-toast>
+    <c-toast
+            [color]="toastStatus"
+            (visibleChange)="onVisibleChange($event)"
+            [visible]="visibleToast">
+        <c-toast-header>
+            Dashboard notification
+        </c-toast-header>
+        <c-toast-body>
+            <p>{{ toastMessage }}</p>
+        </c-toast-body>
+    </c-toast>
 </c-toaster>

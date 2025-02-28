@@ -40,7 +40,6 @@ public class FindCodeRepoFindingStatsService {
         List<DailyFindings> averageFixTime = codeRepoFindingStatsRepository
                 .findETAFindingsBetweenDates(startDate, endDate, repoIds);
 
-
         return new AggregatedRepoStatsDTO(activeFindings, removedFindings, reviewedFindings, averageFixTime);
     }
 }

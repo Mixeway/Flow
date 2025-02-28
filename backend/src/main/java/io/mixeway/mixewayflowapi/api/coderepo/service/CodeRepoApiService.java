@@ -38,6 +38,20 @@ public class CodeRepoApiService {
         return findCodeRepoService.findById(id, principal);
     }
 
+    public List<GetCodeReposResponseDto> getReposByTeam(Long teamId, Principal principal) {
+        Team team = findTeamService.findById(teamId)
+                .orElseThrow(() -> new TeamNotFoundException("Team not found"));
+
+        // Verify user has permission to access team
+        permissionFactory.canUserAccessTeam(team, principal);
+
+        List<CodeRepo> repos = findCodeRepoService.findByTeam(team);
+        return repos.stream()
+                .map(repo -> new GetCodeReposResponseDto(repo))
+                .collect(Collectors.toList());
+    }
+
+
     public void runScan(Long id, Principal principal) {
         CodeRepo repo = findCodeRepoService.findById(id, principal);
         if (repo != null){

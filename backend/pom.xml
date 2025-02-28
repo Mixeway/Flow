@@ -26,9 +26,9 @@
         <tag/>
         <url/>
     </scm>
-<!--    <properties>-->
-<!--        <java.version>22</java.version>-->
-<!--    </properties>-->
+    <properties>
+        <java.version>22</java.version>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -101,6 +101,13 @@
             <artifactId>commons-io</artifactId>
             <version>2.8.0</version>
         </dependency>
+
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>
+        </dependency>
+
         <!-- TestContainers -->
         <dependency>
             <groupId>org.testcontainers</groupId>
@@ -162,6 +169,15 @@
                     </excludes>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>22</source>
+                    <target>22</target>
+                    <compilerArgs>--enable-preview</compilerArgs>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
     <repositories>
@@ -172,6 +188,10 @@
             <releases>
                 <enabled>false</enabled>
             </releases>
+        </repository>
+        <repository>
+            <id>central</id>
+            <url>https://repo.maven.apache.org/maven2</url>
         </repository>
     </repositories>
     <pluginRepositories>

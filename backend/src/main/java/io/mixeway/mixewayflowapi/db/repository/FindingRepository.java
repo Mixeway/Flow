@@ -1,14 +1,10 @@
 package io.mixeway.mixewayflowapi.db.repository;
 
 import io.mixeway.mixewayflowapi.api.coderepo.dto.VulnStatsResponseDto;
-import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
-import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
-import io.mixeway.mixewayflowapi.db.entity.Finding;
-import io.mixeway.mixewayflowapi.db.entity.Vulnerability;
+import io.mixeway.mixewayflowapi.db.entity.*;
 import io.mixeway.mixewayflowapi.db.projection.ItemProjection;
 import io.mixeway.mixewayflowapi.db.projection.RemovedVulnerabilityProjection;
 import io.mixeway.mixewayflowapi.db.projection.ReviewedVulnerabilityProjection;
-import org.hibernate.annotations.processing.Find;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,8 +14,11 @@ import java.util.List;
 
 @Repository
 public interface FindingRepository extends JpaRepository<Finding, Long> {
+    List<Finding> findBySourceAndCloudSubscription(Finding.Source source, CloudSubscription cloudSubscription);
     List<Finding> findBySourceAndCodeRepoBranchAndCodeRepo(Finding.Source source, CodeRepoBranch codeRepoBranch, CodeRepo codeRepo);
     List<Finding> findBySourceAndCodeRepo(Finding.Source source, CodeRepo codeRepo);
+    List<Finding> findByCloudSubscription(CloudSubscription cloudSubscription);
+
 
     @Query("SELECT new io.mixeway.mixewayflowapi.api.coderepo.dto.VulnStatsResponseDto("
             + "SUM(CASE WHEN f.source = 'SAST' AND (f.status = 'NEW' OR f.status = 'EXISTING') THEN 1 ELSE 0 END), "

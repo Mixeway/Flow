@@ -2,14 +2,20 @@ package io.mixeway.mixewayflowapi.scanmanager.service;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
-import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
-import io.mixeway.mixewayflowapi.db.entity.Vulnerability;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import io.mixeway.mixewayflowapi.db.entity.*;
+import io.mixeway.mixewayflowapi.db.repository.CloudSubscriptionRepository;
+import io.mixeway.mixewayflowapi.domain.cloudsubscription.UpdateCloudSubscriptionService;
 import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
+import io.mixeway.mixewayflowapi.domain.finding.CreateFindingService;
+import io.mixeway.mixewayflowapi.domain.settings.FindSettingsService;
 import io.mixeway.mixewayflowapi.domain.vulnerability.FindVulnerabilityService;
 import io.mixeway.mixewayflowapi.domain.vulnerability.UpdateVulnerabilityService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GitCommentService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GitService;
+import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.dto.CloudScannerReport;
+import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.service.CloudScannerService;
 import io.mixeway.mixewayflowapi.integrations.scanner.iac.service.IaCService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.service.SASTService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.apiclient.KEVApiClient;
@@ -21,6 +27,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.File;
 import java.io.IOException;
@@ -55,6 +63,12 @@ public class ScanManagerService {
     private final GitCommentService gitCommentService;
     private final KEVApiClient kevApiClient;
     private final UpdateVulnerabilityService updateVulnerabilityService;
+    private final CloudScannerService cloudScannerService;
+    private final UpdateCloudSubscriptionService updateCloudSubscriptionService;
+    private final CreateFindingService createFindingService;
+    private final CloudSubscriptionRepository cloudSubscriptionRepository;
+    private final FindSettingsService findSettingsService;
+    private final WebClient webClient;
 
     private final int maxConcurrentScans = 10; // Maximum number of concurrent scans
     private final Semaphore semaphore = new Semaphore(maxConcurrentScans); // Limit concurrent scans
@@ -363,6 +377,97 @@ public class ScanManagerService {
         if (!dir.delete()) {
             throw new IOException("Failed to delete file or directory: " + dir.getAbsolutePath());
         }
+    }
+
+    public void runCloudScansForAllSubscriptions() {
+        Settings settings = findSettingsService.get();
+        String wizClientID = settings.getWizClientId();
+        String wizSecret = settings.getWizSecret();
+        String wizAuthToken = generateWizAuthToken(wizClientID, wizSecret);
+
+        if (wizClientID == null || wizClientID.isEmpty()) {
+            throw new IllegalStateException("Wiz clientID is not configured in settings.");
+        }
+
+        if (wizSecret == null || wizSecret.isEmpty()) {
+            throw new IllegalStateException("Wiz secret is not configured in settings.");
+        }
+
+        List<CloudSubscription> cloudSubscriptions = cloudSubscriptionRepository.findAll();
+        for (CloudSubscription cloudSubscription : cloudSubscriptions) {
+            try {
+                log.info("[CloudScannerService] Scanning {}", cloudSubscription.getExternal_project_name());
+                cloudSubscription.updateCloudSubscriptionScanStatus(CloudSubscription.ScanStatus.RUNNING);
+                cloudSubscriptionRepository.save(cloudSubscription);
+                CloudScannerReport cloudScannerReport = cloudScannerService.runCloudScanner(cloudSubscription.getName(), wizAuthToken);
+                List<Finding> findings = createFindingService.mapCloudScannerReportToFindings(cloudScannerReport, cloudSubscription);
+
+                if (findings == null || findings.isEmpty()) {
+                    log.info("[CloudScannerService] No findings for subscription: {}", cloudSubscription.getExternal_project_name());
+                    updateCloudSubscriptionService.updateCloudSubscriptionScanStatus(cloudSubscription);
+                    continue;
+                }
+
+                createFindingService.saveFindings(findings, null, null, Finding.Source.CLOUD_SCANNER);
+                updateCloudSubscriptionService.updateCloudSubscriptionScanStatus(cloudSubscription);
+            } catch (Exception e) {
+                log.error("Error running cloud scan for project ID {}: {}", cloudSubscription.getName(), e.getMessage(), e);
+            }
+        }
+    }
+
+    public void runCloudScan(CloudSubscription cloudSubscription) {
+        Settings settings = findSettingsService.get();
+        String wizClientID = settings.getWizClientId();
+        String wizSecret = settings.getWizSecret();
+        String wizAuthToken = generateWizAuthToken(wizClientID, wizSecret);
+
+        if (wizClientID == null || wizClientID.isEmpty()) {
+            throw new IllegalStateException("Wiz clientID is not configured in settings.");
+        }
+
+        if (wizSecret == null || wizSecret.isEmpty()) {
+            throw new IllegalStateException("Wiz secret is not configured in settings.");
+        }
+
+        try {
+            log.info("[CloudScannerService] Scanning {}", cloudSubscription.getExternal_project_name());
+            CloudScannerReport cloudScannerReport = cloudScannerService.runCloudScanner(cloudSubscription.getName(), wizAuthToken);
+            cloudSubscription.updateCloudSubscriptionScanStatus(CloudSubscription.ScanStatus.RUNNING);
+            cloudSubscriptionRepository.save(cloudSubscription);
+            List<Finding> findings = createFindingService.mapCloudScannerReportToFindings(cloudScannerReport, cloudSubscription);
+
+            if (findings == null || findings.isEmpty()) {
+                log.info("[CloudScannerService] No findings for subscription: {}", cloudSubscription.getExternal_project_name());
+                updateCloudSubscriptionService.updateCloudSubscriptionScanStatus(cloudSubscription);
+                return;
+            }
+
+
+            createFindingService.saveFindings(findings, null, null, Finding.Source.CLOUD_SCANNER);
+            updateCloudSubscriptionService.updateCloudSubscriptionScanStatus(cloudSubscription);
+        } catch (Exception e) {
+            log.error("Error running cloud scan for project ID {}: {}", cloudSubscription.getName(), e.getMessage(), e);
+        }
+    }
+
+    public String generateWizAuthToken(String clientId, String clientSecret) {
+        String body = "grant_type=client_credentials&client_id=" + clientId + "&client_secret=" + clientSecret + "&audience=wiz-api";
+
+        String responseContent = webClient.post()
+                .uri("https://auth.app.wiz.io/oauth/token")
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .body(BodyInserters.fromValue(body))
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+
+        JsonObject jsonResponse = JsonParser.parseString(responseContent).getAsJsonObject();
+        if (!jsonResponse.has("access_token")) {
+            throw new IllegalStateException("Failed to fetch Wiz auth token.");
+        }
+
+        return jsonResponse.get("access_token").getAsString();
     }
 
     public void processKEV(){

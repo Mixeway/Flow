@@ -73,6 +73,7 @@ import { FindingSourceStatDTO } from '../../model/FindingSourceStatDTO';
 import { FindingDTO, SingleFindingDTO } from '../../model/FindingDTO';
 import { FormsModule } from '@angular/forms';
 import {TeamService} from "../../service/TeamService";
+import {log} from "@angular-devkit/build-angular/src/builders/ssr-dev-server";
 
 interface Vulnerability {
     id: number;
@@ -407,6 +408,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
             },
         });
     }
+
     loadFindings() {
         this.vulnerabilitiesLoading = true;
         this.repoService.getFindingsDefBranch(+this.repoId).subscribe({

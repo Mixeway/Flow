@@ -75,6 +75,16 @@ public class CodeRepoController {
         }
     }
 
+    @PreAuthorize("hasAuthority('USER')")
+    @GetMapping(value= "/api/v1/coderepo/team/{id}")
+    public ResponseEntity<List<GetCodeReposResponseDto>> getCodeReposByTeam(@PathVariable(name = "id")Long id, Principal principal){
+        try {
+            return new ResponseEntity<>(codeRepoApiService.getReposByTeam(id, principal), HttpStatus.OK);
+        } catch (Exception e){
+            return new ResponseEntity<>( HttpStatus.BAD_REQUEST);
+        }
+    }
+
     @PreAuthorize("hasAuthority('TEAM_MANAGER')")
     @GetMapping(value= "/api/v1/coderepo/{id}/run")
     public ResponseEntity<StatusDTO> runScan(@PathVariable("id") Long id, Principal principal){

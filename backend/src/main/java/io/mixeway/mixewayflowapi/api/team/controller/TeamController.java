@@ -14,10 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.List;
@@ -52,6 +49,17 @@ public class TeamController {
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }
     }
+
+    @PreAuthorize("hasAuthority('USER')")
+    @GetMapping(value= "/api/v1/team/{id}")
+    public ResponseEntity<TeamDto> getTeam(@PathVariable("id") Long id, Principal principal){
+        try {
+            return new ResponseEntity<>(findTeamService.findTeamById(id, principal), HttpStatus.OK);
+        } catch (Exception e){
+            return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+        }
+    }
+
     @PreAuthorize("hasAuthority('TEAM_MANAGER')")
     @PostMapping(value= "/api/v1/team")
     public ResponseEntity<StatusDTO> modifyAccessToTeam(@Valid @RequestBody ChangeTeamRequestDto changeTeamRequestDto, Principal principal){

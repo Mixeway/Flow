@@ -15,6 +15,9 @@ export class RepoService {
     getRepo(id: number): Observable<any> {
         return this.http.get<any>(this.loginUrl + '/api/v1/coderepo/' + id,{ withCredentials: true });
     }
+    getReposByTeam(id: number): Observable<any> {
+        return this.http.get<any>(this.loginUrl + '/api/v1/coderepo/team/' + id,{ withCredentials: true });
+    }
     getSourceStats(id: number): Observable<any> {
         return this.http.get<any>(this.loginUrl + '/api/v1/coderepo/' + id + '/source_stats',{ withCredentials: true });
     }

@@ -3,14 +3,23 @@ package io.mixeway.mixewayflowapi.db.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
+import lombok.Setter;
 
+import java.util.List;
 import java.util.Objects;
 
 @Entity
 @Getter
 @Table(name = "cloud_subscription",
-        uniqueConstraints = {@UniqueConstraint(columnNames = {"name", "team_id"})})
+        uniqueConstraints = {@UniqueConstraint(columnNames = {"name", "team_id", "project_external_name"})})
 public class CloudSubscription {
+
+    public enum ScanStatus {
+        SUCCESS, DANGER, WARNING, NOT_PERFORMED, RUNNING
+    }
+
+    @OneToMany(mappedBy = "cloudSubscription", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<CloudScanInfo> cloudScanInfos;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,11 +33,21 @@ public class CloudSubscription {
     @JoinColumn(name = "team_id", nullable = false)
     private Team team;
 
-    public CloudSubscription(String name, Team team) {
+    @Column(name = "external_project_name", unique = true)
+    private String external_project_name;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "scan_status", nullable = false)
+    private ScanStatus scan_status;
+
+
+    public CloudSubscription(String name, Team team, String external_project_name) {
         validateName(name);
         validateTeam(team);
         this.name = name;
         this.team = team;
+        this.external_project_name = external_project_name;
+        this.scan_status = ScanStatus.NOT_PERFORMED;
     }
 
     // Private constructor for JPA
@@ -50,6 +69,19 @@ public class CloudSubscription {
     public void updateName(String newName) {
         validateName(newName);
         this.name = newName;
+    }
+
+    void updateExternalProjectName(String externalProjectName) {
+        validateName(externalProjectName);
+        this.name = externalProjectName;
+    }
+
+    public void updateCloudSubscriptionScanStatus(CloudSubscription.ScanStatus status) {
+        this.scan_status = status;
+    }
+
+    public void updateTeam(Team newTeam) {
+        this.team = newTeam;
     }
 
     @Override

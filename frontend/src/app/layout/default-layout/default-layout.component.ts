@@ -19,6 +19,7 @@ import { DefaultFooterComponent, DefaultHeaderComponent } from './';
 import { navItems } from './_nav';
 import {FormBuilder} from "@angular/forms";
 import {freeSet} from "@coreui/icons";
+import {SettingsService} from "../../service/SettingsService";
 
 function isOverflown(element: HTMLElement) {
   return (
@@ -53,7 +54,7 @@ function isOverflown(element: HTMLElement) {
 export class DefaultLayoutComponent {
   public navItems = navItems;
 
-  constructor(public iconSet: IconSetService, private fb: FormBuilder, private router: Router) {
+  constructor(public iconSet: IconSetService, private fb: FormBuilder, private router: Router, private settingsService: SettingsService) {
     // iconSet singleton
     iconSet.icons = { ...freeSet, ...iconSet };
   }

@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {environment} from "../../environments/environment";
+import {map} from "rxjs/operators";
 
 @Injectable({
     providedIn: 'root'
@@ -22,6 +23,12 @@ export class SettingsService {
     }
     changeWiz(wizConfig: any): Observable<any> {
         return this.http.post<any>(`${this.loginUrl}/api/v1/admin/settings/wizconfig`, wizConfig, { withCredentials: true });
+    }
+
+    isWizEnabled(): Observable<boolean> {
+        return this.http.get<any>(`${this.loginUrl}/api/v1/admin/settings`, { withCredentials: true }).pipe(
+            map(settings => settings.wizConfig?.enabled ?? false)
+        );
     }
 
     getAdditionalScannerConfig(): Observable<any> {

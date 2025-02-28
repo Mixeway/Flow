@@ -32,7 +32,7 @@ public final class Finding {
     }
 
     public enum Source {
-        IAC, SECRETS, SAST, SCA
+        IAC, SECRETS, SAST, SCA, CLOUD_SCANNER
     }
 
     @Id
@@ -47,13 +47,17 @@ public final class Finding {
     @JoinColumn(name = "component_id")
     private final Component component;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "coderepo_branch_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "coderepo_branch_id")
     private final CodeRepoBranch codeRepoBranch;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "coderepo_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "coderepo_id")
     private final CodeRepo codeRepo;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cloud_subscription_id")
+    private final CloudSubscription cloudSubscription;
 
     @Column(columnDefinition = "TEXT")
     private final String explanation;
@@ -94,6 +98,7 @@ public final class Finding {
         this.component = null;
         this.codeRepoBranch = null;
         this.codeRepo = null;
+        this.cloudSubscription = null;
         this.explanation = null;
         this.location = null;
         this.severity = null;
@@ -109,12 +114,13 @@ public final class Finding {
     }
 
     // Public constructor for creating new instances
-    public Finding(Vulnerability vulnerability, Component component, CodeRepoBranch codeRepoBranch, CodeRepo codeRepo, String explanation, String location, Severity severity, Source source) {
+    public Finding(Vulnerability vulnerability, Component component, CodeRepoBranch codeRepoBranch, CodeRepo codeRepo, CloudSubscription cloudSubscription, String explanation, String location, Severity severity, Source source) {
         this.id = 0;
         this.vulnerability = vulnerability;
         this.component = component;
         this.codeRepoBranch = codeRepoBranch;
         this.codeRepo = codeRepo;
+        this.cloudSubscription = cloudSubscription;
         this.explanation = explanation;
         this.location = location;
         this.severity = severity;
@@ -144,12 +150,13 @@ public final class Finding {
                 severity == finding.severity &&
                 Objects.equals(location, finding.location) &&
                 Objects.equals(codeRepoBranch, finding.codeRepoBranch) &&
-                Objects.equals(codeRepo, finding.codeRepo);
+                Objects.equals(codeRepo, finding.codeRepo) &&
+                Objects.equals(cloudSubscription, finding.cloudSubscription);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(vulnerability, severity, location, codeRepoBranch, codeRepo);
+        return Objects.hash(vulnerability, severity, location, codeRepoBranch, codeRepo, cloudSubscription);
     }
     @PreUpdate
     protected void onUpdate() {
