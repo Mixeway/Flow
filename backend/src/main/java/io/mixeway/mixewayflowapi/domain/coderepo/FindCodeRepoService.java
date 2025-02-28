@@ -1,7 +1,6 @@
 package io.mixeway.mixewayflowapi.domain.coderepo;
 
 import io.mixeway.mixewayflowapi.api.coderepo.dto.GetCodeReposResponseDto;
-import io.mixeway.mixewayflowapi.db.entity.CloudSubscription;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.Team;
 import io.mixeway.mixewayflowapi.db.entity.UserInfo;

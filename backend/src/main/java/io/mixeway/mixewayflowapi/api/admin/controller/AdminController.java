@@ -5,7 +5,6 @@ import io.mixeway.mixewayflowapi.api.admin.dto.ConfigScaRequestDto;
 import io.mixeway.mixewayflowapi.api.admin.dto.ConfigSmtpRequestDto;
 import io.mixeway.mixewayflowapi.api.admin.dto.ConfigWizRequestDto;
 import io.mixeway.mixewayflowapi.api.admin.service.AdminApiService;
-import io.mixeway.mixewayflowapi.api.coderepo.dto.CreateCodeRepoRequestDto;
 import io.mixeway.mixewayflowapi.db.entity.Settings;
 import io.mixeway.mixewayflowapi.utils.StatusDTO;
 import jakarta.validation.Valid;

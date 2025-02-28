@@ -1,7 +1,6 @@
 package io.mixeway.mixewayflowapi.api.teamfindings.controller;
 
 import io.mixeway.mixewayflowapi.api.teamfindings.service.TeamStatisticService;
-import io.mixeway.mixewayflowapi.db.entity.CloudSubscriptionFindingStats;
 import lombok.extern.log4j.Log4j2;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

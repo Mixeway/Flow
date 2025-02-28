@@ -3,7 +3,6 @@ package io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mixeway.mixewayflowapi.db.entity.Settings;
 import io.mixeway.mixewayflowapi.domain.settings.FindSettingsService;
-import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.dto.CloudScannerReport;
 import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.dto.ProjectExternalNameResponse;
 import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import org.springframework.stereotype.Service;

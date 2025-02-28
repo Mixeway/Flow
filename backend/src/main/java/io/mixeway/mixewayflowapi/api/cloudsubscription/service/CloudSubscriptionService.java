@@ -2,7 +2,6 @@ package io.mixeway.mixewayflowapi.api.cloudsubscription.service;
 
 import io.mixeway.mixewayflowapi.api.cloudsubscription.dto.GetCloudSubscriptionsResponseDto;
 import io.mixeway.mixewayflowapi.db.entity.CloudSubscription;
-import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.Team;
 import io.mixeway.mixewayflowapi.domain.cloudsubscription.CreateCloudSubscriptionService;
 import io.mixeway.mixewayflowapi.domain.cloudsubscription.DeleteCloudSubscriptionService;
@@ -10,7 +9,6 @@ import io.mixeway.mixewayflowapi.domain.cloudsubscription.FindCloudSubscriptionS
 import io.mixeway.mixewayflowapi.domain.cloudsubscription.UpdateCloudSubscriptionService;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import io.mixeway.mixewayflowapi.exceptions.CloudSubscriptionNotFoundException;
-import io.mixeway.mixewayflowapi.exceptions.CodeRepoNotFoundException;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
 import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import io.mixeway.mixewayflowapi.utils.PermissionFactory;

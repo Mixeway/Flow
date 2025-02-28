@@ -1,6 +1,5 @@
 package io.mixeway.mixewayflowapi.api.teamfindings.controller;
 
-import io.mixeway.mixewayflowapi.api.coderepo.dto.VulnsResponseDto;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.GetFindingResponseDto;
 import io.mixeway.mixewayflowapi.api.teamfindings.dto.TeamVulnsResponseDto;
 import io.mixeway.mixewayflowapi.api.teamfindings.service.FindingsByTeamService;

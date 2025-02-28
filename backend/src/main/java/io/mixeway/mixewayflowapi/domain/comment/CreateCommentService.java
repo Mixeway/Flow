@@ -2,7 +2,6 @@ package io.mixeway.mixewayflowapi.domain.comment;
 
 import io.mixeway.mixewayflowapi.db.entity.Comment;
 import io.mixeway.mixewayflowapi.db.entity.Finding;
-import io.mixeway.mixewayflowapi.db.entity.Team;
 import io.mixeway.mixewayflowapi.db.entity.UserInfo;
 import io.mixeway.mixewayflowapi.db.repository.CommentRepository;
 import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
@@ -14,7 +13,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.security.Principal;
-import java.util.Set;
 
 /**
  * Service responsible for creating comments on findings.

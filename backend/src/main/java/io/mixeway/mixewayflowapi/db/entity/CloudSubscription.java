@@ -3,7 +3,6 @@ package io.mixeway.mixewayflowapi.db.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
-import lombok.Setter;
 
 import java.util.List;
 import java.util.Objects;

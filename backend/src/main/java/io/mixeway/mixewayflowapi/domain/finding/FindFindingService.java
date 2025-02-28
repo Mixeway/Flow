@@ -7,7 +7,6 @@ import io.mixeway.mixewayflowapi.api.threatintel.dto.ReviewedVulnerabilityDTO;
 import io.mixeway.mixewayflowapi.db.entity.*;
 import io.mixeway.mixewayflowapi.db.projection.*;
 import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
-import io.mixeway.mixewayflowapi.domain.cloudsubscription.FindCloudSubscriptionService;
 import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import io.mixeway.mixewayflowapi.domain.user.FindUserService;

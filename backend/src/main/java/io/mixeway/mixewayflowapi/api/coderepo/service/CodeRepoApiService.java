@@ -1,6 +1,5 @@
 package io.mixeway.mixewayflowapi.api.coderepo.service;
 
-import ch.qos.logback.core.spi.ScanException;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.GetCodeReposResponseDto;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.Team;
@@ -15,7 +14,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.security.Principal;
 import java.util.List;
 import java.util.stream.Collectors;
