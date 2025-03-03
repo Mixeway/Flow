@@ -737,24 +737,24 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
         alert('clicked');
     }
 
-    // suppressFinding() {
-    //     // Implement your logic to handle the suppression of the finding here
-    //     if (this.selectedRowId && this.suppressReason) {
-    //         this.repoService
-    //             .supressFinding(+this.repoId, this.selectedRowId, this.suppressReason)
-    //             .subscribe({
-    //                 next: (response) => {
-    //                     this.toastStatus = 'success';
-    //                     this.toastMessage = 'Successfully Suppressed finding';
-    //                     this.toggleToast();
-    //                     this.loadFindings();
-    //                 },
-    //             });
-    //     }
-    //     this.closeModal();
-    //     this.applyFilters();
-    // }
-    //
+    suppressFinding() {
+        // Implement your logic to handle the suppression of the finding here
+        if (this.selectedRowId && this.suppressReason) {
+            this.teamFindingsService
+                .supressFinding(+this.teamId, this.selectedRowId, this.suppressReason)
+                .subscribe({
+                    next: (response) => {
+                        this.toastStatus = 'success';
+                        this.toastMessage = 'Successfully Suppressed finding';
+                        this.toggleToast();
+                        this.loadFindings();
+                    },
+                });
+        }
+        this.closeModal();
+        this.applyFilters();
+    }
+
     position = 'top-end';
     visible = false;
     percentage = 0;
@@ -769,39 +769,23 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
         this.percentage = !this.visible ? 0 : this.percentage;
     }
 
-    //
-    // reactivateFinding() {
-    //     if (this.selectedRowId) {
-    //         this.repoService
-    //             .reActivateFinding(+this.repoId, this.selectedRowId)
-    //             .subscribe({
-    //                 next: (response) => {
-    //                     this.toastStatus = 'success';
-    //                     this.toastMessage = 'Successfully Re-Activated finding';
-    //                     this.toggleToast();
-    //                     this.loadFindings();
-    //                 },
-    //             });
-    //     }
-    //     this.closeModal();
-    // }
-    //
-    // onBranchSelect(event: any) {
-    //     const selectedBranchId = event.target.value;
-    //     this.repoService.getFindingsBranch(+this.repoId, selectedBranchId).subscribe({
-    //         next: (response) => {
-    //             this.vulns = response;
-    //             this.filteredVulns = [...this.vulns];
-    //             this.counts = this.countFindings(this.vulns);
-    //             this.applyFilters();
-    //             this.toastStatus = 'success';
-    //             this.toastMessage = 'Successfully switched to another branch';
-    //             this.toggleToast();
-    //         },
-    //     });
-    //     // Call a method to handle the selected branch ID
-    // }
-    //
+
+    reactivateFinding() {
+        if (this.selectedRowId) {
+            this.teamFindingsService
+                .reActivateFinding(+this.teamId, this.selectedRowId)
+                .subscribe({
+                    next: (response) => {
+                        this.toastStatus = 'success';
+                        this.toastMessage = 'Successfully Re-Activated finding';
+                        this.toggleToast();
+                        this.loadFindings();
+                    },
+                });
+        }
+        this.closeModal();
+    }
+
     countFindings(vulnerabilities: Vulnerability[]) {
         const counts = {
             critical: 0,
@@ -1026,62 +1010,62 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
     //     });
     // }
     //
-    // toggleBulkAction() {
-    //     this.bulkActionMode = !this.bulkActionMode;
-    //     if (!this.bulkActionMode) {
-    //         this.selectedFindings = [];
-    //     }
-    // }
-    //
-    // onSelectFinding(id: number, event: any) {
-    //     if (event.target.checked) {
-    //         if (!this.selectedFindings.includes(id)) {
-    //             this.selectedFindings.push(id);
-    //         }
-    //     } else {
-    //         this.selectedFindings = this.selectedFindings.filter(
-    //             (findingId) => findingId !== id
-    //         );
-    //     }
-    // }
-    //
-    // isSelected(id: number): boolean {
-    //     return this.selectedFindings.includes(id);
-    // }
-    //
-    // selectAllFindings(event: any) {
-    //     if (event.target.checked) {
-    //         this.selectedFindings = this.filteredVulns.map((vuln) => vuln.id);
-    //     } else {
-    //         this.selectedFindings = [];
-    //     }
-    // }
-    //
-    // suppressSelectedFindings() {
-    //     console.log('Selected Findings IDs:', this.selectedFindings);
-    //     // Implement suppression logic here
-    //     if (this.selectedFindings.length > 0) {
-    //         const suppressReason = 'FALSE_POSITIVE'; // As per your requirement
-    //         this.repoService
-    //             .suppressMultipleFindings(+this.repoId, this.selectedFindings)
-    //             .subscribe({
-    //                 next: (response) => {
-    //                     this.toastStatus = 'success';
-    //                     this.toastMessage = 'Successfully Suppressed selected findings';
-    //                     this.toggleToast();
-    //                     this.loadFindings();
-    //                     // Reset selections
-    //                     this.selectedFindings = [];
-    //                     this.bulkActionMode = false;
-    //                 },
-    //                 error: (error) => {
-    //                     this.toastStatus = 'danger';
-    //                     this.toastMessage = 'Failed to suppress selected findings';
-    //                     this.toggleToast();
-    //                 },
-    //             });
-    //     }
-    // }
+    toggleBulkAction() {
+        this.bulkActionMode = !this.bulkActionMode;
+        if (!this.bulkActionMode) {
+            this.selectedFindings = [];
+        }
+    }
+
+    onSelectFinding(id: number, event: any) {
+        if (event.target.checked) {
+            if (!this.selectedFindings.includes(id)) {
+                this.selectedFindings.push(id);
+            }
+        } else {
+            this.selectedFindings = this.selectedFindings.filter(
+                (findingId) => findingId !== id
+            );
+        }
+    }
+
+    isSelected(id: number): boolean {
+        return this.selectedFindings.includes(id);
+    }
+
+    selectAllFindings(event: any) {
+        if (event.target.checked) {
+            this.selectedFindings = this.filteredVulns.map((vuln) => vuln.id);
+        } else {
+            this.selectedFindings = [];
+        }
+    }
+
+    suppressSelectedFindings() {
+        console.log('Selected Findings IDs:', this.selectedFindings);
+        // Implement suppression logic here
+        if (this.selectedFindings.length > 0) {
+            const suppressReason = 'FALSE_POSITIVE'; // As per your requirement
+            this.teamFindingsService
+                .suppressMultipleTeamFindings(+this.teamId, this.selectedFindings)
+                .subscribe({
+                    next: (response) => {
+                        this.toastStatus = 'success';
+                        this.toastMessage = 'Successfully Suppressed selected findings';
+                        this.toggleToast();
+                        this.loadFindings();
+                        // Reset selections
+                        this.selectedFindings = [];
+                        this.bulkActionMode = false;
+                    },
+                    error: (error) => {
+                        this.toastStatus = 'danger';
+                        this.toastMessage = 'Failed to suppress selected findings';
+                        this.toggleToast();
+                    },
+                });
+        }
+    }
     //
     // // Scan Info Filter Methods
     // updateScanInfoFilter(event: any) {

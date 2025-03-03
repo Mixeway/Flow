@@ -28,4 +28,17 @@ export class TeamFindingsService {
     getTeamFindingSourceStats(id: number): Observable<any> {
         return this.http.get<any>(this.loginUrl + '/api/v1/teamfindings/' + id + '/source_stats',{ withCredentials: true });
     }
+
+    suppressMultipleTeamFindings(number: number, selectedFindings: number[]) {
+        return this.http.post<any>(this.loginUrl + '/api/v1/teamfindings/' + number+ '/supress', selectedFindings,{ withCredentials: true });
+
+    }
+    supressFinding(id: number, finding: number, reason: string): Observable<any> {
+        return this.http.get<any>(this.loginUrl + '/api/v1/teamfindings/' + id + '/supress/' + finding
+            + '/reason/' + reason,{ withCredentials: true });
+    }
+    reActivateFinding(id: number, finding: number): Observable<any> {
+        return this.http.get<any>(this.loginUrl + '/api/v1/teamfindings/' + id + '/reactivate/' + finding
+            ,{ withCredentials: true });
+    }
 }

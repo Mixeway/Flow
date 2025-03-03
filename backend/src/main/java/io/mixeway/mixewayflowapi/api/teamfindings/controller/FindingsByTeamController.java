@@ -3,6 +3,7 @@ package io.mixeway.mixewayflowapi.api.teamfindings.controller;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.GetFindingResponseDto;
 import io.mixeway.mixewayflowapi.api.teamfindings.dto.TeamVulnsResponseDto;
 import io.mixeway.mixewayflowapi.api.teamfindings.service.FindingsByTeamService;
+import io.mixeway.mixewayflowapi.utils.StatusDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.http.HttpStatus;
@@ -41,5 +42,35 @@ public class FindingsByTeamController {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
+    }
+
+    @PreAuthorize("hasAuthority('USER')")
+    @PostMapping(value= "/api/v1/teamfindings/{id}/supress")
+    public ResponseEntity<StatusDTO> supressTeamFindingList(@PathVariable("id") Long id, @RequestBody List<Long> findingIds, Principal principal){
+        try {
+            return new ResponseEntity<>(findingsByTeamService.supressTeamFindingBulk(id,findingIds,principal), HttpStatus.OK);
+        } catch (Exception e){
+            return new ResponseEntity<>( HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('USER')")
+    @GetMapping(value= "/api/v1/teamfindings/{id}/supress/{finding}/reason/{reason}")
+    public ResponseEntity<StatusDTO> supressTeamFinding(@PathVariable("id") Long id, @PathVariable("finding") Long findingId, @PathVariable("reason") String reason, Principal principal){
+        try {
+            return new ResponseEntity<>(findingsByTeamService.supressTeamFinding(id,findingId,reason,principal), HttpStatus.OK);
+        } catch (Exception e){
+            return new ResponseEntity<>( HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('USER')")
+    @GetMapping(value= "/api/v1/teamfindings/{id}/reactivate/{finding}")
+    public ResponseEntity<StatusDTO> reactivateTeamFinding(@PathVariable("id") Long id, @PathVariable("finding") Long findingId, Principal principal){
+        try {
+            return new ResponseEntity<>(findingsByTeamService.reactivateTeamFinding(id,findingId,principal), HttpStatus.OK);
+        } catch (Exception e){
+            return new ResponseEntity<>( HttpStatus.BAD_REQUEST);
+        }
     }
 }

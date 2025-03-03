@@ -34,5 +34,4 @@ export class TeamService {
         return this.http.post<any>(this.loginUrl + '/api/v1/team', change, { withCredentials: true });
     }
 
-
 }
