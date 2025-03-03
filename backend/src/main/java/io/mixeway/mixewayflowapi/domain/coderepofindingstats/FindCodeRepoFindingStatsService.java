@@ -3,11 +3,14 @@ package io.mixeway.mixewayflowapi.domain.coderepofindingstats;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.AggregatedRepoStatsDTO;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.DailyFindings;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.GetCodeReposResponseDto;
+
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoFindingStats;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoFindingStatsRepository;
 import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.security.Principal;
@@ -25,6 +28,7 @@ public class FindCodeRepoFindingStatsService {
     public List<CodeRepoFindingStats> getStatsForRepo(CodeRepo codeRepo){
         return codeRepoFindingStatsRepository.findTop14ByCodeRepoOrderByDateInsertedDesc(codeRepo);
     }
+
 
     public AggregatedRepoStatsDTO getAggregatedStatsForLastSevenDays(Principal principal) {
         LocalDate endDate = LocalDate.now();

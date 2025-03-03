@@ -24,4 +24,8 @@ export class TeamFindingsService {
     getTeamFindingStats(id: number): Observable<any> {
         return this.http.get<any>(this.loginUrl + '/api/v1/teamfindings/' + id + '/finding_stats',{ withCredentials: true });
     }
+
+    getTeamFindingSourceStats(id: number): Observable<any> {
+        return this.http.get<any>(this.loginUrl + '/api/v1/teamfindings/' + id + '/source_stats',{ withCredentials: true });
+    }
 }

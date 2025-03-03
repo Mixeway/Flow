@@ -70,11 +70,11 @@ import {RepoService} from '../../service/RepoService';
 import {CloudSubscriptionService} from '../../service/CloudSubscriptionService';
 import {AuthService} from '../../service/AuthService';
 import {ActivatedRoute, Router} from '@angular/router';
-import {FindingSourceStatDTO} from '../../model/FindingSourceStatDTO';
 import {FindingDTO, SingleFindingDTO} from '../../model/FindingDTO';
 import {FormsModule} from '@angular/forms';
 import {TeamService} from "../../service/TeamService";
 import {TeamFindingsService} from "../../service/TeamFindingsService";
+import {TeamFindingSourceStatDTO} from "../../model/TeamFindingSourceStatDTO";
 
 interface Vulnerability {
     id: number;
@@ -108,7 +108,7 @@ interface GroupedAppDataType {
 
 export interface TeamFindingStats {
     id: number;
-    dateInserted: string; // Using string to represent ISO date format
+    date: string; // Using string to represent ISO date format
     sastCritical?: number;
     sastHigh?: number;
     sastMedium?: number;
@@ -221,8 +221,7 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
         cilVolumeOff,
         cilMagnifyingGlass,
     };
-    sourceStats: FindingSourceStatDTO = new FindingSourceStatDTO();
-    topLanguages: { name: string; value: number; color: string }[] = [];
+    sourceStats: TeamFindingSourceStatDTO = new TeamFindingSourceStatDTO();
     chartPieData: ChartData | undefined;
     singleVuln: SingleFindingDTO | undefined;
     suppressReason: string = '';
@@ -269,7 +268,7 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
                 stacked: true,
             },
             y: {
-                stacked: true,
+                stacked: false,
             },
         },
     };
@@ -391,7 +390,7 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
         });
         this.loadTeamInfo();
         this.loadCodeReposAndCloudSubscriptionsInfo();
-        // this.loadSourceStats();
+        this.loadSourceStats();
         this.loadFindings();
         this.loadFindingStats();
     }
@@ -467,48 +466,178 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
     loadFindingStats() {
         this.teamFindingsService.getTeamFindingStats(+this.teamId).subscribe({
             next: (response) => {
-                this.teamFindingStats = response.sort(
-                    (a: TeamFindingStats, b: TeamFindingStats) =>
-                        new Date(a.dateInserted).getTime() -
-                        new Date(b.dateInserted).getTime()
-                );
-                this.prepareChartData();
+                // Check if the response contains the expected properties
+                if (response && response.codeReposStats && response.cloudSubscriptionsStats) {
+                    // Combine the stats from both arrays
+                    const combinedStats = [
+                        ...response.codeReposStats.map((stat: any) => ({
+                            date: stat.date,
+                            sastCritical: stat.sastCritical ?? 0,
+                            sastHigh: stat.sastHigh ?? 0,
+                            sastMedium: stat.sastMedium ?? 0,
+                            sastRest: stat.sastRest ?? 0,
+                            scaCritical: stat.scaCritical ?? 0,
+                            scaHigh: stat.scaHigh ?? 0,
+                            scaMedium: stat.scaMedium ?? 0,
+                            scaRest: stat.scaRest ?? 0,
+                            iacCritical: stat.iacCritical ?? 0,
+                            iacHigh: stat.iacHigh ?? 0,
+                            iacMedium: stat.iacMedium ?? 0,
+                            iacRest: stat.iacRest ?? 0,
+                            secretsCritical: stat.secretsCritical ?? 0,
+                            secretsHigh: stat.secretsHigh ?? 0,
+                            secretsMedium: stat.secretsMedium ?? 0,
+                            secretsRest: stat.secretsRest ?? 0,
+                            criticalFindings: 0, // No cloud data in codeReposStats
+                            highFindings: 0, // No cloud data in codeReposStats
+                            openedFindings: stat.openedFindings ?? 0,
+                            removedFindings: stat.removedFindings ?? 0,
+                            reviewedFindings: stat.reviewedFindings ?? 0,
+                            averageFixTime: stat.averageFixTime ?? 0,
+                        })),
+                        ...response.cloudSubscriptionsStats.map((stat: any) => ({
+                            date: stat.date,
+                            sastCritical: 0, // No SAST data in cloudSubscriptionsStats
+                            sastHigh: 0,
+                            sastMedium: 0,
+                            sastRest: 0,
+                            scaCritical: 0, // No SCA data in cloudSubscriptionsStats
+                            scaHigh: 0,
+                            scaMedium: 0,
+                            scaRest: 0,
+                            iacCritical: 0, // No IaC data in cloudSubscriptionsStats
+                            iacHigh: 0,
+                            iacMedium: 0,
+                            iacRest: 0,
+                            secretsCritical: 0, // No Secrets data in cloudSubscriptionsStats
+                            secretsHigh: 0,
+                            secretsMedium: 0,
+                            secretsRest: 0,
+                            criticalFindings: stat.criticalFindings ?? 0,
+                            highFindings: stat.highFindings ?? 0,
+                            openedFindings: 0, // No openedFindings in cloudSubscriptionsStats
+                            removedFindings: 0, // No removedFindings in cloudSubscriptionsStats
+                            reviewedFindings: 0, // No reviewedFindings in cloudSubscriptionsStats
+                            averageFixTime: 0, // No averageFixTime in cloudSubscriptionsStats
+                        })),
+                    ];
+
+                    // Combine stats by date
+                    this.teamFindingStats = this.combineStatsByDate(combinedStats);
+
+                    // Prepare the chart data
+                    this.prepareChartData();
+                } else {
+                    console.error('Unexpected response format:', response);
+                }
+            },
+            error: (error) => {
+                console.error('Error loading team finding stats:', error);
             },
         });
     }
 
-    // loadSourceStats() {
-    //     this.repoService.getSourceStats(+this.repoId).subscribe({
-    //         next: (response) => {
-    //             this.sourceStats = response;
-    //             this.chartPieData = {
-    //                 labels: ['SAST', 'SCA', 'Secrets', 'IaC'],
-    //                 datasets: [
-    //                     {
-    //                         data: [
-    //                             this.sourceStats.sast,
-    //                             this.sourceStats.sca,
-    //                             this.sourceStats.secrets,
-    //                             this.sourceStats.iac,
-    //                         ],
-    //                         backgroundColor: [
-    //                             '#FF6384',
-    //                             '#36A2EB',
-    //                             '#3eabb7',
-    //                             '#FFCE12',
-    //                         ],
-    //                         hoverBackgroundColor: [
-    //                             '#FF6384',
-    //                             '#36A2EB',
-    //                             '#449a77',
-    //                             '#FFCE12',
-    //                         ],
-    //                     },
-    //                 ],
-    //             };
-    //         },
-    //     });
-    // }
+    combineStatsByDate(stats: any[]) {
+        const combinedMap: { [key: string]: any } = {};
+
+        stats.forEach(stat => {
+            const date = stat.date;
+            if (!combinedMap[date]) {
+                combinedMap[date] = {
+                    date,
+                    sastCritical: 0, sastHigh: 0, sastMedium: 0, sastRest: 0,
+                    scaCritical: 0, scaHigh: 0, scaMedium: 0, scaRest: 0,
+                    iacCritical: 0, iacHigh: 0, iacMedium: 0, iacRest: 0,
+                    secretsCritical: 0, secretsHigh: 0, secretsMedium: 0, secretsRest: 0,
+                    criticalFindings: 0, highFindings: 0,
+                    openedFindings: 0, removedFindings: 0, reviewedFindings: 0,
+                    totalFixTime: 0, // Track total fix time
+                    fixTimeCount: 0, // Track count of entries for averaging
+                };
+            }
+
+            // Aggregate stats
+            combinedMap[date].sastCritical += stat.sastCritical ?? 0;
+            combinedMap[date].sastHigh += stat.sastHigh ?? 0;
+            combinedMap[date].sastMedium += stat.sastMedium ?? 0;
+            combinedMap[date].sastRest += stat.sastRest ?? 0;
+
+            combinedMap[date].scaCritical += stat.scaCritical ?? 0;
+            combinedMap[date].scaHigh += stat.scaHigh ?? 0;
+            combinedMap[date].scaMedium += stat.scaMedium ?? 0;
+            combinedMap[date].scaRest += stat.scaRest ?? 0;
+
+            combinedMap[date].iacCritical += stat.iacCritical ?? 0;
+            combinedMap[date].iacHigh += stat.iacHigh ?? 0;
+            combinedMap[date].iacMedium += stat.iacMedium ?? 0;
+            combinedMap[date].iacRest += stat.iacRest ?? 0;
+
+            combinedMap[date].secretsCritical += stat.secretsCritical ?? 0;
+            combinedMap[date].secretsHigh += stat.secretsHigh ?? 0;
+            combinedMap[date].secretsMedium += stat.secretsMedium ?? 0;
+            combinedMap[date].secretsRest += stat.secretsRest ?? 0;
+
+            combinedMap[date].criticalFindings += stat.criticalFindings ?? 0;
+            combinedMap[date].highFindings += stat.highFindings ?? 0;
+
+            combinedMap[date].openedFindings += stat.openedFindings ?? 0;
+            combinedMap[date].removedFindings += stat.removedFindings ?? 0;
+            combinedMap[date].reviewedFindings += stat.reviewedFindings ?? 0;
+
+            if (stat.averageFixTime !== undefined && stat.averageFixTime > 0) {
+                combinedMap[date].totalFixTime += stat.averageFixTime;
+                combinedMap[date].fixTimeCount += 1;
+            }
+        });
+
+        // Calculate average fix time and convert to array
+        return Object.values(combinedMap).map((entry: any) => {
+            if (entry.fixTimeCount > 0) {
+                entry.averageFixTime = entry.totalFixTime / entry.fixTimeCount;
+            } else {
+                entry.averageFixTime = 0;
+            }
+            delete entry.totalFixTime;
+            delete entry.fixTimeCount;
+            return entry;
+        }).sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }
+
+    loadSourceStats() {
+        this.teamFindingsService.getTeamFindingSourceStats(+this.teamId).subscribe({
+            next: (response) => {
+                this.sourceStats = response;
+                this.chartPieData = {
+                    labels: ['SAST', 'SCA', 'Secrets', 'IaC', 'Cloud'],
+                    datasets: [
+                        {
+                            data: [
+                                this.sourceStats.sast,
+                                this.sourceStats.sca,
+                                this.sourceStats.secrets,
+                                this.sourceStats.iac,
+                                this.sourceStats.cloud
+                            ],
+                            backgroundColor: [
+                                '#FF6384',
+                                '#36A2EB',
+                                '#3eabb7',
+                                '#FFCE12',
+                                '#CF78DCFF',
+                            ],
+                            hoverBackgroundColor: [
+                                '#FF6384',
+                                '#36A2EB',
+                                '#449a77',
+                                '#FFCE12',
+                                '#CF78DCFF',
+                            ],
+                        },
+                    ],
+                };
+            },
+        });
+    }
     get randomData() {
         return Math.round(Math.random() * 100);
     }
@@ -730,94 +859,99 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
     // getKeys(obj: any): string[] {
     //     return Object.keys(obj);
     // }
+
     prepareChartData() {
-        const labels = this.teamFindingStats.map((stat) =>
-            this.datePipe.transform(stat.dateInserted, 'dd MMM')
-        );
+        if (!this.teamFindingStats || this.teamFindingStats.length === 0) {
+            console.log('No stats data available');
+            return;
+        }
 
-        const sastData = this.teamFindingStats.map(
-            (stat) =>
-                (stat.sastCritical ?? 0) +
-                (stat.sastHigh ?? 0) +
-                (stat.sastMedium ?? 0) +
-                (stat.sastRest ?? 0)
-        );
+        // Sort stats by date
+        const sortedStats = [...this.teamFindingStats].sort((a, b) => {
+            return new Date(a.date).getTime() - new Date(b.date).getTime();
+        });
 
-        const iacData = this.teamFindingStats.map(
-            (stat) =>
-                (stat.iacCritical ?? 0) +
-                (stat.iacHigh ?? 0) +
-                (stat.iacMedium ?? 0) +
-                (stat.iacRest ?? 0)
-        );
+        // Prepare labels and datasets
+        const labels = sortedStats.map(stat => {
+            return stat.date
+                ? this.datePipe.transform(stat.date, 'MMM dd, yyyy') || 'Invalid Date'
+                : 'No Date';
+        });
 
-        const secretsData = this.teamFindingStats.map(
-            (stat) =>
-                (stat.secretsCritical ?? 0) +
-                (stat.secretsHigh ?? 0) +
-                (stat.secretsMedium ?? 0) +
-                (stat.secretsRest ?? 0)
-        );
-
-        const scaData = this.teamFindingStats.map(
-            (stat) =>
-                (stat.scaCritical ?? 0) +
-                (stat.scaHigh ?? 0) +
-                (stat.scaMedium ?? 0) +
-                (stat.scaRest ?? 0)
-        );
-
-        const cloudScanData = this.teamFindingStats.map(
-            (stat) =>
-                (stat.highFindings ?? 0) +
-                (stat.criticalFindings ?? 0)
-        );
-
+        const datasets = [
+            {
+                label: 'SAST',
+                data: sortedStats.map(stat =>
+                    (stat.sastCritical || 0) +
+                    (stat.sastHigh || 0) +
+                    (stat.sastMedium || 0) +
+                    (stat.sastRest || 0)
+                ),
+                backgroundColor: 'rgba(220, 220, 220, 0.2)',
+                borderColor: 'rgba(220, 220, 220, 1)',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true
+            },
+            {
+                label: 'SCA',
+                data: sortedStats.map(stat =>
+                    (stat.scaCritical || 0) +
+                    (stat.scaHigh || 0) +
+                    (stat.scaMedium || 0) +
+                    (stat.scaRest || 0)
+                ),
+                backgroundColor: 'rgba(151, 187, 205, 0.2)',
+                borderColor: 'rgb(71, 180, 234)',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true
+            },
+            {
+                label: 'IaC',
+                data: sortedStats.map(stat =>
+                    (stat.iacCritical || 0) +
+                    (stat.iacHigh || 0) +
+                    (stat.iacMedium || 0) +
+                    (stat.iacRest || 0)
+                ),
+                backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                borderColor: 'rgba(255, 159, 64, 1)',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true
+            },
+            {
+                label: 'Secrets',
+                data: sortedStats.map(stat =>
+                    (stat.secretsCritical || 0) +
+                    (stat.secretsHigh || 0) +
+                    (stat.secretsMedium || 0) +
+                    (stat.secretsRest || 0)
+                ),
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true
+            },
+            {
+                label: 'Cloud',
+                data: sortedStats.map(stat =>
+                    (stat.criticalFindings || 0) +
+                    (stat.highFindings || 0)
+                ),
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true
+            }
+        ];
 
         this.chartLineData = {
-            labels: labels,
-            datasets: [
-                {
-                    label: 'SAST',
-                    backgroundColor: 'rgba(220, 220, 220, 0.2)',
-                    borderColor: 'rgba(220, 220, 220, 1)',
-                    pointBackgroundColor: 'rgba(220, 220, 220, 1)',
-                    pointBorderColor: '#fff',
-                    data: sastData,
-                },
-                {
-                    label: 'IaC',
-                    backgroundColor: 'rgba(151, 187, 205, 0.2)',
-                    borderColor: 'rgb(71, 180, 234)',
-                    pointBackgroundColor: 'rgb(71, 163, 211)',
-                    pointBorderColor: '#bd7777',
-                    data: iacData,
-                },
-                {
-                    label: 'Secrets',
-                    backgroundColor: 'rgba(151, 187, 205, 0.2)',
-                    borderColor: 'rgb(28, 197, 45)',
-                    pointBackgroundColor: 'rgb(102, 190, 107)',
-                    pointBorderColor: '#bd7777',
-                    data: secretsData,
-                },
-                {
-                    label: 'SCA',
-                    backgroundColor: 'rgba(151, 187, 205, 0.2)',
-                    borderColor: 'rgb(210, 124, 56)',
-                    pointBackgroundColor: 'rgb(128, 101, 56)',
-                    pointBorderColor: '#bd7777',
-                    data: scaData,
-                },
-                {
-                    label: 'Cloud Scan',
-                    backgroundColor: 'rgba(220, 220, 220, 0.2)',
-                    borderColor: 'rgba(128,184,239)',
-                    pointBackgroundColor: 'rgb(128,184,239)',
-                    pointBorderColor: '#fff',
-                    data: cloudScanData,
-                }
-            ],
+            labels,
+            datasets
         };
     }
 

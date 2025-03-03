@@ -1,5 +1,8 @@
 package io.mixeway.mixewayflowapi.api.teamfindings.controller;
 
+import io.mixeway.mixewayflowapi.api.teamfindings.dto.CombinedDailyStatsDto;
+import io.mixeway.mixewayflowapi.api.teamfindings.dto.DailyCodeReposStatsDto;
+import io.mixeway.mixewayflowapi.api.teamfindings.dto.TeamVulnStatsResponseDto;
 import io.mixeway.mixewayflowapi.api.teamfindings.service.TeamStatisticService;
 import lombok.extern.log4j.Log4j2;
 import lombok.RequiredArgsConstructor;
@@ -23,13 +26,23 @@ public class TeamStatisticController {
 
     @PreAuthorize("hasAuthority('USER')")
     @GetMapping(value= "/api/v1/teamfindings/{id}/finding_stats")
-    public ResponseEntity<?> getCloudFindingStats(@PathVariable("id") Long id, Principal principal){
+    public ResponseEntity<CombinedDailyStatsDto> getTeamFindingStats(@PathVariable("id") Long id, Principal principal){
         try {
-            List<Object> stats = teamStatisticService.getTeamFindingStats(id, principal);
+            CombinedDailyStatsDto stats = teamStatisticService.getTeamFindingStats(id, principal);
             return ResponseEntity.ok(stats);
         } catch (Exception e){
             log.error("Error fetching cloud finding stats", e);
             return new ResponseEntity<>( HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('USER')")
+    @GetMapping(value= "/api/v1/teamfindings/{id}/source_stats")
+    public TeamVulnStatsResponseDto getTeamVulnSourceStats(@PathVariable("id") Long id, Principal principal){
+        try {
+            return teamStatisticService.getFindingSourceStatsForTeam(id, principal);
+        } catch (Exception e){
+            return new ResponseEntity<TeamVulnStatsResponseDto>( HttpStatus.BAD_REQUEST).getBody();
         }
     }
 }

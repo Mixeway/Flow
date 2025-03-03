@@ -1,6 +1,6 @@
 <c-row class="d-flex justify-content-center align-items-stretch">
     <c-col xs="8">
-        <c-card class="mt-4 h-100">
+        <c-card class="mt-4 h-100" style="overflow-y: auto; max-height: 350px;">
             <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 0; margin: 0; box-sizing: border-box;">
                 <h2 style="margin-bottom: 1rem;">
                     <strong>{{ teamData?.name }}</strong>
@@ -8,8 +8,7 @@
                 <small style="margin-top: 1rem;">Team ID: {{ teamData?.remoteIdentifier }}</small>
             </div>
 
-            <c-card class="w-100 mb-0"
-                    *ngIf="(cloudSubscriptionsData && cloudSubscriptionsData.length > 0) || (reposData && reposData.length > 0)">
+            <c-card class="w-100 mb-0" *ngIf="(cloudSubscriptionsData && cloudSubscriptionsData.length > 0) || (reposData && reposData.length > 0)">
                 <c-card-footer class="pb-0">
                     <c-container class="p-0">
                         <c-row class="justify-content-center m-0">
@@ -58,6 +57,16 @@
                     </c-container>
                 </c-card-footer>
             </c-card>
+        </c-card>
+    </c-col>
+    <c-col xs="4">
+        <c-card class="mt-4 h-100" style="max-height: 350px;">
+            <c-card-header>
+                Vulnerabilities source
+            </c-card-header>
+            <c-card-body size="large">
+                <c-chart type="pie" [data]="chartPieData" [options]="options"></c-chart>
+            </c-card-body>
         </c-card>
     </c-col>
 </c-row>
@@ -284,7 +293,7 @@
                                                     <option value="IaC">IaC</option>
                                                     <option value="Secrets">Secrets</option>
                                                     <option value="SCA">SCA</option>
-                                                    <option value="CLOUD_SCANNER">CLOUD_SCANNER</option>
+                                                    <option value="CLOUD_SCANNER">CLOUD SCANNER</option>
                                                 </select>
                                             </c-input-group>
                                         </ng-template>
@@ -299,7 +308,7 @@
                                                 <c-badge *ngIf="row?.source === 'IAC'" color="info">IaC</c-badge>
                                                 <c-badge *ngIf="row?.source === 'SECRETS'" color="danger">Secrets</c-badge>
                                                 <c-badge *ngIf="row?.source === 'SCA'" color="warning">SCA</c-badge>
-                                                <c-badge *ngIf="row?.source === 'CLOUD_SCANNER'" color="secondary">CLOUD_SCANNER</c-badge>
+                                                <c-badge *ngIf="row?.source === 'CLOUD_SCANNER'" color="secondary">CLOUD SCANNER</c-badge>
                                             </div>
                                         </ng-template>
                                     </ngx-datatable-column>
