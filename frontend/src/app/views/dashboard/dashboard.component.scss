@@ -1,36 +1,236 @@
-
+// Dashboard component styles
 :host {
-  .legend {
-    small {
-      font-size: x-small;
+  display: block;
+}
+
+// Dashboard actions card
+.dashboard-actions-card {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.3s ease;
+
+  &:hover {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  }
+}
+
+// Search box styling
+.dashboard-search-box {
+  max-width: 100%;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+
+  &:focus-within {
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+  }
+
+  input {
+    border-radius: 0 4px 4px 0;
+    padding: 0.75rem 1rem;
+
+    &:focus {
+      border-color: #47a3f3;
+      box-shadow: none;
+    }
+  }
+
+  span {
+    border-right: none;
+
+    // Make icons respect theme colors
+    svg {
+      color: inherit;
     }
   }
 }
 
+// Status indicators
+.status-legend {
+  padding: 0.5rem 0;
 
-.icon-cross {
-  color: #cf2f4c;
+  .legend-item {
+    display: flex;
+    align-items: center;
+    margin-right: 1rem;
+
+    small {
+      margin-left: 0.35rem;
+      font-size: 0.8rem;
+      color: #6c757d;
+    }
+  }
 }
-.icon-check {
-  color: #369336;
+
+.status-indicator {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  display: inline-block;
+
+  &.danger {
+    background-color: #e55353;
+  }
+
+  &.warning {
+    background-color: #f9b115;
+  }
+
+  &.success {
+    background-color: #2eb85c;
+  }
+
+  &.neutral {
+    background-color: #ced2d8;
+  }
 }
-.custom-btn {
-  width: 100px;
-  height: 100px;
+
+// Security table styling
+.security-table {
+  border-radius: 4px;
+  overflow: hidden;
+
+  .scan-status-cell {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+  }
+
+  .scan-status-indicator {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    color: white;
+
+    &.danger {
+      background-color: rgba(229, 83, 83, 0.15);
+      color: #e55353;
+    }
+
+    &.warning {
+      background-color: rgba(249, 177, 21, 0.15);
+      color: #f9b115;
+    }
+
+    &.success {
+      background-color: rgba(46, 184, 92, 0.15);
+      color: #2eb85c;
+    }
+
+    &.neutral {
+      background-color: rgba(206, 210, 216, 0.15);
+      color: #8a93a2;
+    }
+  }
+
+  .scan-type-header {
+    font-weight: 600;
+    color: #3c4b64;
+  }
+}
+
+// Repository link styling
+.repo-link {
+  color: #768192;
+  text-decoration: none;
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: #321fdb;
+    text-decoration: underline;
+  }
+}
+
+// Team badge styling
+.team-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 16px;
+  background-color: #ebedef;
+  color: #4f5d73;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+// Repository type selector styling
+.repo-type-selector {
+  h6 {
+    text-align: center;
+    color: #3c4b64;
+  }
+}
+
+.repo-type-btn {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  background-color: #f8f9fa;
+  border: 2px solid transparent;
+
+  &:hover {
+    background-color: #ebedef;
+  }
+
+  &.active {
+    border-color: #321fdb;
+    background-color: rgba(50, 31, 219, 0.1);
+  }
+
+  .repo-type-label {
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+
+  svg {
+    width: 48px;
+    height: 48px;
+  }
 }
 
-.custom-icon {
-  width: 80px;
-  height: 80px;
+// Team members count styling
+.team-members-count {
+  display: flex;
+  align-items: center;
+  color: #768192;
+  font-size: 0.9rem;
 }
 
-button.btn.custom-btn.active {
-  border: 2px solid #007bff;
+// Modal styling enhancements
+c-modal {
+  c-modal-header {
+    border-bottom: 1px solid rgba(0, 0, 21, 0.1);
+  }
+
+  c-modal-footer {
+    border-top: 1px solid rgba(0, 0, 21, 0.1);
+  }
+
+  label.form-label {
+    font-weight: 500;
+    color: #3c4b64;
+    margin-bottom: 0.35rem;
+  }
+
+  small.text-muted {
+    font-size: 0.75rem;
+    color: #768192;
+  }
 }
-.icon-xl {
-  width: 124px; /* Adjust the width as needed */
-  height: 24px; /* Adjust the height as needed */
+
+// Toast styling
+c-toast {
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+
+  c-toast-header {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  }
 }

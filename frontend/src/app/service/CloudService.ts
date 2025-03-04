@@ -8,6 +8,7 @@ interface CloudSubscription {
     name: string;
     team: string;
     externalProjectName: string;
+    cloudSubscription: string;
     scanStatus: string;
 }
 

@@ -36,7 +36,7 @@ import {IconDirective} from '@coreui/icons-angular';
 import {WidgetsBrandComponent} from '../widgets/widgets-brand/widgets-brand.component';
 import {WidgetsDropdownComponent} from '../widgets/widgets-dropdown/widgets-dropdown.component';
 import {DashboardChartsData, IChartProps} from './dashboard-charts-data';
-import {DOCUMENT, NgForOf, NgIf, NgStyle} from "@angular/common";
+import {DOCUMENT, NgClass, NgForOf, NgIf, NgStyle} from "@angular/common";
 import {IconSetService, IconSetModule} from "@coreui/icons-angular";
 import {brandSet, cilEnvelopeOpen, flagSet, freeSet} from "@coreui/icons";
 import {Router} from "@angular/router";
@@ -103,7 +103,7 @@ interface CloudSubscription {
     templateUrl: 'dashboard.component.html',
     styleUrls: ['dashboard.component.scss'],
     standalone: true,
-    imports: [WidgetsDropdownComponent, TextColorDirective, CardComponent, CardBodyComponent, RowComponent, ColComponent, ButtonDirective, IconDirective, ReactiveFormsModule, ButtonGroupComponent, FormCheckLabelDirective, ChartjsComponent, NgStyle, CardFooterComponent, GutterDirective, ProgressBarDirective, ProgressComponent, WidgetsBrandComponent, CardHeaderComponent, TableDirective, AvatarComponent, NgxDatatableModule, ModalComponent, ModalHeaderComponent, ModalBodyComponent, ModalFooterComponent, InputGroupComponent, InputGroupTextDirective, FormControlDirective, NgIf, FormSelectDirective, FormDirective, RowDirective, ModalTitleDirective, SpinnerComponent, TooltipDirective, NgForOf, ToasterComponent, ToastComponent, ToastHeaderComponent, ToastBodyComponent, TabDirective, TabsComponent, TabsListComponent, TabsContentComponent, TabContentComponent, TabPanelComponent]
+    imports: [WidgetsDropdownComponent, TextColorDirective, CardComponent, CardBodyComponent, RowComponent, ColComponent, ButtonDirective, IconDirective, ReactiveFormsModule, ButtonGroupComponent, FormCheckLabelDirective, ChartjsComponent, NgStyle, CardFooterComponent, GutterDirective, ProgressBarDirective, ProgressComponent, WidgetsBrandComponent, CardHeaderComponent, TableDirective, AvatarComponent, NgxDatatableModule, ModalComponent, ModalHeaderComponent, ModalBodyComponent, ModalFooterComponent, InputGroupComponent, InputGroupTextDirective, FormControlDirective, NgIf, FormSelectDirective, FormDirective, RowDirective, ModalTitleDirective, SpinnerComponent, TooltipDirective, NgForOf, ToasterComponent, ToastComponent, ToastHeaderComponent, ToastBodyComponent, TabDirective, TabsComponent, TabsListComponent, TabsContentComponent, TabContentComponent, TabPanelComponent, NgClass]
 })
 export class DashboardComponent implements OnInit {
 
@@ -376,6 +376,8 @@ export class DashboardComponent implements OnInit {
         this.rows = temp;
     }
 
+    // Fixed filter methods for dashboard.component.ts
+
     updateCloudFilter(event: any) {
         const val = event.target.value.toLowerCase();
 
@@ -387,7 +389,7 @@ export class DashboardComponent implements OnInit {
 
         // Filter our data based on multiple columns
         const cloudTemp = this.cloudTemp.filter(cloudRow => {
-            // Ensure you filter based on all the relevant columns
+            // Enhanced filter to include all relevant fields
             return (
                 (cloudRow.name?.toLowerCase().includes(val) || '') ||
                 (cloudRow.team?.toLowerCase().includes(val) || '') ||
@@ -409,10 +411,11 @@ export class DashboardComponent implements OnInit {
         }
 
         // Filter our data based on multiple columns
-        const teamsTemp = this.teamsTemp.filter(cloudRow => {
-            // Ensure you filter based on all the relevant columns
+        const teamsTemp = this.teamsTemp.filter(team => {
+            // Enhanced filter to include all relevant fields including remoteIdentifier
             return (
-                (cloudRow.name?.toLowerCase().includes(val) || '')
+                (team.name?.toLowerCase().includes(val) || '') ||
+                (team.remoteIdentifier?.toLowerCase().includes(val) || '')
             );
         });
 
@@ -741,6 +744,12 @@ export class DashboardComponent implements OnInit {
             return url;  // Return the original URL if there's an error parsing it
         }
     }
+// Add this property to your DashboardComponent class
+    showStatusLegend: boolean = false;
 
+// Add this method to your DashboardComponent class
+    toggleStatusLegend() {
+        this.showStatusLegend = !this.showStatusLegend;
+    }
 
 }
