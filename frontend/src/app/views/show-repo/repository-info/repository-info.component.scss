@@ -1,0 +1,171 @@
+:host {
+  display: block;
+}
+
+.repository-card, .vulnerability-card {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.3s ease;
+  border-radius: 8px;
+  overflow: hidden;
+
+  &:hover {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  }
+}
+
+// Header styling
+.repo-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--cui-body-color);
+}
+
+.scan-status {
+  display: inline-flex;
+  align-items: center;
+
+  .scan-spinner {
+    color: var(--cui-info);
+  }
+
+  .scan-text {
+    font-size: 0.85rem;
+    color: var(--cui-info);
+  }
+}
+
+// Repository details
+.repo-metadata {
+  .repo-link {
+    font-size: 0.9rem;
+
+    .repo-icon {
+      color: #333;
+
+      :host-context([class*="dark-theme"]) & {
+        color: #e9ecef;
+      }
+    }
+
+    .repo-url {
+      text-decoration: none;
+      color: var(--cui-primary);
+      word-break: break-all;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+
+  .repo-details {
+    margin-top: 1rem;
+
+    .detail-item {
+      .detail-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--cui-body-color-rgb);
+        opacity: 0.7;
+        margin-bottom: 0.25rem;
+      }
+
+      .detail-value {
+        font-size: 0.9rem;
+        font-weight: 500;
+      }
+    }
+  }
+}
+
+// Language section
+.language-section {
+  .language-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--cui-body-color);
+  }
+
+  .language-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1.25rem;
+
+    .language-item {
+      .language-name {
+        font-size: 0.85rem;
+        color: var(--cui-body-color);
+      }
+
+      .language-percent {
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+
+      .language-progress {
+        height: 4px;
+        overflow: hidden;
+        border-radius: 2px;
+      }
+    }
+  }
+}
+
+// Vulnerability card
+.vuln-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--cui-body-color);
+}
+
+.chart-container {
+  position: relative;
+  height: 180px;
+  margin: 0 auto;
+  max-width: 300px;
+}
+
+.chart-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    font-size: 0.8rem;
+
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      margin-right: 8px;
+      flex-shrink: 0;
+    }
+
+    .legend-label {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .repo-actions {
+    margin-top: 1rem;
+  }
+
+  c-card-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+
+  .language-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

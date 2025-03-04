@@ -1,0 +1,381 @@
+<c-card class="vuln-table-card">
+    <!-- Header Section -->
+    <c-card-header class="vuln-table-header">
+        <div class="filter-controls">
+            <!-- Primary Controls Row -->
+            <div class="filter-row primary-controls">
+                <div class="branch-select">
+                    <label cLabel for="branchSelect" class="form-label">Branch</label>
+                    <select
+                            cSelect
+                            id="branchSelect"
+                            class="form-select branch-selector"
+                            (change)="onBranchSelect($event)"
+                    >
+                        <option [value]="repoData?.defaultBranch.id">
+                            {{ selectedBranch || 'Default: ' + repoData?.defaultBranch.name }}
+                        </option>
+                        <option *ngFor="let branch of repoData?.branches" [value]="branch.id">
+                            {{ branch.name }}
+                        </option>
+                    </select>
+                </div>
+
+                <div class="toggle-controls">
+                    <div class="toggle-group">
+                        <c-form-check class="toggle-check" switch>
+                            <input
+                                    cFormCheckInput
+                                    id="showRemoved"
+                                    type="checkbox"
+                                    (change)="toggleShowRemoved($event)"
+                            />
+                            <label cFormCheckLabel for="showRemoved">Show Removed</label>
+                        </c-form-check>
+
+                        <c-form-check class="toggle-check" switch>
+                            <input
+                                    cFormCheckInput
+                                    id="showSuppressed"
+                                    type="checkbox"
+                                    (change)="toggleShowSuppressed($event)"
+                            />
+                            <label cFormCheckLabel for="showSuppressed">Show Suppressed</label>
+                        </c-form-check>
+                    </div>
+                </div>
+
+                <div class="action-controls ms-auto">
+                    <button
+                            cButton
+                            [color]="bulkActionMode ? 'danger' : 'primary'"
+                            variant="outline"
+                            class="bulk-action-btn"
+                            (click)="toggleBulkAction()"
+                    >
+                        <svg cIcon [name]="bulkActionMode ? 'cil-x' : 'cil-list'" class="me-1"></svg>
+                        {{ bulkActionMode ? 'Exit Bulk Mode' : 'Bulk Actions' }}
+                    </button>
+
+                    <div class="page-size-control">
+                        <label class="form-label">Page Size</label>
+                        <select class="form-select" [(ngModel)]="vulnerabilitiesLimit">
+                            <option [value]="10">10</option>
+                            <option [value]="20">20</option>
+                            <option [value]="50">50</option>
+                            <option [value]="100">100</option>
+                            <option [value]="200">200</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bulk Actions Row (only visible when bulk mode is active) -->
+            <div class="bulk-actions-row" *ngIf="bulkActionMode">
+                <div class="bulk-actions-container">
+                    <button
+                            cButton
+                            color="warning"
+                            [disabled]="selectedFindings.length === 0"
+                            (click)="suppressSelectedFindings()"
+                            class="bulk-suppress-btn"
+                    >
+                        <svg cIcon name="cil-volume-off" class="me-1"></svg>
+                        Suppress Selected ({{ selectedFindings.length }})
+                    </button>
+
+                    <div class="selection-info" *ngIf="selectedFindings.length > 0">
+                        <span>{{ selectedFindings.length }} items selected</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </c-card-header>
+
+    <!-- Table Body -->
+    <c-card-body class="vuln-table-body">
+        <!-- Loading State -->
+        <div
+                *ngIf="vulnerabilitiesLoading"
+                class="loading-container"
+        >
+            <c-spinner color="primary"></c-spinner>
+            <span class="loading-text">Loading vulnerabilities...</span>
+        </div>
+
+        <!-- Table Content -->
+        <div *ngIf="!vulnerabilitiesLoading" class="table-container">
+            <ngx-datatable
+                    class="bootstrap vuln-datatable"
+                    [rows]="filteredVulns"
+                    [columnMode]="'force'"
+                    [footerHeight]="50"
+                    [headerHeight]="50"
+                    [rowHeight]="'auto'"
+                    [limit]="vulnerabilitiesLimit"
+            >
+                <!-- Checkbox Column -->
+                <ngx-datatable-column
+                        *ngIf="bulkActionMode"
+                        name="Select"
+                        [width]="50"
+                        [sortable]="false"
+                        [resizeable]="false"
+                        [draggable]="false"
+                        [canAutoResize]="false"
+                        [ngClass]="{ 'datatable-column': true, 'centered-column': true }"
+                >
+                    <ng-template ngx-datatable-header-template>
+                        <div class="select-all-container">
+                            <c-form-check>
+                                <input
+                                        cFormCheckInput
+                                        type="checkbox"
+                                        (change)="selectAllFindings($event)"
+                                        [checked]="selectedFindings.length > 0 && selectedFindings.length === filteredVulns.length"
+                                />
+                            </c-form-check>
+                        </div>
+                    </ng-template>
+                    <ng-template
+                            ngx-datatable-cell-template
+                            let-rowIndex="rowIndex"
+                            let-value="value"
+                            let-row="row"
+                    >
+                        <div class="select-row-container">
+                            <c-form-check>
+                                <input
+                                        cFormCheckInput
+                                        type="checkbox"
+                                        [checked]="isSelected(row.id)"
+                                        (change)="onSelectFinding(row.id, $event)"
+                                />
+                            </c-form-check>
+                        </div>
+                    </ng-template>
+                </ngx-datatable-column>
+
+                <!-- Actions Column -->
+                <ngx-datatable-column
+                        name="Actions"
+                        [width]="60"
+                        [sortable]="false"
+                        [resizeable]="false"
+                        [draggable]="false"
+                        [canAutoResize]="false"
+                        [ngClass]="{ 'datatable-column': true, 'centered-column': true }"
+                >
+                    <ng-template
+                            ngx-datatable-cell-template
+                            let-row="row"
+                    >
+                        <div class="details-action-container">
+                            <button
+                                    cButton
+                                    color="primary"
+                                    variant="ghost"
+                                    size="sm"
+                                    class="details-btn"
+                                    [cTooltip]="'View vulnerability details'"
+                                    (click)="click(row)"
+                            >
+                                <svg cIcon name="cil-magnifying-glass"></svg>
+                            </button>
+                        </div>
+                    </ng-template>
+                </ngx-datatable-column>
+
+                <!-- Severity Column -->
+                <ngx-datatable-column
+                        name="Severity"
+                        prop="severity"
+                        [width]="100"
+                        [sortable]="true"
+                        [canAutoResize]="false"
+                        [ngClass]="{ 'datatable-column': true, 'centered-column': true }"
+                >
+                    <ng-template ngx-datatable-header-template>
+                        <div class="column-header header-centered">
+                            <span>Severity</span>
+                            <div class="filter-container">
+                                <select class="form-select form-select-sm" (change)="updateFilterSeverity($event)">
+                                    <option value="">All</option>
+                                    <option value="Critical">Critical</option>
+                                    <option value="High">High</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="Low">Low</option>
+                                    <option value="Info">Info</option>
+                                </select>
+                            </div>
+                        </div>
+                    </ng-template>
+                    <ng-template
+                            ngx-datatable-cell-template
+                            let-value="value"
+                            let-row="row"
+                    >
+                        <div class="severity-cell">
+                            <div [ngClass]="'severity-badge severity-' + row?.severity?.toLowerCase()">
+                                {{ row?.severity }}
+                            </div>
+                        </div>
+                    </ng-template>
+                </ngx-datatable-column>
+
+                <!-- Name Column -->
+                <ngx-datatable-column name="Name" prop="name" [sortable]="true">
+                    <ng-template ngx-datatable-header-template>
+                        <div class="column-header">
+                            <span>Name</span>
+                            <div class="multi-filter-container">
+                                <div class="search-input">
+                                    <input
+                                            type="text"
+                                            class="form-control form-control-sm"
+                                            placeholder="Search name"
+                                            (input)="updateFilterName($event)"
+                                    />
+                                    <svg cIcon name="cil-magnifying-glass" class="search-icon"></svg>
+                                </div>
+                                <!-- Include status filter -->
+                                <select class="form-select form-select-sm mt-1" (change)="updateFilterStatus($event)">
+                                    <option value="">All Statuses</option>
+                                    <option value="New">New</option>
+                                    <option value="Existing">Existing</option>
+                                    <option value="Removed">Removed</option>
+                                    <option value="Supressed">Suppressed</option>
+                                </select>
+                            </div>
+                        </div>
+                    </ng-template>
+                    <ng-template
+                            ngx-datatable-cell-template
+                            let-value="value"
+                            let-row="row"
+                    >
+                        <div class="vuln-info">
+                            <div class="vuln-name">{{ row?.name }}</div>
+                            <div class="vuln-metadata">
+                                <div class="meta-row">
+                                    <div class="meta-item status-info">
+                                        <svg
+                                                cIcon
+                                                [name]="
+                        row?.status === 'NEW' ? 'cil-burn' :
+                        row?.status === 'EXISTING' ? 'cil-graph' :
+                        row?.status === 'REMOVED' ? 'cil-trash' : 'cil-volume-off'
+                      "
+                                                class="meta-icon"
+                                        ></svg>
+                                        <span [ngClass]="'status-text status-' + row?.status?.toLowerCase()">{{ row?.status }}</span>
+                                    </div>
+                                    <div class="meta-item date-info">
+                                        <span class="date-value">Last seen: {{ row?.last_seen | date:'short' }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </ng-template>
+                </ngx-datatable-column>
+
+                <!-- Source Column -->
+                <ngx-datatable-column
+                        name="Source"
+                        prop="source"
+                        [width]="100"
+                        [sortable]="true"
+                        [canAutoResize]="false"
+                        [ngClass]="{ 'datatable-column': true, 'centered-column': true }"
+                >
+                    <ng-template ngx-datatable-header-template>
+                        <div class="column-header header-centered">
+                            <span>Source</span>
+                            <div class="filter-container">
+                                <select class="form-select form-select-sm" (change)="updateFilterSource($event)">
+                                    <option value="">All</option>
+                                    <option value="SAST">SAST</option>
+                                    <option value="IaC">IaC</option>
+                                    <option value="Secrets">Secrets</option>
+                                    <option value="SCA">SCA</option>
+                                </select>
+                            </div>
+                        </div>
+                    </ng-template>
+                    <ng-template
+                            ngx-datatable-cell-template
+                            let-value="value"
+                            let-row="row"
+                    >
+                        <div class="source-cell">
+                            <div [ngClass]="'source-badge source-' + row?.source?.toLowerCase()">
+                                {{ row?.source }}
+                            </div>
+                        </div>
+                    </ng-template>
+                </ngx-datatable-column>
+
+                <!-- Status filter in Name column header only -->
+                <ng-template #statusFilter>
+                    <div class="filter-container">
+                        <select class="form-select form-select-sm" (change)="updateFilterStatus($event)">
+                            <option value="">All Statuses</option>
+                            <option value="New">New</option>
+                            <option value="Existing">Existing</option>
+                            <option value="Removed">Removed</option>
+                            <option value="Supressed">Suppressed</option>
+                        </select>
+                    </div>
+                </ng-template>
+
+                <!-- Location Column -->
+                <ngx-datatable-column name="Location" prop="location" [sortable]="true">
+                    <ng-template ngx-datatable-header-template>
+                        <div class="column-header">
+                            <span>Location</span>
+                            <div class="filter-container">
+                                <div class="search-input">
+                                    <input
+                                            type="text"
+                                            class="form-control form-control-sm"
+                                            placeholder="Search"
+                                            (input)="updateFilterLocation($event)"
+                                    />
+                                    <svg cIcon name="cil-magnifying-glass" class="search-icon"></svg>
+                                </div>
+                            </div>
+                        </div>
+                    </ng-template>
+                    <ng-template
+                            ngx-datatable-cell-template
+                            let-value="value"
+                            let-row="row"
+                    >
+                        <div class="location-cell">
+                            <a
+                                    [href]="getRepositoryLinkForRow(row)"
+                                    target="_blank"
+                                    class="location-link"
+                                    [cTooltip]="'Open in repository'"
+                            >
+                                <svg cIcon name="cib-git" class="location-icon"></svg>
+                                <span class="location-text">{{ getFormattedLocationForRow(row) }}</span>
+                                <svg cIcon name="cil-external-link" class="external-link-icon" size="sm"></svg>
+                            </a>
+                        </div>
+                    </ng-template>
+                </ngx-datatable-column>
+
+                <!-- Dates column removed -->
+            </ngx-datatable>
+
+            <!-- Empty state message -->
+            <div *ngIf="filteredVulns.length === 0" class="empty-state">
+                <svg cIcon name="cil-check-circle" width="48" height="48"></svg>
+                <h4>No vulnerabilities found</h4>
+                <p>No vulnerabilities match your current filter criteria.</p>
+                <button cButton color="primary" (click)="clearFilters()">Clear filters</button>
+            </div>
+        </div>
+    </c-card-body>
+</c-card>
