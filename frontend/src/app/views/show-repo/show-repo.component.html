@@ -20,36 +20,36 @@
 
 <!-- Main Content with Tabs -->
 <div class="repo-tabs-container mt-4">
-    <c-card class="tabs-card">
-        <c-tabs [activeItemKey]="0" variant="pills">
-            <c-tabs-list class="nav-justified mb-4">
-                <button cTab [itemKey]="0" class="tab-btn">
-                    <svg cIcon name="cil-bug" class="tab-icon"></svg>
-                    <span class="tab-text">Vulnerabilities</span>
+    <c-card>
+        <c-tabs>
+            <c-tabs-list variant="underline-border">
+                <button cTab [itemKey]="0">
+                    <svg cIcon name="cil-bug" class="me-2"></svg>
+                    Vulnerabilities
                 </button>
-                <button cTab [itemKey]="1" class="tab-btn">
-                    <svg cIcon name="cil-chart-line" class="tab-icon"></svg>
-                    <span class="tab-text">Statistics & Trends</span>
+                <button cTab [itemKey]="1">
+                    <svg cIcon name="cil-chart-line" class="me-2"></svg>
+                    Statistics & Trends
                 </button>
-                <button cTab [itemKey]="2" class="tab-btn">
-                    <svg cIcon name="cil-magnifying-glass" class="tab-icon"></svg>
-                    <span class="tab-text">Scan Info</span>
+                <button cTab [itemKey]="2">
+                    <svg cIcon name="cil-magnifying-glass" class="me-2"></svg>
+                    Scan Info
                 </button>
-                <button cTab [itemKey]="3" class="tab-btn">
-                    <svg cIcon name="cil-share-alt" class="tab-icon"></svg>
-                    <span class="tab-text">Data Privacy</span>
+                <button cTab [itemKey]="3">
+                    <svg cIcon name="cil-share-alt" class="me-2"></svg>
+                    Data Privacy
                 </button>
-                <button cTab [itemKey]="4" class="tab-btn">
-                    <svg cIcon name="cil-puzzle" class="tab-icon"></svg>
-                    <span class="tab-text">Components</span>
+                <button cTab [itemKey]="4">
+                    <svg cIcon name="cil-puzzle" class="me-2"></svg>
+                    Components
                 </button>
-                <button cTab [itemKey]="5" class="tab-btn">
-                    <svg cIcon name="cil-burn" class="tab-icon"></svg>
-                    <span class="tab-text">Notifications</span>
+                <button cTab [itemKey]="5">
+                    <svg cIcon name="cil-burn" class="me-2"></svg>
+                    Notifications
                 </button>
-                <button cTab [itemKey]="6" class="tab-btn">
-                    <svg cIcon name="cil-info" class="tab-icon"></svg>
-                    <span class="tab-text">Additional Info</span>
+                <button cTab [itemKey]="6">
+                    <svg cIcon name="cil-info" class="me-2"></svg>
+                    Additional Info
                 </button>
             </c-tabs-list>
 

@@ -1,0 +1,84 @@
+:host {
+  display: block;
+}
+
+.subscription-card {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.3s ease;
+  border-radius: 8px;
+  overflow: hidden;
+
+  &:hover {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  }
+}
+
+// Header styling
+.subscription-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--cui-body-color);
+}
+
+.scan-status {
+  display: inline-flex;
+  align-items: center;
+
+  .scan-spinner {
+    color: var(--cui-info);
+  }
+
+  .scan-text {
+    font-size: 0.85rem;
+    color: var(--cui-info);
+  }
+}
+
+// Subscription metadata
+.subscription-metadata {
+  width: 100%;
+
+  .metadata-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    width: 100%;
+
+    .metadata-item {
+      .metadata-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--cui-body-color-rgb);
+        opacity: 0.7;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+      }
+
+      .metadata-value {
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+        color: var(--cui-body-color);
+
+        .metadata-icon {
+          width: 16px;
+          height: 16px;
+          opacity: 0.7;
+        }
+      }
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .subscription-actions {
+    margin-top: 1rem;
+  }
+
+  c-card-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+}

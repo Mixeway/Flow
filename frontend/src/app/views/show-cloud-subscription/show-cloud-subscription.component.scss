@@ -1,118 +1,245 @@
-.dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  display: inline-block;
+.cloud-subscription-container {
+  margin-bottom: 2rem;
 }
 
-.critical {
-  background-color: red;
-}
+/* Styles for Statistics Tab */
+.statistics-container {
+  // Trend chart styling
+  .trend-chart-card {
+    border-radius: 8px;
+    overflow: hidden;
 
-.high {
-  background-color: #f33d3d;
-}
+    .refresh-btn {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
 
-.medium {
-  background-color: #e38334;
-}
-
-.low {
-  background-color: #47a3d3;
-}
-.critical-t {
-  color: red;
-}
-
-.high-t {
-  color: #f33d3d;
-}
-
-.medium-t {
-  color: #e38334;
-}
-
-.low-t {
-  color: #47a3d3;
-}
-
-
-ngx-datatable .datatable-row-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.location-cell {
-  white-space: normal;
-  word-break: break-word;
-  max-width: 100%;
-}
-c-card {
-  margin-bottom: 10px;
-}
-/* In your styles.scss or component-specific styles */
-
-.markdown-body {
-  box-sizing: border-box;
-  min-width: 200px;
-  max-width: 980px;
-  margin: 0 auto;
-  padding: 45px;
-}
-
-/* Styles for vertical alignment in ngx-datatable cells */
-
-::ng-deep .ngx-datatable .datatable-body-cell {
-  display: flex;
-  align-items: center;
-}
-
-::ng-deep .ngx-datatable .datatable-body-cell-label {
-  flex: 1;
-}
-
-.cell-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  width: 100%;
-}
-
-.vertical-align-multiple {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  height: 100%;
-}
-.comments-container {
-  .comment-item {
-    &:not(:last-child) {
-      border-bottom: 1px solid rgba(0,0,0,.125);
-      padding-bottom: 1rem;
-    }
-
-    .comment-avatar {
-      .rounded-circle {
-        background-color: #f8f9fa;
-        color: #6c757d;
-        font-weight: bold;
+      svg {
+        width: 18px;
+        height: 18px;
       }
     }
+  }
 
-    .comment-content {
-      background-color: #f8f9fa;
-      border-radius: 0.5rem;
-      padding: 0.5rem 1rem;
+  // Metrics cards styling
+  .stats-metrics-container {
+    .metric-card {
+      display: flex;
+      align-items: center;
+      padding: 1.25rem;
+      border-radius: 8px;
+      background-color: var(--cui-card-bg);
+      border: 1px solid var(--cui-card-border-color);
+      height: 100%;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+
+      .metric-icon {
+        width: 60px;
+        height: 60px;
+        min-width: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--cui-tertiary-bg);
+        border-radius: 12px;
+        margin-right: 1rem;
+
+        svg {
+          color: var(--cui-body-color);
+          opacity: 0.7;
+        }
+      }
+
+      .metric-content {
+        flex-grow: 1;
+
+        .metric-title {
+          font-size: 0.85rem;
+          font-weight: 600;
+          color: var(--cui-secondary-color);
+          margin-bottom: 0.5rem;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+          font-size: 1.75rem;
+          font-weight: 700;
+          margin-bottom: 0.75rem;
+          color: var(--cui-body-color);
+          display: flex;
+          align-items: baseline;
+
+          .metric-unit {
+            font-size: 0.875rem;
+            font-weight: 400;
+            color: var(--cui-secondary-color);
+            margin-left: 0.5rem;
+          }
+        }
+
+        .metric-progress {
+          height: 4px;
+          background-color: var(--cui-tertiary-bg);
+        }
+      }
+
+      // Different colors for different metric cards
+      &.opened-findings .metric-icon {
+        background-color: rgba(var(--cui-info-rgb), 0.1);
+
+        svg {
+          color: var(--cui-info);
+        }
+      }
+
+      &.closed-findings .metric-icon {
+        background-color: rgba(var(--cui-success-rgb), 0.1);
+
+        svg {
+          color: var(--cui-success);
+        }
+      }
+
+      &.fix-time .metric-icon {
+        background-color: rgba(var(--cui-danger-rgb), 0.1);
+
+        svg {
+          color: var(--cui-danger);
+        }
+      }
     }
   }
 }
-:host ::ng-deep {
-  .ngx-datatable {
-    .location-link {
-      &:hover {
-        text-decoration: underline !important;
+
+/* Styles for Scan Info Tab */
+.scan-info-card {
+  border-radius: 8px;
+  overflow: hidden;
+
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    gap: 1rem;
+
+    .loading-text {
+      font-size: 0.875rem;
+      color: var(--cui-body-color);
+      opacity: 0.7;
+    }
+  }
+
+  .date-display {
+    display: flex;
+    align-items: center;
+
+    svg {
+      opacity: 0.7;
+    }
+  }
+
+  .findings-display {
+    display: flex;
+    gap: 1.5rem;
+
+    .finding-category {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+
+      .category-label {
+        font-weight: 600;
+        font-size: 0.9rem;
       }
+
+      .finding-badge {
+        font-size: 0.85rem;
+        min-width: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    }
+  }
+
+  .action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 6px;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    text-align: center;
+
+    svg {
+      color: var(--cui-primary);
+      opacity: 0.7;
+      margin-bottom: 1rem;
+    }
+
+    h5 {
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      color: var(--cui-secondary-color);
+      max-width: 300px;
+    }
+  }
+}
+
+/* Datatable shared styling */
+:host ::ng-deep {
+  .ngx-datatable .datatable-body-cell {
+    display: flex;
+    align-items: center;
+  }
+
+  .ngx-datatable .datatable-body-cell-label {
+    flex: 1;
+  }
+
+  // Center only for specific columns
+  .ngx-datatable .datatable-column.centered-column {
+    .datatable-header-cell {
+      text-align: center;
+    }
+
+    .datatable-body-cell {
+      justify-content: center;
+
+      .datatable-body-cell-label {
+        justify-content: center;
+      }
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .metric-card {
+    flex-direction: column;
+    text-align: center;
+
+    .metric-icon {
+      margin-right: 0 !important;
+      margin-bottom: 1rem;
     }
   }
 }

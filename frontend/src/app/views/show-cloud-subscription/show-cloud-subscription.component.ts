@@ -6,7 +6,7 @@ import {
     ViewEncapsulation,
 } from '@angular/core';
 import {NgxDatatableModule} from '@swimlane/ngx-datatable';
-import {DatePipe, NgForOf, NgIf} from '@angular/common';
+import {DatePipe, NgClass, NgForOf, NgIf} from '@angular/common';
 import {CloudSubscriptionService} from '../../service/CloudSubscriptionService';
 import {AuthService} from '../../service/AuthService';
 import {TeamService} from "../../service/TeamService";
@@ -51,16 +51,20 @@ import {
     ToastBodyComponent,
     ToastComponent,
     ToasterComponent,
-    ToastHeaderComponent, TooltipDirective,
+    ToastHeaderComponent,
+    TooltipDirective,
     WidgetStatCComponent,
     WidgetStatFComponent
 } from "@coreui/angular";
 import {ChartjsComponent} from "@coreui/angular-chartjs";
 import {IconComponent, IconDirective, IconSetService} from "@coreui/icons-angular";
-import {MarkdownComponent, provideMarkdown} from "ngx-markdown";
-import {MarkdownModule} from 'ngx-markdown';
+import {MarkdownModule, provideMarkdown} from "ngx-markdown";
 import {brandSet, freeSet} from "@coreui/icons";
 import {ChartData, ChartOptions} from "chart.js";
+import {CloudSubscriptionInfoComponent} from "./cloud-subscription-info/cloud-subscription-info.component";
+import {CloudVulnerabilitySummaryComponent} from "./cloud-vulnerability-summary/cloud-vulnerability-summary.component";
+import {CloudVulnerabilitiesTableComponent} from "./cloud-vulnerabilities-table/cloud-vulnerabilities-table.component";
+import {CloudVulnerabilityDetailsComponent} from "./cloud-vulnerability-details/cloud-vulnerability-details.component";
 
 interface Vulnerability {
     id: number;
@@ -133,7 +137,6 @@ export interface CloudSubscriptionFindingStats {
         InputGroupTextDirective,
         ListGroupDirective,
         ListGroupItemDirective,
-        MarkdownComponent,
         MarkdownModule,
         ModalComponent,
         ModalFooterComponent,
@@ -150,6 +153,11 @@ export interface CloudSubscriptionFindingStats {
         WidgetStatCComponent,
         ModalBodyComponent,
         TooltipDirective,
+        CloudSubscriptionInfoComponent,
+        CloudVulnerabilitySummaryComponent,
+        CloudVulnerabilitiesTableComponent,
+        CloudVulnerabilityDetailsComponent,
+        NgClass,
     ],
     templateUrl: './show-cloud-subscription.component.html',
     styleUrls: ['./show-cloud-subscription.component.scss'],
@@ -245,6 +253,10 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
 
     cloudScanInfos: any[] = [];
 
+    // Comment properties
+    newComment: string = '';
+    isAddingComment: boolean = false;
+
     constructor(
         public iconSet: IconSetService,
         private cloudSubscriptionService: CloudSubscriptionService,
@@ -280,6 +292,44 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
         this.loadCloudSubscriptionInfo();
         this.loadCloudFindings();
         this.loadCloudSubscriptionFindingStats();
+        this.options2 = {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        boxWidth: 12,
+                        usePointStyle: true,
+                        pointStyle: 'circle'
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    padding: 10,
+                    bodyFont: {
+                        size: 12
+                    },
+                    titleFont: {
+                        size: 13,
+                        weight: 'bold'
+                    }
+                }
+            }
+        };
     }
 
     loadCloudSubscriptionInfo() {
@@ -353,9 +403,6 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
         };
     }
 
-    refreshData() {
-        alert('clicked');
-    }
 
     getLastOpenedFindings(): number {
         return this.cloudSubscriptionFindingStats.length > 0
@@ -489,7 +536,7 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
 
     closeChangeTeamModal() {
         this.changeTeamModalVisible = false;
-        this.selectedNewTeamId = 0;
+        this.selectedNewTeamId = null;
     }
 
     confirmTeamChange() {
@@ -502,22 +549,18 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
         this.confirmationText = '';
     }
 
-    newComment: string = '';
-    isAddingComment: boolean = false;
-
     addComment() {
         if (!this.newComment?.trim() || this.isAddingComment || this.selectedRowId === null) {
             return;
         }
 
-        const findingId = this.selectedRowId; // Store in a const to ensure type safety
+        const findingId = this.selectedRowId;
         this.isAddingComment = true;
 
         this.cloudSubscriptionService.addComment(+this.id, findingId, this.newComment.trim())
             .subscribe({
                 next: () => {
-                    // Refresh the finding details to get updated comments
-                    if (findingId !== null) { // Additional check to satisfy TypeScript
+                    if (findingId !== null) {
                         this.cloudSubscriptionService.getFinding(+this.id, findingId).subscribe({
                             next: (response) => {
                                 this.singleVuln = response;
@@ -546,17 +589,15 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
     toastMessage: string = '';
     toastStatus: string = '';
 
-
     toggleToast() {
         this.visible = !this.visible;
     }
 
-    click(row: Vulnerability) {
+    viewVulnerabilityDetails(row: Vulnerability) {
         this.selectedRowId = row.id;
         this.detailsModal = true;
         this.cloudSubscriptionService.getFinding(+this.id, this.selectedRowId).subscribe({
             next: (response) => {
-                console.log(response);
                 this.singleVuln = response;
                 this.cdr.markForCheck();
             },
@@ -568,15 +609,24 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
         this.percentage = !this.visible ? 0 : this.percentage;
     }
 
-
     handleDetailsModal(visible: boolean) {
         this.detailsModal = visible;
-
     }
 
     closeModal() {
         this.detailsModal = false;
     }
 
+    /**
+     * Handle refresh data with visual feedback
+     */
+    refreshData(): void {
+        // Show loading feedback
+        this.toastStatus = 'info';
+        this.toastMessage = 'Refreshing statistics data...';
+        this.toggleToast();
 
+        // Reload relevant data
+        this.loadCloudSubscriptionFindingStats();
+    }
 }
