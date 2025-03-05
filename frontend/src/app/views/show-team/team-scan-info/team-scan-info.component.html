@@ -1,0 +1,89 @@
+<c-row class="d-flex align-items-stretch">
+    <c-col xs="12">
+        <c-card>
+            <c-card-header>
+                <h5 class="mb-0 text-center"><strong>Scan Statistics</strong></h5>
+            </c-card-header>
+            <c-card-body>
+                <!-- Spinner -->
+                <div
+                        *ngIf="scanInfoLoading"
+                        class="d-flex justify-content-center align-items-center"
+                        style="height: 200px;"
+                >
+                    <c-spinner color="primary"></c-spinner>
+                </div>
+                <!-- Content displays when data is loaded -->
+                <div *ngIf="!scanInfoLoading">
+                    <!-- ngx-datatable -->
+                    <ngx-datatable
+                            class="bootstrap"
+                            [rows]="cloudScanInfos"
+                            [columnMode]="'force'"
+                            [footerHeight]="50"
+                            [headerHeight]="50"
+                            [rowHeight]="'auto'"
+                            [limit]="scanInfoLimit"
+                            [sorts]="[{prop: 'insertedDate', dir: 'desc'}]"
+                    >
+                        <!-- Performed Scan Column -->
+                        <ngx-datatable-column
+                                name="Scan Date"
+                                prop="insertedDate"
+                                [sortable]="false"
+                                [width]="150"
+                                headerClass="text-center"
+                                cellClass="text-center"
+                        >
+                            <ng-template ngx-datatable-header-template>
+                                <div class="text-center">
+                                    <strong>Scan Date</strong>
+                                </div>
+                            </ng-template>
+                            <ng-template
+                                    ngx-datatable-cell-template
+                                    let-rowIndex="rowIndex"
+                                    let-value="value"
+                                    let-row="row"
+                            >
+                                <div class="d-flex align-items-center justify-content-center h-100">
+                                    {{ row.insertedDate | date:'medium' }}
+                                </div>
+                            </ng-template>
+                        </ngx-datatable-column>
+
+                        <!-- Results Column -->
+                        <ngx-datatable-column
+                                name="Results"
+                                prop="insertedDate"
+                                [sortable]="false"
+                                [width]="500"
+                                headerClass="text-center"
+                                cellClass="text-center"
+                        >
+                            <ng-template ngx-datatable-header-template>
+                                <div class="text-center">
+                                    <strong>Results</strong>
+                                </div>
+                            </ng-template>
+                            <ng-template
+                                    ngx-datatable-cell-template
+                                    let-rowIndex="rowIndex"
+                                    let-value="value"
+                                    let-row="row"
+                            >
+                                <div class="vertical-align-multiple text-center">
+                                    <p>
+                                        <strong>Cloud Scan:</strong>
+                                        <c-badge color="danger">{{ row.criticalFindings }}</c-badge>
+                                        <!--                                                            <c-badge color="warning">{{ row.highFindings }}</c-badge> only critical cloud findings for now-->
+                                    </p>
+                                </div>
+                            </ng-template>
+                        </ngx-datatable-column>
+                    </ngx-datatable>
+                </div>
+            </c-card-body>
+        </c-card>
+    </c-col>
+</c-row>

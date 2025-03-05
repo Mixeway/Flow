@@ -1,0 +1,117 @@
+<c-row class="team-info-row g-4">
+    <c-col lg="8" class="team-col">
+        <c-card class="team-card">
+            <div class="team-header">
+                <div>
+                    <h2>{{ teamData?.name }}</h2>
+                    <c-badge color="info" class="me-1" *ngIf="teamData?.status">{{ teamData?.status }}</c-badge>
+                </div>
+                <c-badge color="light" class="team-id">ID: {{ teamData?.remoteIdentifier }}</c-badge>
+            </div>
+
+            <div class="asset-container" style="max-height: 350px; overflow-y: auto;">
+                <c-row *ngIf="(cloudSubscriptionsData && cloudSubscriptionsData.length > 0) || (reposData && reposData.length > 0)">
+                    <!-- Cloud Subscriptions Column -->
+                    <c-col md="6">
+                        <div class="asset-section" *ngIf="cloudSubscriptionsData && cloudSubscriptionsData.length > 0">
+                            <div class="asset-title">
+                                <svg cIcon name="cilCloud" size="sm" class="me-1"></svg>
+                                Cloud Subscriptions
+                                <c-badge color="primary" shape="rounded-pill" class="ms-2">{{ cloudSubscriptionsData.length }}</c-badge>
+                            </div>
+
+                            <div class="asset-item" *ngFor="let cloudSubscription of cloudSubscriptionsData">
+                                <div class="asset-name">{{ cloudSubscription.external_project_name }}</div>
+                                <div class="asset-id">ID: {{ cloudSubscription.name }}</div>
+                            </div>
+                        </div>
+
+                        <div class="asset-section text-center" *ngIf="!cloudSubscriptionsData || cloudSubscriptionsData.length === 0">
+                            <svg cIcon name="cilCloud" size="xl" class="mb-3 text-secondary"></svg>
+                            <p>No cloud subscriptions</p>
+                            <button cButton color="primary" size="sm">
+                                <svg cIcon name="cilPlus" size="sm" class="me-1"></svg>
+                                Add Subscription
+                            </button>
+                        </div>
+                    </c-col>
+
+                    <!-- Code Repositories Column -->
+                    <c-col md="6">
+                        <div class="asset-section" *ngIf="reposData && reposData.length > 0">
+                            <div class="asset-title">
+                                <svg cIcon name="cilCode" size="sm" class="me-1"></svg>
+                                Code Repositories
+                                <c-badge color="primary" shape="rounded-pill" class="ms-2">{{ reposData.length }}</c-badge>
+                            </div>
+
+                            <div class="asset-item" *ngFor="let codeRepo of reposData">
+                                <div class="asset-name">{{ codeRepo?.target }}</div>
+                                <div class="repo-link mt-2">
+                                    <a [href]="codeRepo?.repo_url" cButton color="light" size="sm" variant="outline" target="_blank" rel="noopener noreferrer" class="w-100">
+                                        <svg cIcon name="cibGithub" size="sm" class="me-1"></svg>
+                                        View Repository
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="asset-section text-center" *ngIf="!reposData || reposData.length === 0">
+                            <svg cIcon name="cilCode" size="xl" class="mb-3 text-secondary"></svg>
+                            <p>No code repositories</p>
+                            <button cButton color="primary" size="sm">
+                                <svg cIcon name="cilPlus" size="sm" class="me-1"></svg>
+                                Add Repository
+                            </button>
+                        </div>
+                    </c-col>
+                </c-row>
+
+                <!-- No Assets Case -->
+                <div class="asset-section text-center" *ngIf="(!cloudSubscriptionsData || cloudSubscriptionsData.length === 0) && (!reposData || reposData.length === 0)">
+                    <svg cIcon name="cilBan" size="xl" class="mb-3 text-secondary"></svg>
+                    <p>No assets registered for this team</p>
+                    <button cButton color="primary" size="sm">
+                        <svg cIcon name="cilPlus" size="sm" class="me-1"></svg>
+                        Add Assets
+                    </button>
+                </div>
+            </div>
+
+            <c-card-footer *ngIf="(cloudSubscriptionsData && cloudSubscriptionsData.length > 0) || (reposData && reposData.length > 0)">
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">Last scan: {{ lastScanDate | date:'medium' }}</small>
+                    <button cButton color="primary" size="sm">
+                        <svg cIcon name="cilSearch" size="sm" class="me-1"></svg>
+                        Scan Now
+                    </button>
+                </div>
+            </c-card-footer>
+        </c-card>
+    </c-col>
+
+    <c-col lg="4" class="chart-col">
+        <c-card class="h-100">
+            <c-card-header>
+                <svg cIcon name="cilChartPie" size="sm" class="me-1"></svg>
+                Vulnerabilities by Source
+            </c-card-header>
+
+            <c-card-body>
+                <div class="chart-container">
+                    <canvas #chartCanvas width="250" height="250"></canvas>
+                </div>
+            </c-card-body>
+
+            <c-card-footer>
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">Total: {{ totalVulnerabilities }} vulnerabilities</small>
+                    <button cButton color="primary" size="sm" variant="outline">
+                        <svg cIcon name="cilList" size="sm" class="me-1"></svg>
+                        View Details
+                    </button>
+                </div>
+            </c-card-footer>
+        </c-card>
+    </c-col>
+</c-row>

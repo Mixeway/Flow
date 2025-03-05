@@ -75,6 +75,12 @@ import {FormsModule} from '@angular/forms';
 import {TeamService} from "../../service/TeamService";
 import {TeamFindingsService} from "../../service/TeamFindingsService";
 import {TeamFindingSourceStatDTO} from "../../model/TeamFindingSourceStatDTO";
+import {TeamVulnerabilityDetailsComponent} from "./team-vulnerability-details/team-vulnerability-details.component";
+import {TeamInfoComponent} from "./team-info/team-info.component";
+import {TeamVulnerabilitySummaryComponent} from "./team-vulnerability-summary/team-vulnerability-summary.component";
+import {TeamScanInfoComponent} from "./team-scan-info/team-scan-info.component";
+import {TeamStatisticsChartComponent} from "./team-statistics-chart/team-statistics-chart.component";
+import {TeamVulnerabilitiesTableComponent} from "./team-vulnerabilities-table/team-vulnerabilities-table.component";
 
 interface Vulnerability {
     id: number;
@@ -197,6 +203,12 @@ interface TeamUser {
         TooltipDirective,
         MarkdownModule,
         ContainerComponent,
+        TeamVulnerabilityDetailsComponent,
+        TeamInfoComponent,
+        TeamVulnerabilitySummaryComponent,
+        TeamScanInfoComponent,
+        TeamStatisticsChartComponent,
+        TeamVulnerabilitiesTableComponent,
     ],
     templateUrl: './show-team.component.html',
     styleUrls: ['./show-team.component.scss'],

@@ -1,0 +1,55 @@
+.dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.critical {
+  background-color: red;
+}
+
+.high {
+  background-color: #f33d3d;
+}
+
+.medium {
+  background-color: #e38334;
+}
+
+.low {
+  background-color: #47a3d3;
+}
+
+.critical-t {
+  color: red;
+}
+
+.high-t {
+  color: #f33d3d;
+}
+
+.medium-t {
+  color: #e38334;
+}
+
+.low-t {
+  color: #47a3d3;
+}
+
+.location-cell {
+  white-space: normal;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+:host ::ng-deep {
+  .ngx-datatable .datatable-body-cell {
+    display: flex;
+    align-items: center;
+  }
+
+  .ngx-datatable .datatable-body-cell-label {
+    flex: 1;
+  }
+}

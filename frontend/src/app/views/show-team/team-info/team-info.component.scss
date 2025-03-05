@@ -1,0 +1,112 @@
+.team-card {
+  height: 100%;
+  transition: box-shadow 0.3s ease;
+
+  &:hover {
+    box-shadow: var(--cui-shadow-lg);
+  }
+
+  .team-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    border-bottom: 1px solid var(--cui-border-color);
+
+    h2 {
+      margin-bottom: 0;
+      font-weight: 600;
+    }
+
+    .team-id {
+      font-size: 0.8rem;
+      color: var(--cui-body-color-rgb);
+      opacity: 0.7;
+    }
+  }
+
+  .asset-container {
+    padding: 1rem;
+    gap: 1rem;
+
+    .asset-section {
+      background-color: var(--cui-card-cap-bg);
+      border-radius: var(--cui-border-radius);
+      padding: 1rem;
+      margin-bottom: 1rem;
+      height: calc(100% - 1rem);
+
+      .asset-title {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+
+        i {
+          margin-right: 0.5rem;
+        }
+      }
+
+      .asset-item {
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        background-color: var(--cui-card-bg);
+        border-radius: var(--cui-border-radius-sm);
+        border-left: 3px solid var(--cui-primary);
+        transition: transform 0.2s ease;
+
+        &:hover {
+          transform: translateX(3px);
+        }
+
+        .asset-name {
+          font-weight: 600;
+          margin-bottom: 0.25rem;
+        }
+
+        .asset-id {
+          font-size: 0.75rem;
+          opacity: 0.8;
+        }
+
+        .repo-link {
+          margin-top: 0.5rem;
+        }
+      }
+    }
+  }
+}
+
+.chart-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 15px;
+
+  canvas {
+    cursor: pointer;
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 992px) {
+  .team-info-row {
+    flex-direction: column;
+
+    .team-col, .chart-col {
+      width: 100%;
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 992px) {
+  .team-info-row {
+    flex-direction: column;
+
+    .team-col, .chart-col {
+      width: 100%;
+    }
+  }
+}

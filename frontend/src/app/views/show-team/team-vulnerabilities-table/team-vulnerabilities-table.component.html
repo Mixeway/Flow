@@ -1,0 +1,375 @@
+<c-card>
+    <c-card-header>
+        <c-row class="align-items-center">
+            <c-col xs="auto">
+                <c-form-check class="d-flex align-items-center">
+                    <input
+                            cFormCheckInput
+                            id="showRemoved"
+                            name="showRemoved"
+                            type="checkbox"
+                            (change)="toggleShowRemoved($event)"
+                    />
+                    <label cFormCheckLabel for="showRemoved" class="mb-0 ms-2"
+                    >Show Removed Vulnerabilities</label
+                    >
+                </c-form-check>
+            </c-col>
+            <c-col xs="auto">
+                <c-form-check class="d-flex align-items-center">
+                    <input
+                            cFormCheckInput
+                            id="showSuppressed"
+                            name="showSuppressed"
+                            type="checkbox"
+                            (change)="toggleShowSuppressed($event)"
+                    />
+                    <label cFormCheckLabel for="showSuppressed" class="mb-0 ms-2"
+                    >Show Suppressed Vulnerabilities</label
+                    >
+                </c-form-check>
+            </c-col>
+            <c-col xs="auto">
+                <button cButton color="primary" (click)="toggleBulkAction()">
+                    {{ bulkActionMode ? 'Exit Bulk Action' : 'Bulk Action' }}
+                </button>
+            </c-col>
+            <c-col xs="auto" class="ms-auto d-flex align-items-center">
+                <label class="me-2 mb-0">Show</label>
+                <select class="form-select w-auto" [(ngModel)]="vulnerabilitiesLimit" (ngModelChange)="onLimitChange($event)">
+                    <option [value]="10">10</option>
+                    <option [value]="20">20</option>
+                    <option [value]="50">50</option>
+                    <option [value]="100">100</option>
+                    <option [value]="200">200</option>
+                </select>
+            </c-col>
+        </c-row>
+    </c-card-header>
+    <c-card-body>
+        <!-- Spinner -->
+        <div
+                *ngIf="vulnerabilitiesLoading"
+                class="d-flex justify-content-center align-items-center"
+        >
+            <c-spinner color="primary"></c-spinner>
+        </div>
+        <!-- Content displays when data is loaded -->
+        <div *ngIf="!vulnerabilitiesLoading">
+
+            <div *ngIf="bulkActionMode" class="mb-2">
+                <button
+                        cButton
+                        color="warning"
+                        [disabled]="selectedFindings.length === 0"
+                        (click)="suppressSelectedFindings()"
+                >
+                    Suppress with False Positive
+                </button>
+            </div>
+
+            <ngx-datatable
+                    class="bootstrap"
+                    [rows]="filteredVulns"
+                    [columnMode]="'force'"
+                    [footerHeight]="50"
+                    [headerHeight]="80"
+                    [rowHeight]="'auto'"
+                    [limit]="vulnerabilitiesLimit"
+            >
+                <!-- Checkbox Column -->
+                <ngx-datatable-column
+                        *ngIf="bulkActionMode"
+                        name="Select"
+                        [width]="50"
+                        [sortable]="false"
+                >
+                    <ng-template ngx-datatable-header-template>
+                        <div class="d-flex align-items-center justify-content-center">
+                            <c-form-check class="mb-0">
+                                <input cFormCheckInput type="checkbox"
+                                       (change)="selectAllFindings($event)"/>
+                            </c-form-check>
+                        </div>
+                    </ng-template>
+                    <ng-template
+                            ngx-datatable-cell-template
+                            let-rowIndex="rowIndex"
+                            let-value="value"
+                            let-row="row"
+                    >
+                        <div *ngIf="row?.source !== 'CLOUD_SCANNER'" class="d-flex align-items-center justify-content-center">
+                            <c-form-check class="mb-0">
+                                <input
+                                        cFormCheckInput
+                                        type="checkbox"
+                                        [checked]="isSelected(row.id)"
+                                        (change)="onSelectFinding(row.id, $event)"
+                                />
+                            </c-form-check>
+                        </div>
+                    </ng-template>
+                </ngx-datatable-column>
+
+                <!-- Actions Column -->
+                <ngx-datatable-column name="Actions" prop="name2" [width]="50" [sortable]="false">
+                    <ng-template
+                            ngx-datatable-cell-template
+                            let-rowIndex="rowIndex"
+                            let-value="value"
+                            let-row="row"
+                    >
+                        <div class="d-flex align-items-center justify-content-center">
+                            <button type="button" class="btn btn-outline-info" (click)="click(row)">
+                                <svg cIcon name="cil-magnifying-glass"></svg>
+                            </button>
+                        </div>
+                    </ng-template>
+                </ngx-datatable-column>
+
+                <!-- Name Column -->
+                <ngx-datatable-column name="Name" prop="name" [sortable]="false">
+                    <ng-template ngx-datatable-header-template>
+                        <c-input-group class="mb-3">
+                            <span cInputGroupText id="filterNameTable">
+                              <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
+                            </span>
+                            <input
+                                    aria-describedby="addon-wrapping"
+                                    aria-label="Access Token"
+                                    type="text"
+                                    class="form-control"
+                                    placeholder="Filter Name"
+                                    (input)="updateFilterName($event)"
+                            />
+                        </c-input-group>
+                    </ng-template>
+                    <ng-template
+                            ngx-datatable-cell-template
+                            let-rowIndex="rowIndex"
+                            let-value="value"
+                            let-row="row"
+                    >
+                        <div class="d-flex align-items-center justify-content-center">
+                            {{ row?.name }}
+                        </div>
+                    </ng-template>
+                </ngx-datatable-column>
+
+                <ngx-datatable-column name="Repo/Cloud Subscription" prop="component_name"
+                                      [sortable]="false">
+                    <ng-template ngx-datatable-header-template>
+                        <c-input-group class="mb-3">
+                            <span cInputGroupText id="filterTableLocation">
+                              <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
+                            </span>
+                            <input
+                                    aria-describedby="addon-wrapping"
+                                    aria-label="Access Token"
+                                    type="text"
+                                    class="form-control"
+                                    placeholder="Filter Repo/Cloud Subscription"
+                                    (input)="updateFilterComponent($event)"
+                            />
+                        </c-input-group>
+                    </ng-template>
+                    <ng-template
+                            ngx-datatable-cell-template
+                            let-rowIndex="rowIndex"
+                            let-value="value"
+                            let-row="row"
+                    >
+                        <div class="d-flex align-items-center justify-content-center location-cell">
+                            <div class="d-flex align-items-center justify-content-center">
+                                {{ row?.component_name }}
+                            </div>
+                        </div>
+                    </ng-template>
+                </ngx-datatable-column>
+
+                <!-- Source Column -->
+                <ngx-datatable-column
+                        name="Source"
+                        prop="source"
+                        [sortable]="false"
+                        [width]="100"
+                        [canAutoResize]="false"
+                >
+                    <ng-template ngx-datatable-header-template>
+                        <c-input-group class="mb-3">
+                            <span cInputGroupText id="filterTableSource">
+                                <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
+                            </span>
+                            <select class="form-control" (change)="updateFilterSource($event)">
+                                <option value="">Sources: All</option>
+                                <option value="SAST">SAST</option>
+                                <option value="IaC">IaC</option>
+                                <option value="Secrets">Secrets</option>
+                                <option value="SCA">SCA</option>
+                                <option value="CLOUD_SCANNER">Cloud scanner</option>
+                            </select>
+                        </c-input-group>
+                    </ng-template>
+                    <ng-template
+                            ngx-datatable-cell-template
+                            let-rowIndex="rowIndex"
+                            let-value="value"
+                            let-row="row"
+                    >
+                        <div class="d-flex align-items-center justify-content-center">
+                            <c-badge *ngIf="row?.source === 'SAST'" color="primary">SAST</c-badge>
+                            <c-badge *ngIf="row?.source === 'IAC'" color="info">IaC</c-badge>
+                            <c-badge *ngIf="row?.source === 'SECRETS'" color="danger">Secrets
+                            </c-badge>
+                            <c-badge *ngIf="row?.source === 'SCA'" color="warning">SCA</c-badge>
+                            <c-badge *ngIf="row?.source === 'CLOUD_SCANNER'" color="secondary">CLOUD
+                                SCANNER
+                            </c-badge>
+                        </div>
+                    </ng-template>
+                </ngx-datatable-column>
+
+                <!-- Status Column -->
+                <ngx-datatable-column
+                        name="Status"
+                        prop="status"
+                        [sortable]="false"
+                        [width]="120"
+                        [canAutoResize]="false"
+                >
+                    <ng-template ngx-datatable-header-template>
+                        <c-input-group class="mb-3">
+                            <span cInputGroupText id="filterTableStatus">
+                                <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
+                            </span>
+                            <select class="form-control" (change)="updateFilterStatus($event)">
+                                <option value="">Statuses: All</option>
+                                <option value="New">New</option>
+                                <option value="Existing">Existing</option>
+                                <option value="Removed">Removed</option>
+                            </select>
+                        </c-input-group>
+                    </ng-template>
+                    <ng-template
+                            ngx-datatable-cell-template
+                            let-rowIndex="rowIndex"
+                            let-value="value"
+                            let-row="row"
+                    >
+                        <div class="d-flex align-items-center justify-content-center">
+                            <svg
+                                    cIcon
+                                    *ngIf="row?.status === 'NEW'"
+                                    name="cil-burn"
+                                    class="me-2"
+                            ></svg>
+                            <svg
+                                    cIcon
+                                    *ngIf="row?.status === 'EXISTING'"
+                                    name="cil-graph"
+                                    class="me-2"
+                            ></svg>
+                            <svg
+                                    cIcon
+                                    *ngIf="row?.status === 'REMOVED'"
+                                    name="cil-trash"
+                                    class="me-2"
+                            ></svg>
+                            <svg
+                                    cIcon
+                                    *ngIf="row?.status === 'SUPRESSED'"
+                                    name="cil-volume-off"
+                                    class="me-2"
+                            ></svg>
+                            {{ row?.status }}
+                        </div>
+                    </ng-template>
+                </ngx-datatable-column>
+
+
+                <!-- Severity Column -->
+                <ngx-datatable-column name="Severity" prop="severity" [sortable]="false">
+                    <ng-template ngx-datatable-header-template>
+                        <c-input-group class="mb-3">
+                            <span cInputGroupText id="filterTableSeverity">
+                              <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
+                            </span>
+                            <select class="form-control" (change)="updateFilterSeverity($event)">
+                                <option value="">Severities: All</option>
+                                <option value="Critical">Critical</option>
+                                <option value="High">High</option>
+                                <option value="Medium">Medium</option>
+                                <option value="Low">Low</option>
+                                <option value="Info">Info</option>
+                            </select>
+                        </c-input-group>
+                    </ng-template>
+                    <ng-template
+                            ngx-datatable-cell-template
+                            let-rowIndex="rowIndex"
+                            let-value="value"
+                            let-row="row"
+                    >
+                        <div class="d-flex align-items-center justify-content-center">
+                            <span *ngIf="row?.severity === 'HIGH'" class="dot high"></span>
+                            <span *ngIf="row?.severity == 'MEDIUM'" class="dot medium"></span>
+                            <span *ngIf="row?.severity == 'LOW'" class="dot low"></span>
+                            <span *ngIf="row?.severity == 'INFO'" class="dot low"></span>
+                            <c-spinner
+                                    *ngIf="row?.severity === 'CRITICAL'"
+                                    color="danger"
+                                    variant="grow"
+                                    size="sm"
+                            ></c-spinner>
+                            <span
+                                    *ngIf="row?.severity === 'HIGH'"
+                                    style="margin-left: 8px;"
+                                    class="high-t"
+                            >{{ row?.severity }}</span
+                            >
+                            <span
+                                    *ngIf="row?.severity === 'CRITICAL'"
+                                    style="margin-left: 8px;"
+                                    class="high-t"
+                            >{{ row?.severity }}</span
+                            >
+                            <span
+                                    *ngIf="row?.severity === 'MEDIUM'"
+                                    style="margin-left: 8px;"
+                                    class="medium-t"
+                            >{{ row?.severity }}</span
+                            >
+                            <span
+                                    *ngIf="row?.severity === 'LOW'"
+                                    style="margin-left: 8px;"
+                                    class="low-t"
+                            >{{ row?.severity }}</span
+                            >
+                            <span
+                                    *ngIf="row?.severity === 'INFO'"
+                                    style="margin-left: 8px;"
+                                    class="low-t"
+                            >{{ row?.severity }}</span
+                            >
+                        </div>
+                    </ng-template>
+                </ngx-datatable-column>
+
+                <!-- Dates Column -->
+                <ngx-datatable-column name="Dates" prop="inserted" [sortable]="false">
+                    <ng-template
+                            ngx-datatable-cell-template
+                            let-rowIndex="rowIndex"
+                            let-value="value"
+                            let-row="row"
+                    >
+                        <div>
+                            <strong>Inserted:</strong> {{ row?.inserted | date }} <br/>
+                            <strong>Last Seen:</strong> {{ row?.last_seen | date }}
+                        </div>
+                    </ng-template>
+                </ngx-datatable-column>
+            </ngx-datatable>
+        </div>
+    </c-card-body>
+</c-card>

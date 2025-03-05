@@ -1,140 +1,15 @@
-<c-row class="d-flex justify-content-center align-items-stretch">
-    <c-col xs="8">
-        <c-card class="mt-4 h-100" style="overflow-y: auto; max-height: 350px;">
-            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 0; margin: 0; box-sizing: border-box;">
-                <h2 style="margin-bottom: 1rem;">
-                    <strong>{{ teamData?.name }}</strong>
-                </h2>
-                <small style="margin-top: 1rem;">Team ID: {{ teamData?.remoteIdentifier }}</small>
-            </div>
+<!-- Team Info Component -->
+<app-team-info
+        [teamData]="teamData"
+        [reposData]="reposData"
+        [cloudSubscriptionsData]="cloudSubscriptionsData"
+        [chartPieData]="chartPieData"
+></app-team-info>
 
-            <c-card class="w-100 mb-0"
-                    *ngIf="(cloudSubscriptionsData && cloudSubscriptionsData.length > 0) || (reposData && reposData.length > 0)">
-                <c-card-footer class="pb-0">
-                    <c-container class="p-0">
-                        <c-row class="justify-content-center m-0">
-                            <c-col [style.display]="'grid'"
-                                   [style.grid-template-columns]="(cloudSubscriptionsData.length && reposData.length) ? '1fr 1fr' : '1fr'"
-                                   [style.gap]="'20px'"
-                                   [style.text-align]="'center'"
-                                   [style.justify-content]="'center'"
-                                   class="p-0 mb-0">
-
-                                <div *ngIf="cloudSubscriptionsData && cloudSubscriptionsData.length > 0">
-                                    <small style="display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%;">
-                                        <h4 cCardTitle style="font-size: 16px; margin-bottom: 10px;">Cloud
-                                            Subscriptions: </h4>
-                                        <div *ngFor="let cloudSubscription of cloudSubscriptionsData"
-                                             style="margin-top: 5px;">
-                                            <strong>{{ cloudSubscription.external_project_name }}</strong>
-                                            <div>
-                                                <small>Remote ID: {{ cloudSubscription.name }}</small>
-                                            </div>
-                                        </div>
-                                    </small>
-                                </div>
-
-                                <div *ngIf="reposData && reposData.length > 0">
-                                    <small style="display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%;">
-                                        <h4 cCardTitle style="font-size: 16px; margin-bottom: 10px;">
-                                            Repositories: </h4>
-                                        <div *ngFor="let codeRepo of reposData"
-                                             style="margin-top: 5px;">
-                                            <strong>{{ codeRepo?.target }}</strong>
-                                            <div>
-                                                <a href="{{ codeRepo?.repo_url }}" class="btn btn-secondary btn-sm"
-                                                   target="_blank" rel="noopener noreferrer"
-                                                   aria-label="View repository">
-                                                    <svg cIcon class="me-1" name="cib-github" size="sm"></svg>
-                                                    {{ codeRepo?.repo_url }}
-                                                </a>
-
-                                            </div>
-                                        </div>
-                                    </small>
-                                </div>
-                            </c-col>
-                        </c-row>
-                    </c-container>
-                </c-card-footer>
-            </c-card>
-        </c-card>
-    </c-col>
-    <c-col xs="4">
-        <c-card class="mt-4 h-100" style="max-height: 350px;">
-            <c-card-header>
-                Vulnerabilities source
-            </c-card-header>
-            <c-card-body size="large">
-                <c-chart type="pie" [data]="chartPieData" [options]="options"></c-chart>
-            </c-card-body>
-        </c-card>
-    </c-col>
-</c-row>
-
-
-<!--            <div class="d-flex gap-2">-->
-<!--                &lt;!&ndash;                    <button&ndash;&gt;-->
-<!--                &lt;!&ndash;                            *ngIf="!scanRunning && (userRole === 'ADMIN' || userRole === 'TEAM_MANAGER')"&ndash;&gt;-->
-<!--                &lt;!&ndash;                            cButton&ndash;&gt;-->
-<!--                &lt;!&ndash;                            color="info"&ndash;&gt;-->
-<!--                &lt;!&ndash;                            shape="rounded-pill"&ndash;&gt;-->
-<!--                &lt;!&ndash;                            style="margin-top: 10px;"&ndash;&gt;-->
-<!--                &lt;!&ndash;                            (click)="runScan()"&ndash;&gt;-->
-<!--                &lt;!&ndash;                    >&ndash;&gt;-->
-<!--                &lt;!&ndash;                        <svg cIcon name="cil-media-play" class="me-2"></svg>&ndash;&gt;-->
-<!--                &lt;!&ndash;                        Run Scan&ndash;&gt;-->
-<!--                &lt;!&ndash;                    </button>&ndash;&gt;-->
-<!--                &lt;!&ndash;                    <button&ndash;&gt;-->
-<!--                &lt;!&ndash;                            *ngIf="(userRole === 'ADMIN' || userRole === 'TEAM_MANAGER')"&ndash;&gt;-->
-<!--                &lt;!&ndash;                            cButton&ndash;&gt;-->
-<!--                &lt;!&ndash;                            color="primary"&ndash;&gt;-->
-<!--                &lt;!&ndash;                            shape="rounded-pill"&ndash;&gt;-->
-<!--                &lt;!&ndash;                            style="margin-top: 10px;"&ndash;&gt;-->
-<!--                &lt;!&ndash;                            (click)="openChangeTeamModal()"&ndash;&gt;-->
-<!--                &lt;!&ndash;                    >&ndash;&gt;-->
-<!--                &lt;!&ndash;                        <svg cIcon name="cil-people" class="me-2"></svg>&ndash;&gt;-->
-<!--                &lt;!&ndash;                        Change Team&ndash;&gt;-->
-<!--                &lt;!&ndash;                    </button>&ndash;&gt;-->
-<!--                &lt;!&ndash;                </div>&ndash;&gt;-->
-<!--            </div>-->
-<!--        </c-card>-->
-<!--    </c-col>-->
-<!--</c-row>-->
-<!--        <br/>-->
-
-<c-row class="d-flex justify-content-center mt-4">
-    <c-col lg="4" xs="12">
-        <c-widget-stat-f
-                [title]="'CRITICAL Findings'"
-                class="mb-3 mt-3"
-                color="danger"
-                padding
-                [value]="counts?.critical"
-        >
-        </c-widget-stat-f>
-    </c-col>
-    <c-col lg="4" xs="12">
-        <c-widget-stat-f
-                [title]="'HIGH Findings'"
-                class="mb-3 mt-3"
-                color="warning"
-                padding
-                [value]="counts?.high"
-        >
-        </c-widget-stat-f>
-    </c-col>
-    <c-col lg="4" xs="12">
-        <c-widget-stat-f
-                [title]="'Rest Findings'"
-                class="mb-3 mt-3"
-                color="primary"
-                padding
-                [value]="counts?.rest"
-        >
-        </c-widget-stat-f>
-    </c-col>
-</c-row>
+<!-- Team Vulnerability Summary Component -->
+<app-team-vulnerability-summary
+        [counts]="counts"
+></app-team-vulnerability-summary>
 
 <c-row class="d-flex justify-content-center align-items-stretch">
     <c-col xs="11">
@@ -164,560 +39,48 @@
             <c-tabs-content>
                 <!-- Vulnerabilities Tab -->
                 <c-tab-panel class="p-3" [itemKey]="0">
-                    <c-card>
-                        <c-card-header>
-                            <c-row class="align-items-center">
-                                <c-col xs="auto">
-                                    <c-form-check class="d-flex align-items-center">
-                                        <input
-                                                cFormCheckInput
-                                                id="showRemoved"
-                                                name="showRemoved"
-                                                type="checkbox"
-                                                (change)="toggleShowRemoved($event)"
-                                        />
-                                        <label cFormCheckLabel for="showRemoved" class="mb-0 ms-2"
-                                        >Show Removed Vulnerabilities</label
-                                        >
-                                    </c-form-check>
-                                </c-col>
-                                <c-col xs="auto">
-                                    <c-form-check class="d-flex align-items-center">
-                                        <input
-                                                cFormCheckInput
-                                                id="showSuppressed"
-                                                name="showSuppressed"
-                                                type="checkbox"
-                                                (change)="toggleShowSuppressed($event)"
-                                        />
-                                        <label cFormCheckLabel for="showSuppressed" class="mb-0 ms-2"
-                                        >Show Suppressed Vulnerabilities</label
-                                        >
-                                    </c-form-check>
-                                </c-col>
-                                <c-col xs="auto">
-                                    <button cButton color="primary" (click)="toggleBulkAction()">
-                                        {{ bulkActionMode ? 'Exit Bulk Action' : 'Bulk Action' }}
-                                    </button>
-                                </c-col>
-                                <c-col xs="auto" class="ms-auto d-flex align-items-center">
-                                    <label class="me-2 mb-0">Show</label>
-                                    <select class="form-select w-auto" [(ngModel)]="vulnerabilitiesLimit">
-                                        <option [value]="10">10</option>
-                                        <option [value]="20">20</option>
-                                        <option [value]="50">50</option>
-                                        <option [value]="100">100</option>
-                                        <option [value]="200">200</option>
-                                    </select>
-                                </c-col>
-                            </c-row>
-                        </c-card-header>
-                        <c-card-body>
-                            <!-- Spinner -->
-                            <div
-                                    *ngIf="vulnerabilitiesLoading"
-                                    class="d-flex justify-content-center align-items-center"
-                            >
-                                <c-spinner color="primary"></c-spinner>
-                            </div>
-                            <!-- Content displays when data is loaded -->
-                            <div *ngIf="!vulnerabilitiesLoading">
-
-                                <div *ngIf="bulkActionMode" class="mb-2">
-                                    <button
-                                            cButton
-                                            color="warning"
-                                            [disabled]="selectedFindings.length === 0"
-                                            (click)="suppressSelectedFindings()"
-                                    >
-                                        Suppress with False Positive
-                                    </button>
-                                </div>
-
-                                <ngx-datatable
-                                        class="bootstrap"
-                                        [rows]="filteredVulns"
-                                        [columnMode]="'force'"
-                                        [footerHeight]="50"
-                                        [headerHeight]="80"
-                                        [rowHeight]="'auto'"
-                                        [limit]="vulnerabilitiesLimit"
-                                >
-                                    <!-- Checkbox Column -->
-                                    <ngx-datatable-column
-                                            *ngIf="bulkActionMode"
-                                            name="Select"
-                                            [width]="50"
-                                            [sortable]="false"
-                                    >
-                                        <ng-template ngx-datatable-header-template>
-                                            <div class="d-flex align-items-center justify-content-center">
-                                                <c-form-check class="mb-0">
-                                                    <input cFormCheckInput type="checkbox"
-                                                           (change)="selectAllFindings($event)"/>
-                                                </c-form-check>
-                                            </div>
-                                        </ng-template>
-                                        <ng-template
-                                                ngx-datatable-cell-template
-                                                let-rowIndex="rowIndex"
-                                                let-value="value"
-                                                let-row="row"
-                                        >
-                                            <div *ngIf="row?.source !== 'CLOUD_SCANNER'" class="d-flex align-items-center justify-content-center">
-                                                <c-form-check class="mb-0">
-                                                    <input
-                                                            cFormCheckInput
-                                                            type="checkbox"
-                                                            [checked]="isSelected(row.id)"
-                                                            (change)="onSelectFinding(row.id, $event)"
-                                                    />
-                                                </c-form-check>
-                                            </div>
-                                        </ng-template>
-                                    </ngx-datatable-column>
-
-                                    <!-- Actions Column -->
-                                    <ngx-datatable-column name="Actions" prop="name2" [width]="50" [sortable]="false">
-                                        <ng-template
-                                                ngx-datatable-cell-template
-                                                let-rowIndex="rowIndex"
-                                                let-value="value"
-                                                let-row="row"
-                                        >
-                                            <div class="d-flex align-items-center justify-content-center">
-                                                <button type="button" class="btn btn-outline-info" (click)="click(row)">
-                                                    <svg cIcon name="cil-magnifying-glass"></svg>
-                                                </button>
-                                            </div>
-                                        </ng-template>
-                                    </ngx-datatable-column>
-
-                                    <!-- Name Column -->
-                                    <ngx-datatable-column name="Name" prop="name" [sortable]="false">
-                                        <ng-template ngx-datatable-header-template>
-                                            <c-input-group class="mb-3">
-                        <span cInputGroupText id="filterNameTable">
-                          <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
-                        </span>
-                                                <input
-                                                        aria-describedby="addon-wrapping"
-                                                        aria-label="Access Token"
-                                                        type="text"
-                                                        class="form-control"
-                                                        placeholder="Filter Name"
-                                                        (input)="updateFilterName($event)"
-                                                />
-                                            </c-input-group>
-                                        </ng-template>
-                                        <ng-template
-                                                ngx-datatable-cell-template
-                                                let-rowIndex="rowIndex"
-                                                let-value="value"
-                                                let-row="row"
-                                        >
-                                            <div class="d-flex align-items-center justify-content-center">
-                                                {{ row?.name }}
-                                            </div>
-                                        </ng-template>
-                                    </ngx-datatable-column>
-
-                                    <ngx-datatable-column name="Repo/Cloud Subscription" prop="component_name"
-                                                          [sortable]="false">
-                                        <ng-template ngx-datatable-header-template>
-                                            <c-input-group class="mb-3">
-                        <span cInputGroupText id="filterTableLocation">
-                          <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
-                        </span>
-                                                <input
-                                                        aria-describedby="addon-wrapping"
-                                                        aria-label="Access Token"
-                                                        type="text"
-                                                        class="form-control"
-                                                        placeholder="Filter Repo/Cloud Subscription"
-                                                        (input)="updateFilterComponent($event)"
-                                                />
-                                            </c-input-group>
-                                        </ng-template>
-                                        <ng-template
-                                                ngx-datatable-cell-template
-                                                let-rowIndex="rowIndex"
-                                                let-value="value"
-                                                let-row="row"
-                                        >
-                                            <div class="d-flex align-items-center justify-content-center location-cell">
-                                                <div class="d-flex align-items-center justify-content-center">
-                                                    {{ row?.component_name }}
-                                                </div>
-                                            </div>
-                                        </ng-template>
-                                    </ngx-datatable-column>
-
-                                    <!-- Source Column -->
-                                    <ngx-datatable-column
-                                            name="Source"
-                                            prop="source"
-                                            [sortable]="false"
-                                            [width]="100"
-                                            [canAutoResize]="false"
-                                    >
-                                        <ng-template ngx-datatable-header-template>
-                                            <c-input-group class="mb-3">
-            <span cInputGroupText id="filterTableSource">
-                <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
-            </span>
-                                                <select class="form-control" (change)="updateFilterSource($event)">
-                                                    <option value="">Sources: All</option>
-                                                    <option value="SAST">SAST</option>
-                                                    <option value="IaC">IaC</option>
-                                                    <option value="Secrets">Secrets</option>
-                                                    <option value="SCA">SCA</option>
-                                                    <option value="CLOUD_SCANNER">Cloud scanner</option>
-                                                </select>
-                                            </c-input-group>
-                                        </ng-template>
-                                        <ng-template
-                                                ngx-datatable-cell-template
-                                                let-rowIndex="rowIndex"
-                                                let-value="value"
-                                                let-row="row"
-                                        >
-                                            <div class="d-flex align-items-center justify-content-center">
-                                                <c-badge *ngIf="row?.source === 'SAST'" color="primary">SAST</c-badge>
-                                                <c-badge *ngIf="row?.source === 'IAC'" color="info">IaC</c-badge>
-                                                <c-badge *ngIf="row?.source === 'SECRETS'" color="danger">Secrets
-                                                </c-badge>
-                                                <c-badge *ngIf="row?.source === 'SCA'" color="warning">SCA</c-badge>
-                                                <c-badge *ngIf="row?.source === 'CLOUD_SCANNER'" color="secondary">CLOUD
-                                                    SCANNER
-                                                </c-badge>
-                                            </div>
-                                        </ng-template>
-                                    </ngx-datatable-column>
-
-                                    <!-- Status Column -->
-                                    <ngx-datatable-column
-                                            name="Status"
-                                            prop="status"
-                                            [sortable]="false"
-                                            [width]="120"
-                                            [canAutoResize]="false"
-                                    >
-                                        <ng-template ngx-datatable-header-template>
-                                            <c-input-group class="mb-3">
-            <span cInputGroupText id="filterTableStatus">
-                <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
-            </span>
-                                                <select class="form-control" (change)="updateFilterStatus($event)">
-                                                    <option value="">Statuses: All</option>
-                                                    <option value="New">New</option>
-                                                    <option value="Existing">Existing</option>
-                                                    <option value="Removed">Removed</option>
-                                                </select>
-                                            </c-input-group>
-                                        </ng-template>
-                                        <ng-template
-                                                ngx-datatable-cell-template
-                                                let-rowIndex="rowIndex"
-                                                let-value="value"
-                                                let-row="row"
-                                        >
-                                            <div class="d-flex align-items-center justify-content-center">
-                                                <svg
-                                                        cIcon
-                                                        *ngIf="row?.status === 'NEW'"
-                                                        name="cil-burn"
-                                                        class="me-2"
-                                                ></svg>
-                                                <svg
-                                                        cIcon
-                                                        *ngIf="row?.status === 'EXISTING'"
-                                                        name="cil-graph"
-                                                        class="me-2"
-                                                ></svg>
-                                                <svg
-                                                        cIcon
-                                                        *ngIf="row?.status === 'REMOVED'"
-                                                        name="cil-trash"
-                                                        class="me-2"
-                                                ></svg>
-                                                <svg
-                                                        cIcon
-                                                        *ngIf="row?.status === 'SUPRESSED'"
-                                                        name="cil-volume-off"
-                                                        class="me-2"
-                                                ></svg>
-                                                {{ row?.status }}
-                                            </div>
-                                        </ng-template>
-                                    </ngx-datatable-column>
-
-
-                                    <!-- Severity Column -->
-                                    <ngx-datatable-column name="Severity" prop="severity" [sortable]="false">
-                                        <ng-template ngx-datatable-header-template>
-                                            <c-input-group class="mb-3">
-                        <span cInputGroupText id="filterTableSeverity">
-                          <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
-                        </span>
-                                                <select class="form-control" (change)="updateFilterSeverity($event)">
-                                                    <option value="">Severities: All</option>
-                                                    <option value="Critical">Critical</option>
-                                                    <option value="High">High</option>
-                                                    <option value="Medium">Medium</option>
-                                                    <option value="Low">Low</option>
-                                                    <option value="Info">Info</option>
-                                                </select>
-                                            </c-input-group>
-                                        </ng-template>
-                                        <ng-template
-                                                ngx-datatable-cell-template
-                                                let-rowIndex="rowIndex"
-                                                let-value="value"
-                                                let-row="row"
-                                        >
-                                            <div class="d-flex align-items-center justify-content-center">
-                                                <span *ngIf="row?.severity === 'HIGH'" class="dot high"></span>
-                                                <span *ngIf="row?.severity == 'MEDIUM'" class="dot medium"></span>
-                                                <span *ngIf="row?.severity == 'LOW'" class="dot low"></span>
-                                                <span *ngIf="row?.severity == 'INFO'" class="dot low"></span>
-                                                <c-spinner
-                                                        *ngIf="row?.severity === 'CRITICAL'"
-                                                        color="danger"
-                                                        variant="grow"
-                                                        size="sm"
-                                                ></c-spinner>
-                                                <span
-                                                        *ngIf="row?.severity === 'HIGH'"
-                                                        style="margin-left: 8px;"
-                                                        class="high-t"
-                                                >{{ row?.severity }}</span
-                                                >
-                                                <span
-                                                        *ngIf="row?.severity === 'CRITICAL'"
-                                                        style="margin-left: 8px;"
-                                                        class="high-t"
-                                                >{{ row?.severity }}</span
-                                                >
-                                                <span
-                                                        *ngIf="row?.severity === 'MEDIUM'"
-                                                        style="margin-left: 8px;"
-                                                        class="medium-t"
-                                                >{{ row?.severity }}</span
-                                                >
-                                                <span
-                                                        *ngIf="row?.severity === 'LOW'"
-                                                        style="margin-left: 8px;"
-                                                        class="low-t"
-                                                >{{ row?.severity }}</span
-                                                >
-                                                <span
-                                                        *ngIf="row?.severity === 'INFO'"
-                                                        style="margin-left: 8px;"
-                                                        class="low-t"
-                                                >{{ row?.severity }}</span
-                                                >
-                                            </div>
-                                        </ng-template>
-                                    </ngx-datatable-column>
-
-                                    <!-- Dates Column -->
-                                    <ngx-datatable-column name="Dates" prop="inserted" [sortable]="false">
-                                        <ng-template
-                                                ngx-datatable-cell-template
-                                                let-rowIndex="rowIndex"
-                                                let-value="value"
-                                                let-row="row"
-                                        >
-                                            <div>
-                                                <strong>Inserted:</strong> {{ row?.inserted | date }} <br/>
-                                                <strong>Last Seen:</strong> {{ row?.last_seen | date }}
-                                            </div>
-                                        </ng-template>
-                                    </ngx-datatable-column>
-                                </ngx-datatable>
-                            </div>
-                        </c-card-body>
-                    </c-card>
+                    <app-team-vulnerabilities-table
+                            [filteredVulns]="filteredVulns"
+                            [showRemoved]="showRemoved"
+                            [showSuppressed]="showSuppressed"
+                            [bulkActionMode]="bulkActionMode"
+                            [selectedFindings]="selectedFindings"
+                            [vulnerabilitiesLoading]="vulnerabilitiesLoading"
+                            [vulnerabilitiesLimit]="vulnerabilitiesLimit"
+                            (updateFilterNameEvent)="updateFilterName($event)"
+                            (updateFilterComponentEvent)="updateFilterComponent($event)"
+                            (updateFilterSourceEvent)="updateFilterSource($event)"
+                            (updateFilterStatusEvent)="updateFilterStatus($event)"
+                            (updateFilterSeverityEvent)="updateFilterSeverity($event)"
+                            (toggleShowRemovedEvent)="toggleShowRemoved($event)"
+                            (toggleShowSuppressedEvent)="toggleShowSuppressed($event)"
+                            (toggleBulkActionEvent)="toggleBulkAction()"
+                            (selectAllFindingsEvent)="selectAllFindings($event)"
+                            (onSelectFindingEvent)="onSelectFinding($event.id, $event.event)"
+                            (suppressSelectedFindingsEvent)="suppressSelectedFindings()"
+                            (vulnerabilitiesLimitChange)="vulnerabilitiesLimit = $event"
+                            (viewVulnerabilityDetailsEvent)="click($event)"
+                    ></app-team-vulnerabilities-table>
                 </c-tab-panel>
                 <!-- Statistics and Trends Tab -->
                 <c-tab-panel class="p-3" [itemKey]="1">
-                    <c-row class="d-flex align-items-stretch">
-                        <c-col xs="8">
-                            <c-card class="mb-4 h-100">
-                                <c-card-header>
-                                    Vuln trend chart for team
-                                </c-card-header>
-                                <c-card-body>
-                                    <c-chart type="line" [data]="chartLineData" [options]="options2"></c-chart>
-                                </c-card-body>
-                            </c-card>
-                        </c-col>
-                        <c-col xs="4">
-                            <c-card class="mb-4 h-100">
-                                <c-card-header>
-                                    Stats
-                                    <p (click)="refreshData()" style="display: inline">
-                                        <c-icon name="cil-sync" class="ml-2" style="cursor: pointer;"></c-icon>
-                                    </p>
-                                </c-card-header>
-                                <c-card-body class="d-flex flex-column justify-content-center align-items-center">
-                                    <c-row class="w-100 d-flex justify-content-around mb-3">
-                                        <c-col xl="6" lg="6" sm="12" class="mb-4">
-                                            <c-widget-stat-c
-                                                    [title]="'Opened Findings'"
-                                                    [value]="getLastOpenedFindings() ==0 ? 'None':getLastOpenedFindings()"
-                                            >
-                                                <ng-template cTemplateId="widgetIconTemplate">
-                                                    <svg cIcon height="36" name="cilChartLine"></svg>
-                                                </ng-template>
-                                                <ng-template cTemplateId="widgetProgressTemplate">
-                                                    <c-progress class="mt-3 mb-0" thin [value]="75"
-                                                                color="info"></c-progress>
-                                                </ng-template>
-                                            </c-widget-stat-c>
-                                        </c-col>
-                                        <c-col xl="6" lg="6" sm="12" class="mb-4">
-                                            <c-widget-stat-c
-                                                    [title]="'Closed Findings'"
-                                                    [value]="getLastRemovedFinding() == 0 ? 'None' : getLastRemovedFinding()"
-                                            >
-                                                <ng-template cTemplateId="widgetIconTemplate">
-                                                    <svg cIcon height="36" name="cilInput"></svg>
-                                                </ng-template>
-                                                <ng-template cTemplateId="widgetProgressTemplate">
-                                                    <c-progress class="mt-3 mb-0" thin [value]="75"
-                                                                color="success"></c-progress>
-                                                </ng-template>
-                                            </c-widget-stat-c>
-                                        </c-col>
-                                    </c-row>
-                                    <c-row class="w-100 d-flex justify-content-around">
-                                        <c-col xl="6" lg="6" sm="12" class="mb-4">
-                                            <c-widget-stat-c
-                                                    [title]="'Reviewed Findings'"
-                                                    [value]="getLastRevievedFinding() == 0 ? 'None' : getLastRevievedFinding()"
-                                            >
-                                                <ng-template cTemplateId="widgetIconTemplate">
-                                                    <svg cIcon height="36" name="cilBrush"></svg>
-                                                </ng-template>
-                                                <ng-template cTemplateId="widgetProgressTemplate">
-                                                    <c-progress class="mt-3 mb-0" thin [value]="80"
-                                                                color="warning"></c-progress>
-                                                </ng-template>
-                                            </c-widget-stat-c>
-                                        </c-col>
-                                        <c-col xl="6" lg="6" sm="12" class="mb-4">
-                                            <c-widget-stat-c
-                                                    [title]="'Time to Fix [days]'"
-                                                    [value]="getLastFixTime() == 0 ? 'Unknown' : getLastFixTime()"
-                                            >
-                                                <ng-template cTemplateId="widgetIconTemplate">
-                                                    <svg cIcon height="36" name="cilClock"></svg>
-                                                </ng-template>
-                                                <ng-template cTemplateId="widgetProgressTemplate">
-                                                    <c-progress class="mt-3 mb-0" thin [value]="65"
-                                                                color="danger"></c-progress>
-                                                </ng-template>
-                                            </c-widget-stat-c>
-                                        </c-col>
-                                    </c-row>
-                                </c-card-body>
-                            </c-card>
-                        </c-col>
-                    </c-row>
+                    <app-team-statistics-chart
+                            [chartLineData]="chartLineData"
+                            [options2]="options2"
+                            [openedFindings]="getLastOpenedFindings() == 0 ? 'None' : getLastOpenedFindings()"
+                            [removedFindings]="getLastRemovedFinding() == 0 ? 'None' : getLastRemovedFinding()"
+                            [reviewedFindings]="getLastRevievedFinding() == 0 ? 'None' : getLastRevievedFinding()"
+                            [fixTime]="getLastFixTime() == 0 ? 'Unknown' : getLastFixTime()"
+                            (refreshDataEvent)="refreshData()"
+                    ></app-team-statistics-chart>
                 </c-tab-panel>
                 <!-- Scan Info Tab -->
                 <c-tab-panel class="p-3" [itemKey]="2">
-                    <c-row class="d-flex align-items-stretch">
-                        <c-col xs="12">
-                            <c-card>
-                                <c-card-header>
-                                    <h5 class="mb-0 text-center"><strong>Scan Statistics</strong></h5>
-                                </c-card-header>
-                                <c-card-body>
-                                    <!-- Spinner -->
-                                    <div
-                                            *ngIf="scanInfoLoading"
-                                            class="d-flex justify-content-center align-items-center"
-                                            style="height: 200px;"
-                                    >
-                                        <c-spinner color="primary"></c-spinner>
-                                    </div>
-                                    <!-- Content displays when data is loaded -->
-                                    <div *ngIf="!scanInfoLoading">
-                                        <!-- ngx-datatable -->
-                                        <ngx-datatable
-                                                class="bootstrap"
-                                                [rows]="cloudScanInfos"
-                                                [columnMode]="'force'"
-                                                [footerHeight]="50"
-                                                [headerHeight]="50"
-                                                [rowHeight]="'auto'"
-                                                [limit]="scanInfoLimit"
-                                                [sorts]="[{prop: 'insertedDate', dir: 'desc'}]"
-                                        >
-                                            <!-- Performed Scan Column -->
-                                            <ngx-datatable-column
-                                                    name="Scan Date"
-                                                    prop="insertedDate"
-                                                    [sortable]="false"
-                                                    [width]="150"
-                                                    headerClass="text-center"
-                                                    cellClass="text-center"
-                                            >
-                                                <ng-template ngx-datatable-header-template>
-                                                    <div class="text-center">
-                                                        <strong>Scan Date</strong>
-                                                    </div>
-                                                </ng-template>
-                                                <ng-template
-                                                        ngx-datatable-cell-template
-                                                        let-rowIndex="rowIndex"
-                                                        let-value="value"
-                                                        let-row="row"
-                                                >
-                                                    <div class="d-flex align-items-center justify-content-center h-100">
-                                                        {{ row.insertedDate | date:'medium' }}
-                                                    </div>
-                                                </ng-template>
-                                            </ngx-datatable-column>
-
-                                            <!-- Results Column -->
-                                            <ngx-datatable-column
-                                                    name="Results"
-                                                    prop="insertedDate"
-                                                    [sortable]="false"
-                                                    [width]="500"
-                                                    headerClass="text-center"
-                                                    cellClass="text-center"
-                                            >
-                                                <ng-template ngx-datatable-header-template>
-                                                    <div class="text-center">
-                                                        <strong>Results</strong>
-                                                    </div>
-                                                </ng-template>
-                                                <ng-template
-                                                        ngx-datatable-cell-template
-                                                        let-rowIndex="rowIndex"
-                                                        let-value="value"
-                                                        let-row="row"
-                                                >
-                                                    <div class="vertical-align-multiple text-center">
-                                                        <p>
-                                                            <strong>Cloud Scan:</strong>
-                                                            <c-badge color="danger">{{ row.criticalFindings }}</c-badge>
-                                                            <!--                                                            <c-badge color="warning">{{ row.highFindings }}</c-badge> only critical cloud findings for now-->
-                                                        </p>
-                                                    </div>
-                                                </ng-template>
-                                            </ngx-datatable-column>
-                                        </ngx-datatable>
-                                    </div>
-                                </c-card-body>
-                            </c-card>
-                        </c-col>
-                    </c-row>
+                    <app-team-scan-info
+                            [scanInfoLoading]="scanInfoLoading"
+                            [cloudScanInfos]="cloudScanInfos"
+                            [scanInfoLimit]="scanInfoLimit"
+                    ></app-team-scan-info>
                 </c-tab-panel>
                 <!-- Notifications Tab -->
                 <c-tab-panel class="p-3" [itemKey]="3">
@@ -759,199 +122,27 @@
         </c-tabs>
     </c-col>
 </c-row>
-<c-modal size="lg" id="detailsModal" alignment="center" [visible]="detailsModal"
-         (visibleChange)="handleDetailsModal($event)">
-    <c-modal-header>
-        <h5 cModalTitle>Vulnerability Details</h5>
-    </c-modal-header>
-    <c-modal-body>
-        <div *ngIf="selectedRowId !== null">
-            <!-- Basic Info Section -->
-            <c-row>
-                <c-col xs="8">
-                    <c-card class="mb-4">
-                        <c-card-header>
-                            {{ singleVuln?.vulnsResponseDto?.name }}
-                        </c-card-header>
-                        <c-card-body>
-                            <div class="d-flex align-items-center">
-                                <u><b>Location/VM Instance:</b></u> &nbsp;&nbsp;
-                                <ng-container
-                                        *ngIf="singleVuln?.vulnsResponseDto?.source !== 'CLOUD_SCANNER'; else cloudScanner">
-                                    <svg cIcon name="cib-git" class="me-2"></svg>
-                                    <a [href]="getRepositoryLink()" target="_blank"
-                                       class="text-primary text-decoration-none">
-                                        {{ getFormattedLocation() }}
-                                        <svg cIcon name="cil-external-link" class="ms-1" size="sm"></svg>
-                                    </a>
-                                </ng-container>
-                                <ng-template #cloudScanner>
-                                    {{ singleVuln?.vulnsResponseDto?.location }}
-                                </ng-template>
-                            </div>
-                        </c-card-body>
 
-                        <c-card-footer><u><b>Status:</b></u> &nbsp;&nbsp;
-                            <svg cIcon *ngIf="singleVuln?.vulnsResponseDto?.status === 'NEW'" name="cil-burn"
-                                 class="me-2"></svg>
-                            <svg cIcon *ngIf="singleVuln?.vulnsResponseDto?.status === 'EXISTING'" name="cil-graph"
-                                 class="me-2"></svg>
-                            <svg cIcon *ngIf="singleVuln?.vulnsResponseDto?.status === 'REMOVED'" name="cil-trash"
-                                 class="me-2"></svg>
-                            <svg cIcon *ngIf="singleVuln?.vulnsResponseDto?.status === 'SUPRESSED'"
-                                 name="cil-volume-off" class="me-2"></svg>
-                            {{ singleVuln?.vulnsResponseDto?.status }}
-                        </c-card-footer>
-                    </c-card>
-                </c-col>
-                <c-col xs="4">
-                    <c-card class="mb-4">
-                        <c-card-header>
-                            <div class="d-flex align-items-center justify-content-center">
-                                <span *ngIf="singleVuln?.vulnsResponseDto?.severity === 'HIGH'" class="dot high"></span>
-                                <span *ngIf="singleVuln?.vulnsResponseDto?.severity == 'MEDIUM'"
-                                      class="dot medium"></span>
-                                <span *ngIf="singleVuln?.vulnsResponseDto?.severity == 'LOW'" class="dot low"></span>
-                                <span *ngIf="singleVuln?.vulnsResponseDto?.severity == 'INFO'" class="dot low"></span>
-                                <c-spinner *ngIf="singleVuln?.vulnsResponseDto?.severity === 'CRITICAL'" color="danger"
-                                           variant="grow" size="sm"></c-spinner>
-                                <span *ngIf="singleVuln?.vulnsResponseDto?.severity === 'HIGH'"
-                                      class="high-t ms-2">{{ singleVuln?.vulnsResponseDto?.severity }}</span>
-                                <span *ngIf="singleVuln?.vulnsResponseDto?.severity === 'CRITICAL'"
-                                      class="high-t ms-2">{{ singleVuln?.vulnsResponseDto?.severity }}</span>
-                                <span *ngIf="singleVuln?.vulnsResponseDto?.severity === 'MEDIUM'"
-                                      class="medium-t ms-2">{{ singleVuln?.vulnsResponseDto?.severity }}</span>
-                                <span *ngIf="singleVuln?.vulnsResponseDto?.severity === 'LOW'"
-                                      class="low-t ms-2">{{ singleVuln?.vulnsResponseDto?.severity }}</span>
-                                <span *ngIf="singleVuln?.vulnsResponseDto?.severity === 'INFO'"
-                                      class="low-t ms-2">{{ singleVuln?.vulnsResponseDto?.severity }}</span>
-                            </div>
-                        </c-card-header>
-                        <c-card-body>
-                            <div><u><b>Detected:</b></u>
-                                &nbsp;&nbsp; {{ singleVuln?.vulnsResponseDto?.inserted | date }}
-                            </div>
-                            <div class="mt-2"><u><b>Last Seen:</b></u>
-                                &nbsp;&nbsp; {{ singleVuln?.vulnsResponseDto?.last_seen | date }}
-                            </div>
-                        </c-card-body>
-                    </c-card>
-                </c-col>
-            </c-row>
+<!-- Team Vulnerability Details Modal -->
+<app-team-vulnerability-details
+        [detailsModal]="detailsModal"
+        [selectedRowId]="selectedRowId"
+        [singleVuln]="singleVuln"
+        [suppressReason]="suppressReason"
+        [suppressReasons]="suppressReasons"
+        [reposData]="reposData"
+        [isAddingComment]="isAddingComment"
+        [newComment]="newComment"
+        [vulns]="vulns"
+        (handleDetailsModalEvent)="handleDetailsModal($event)"
+        (closeModalEvent)="closeModal()"
+        (suppressFindingEvent)="suppressFinding()"
+        (reactivateFindingEvent)="reactivateFinding()"
+        (addCommentEvent)="addComment()"
+        (newCommentChange)="newComment = $event"
+></app-team-vulnerability-details>
 
-            <!-- Tabs Section -->
-            <c-row>
-                <c-col xs="12">
-                    <c-tabs [activeItemKey]="0" *ngIf="singleVuln">
-                        <c-tabs-list variant="underline-border">
-                            <button cTab [itemKey]="0">Description</button>
-                            <button cTab [itemKey]="1">Recommendation</button>
-                            <button cTab [itemKey]="2">Explanation</button>
-                            .
-                            <button cTab [itemKey]="3">References</button>
-                            <button cTab [itemKey]="4">
-                                Comments
-                                <c-badge *ngIf="singleVuln?.comments?.length" color="info" class="ms-1">
-                                    {{ singleVuln.comments.length }}
-                                </c-badge>
-                            </button>
-                        </c-tabs-list>
-                        <c-tabs-content>
-                            <c-tab-panel class="p-3" [itemKey]="0" *ngIf="singleVuln">
-                                <markdown
-                                        [data]="singleVuln.description || 'No description available at this moment'"></markdown>
-                            </c-tab-panel>
-                            <c-tab-panel class="p-3" [itemKey]="1" *ngIf="singleVuln">
-                                <markdown
-                                        [data]="singleVuln.recommendation || 'No recommendation available at this moment'"></markdown>
-                            </c-tab-panel>
-                            <c-tab-panel class="p-3" [itemKey]="2" *ngIf="singleVuln">
-                                <markdown
-                                        [data]="singleVuln.explanation || 'No explanation available at this moment'"></markdown>
-                            </c-tab-panel>
-                            <c-tab-panel class="p-3" [itemKey]="3" *ngIf="singleVuln">
-                                <markdown
-                                        [data]="singleVuln.refs || 'No references available at this moment'"></markdown>
-                            </c-tab-panel>
-                            <!--Comments Tab-->
-                            <c-tab-panel class="p-3" [itemKey]="4" *ngIf="singleVuln">
-                                <!-- No comments message -->
-                                <div *ngIf="!singleVuln?.comments?.length" class="text-center text-muted my-4">
-                                    No comments yet. Be the first to comment!
-                                </div>
-
-                                <!-- Comments list -->
-                                <div class="comments-container">
-                                    <div *ngFor="let comment of singleVuln?.comments" class="comment-item mb-3">
-                                        <div class="d-flex">
-                                            <div class="comment-avatar">
-                                                <div class="rounded-circle bg-light d-flex align-items-center justify-content-center"
-                                                     style="width: 40px; height: 40px;">
-                                                    {{ comment.author.charAt(0).toUpperCase() }}
-                                                </div>
-                                            </div>
-                                            <div class="ms-3 flex-grow-1">
-                                                <div class="d-flex justify-content-between align-items-center">
-                                                    <strong>{{ comment.author }}</strong>
-                                                    <small class="text-muted">{{ comment.inserted | date:'medium' }}</small>
-                                                </div>
-                                                <div class="comment-content mt-1 p-2 bg-light rounded">
-                                                    {{ comment.message }}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                Comment input
-                                <div class="mt-3">
-                                    <form (ngSubmit)="addComment()" class="d-flex">
-                                        <input
-                                                type="text"
-                                                class="form-control me-2"
-                                                [(ngModel)]="newComment"
-                                                name="newComment"
-                                                placeholder="Type your comment..."
-                                                [disabled]="isAddingComment"
-                                                required>
-                                        <button
-                                                cButton
-                                                color="primary"
-                                                type="submit"
-                                                [disabled]="!newComment.trim() || isAddingComment">
-                                            <c-spinner *ngIf="isAddingComment" size="sm" class="me-1"></c-spinner>
-                                            Send
-                                        </button>
-                                    </form>
-                                </div>
-                            </c-tab-panel>
-
-                        </c-tabs-content>
-                    </c-tabs>
-                </c-col>
-            </c-row>
-        </div>
-    </c-modal-body>
-
-    <!-- Action Buttons Section -->
-    <c-modal-footer *ngIf="singleVuln?.vulnsResponseDto?.source !== 'CLOUD_SCANNER'">
-        <div  class="w-100 d-flex justify-content-between align-items-center">
-            <div>
-                <form *ngIf="singleVuln?.vulnsResponseDto?.status != 'SUPRESSED'" class="d-flex align-items-center" (ngSubmit)="suppressFinding()">
-                    <label for="suppressReason" class="me-2">Suppress finding: </label>
-                    <select id="suppressReason" class="form-select me-2" [(ngModel)]="suppressReason" name="suppressReason" required>
-                        <option *ngFor="let reason of suppressReasons" [value]="reason">{{ reason }}</option>
-                    </select>
-                    <button type="submit" cButton color="warning">Suppress</button>
-                </form>
-                <button (click)="reactivateFinding()" *ngIf="singleVuln?.vulnsResponseDto?.status == 'SUPRESSED'" cButton color="primary">
-                    Re-Activate Finding
-                </button>
-            </div>
-            <button (click)="closeModal()" cButton color="secondary">Close</button>
-        </div>
-    </c-modal-footer>
-</c-modal>
+<!-- Toast Notifications -->
 <c-toaster [placement]="position" class="p-3" position="fixed">
     <c-toast
             [color]="toastStatus"
@@ -965,6 +156,8 @@
         </c-toast-body>
     </c-toast>
 </c-toaster>
+
+<!-- Change Team Modal -->
 <c-modal size="lg"
          id="changeTeamModal"
          alignment="center"
