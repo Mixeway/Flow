@@ -134,7 +134,7 @@ public class CreateFindingService {
         return cloudScannerReport.getData().getVulnerabilityFindings().getNodes().stream()
                 .map(node -> {
                     Vulnerability vulnerability = getOrCreateVulnerabilityService.getOrCreate(
-                            node.getDetailedName(),
+                            node.getName(),
                             node.getCveDescription(),
                             null,
                             node.getRemediation(),
@@ -153,7 +153,7 @@ public class CreateFindingService {
                                     ", Vulnerability in: " + node.getDetailedName() +
                                     ", Version: " + node.getVersion() +
                                     ", Fixed Version: " + node.getFixedVersion(),
-                            node.getVulnerableAsset().getName(),
+                            node.getVulnerableAsset().getName() + ":" + node.getDetailedName(),
                             mapSeverity(node.getSeverity()),
                             Finding.Source.CLOUD_SCANNER
                     );
