@@ -6,18 +6,17 @@ import {
   CardComponent,
   CardHeaderComponent,
   ColComponent,
-  FormCheckComponent,
   FormCheckInputDirective,
   FormCheckLabelDirective,
-  FormSelectDirective,
   InputGroupComponent,
   InputGroupTextDirective,
   RowComponent,
-  SpinnerComponent
+  SpinnerComponent,
+  TooltipDirective
 } from '@coreui/angular';
 import { IconDirective } from '@coreui/icons-angular';
 import { NgxDatatableModule } from '@swimlane/ngx-datatable';
-import { DatePipe, NgFor, NgIf } from '@angular/common';
+import { DatePipe, NgFor, NgIf, NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 interface Vulnerability {
@@ -41,10 +40,8 @@ interface Vulnerability {
     CardBodyComponent,
     RowComponent,
     ColComponent,
-    FormSelectDirective,
     InputGroupComponent,
     InputGroupTextDirective,
-    FormCheckComponent,
     FormCheckInputDirective,
     FormCheckLabelDirective,
     ButtonDirective,
@@ -55,7 +52,9 @@ interface Vulnerability {
     DatePipe,
     NgIf,
     NgFor,
-    FormsModule
+    NgClass,
+    FormsModule,
+    TooltipDirective
   ],
   templateUrl: './team-vulnerabilities-table.component.html',
   styleUrls: ['./team-vulnerabilities-table.component.scss']

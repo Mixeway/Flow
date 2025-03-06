@@ -1,0 +1,190 @@
+.statistics-card {
+  height: 100%;
+  transition: box-shadow 0.2s ease;
+
+  &:hover {
+    box-shadow: var(--cui-shadow);
+  }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .title {
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .refresh-button {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background-color: var(--cui-card-cap-bg);
+        transform: rotate(30deg);
+      }
+
+      &.refreshing {
+        animation: spin 1s linear infinite;
+      }
+
+      svg {
+        width: 18px;
+        height: 18px;
+      }
+    }
+  }
+
+  .chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+  }
+
+  .stats-container {
+    padding: 1rem 0;
+  }
+
+  .stat-widget {
+    background-color: var(--cui-card-bg);
+    border-radius: var(--cui-border-radius);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    transition: transform 0.2s ease;
+    border: 1px solid var(--cui-border-color);
+
+    &:hover {
+      transform: translateY(-3px);
+    }
+
+    .stat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+
+      .stat-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+
+        svg {
+          width: 24px;
+          height: 24px;
+          color: white;
+        }
+      }
+
+      .stat-title {
+        font-size: 0.85rem;
+        color: var(--cui-body-color);
+        opacity: 0.8;
+        margin: 0;
+        font-weight: 500;
+      }
+    }
+
+    .stat-value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+
+    .stat-progress {
+      height: 6px;
+      background-color: rgba(0, 0, 0, 0.05);
+      border-radius: 1rem;
+      overflow: hidden;
+
+      .progress-bar {
+        height: 100%;
+        border-radius: 1rem;
+      }
+    }
+
+    &.info {
+      .stat-icon {
+        background-color: var(--cui-info);
+      }
+
+      .stat-value {
+        color: var(--cui-info);
+      }
+
+      .progress-bar {
+        background-color: var(--cui-info);
+      }
+    }
+
+    &.success {
+      .stat-icon {
+        background-color: var(--cui-success);
+      }
+
+      .stat-value {
+        color: var(--cui-success);
+      }
+
+      .progress-bar {
+        background-color: var(--cui-success);
+      }
+    }
+
+    &.warning {
+      .stat-icon {
+        background-color: var(--cui-warning);
+      }
+
+      .stat-value {
+        color: var(--cui-warning);
+      }
+
+      .progress-bar {
+        background-color: var(--cui-warning);
+      }
+    }
+
+    &.danger {
+      .stat-icon {
+        background-color: var(--cui-danger);
+      }
+
+      .stat-value {
+        color: var(--cui-danger);
+      }
+
+      .progress-bar {
+        background-color: var(--cui-danger);
+      }
+    }
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 992px) {
+  .statistics-card {
+    margin-bottom: 1.5rem;
+  }
+
+  .chart-card, .stats-card {
+    height: auto !important;
+  }
+}

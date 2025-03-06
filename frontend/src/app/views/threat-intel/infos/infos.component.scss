@@ -1,3 +1,164 @@
-.flex-grow-1 {
-  flex-grow: 1;
+.statistics-dashboard {
+  height: 100%;
+
+  .stats-row {
+    height: 100%;
+  }
+
+  .stat-card {
+    height: 100%;
+    border-radius: var(--cui-border-radius);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+
+    &:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--cui-shadow);
+    }
+
+    .stat-icon {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      svg {
+        color: white;
+      }
+    }
+
+    .stat-content {
+      padding: 1.5rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      z-index: 1;
+    }
+
+    .stat-title {
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+      color: var(--cui-body-color);
+      opacity: 0.8;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-change {
+      display: flex;
+      align-items: center;
+      font-size: 0.875rem;
+
+      svg {
+        margin-right: 0.25rem;
+      }
+
+      &.positive {
+        color: var(--cui-success);
+      }
+
+      &.negative {
+        color: var(--cui-danger);
+      }
+    }
+
+    // Background decoration
+    .bg-decoration {
+      position: absolute;
+      bottom: -15px;
+      right: -15px;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      opacity: 0.1;
+    }
+
+    // Colors for different card types
+    &.primary {
+      background-color: var(--cui-primary-rgb, 51, 102, 255);
+      color: white;
+
+      .stat-title {
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      .stat-icon, .bg-decoration {
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+    }
+
+    &.warning {
+      background-color: var(--cui-warning-rgb, 255, 193, 7);
+      color: white;
+
+      .stat-title {
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      .stat-icon, .bg-decoration {
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+    }
+
+    &.success {
+      background-color: var(--cui-success-rgb, 40, 167, 69);
+      color: white;
+
+      .stat-title {
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      .stat-icon, .bg-decoration {
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+    }
+
+    &.danger {
+      background-color: var(--cui-danger-rgb, 220, 53, 69);
+      color: white;
+
+      .stat-title {
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      .stat-icon, .bg-decoration {
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .statistics-dashboard {
+    .stat-card {
+      .stat-content {
+        padding: 1rem;
+      }
+
+      .stat-value {
+        font-size: 1.5rem;
+      }
+
+      .stat-icon {
+        width: 40px;
+        height: 40px;
+      }
+    }
+  }
 }

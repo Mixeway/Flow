@@ -1,106 +1,184 @@
-<c-card class="w-100" style="height: 600px; overflow: auto;">
-    <c-card-header>
-        Threats that require attention (number corresponds to the number of resources affected)
-    </c-card-header>
-    <c-card-body>
+<div class="threats-container">
+    <div class="threats-card">
+        <div class="card-header">
+            <h5 class="header-title">
+                <svg cIcon name="cilShieldAlt"></svg>
+                Security Threats Requiring Attention
+                <small class="ms-2 text-muted">Numbers indicate affected resources</small>
+            </h5>
+        </div>
 
+        <div class="card-body">
+            <!-- Loading state -->
+            <div class="loading-state" *ngIf="!items">
+                <c-spinner color="primary"></c-spinner>
+                <h5 class="mt-3">Loading Threats</h5>
+                <p>Please wait while we analyze your security threats...</p>
+            </div>
 
-        <div cListGroup *ngIf="items">
-            <div
-                    *ngFor="let item of items"
-                    cListGroupItem
-                    class="d-flex justify-content-between align-items-center fs-4"
-            >
-                <div class="d-flex align-items-center">
-                    <!-- Info Button -->
-                    <button
-                            cButton
-                            color="info"
-                            variant="ghost"
-                            size="sm"
-                            class="me-2"
-                            (click)="openModal(item)"
-                    >
-                        <c-icon name="cil-info"></c-icon>
-                    </button>
-                    <!-- Name -->
-                    <div class="fs-4">{{ item.name }}</div>
-                </div>
-                <div class="d-flex align-items-center">
-                    <div class="urgency-label me-2 fs-4">
-        <span *ngIf="item.urgency === 'urgent'" class="text-danger"
-        >🛑 Urgent</span
-        >
-                        <span *ngIf="item.urgency === 'notable'" class="text-warning"
-                        >⚠️ Notable</span
-                        >
+            <!-- Empty state -->
+            <div class="empty-state" *ngIf="items && items.length === 0">
+                <svg cIcon name="cilCheckCircle"></svg>
+                <h5>No Security Threats Found</h5>
+                <p>There are no security threats requiring your attention at this time. Continue monitoring for new potential issues.</p>
+            </div>
+
+            <!-- Threats list -->
+            <ul class="threats-list" *ngIf="items && items.length > 0">
+                <li class="threat-item" *ngFor="let item of items">
+                    <div class="threat-info">
+                        <button cButton class="info-button" color="info" variant="ghost" size="sm" cTooltip="View Details" (click)="openModal(item)">
+                            <svg cIcon name="cilInfo"></svg>
+                        </button>
+                        <h6 class="threat-name">{{ item.name }}</h6>
                     </div>
-                    <c-badge color="secondary" shape="rounded-pill">{{item.count}}</c-badge>
 
+                    <div class="threat-meta">
+                        <div class="urgency-badge" [ngClass]="item.urgency">
+                            <svg cIcon name="cilWarning" *ngIf="item.urgency === 'urgent'"></svg>
+                            <svg cIcon name="cilBell" *ngIf="item.urgency === 'notable'"></svg>
+                            {{ item.urgency === 'urgent' ? 'Urgent' : 'Notable' }}
+                        </div>
+
+                        <c-badge class="count-badge" color="primary" shape="rounded-pill">
+                            {{ item.count }}
+                        </c-badge>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Threat Details Modal -->
+<c-modal
+        class="threat-details-modal"
+        [(visible)]="modalVisible"
+        [backdrop]="true"
+        size="lg"
+        alignment="center">
+
+    <!-- Header -->
+    <c-modal-header>
+        <h5 cModalTitle class="modal-title">
+            <svg cIcon name="cilBug" class="me-2"></svg>
+            {{ selectedItem?.name }}
+        </h5>
+    </c-modal-header>
+
+    <!-- Body -->
+    <c-modal-body>
+        <!-- Threat Description -->
+        <div class="threat-description">
+            <p>{{ getThreatDescription(selectedItem?.name) }}</p>
+        </div>
+
+        <!-- Risk Factors Section -->
+        <div class="risk-factors-section">
+            <h6 class="section-title">
+                <svg cIcon name="cilWarning" class="me-1"></svg>
+                Risk Factors
+            </h6>
+            <div class="risk-factors-grid">
+                <!-- EPSS Score -->
+                <div class="risk-factor">
+                    <div class="factor-header">
+                        <div class="factor-icon">
+                            <svg cIcon name="cilSpeedometer" [ngClass]="{'text-danger': selectedItem && selectedItem.epss > 0.5, 'text-success': !selectedItem || !selectedItem.epss || selectedItem.epss <= 0.5}"></svg>
+                        </div>
+                        <div class="factor-name">EPSS Score</div>
+                    </div>
+                    <div class="factor-status">
+                        <span class="badge" [ngClass]="{'bg-danger': selectedItem && selectedItem.epss > 0.5, 'bg-success': !selectedItem || !selectedItem.epss || selectedItem.epss <= 0.5}">
+                            {{ selectedItem && selectedItem.epss > 0.5 ? 'High Risk' : 'Low Risk' }}
+                        </span>
+                    </div>
+                    <div class="factor-info">Exploit Prediction Scoring System indicates this vulnerability is more likely to be exploited in the wild.</div>
+                </div>
+
+                <!-- PII Exposure Risk -->
+                <div class="risk-factor">
+                    <div class="factor-header">
+                        <div class="factor-icon">
+                            <svg cIcon name="cilUser" [ngClass]="{'text-danger': selectedItem && selectedItem.pii, 'text-success': !selectedItem || !selectedItem.pii}"></svg>
+                        </div>
+                        <div class="factor-name">PII Exposure Risk</div>
+                    </div>
+                    <div class="factor-status">
+                        <span class="badge" [ngClass]="{'bg-danger': selectedItem && selectedItem.pii, 'bg-success': !selectedItem || !selectedItem.pii}">
+                            {{ selectedItem && selectedItem.pii ? 'Risk Present' : 'No Risk' }}
+                        </span>
+                    </div>
+                    <div class="factor-info">This vulnerability could potentially expose personally identifiable information.</div>
+                </div>
+
+                <!-- Exploit Available -->
+                <div class="risk-factor">
+                    <div class="factor-header">
+                        <div class="factor-icon">
+                            <svg cIcon name="cilCode" [ngClass]="{'text-danger': selectedItem && selectedItem.exploitAvailable, 'text-success': !selectedItem || !selectedItem.exploitAvailable}"></svg>
+                        </div>
+                        <div class="factor-name">Exploit Available</div>
+                    </div>
+                    <div class="factor-status">
+                        <span class="badge" [ngClass]="{'bg-danger': selectedItem && selectedItem.exploitAvailable, 'bg-success': !selectedItem || !selectedItem.exploitAvailable}">
+                            {{ selectedItem && selectedItem.exploitAvailable ? 'Exploit Available' : 'No Exploit' }}
+                        </span>
+                    </div>
+                    <div class="factor-info">A public exploit for this vulnerability is available in the wild.</div>
                 </div>
             </div>
         </div>
 
-        <div *ngIf="!items" class="d-flex justify-content-center align-items-center h-100">
-            <c-spinner color="primary" />
-
+        <!-- Affected Resources Section -->
+        <div class="affected-resources">
+            <h6 class="section-title">
+                <svg cIcon name="cilApps" class="me-1"></svg>
+                Affected Resources <span class="badge bg-primary ms-2">{{ selectedItem?.projects?.length || 0 }}</span>
+            </h6>
+            <div class="resources-list" style="max-height: 200px; overflow-y: auto;">
+                <div class="resource-item" *ngFor="let project of selectedItem?.projects">
+                    <div class="resource-name">
+                        <svg cIcon name="cilFolder" class="me-2"></svg>
+                        {{ project.name }}
+                    </div>
+                    <div class="resource-link">
+                        <a [href]="project.href" target="_blank">
+                            <button cButton color="primary" size="sm">
+                                <svg cIcon name="cilExternalLink" size="sm" class="me-1"></svg>
+                                View Resource
+                            </button>
+                        </a>
+                    </div>
+                </div>
+                <div class="no-resources text-center" *ngIf="hasNoProjects()">
+                    <svg cIcon name="cilBan" size="lg" class="mb-2"></svg>
+                    <p>No affected resources found.</p>
+                </div>
+            </div>
         </div>
-        <c-alert color="success" class="d-flex align-items-center" *ngIf="items && items.length == 0">
-            <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Info:">
-                <use xlink:href="#info-fill" />
-            </svg>
-            <div>There are no removed vulnerabilities at this moment to display.</div>
-        </c-alert>
 
-
-
-    </c-card-body>
-</c-card>
-
-<!-- ... existing list code ... -->
-
-<!-- Modal -->
-<!-- Modal -->
-<c-modal
-        [(visible)]="modalVisible"
-        [backdrop]="true"
-        size="lg"
-        alignment="center"
->
-<c-modal-header>
-    <h5 class="modal-title">Details for {{ selectedItem?.name }}</h5>
-    <button type="button" class="btn-close" aria-label="Close" (click)="closeModal()"></button>
-</c-modal-header>
-
-<c-modal-body>
-    <!-- First Section: Row with 3 Columns -->
-    <div class="row text-center mb-3">
-        <div class="col">
-            EPSS > 0.5 <br/>{{ getEpssStatus() }}
+        <!-- Recommended Actions -->
+        <div class="recommended-actions">
+            <h6 class="section-title">
+                <svg cIcon name="cilTask" class="me-1"></svg>
+                Recommended Actions
+            </h6>
+            <ul class="action-list">
+                <li>Review and rotate any exposed API keys</li>
+                <li>Implement proper key management policies</li>
+                <li>Use environment variables for sensitive credentials</li>
+                <li>Implement proper access controls</li>
+            </ul>
         </div>
-        <div class="col">
-            PII in the project <br/>{{ getPiiStatus() }}
-        </div>
-        <div class="col">
-            Exploit available <br/>{{ getExploitStatus() }}
-        </div>
-    </div>
-    <!-- Second Section: List of Links with Buttons -->
-    <br/><br/>
-    <h5><u>Affected resources:</u></h5>
-    <div class="list-group project-list">
-        <div
-                *ngFor="let project of selectedItem?.projects"
-                class="list-group-item d-flex justify-content-between align-items-center"
-        >
-            <span>{{ project.name }}</span>
-            <a [href]="project.href" target="_blank">
-                <button cButton color="primary" size="sm">Go</button>
-            </a>
-        </div>
-    </div>
-</c-modal-body>
-<c-modal-footer>
-    <button cButton color="secondary" (click)="closeModal()">Close</button>
-</c-modal-footer>
+    </c-modal-body>
+
+    <!-- Footer -->
+    <c-modal-footer>
+        <button cButton color="primary" (click)="acknowledgeIssue()" *ngIf="selectedItem">
+            <svg cIcon name="cilCheckAlt" size="sm" class="me-1"></svg>
+            Acknowledge
+        </button>
+        <button cButton color="secondary" (click)="closeModal()">Close</button>
+    </c-modal-footer>
 </c-modal>

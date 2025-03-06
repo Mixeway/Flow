@@ -34,7 +34,7 @@ import {ThreatIntelService} from "../../service/ThreatIntelService";
 })
 export class ThreatIntelComponent implements OnInit{
     findings: any;
-    teams: number | undefined;
+    teams: number = 0;
     allProjects: number = 0;
     affectedProjects: number = 0 ;
     openedVulns: number = 0 ;

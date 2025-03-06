@@ -1,4 +1,136 @@
-/* Styles that are specific to the container component only */
-c-card {
-  margin-bottom: 10px;
+.dashboard-container {
+  padding: 1rem;
+
+  .dashboard-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .dashboard-content {
+    margin-bottom: 1.5rem;
+  }
+
+  .tab-container {
+    background-color: var(--cui-card-bg);
+    border-radius: var(--cui-border-radius);
+    box-shadow: var(--cui-shadow-sm);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+
+    .nav-tabs {
+      background-color: var(--cui-card-cap-bg);
+      border-bottom: 1px solid var(--cui-border-color);
+
+      .nav-link {
+        border: none;
+        font-weight: 500;
+        color: var(--cui-body-color);
+        padding: 1rem 1.25rem;
+        display: flex;
+        align-items: center;
+        transition: all 0.2s ease;
+
+        svg {
+          margin-right: 0.5rem;
+          color: var(--cui-secondary);
+          transition: color 0.2s ease;
+        }
+
+        &:hover {
+          background-color: rgba(var(--cui-primary-rgb), 0.05);
+          color: var(--cui-primary);
+
+          svg {
+            color: var(--cui-primary);
+          }
+        }
+
+        &.active {
+          color: var(--cui-primary);
+          background-color: var(--cui-card-bg);
+          border-bottom: 2px solid var(--cui-primary);
+
+          svg {
+            color: var(--cui-primary);
+          }
+        }
+      }
+    }
+
+    .tab-content {
+      padding: 1.5rem;
+      background-color: var(--cui-card-bg);
+
+      &.tab-content-full {
+        padding: 0;
+      }
+    }
+  }
+
+  .notification-message {
+    display: flex;
+    align-items: center;
+    padding: 1.5rem;
+    background-color: rgba(var(--cui-info-rgb), 0.05);
+    border-left: 4px solid var(--cui-info);
+    border-radius: var(--cui-border-radius);
+
+    svg {
+      color: var(--cui-info);
+      margin-right: 1rem;
+      flex-shrink: 0;
+    }
+
+    .message-content {
+      font-size: 0.95rem;
+
+      h5 {
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+      }
+
+      p {
+        margin-bottom: 0;
+        color: var(--cui-body-color);
+        opacity: 0.85;
+      }
+    }
+  }
+
+  .modal-container {
+    .modal-body {
+      padding: 1.5rem;
+    }
+
+    .form-label {
+      font-weight: 500;
+    }
+  }
+
+  .toast-container {
+    z-index: 1100;
+  }
+}
+
+// Responsive styles
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 0.5rem;
+
+    .tab-container {
+      .nav-tabs {
+        .nav-link {
+          padding: 0.75rem 1rem;
+          font-size: 0.875rem;
+
+          svg {
+            margin-right: 0.25rem;
+          }
+        }
+      }
+
+      .tab-content {
+        padding: 1rem;
+      }
+    }
+  }
 }

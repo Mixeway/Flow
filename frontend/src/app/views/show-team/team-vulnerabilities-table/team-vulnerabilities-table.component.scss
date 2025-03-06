@@ -1,55 +1,292 @@
-.dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  display: inline-block;
-}
+.vulnerability-table {
+  width: 100%;
 
-.critical {
-  background-color: red;
-}
-
-.high {
-  background-color: #f33d3d;
-}
-
-.medium {
-  background-color: #e38334;
-}
-
-.low {
-  background-color: #47a3d3;
-}
-
-.critical-t {
-  color: red;
-}
-
-.high-t {
-  color: #f33d3d;
-}
-
-.medium-t {
-  color: #e38334;
-}
-
-.low-t {
-  color: #47a3d3;
-}
-
-.location-cell {
-  white-space: normal;
-  word-break: break-word;
-  max-width: 100%;
-}
-
-:host ::ng-deep {
-  .ngx-datatable .datatable-body-cell {
+  .table-actions {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+
+    .form-switch {
+      min-height: auto;
+      margin-bottom: 0;
+    }
+
+    .ms-auto {
+      margin-left: auto;
+    }
+
+    @media (max-width: 768px) {
+      .ms-auto {
+        margin-left: 0;
+        margin-top: 0.5rem;
+        width: 100%;
+      }
+    }
   }
 
-  .ngx-datatable .datatable-body-cell-label {
-    flex: 1;
+  .action-btn {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--cui-border-radius);
+
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    &:hover {
+      transform: translateY(-2px);
+    }
+  }
+}
+
+// Severity indicators
+.severity-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  &.critical {
+    color: var(--cui-danger);
+
+    .dot, .pulse {
+      background-color: var(--cui-danger);
+    }
+  }
+
+  &.high {
+    color: #f33d3d;
+
+    .dot {
+      background-color: #f33d3d;
+    }
+  }
+
+  &.medium {
+    color: #e38334;
+
+    .dot {
+      background-color: #e38334;
+    }
+  }
+
+  &.low {
+    color: #47a3d3;
+
+    .dot {
+      background-color: #47a3d3;
+    }
+  }
+
+  .pulse {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    animation: pulse-animation 1.5s infinite;
+  }
+
+  @keyframes pulse-animation {
+    0% {
+      box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+    }
+    70% {
+      box-shadow: 0 0 0 6px rgba(220, 53, 69, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+    }
+  }
+}
+
+// Vulnerability content
+.vuln-content {
+  .vuln-name {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    word-break: break-word;
+  }
+
+  .vuln-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      &.new {
+        color: var(--cui-primary);
+      }
+
+      &.existing {
+        color: var(--cui-warning);
+      }
+
+      &.removed {
+        color: var(--cui-danger);
+      }
+
+      &.suppressed {
+        color: var(--cui-secondary);
+      }
+    }
+
+    .date {
+      color: var(--cui-body-color);
+      opacity: 0.8;
+    }
+  }
+}
+
+// Source badge
+.source-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+
+  svg {
+    margin-right: 4px;
+    width: 14px;
+    height: 14px;
+  }
+}
+
+// Location
+.location-display {
+  font-size: 0.85rem;
+  word-break: break-all;
+  max-width: 100%;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// Custom styles for ngx-datatable
+:host ::ng-deep {
+  .ngx-datatable {
+    box-shadow: none !important;
+    border: 1px solid var(--cui-border-color);
+    border-radius: var(--cui-border-radius);
+
+    .datatable-header {
+      background-color: var(--cui-card-cap-bg);
+      border-bottom: 1px solid var(--cui-border-color);
+
+      .datatable-header-cell {
+        font-weight: 600;
+        padding: 0.75rem;
+        vertical-align: middle;
+      }
+    }
+
+    .datatable-body {
+      .datatable-body-row {
+        border-top: none;
+        border-bottom: 1px solid var(--cui-border-color);
+
+        &:hover {
+          background-color: var(--cui-body-bg);
+        }
+      }
+
+      .datatable-body-cell {
+        padding: 0.75rem;
+      }
+    }
+
+    .datatable-footer {
+      background-color: var(--cui-card-cap-bg);
+      border-top: 1px solid var(--cui-border-color);
+
+      .datatable-pager {
+        li {
+          margin: 0 0.2rem;
+
+          a {
+            border-radius: var(--cui-border-radius);
+
+            &:hover {
+              background-color: var(--cui-primary-rgb);
+              color: white;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Filter inputs customization
+  .filter-input {
+    height: 38px;
+    width: 100%;
+  }
+
+  .filter-select {
+    height: 38px;
+    width: 100%;
+  }
+}
+
+// Checkbox customization
+.custom-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+
+  input[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// Empty state
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+
+  svg {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 1rem;
+    color: var(--cui-secondary);
+  }
+
+  h5 {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+
+  p {
+    color: var(--cui-body-color);
+    opacity: 0.8;
+    max-width: 400px;
+    margin: 0 auto;
   }
 }

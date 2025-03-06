@@ -1,44 +1,48 @@
-<!-- Team Info Component -->
-<app-team-info
-        [teamData]="teamData"
-        [reposData]="reposData"
-        [cloudSubscriptionsData]="cloudSubscriptionsData"
-        [chartPieData]="chartPieData"
-></app-team-info>
+<div class="dashboard-container">
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <app-team-info
+                [teamData]="teamData"
+                [reposData]="reposData"
+                [cloudSubscriptionsData]="cloudSubscriptionsData"
+                [chartPieData]="chartPieData">
+        </app-team-info>
+    </div>
 
-<!-- Team Vulnerability Summary Component -->
-<app-team-vulnerability-summary
-        [counts]="counts"
-></app-team-vulnerability-summary>
+    <!-- Vulnerability Summary -->
+    <div class="dashboard-content">
+        <app-team-vulnerability-summary [counts]="counts"></app-team-vulnerability-summary>
+    </div>
 
-<c-row class="d-flex justify-content-center align-items-stretch">
-    <c-col xs="11">
+    <!-- Main Tabs Container -->
+    <div class="tab-container">
         <c-tabs [activeItemKey]="0">
-            <c-tabs-list variant="underline-border" class="d-flex justify-content-center w-100">
-                <button cTab [itemKey]="0" class="flex-fill">
-                    <svg cIcon name="cil-bug" class="me-2"></svg>
+            <c-tabs-list variant="underline-border" class="nav-tabs">
+                <button cTab [itemKey]="0" class="nav-link">
+                    <svg cIcon name="cilBug"></svg>
                     Vulnerabilities
                 </button>
-                <button cTab [itemKey]="1" class="flex-fill">
-                    <svg cIcon name="cil-chart-line" class="me-2"></svg>
-                    Statistics and Trends
+                <button cTab [itemKey]="1" class="nav-link">
+                    <svg cIcon name="cilChartPie"></svg>
+                    Statistics & Trends
                 </button>
-                <button cTab [itemKey]="2" class="flex-fill">
-                    <svg cIcon name="cil-magnifying-glass" class="me-2"></svg>
-                    Scan Info
+                <button cTab [itemKey]="2" class="nav-link">
+                    <svg cIcon name="cilMagnifyingGlass"></svg>
+                    Scan Information
                 </button>
-                <button cTab [itemKey]="3" class="flex-fill">
-                    <svg cIcon name="cil-burn" class="me-2"></svg>
+                <button cTab [itemKey]="3" class="nav-link">
+                    <svg cIcon name="cilBell"></svg>
                     Notifications
                 </button>
-                <button cTab [itemKey]="4" class="flex-fill">
-                    <svg cIcon name="cil-info" class="me-2"></svg>
-                    Additional Infos
+                <button cTab [itemKey]="4" class="nav-link">
+                    <svg cIcon name="cilInfo"></svg>
+                    Additional Info
                 </button>
             </c-tabs-list>
-            <c-tabs-content>
+
+            <c-tabs-content class="tab-content">
                 <!-- Vulnerabilities Tab -->
-                <c-tab-panel class="p-3" [itemKey]="0">
+                <c-tab-panel [itemKey]="0">
                     <app-team-vulnerabilities-table
                             [filteredVulns]="filteredVulns"
                             [showRemoved]="showRemoved"
@@ -59,11 +63,12 @@
                             (onSelectFindingEvent)="onSelectFinding($event.id, $event.event)"
                             (suppressSelectedFindingsEvent)="suppressSelectedFindings()"
                             (vulnerabilitiesLimitChange)="vulnerabilitiesLimit = $event"
-                            (viewVulnerabilityDetailsEvent)="click($event)"
-                    ></app-team-vulnerabilities-table>
+                            (viewVulnerabilityDetailsEvent)="click($event)">
+                    </app-team-vulnerabilities-table>
                 </c-tab-panel>
+
                 <!-- Statistics and Trends Tab -->
-                <c-tab-panel class="p-3" [itemKey]="1">
+                <c-tab-panel [itemKey]="1">
                     <app-team-statistics-chart
                             [chartLineData]="chartLineData"
                             [options2]="options2"
@@ -71,113 +76,108 @@
                             [removedFindings]="getLastRemovedFinding() == 0 ? 'None' : getLastRemovedFinding()"
                             [reviewedFindings]="getLastRevievedFinding() == 0 ? 'None' : getLastRevievedFinding()"
                             [fixTime]="getLastFixTime() == 0 ? 'Unknown' : getLastFixTime()"
-                            (refreshDataEvent)="refreshData()"
-                    ></app-team-statistics-chart>
+                            (refreshDataEvent)="refreshData()">
+                    </app-team-statistics-chart>
                 </c-tab-panel>
+
                 <!-- Scan Info Tab -->
-                <c-tab-panel class="p-3" [itemKey]="2">
+                <c-tab-panel [itemKey]="2">
                     <app-team-scan-info
                             [scanInfoLoading]="scanInfoLoading"
                             [cloudScanInfos]="cloudScanInfos"
-                            [scanInfoLimit]="scanInfoLimit"
-                    ></app-team-scan-info>
+                            [scanInfoLimit]="scanInfoLimit">
+                    </app-team-scan-info>
                 </c-tab-panel>
+
                 <!-- Notifications Tab -->
-                <c-tab-panel class="p-3" [itemKey]="3">
-                    <c-alert color="primary" class="d-flex align-items-center">
-                        <svg
-                                class="bi flex-shrink-0 me-2"
-                                width="24"
-                                height="24"
-                                role="img"
-                                aria-label="Info:"
-                        >
-                            <use xlink:href="#info-fill"/>
-                        </svg>
-                        <div>
-                            This part will be developed in next releases. In this section You will discover
-                            information about notification
+                <c-tab-panel [itemKey]="3">
+                    <div class="notification-message">
+                        <svg cIcon name="cilInfo" width="24" height="24"></svg>
+                        <div class="message-content">
+                            <h5>Coming Soon</h5>
+                            <p>This section will provide notification management for vulnerability alerts. You'll be able to configure notification preferences and view alert history.</p>
                         </div>
-                    </c-alert>
+                    </div>
                 </c-tab-panel>
-                <!-- Additional Infos Tab -->
-                <c-tab-panel class="p-3" [itemKey]="4">
-                    <c-alert color="primary" class="d-flex align-items-center">
-                        <svg
-                                class="bi flex-shrink-0 me-2"
-                                width="24"
-                                height="24"
-                                role="img"
-                                aria-label="Info:"
-                        >
-                            <use xlink:href="#info-fill"/>
-                        </svg>
-                        <div>
-                            This part will be developed in next releases. In this section You will discover
-                            information about how to integrate MixewayFlow for this repo into CICD smoothly
+
+                <!-- Additional Info Tab -->
+                <c-tab-panel [itemKey]="4">
+                    <div class="notification-message">
+                        <svg cIcon name="cilInfo" width="24" height="24"></svg>
+                        <div class="message-content">
+                            <h5>Coming Soon</h5>
+                            <p>This section will provide integration guidance for adding MixewayFlow to your CI/CD pipeline, including configuration examples and best practices.</p>
                         </div>
-                    </c-alert>
+                    </div>
                 </c-tab-panel>
             </c-tabs-content>
         </c-tabs>
-    </c-col>
-</c-row>
+    </div>
 
-<!-- Team Vulnerability Details Modal -->
-<app-team-vulnerability-details
-        [detailsModal]="detailsModal"
-        [selectedRowId]="selectedRowId"
-        [singleVuln]="singleVuln"
-        [suppressReason]="suppressReason"
-        [suppressReasons]="suppressReasons"
-        [reposData]="reposData"
-        [isAddingComment]="isAddingComment"
-        [newComment]="newComment"
-        [vulns]="vulns"
-        (handleDetailsModalEvent)="handleDetailsModal($event)"
-        (closeModalEvent)="closeModal()"
-        (suppressFindingEvent)="suppressFinding()"
-        (reactivateFindingEvent)="reactivateFinding()"
-        (addCommentEvent)="addComment()"
-        (newCommentChange)="newComment = $event"
-></app-team-vulnerability-details>
+    <!-- Vulnerability Details Modal -->
+    <app-team-vulnerability-details
+            [detailsModal]="detailsModal"
+            [selectedRowId]="selectedRowId"
+            [singleVuln]="singleVuln"
+            [suppressReason]="suppressReason"
+            [suppressReasons]="suppressReasons"
+            [reposData]="reposData"
+            [isAddingComment]="isAddingComment"
+            [newComment]="newComment"
+            [vulns]="vulns"
+            (handleDetailsModalEvent)="handleDetailsModal($event)"
+            (closeModalEvent)="closeModal()"
+            (suppressFindingEvent)="suppressFinding()"
+            (reactivateFindingEvent)="reactivateFinding()"
+            (addCommentEvent)="addComment()"
+            (newCommentChange)="newComment = $event">
+    </app-team-vulnerability-details>
 
-<!-- Toast Notifications -->
-<c-toaster [placement]="position" class="p-3" position="fixed">
-    <c-toast
-            [color]="toastStatus"
-            (visibleChange)="onVisibleChange($event)"
-            [visible]="visible">
-        <c-toast-header>
-            Finding management
-        </c-toast-header>
-        <c-toast-body>
-            <p>{{ toastMessage }}</p>
-        </c-toast-body>
-    </c-toast>
-</c-toaster>
+    <!-- Toast Notifications -->
+    <c-toaster [placement]="position" class="p-3 toast-container" position="fixed">
+        <c-toast
+                [color]="toastStatus"
+                (visibleChange)="onVisibleChange($event)"
+                [visible]="visible">
+            <c-toast-header>
+                <svg cIcon name="cilBell" class="me-2"></svg>
+                <span>Security Alert</span>
+            </c-toast-header>
+            <c-toast-body>{{ toastMessage }}</c-toast-body>
+        </c-toast>
+    </c-toaster>
 
-<!-- Change Team Modal -->
-<c-modal size="lg"
-         id="changeTeamModal"
-         alignment="center"
-         [visible]="changeTeamModalVisible"
-         (visibleChange)="changeTeamModalVisible = $event">
-    <c-modal-header>
-        <h5 cModalTitle>Change Team</h5>
-    </c-modal-header>
-    <c-modal-body>
-        <div class="mb-3">
-            <label cLabel for="newTeamSelect">Select New Team</label>
-            <select id="newTeamSelect"
-                    class="form-select"
-                    [(ngModel)]="selectedNewTeamId">
-                <option [ngValue]="null">Choose a team...</option>
-                <option *ngFor="let team of availableTeams"
-                        [ngValue]="team.id">
-                    {{ team.name }}
-                </option>
-            </select>
-        </div>
-    </c-modal-body>
-</c-modal>
+    <!-- Change Team Modal -->
+    <c-modal
+            id="changeTeamModal"
+            alignment="center"
+            [visible]="changeTeamModalVisible"
+            (visibleChange)="changeTeamModalVisible = $event"
+            class="modal-container">
+        <c-modal-header>
+            <h5 cModalTitle>Change Team Assignment</h5>
+        </c-modal-header>
+        <c-modal-body class="modal-body">
+            <div class="mb-3">
+                <label cLabel for="newTeamSelect" class="form-label">Select New Team</label>
+                <select id="newTeamSelect"
+                        class="form-select"
+                        [(ngModel)]="selectedNewTeamId">
+                    <option [ngValue]="null">Choose a team...</option>
+                    <option *ngFor="let team of availableTeams"
+                            [ngValue]="team.id">
+                        {{ team.name }}
+                    </option>
+                </select>
+            </div>
+        </c-modal-body>
+        <c-modal-footer>
+            <button cButton color="secondary" (click)="changeTeamModalVisible = false">
+                Cancel
+            </button>
+            <button cButton color="primary" [disabled]="!selectedNewTeamId">
+                Confirm Change
+            </button>
+        </c-modal-footer>
+    </c-modal>
+</div>

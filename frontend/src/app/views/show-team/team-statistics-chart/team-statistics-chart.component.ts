@@ -1,16 +1,14 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import {
   CardBodyComponent,
   CardComponent,
   CardHeaderComponent,
   ColComponent,
-  ProgressComponent,
   RowComponent,
-  TemplateIdDirective,
-  WidgetStatCComponent
+  TooltipDirective
 } from '@coreui/angular';
 import { ChartjsComponent } from '@coreui/angular-chartjs';
-import {IconComponent, IconDirective} from '@coreui/icons-angular';
+import { IconDirective } from '@coreui/icons-angular';
 import { ChartData, ChartOptions } from 'chart.js';
 
 @Component({
@@ -23,16 +21,13 @@ import { ChartData, ChartOptions } from 'chart.js';
     CardHeaderComponent,
     CardBodyComponent,
     ChartjsComponent,
-    WidgetStatCComponent,
-    TemplateIdDirective,
-    ProgressComponent,
-    IconComponent,
-    IconDirective
+    IconDirective,
+    TooltipDirective
   ],
   templateUrl: './team-statistics-chart.component.html',
   styleUrls: ['./team-statistics-chart.component.scss']
 })
-export class TeamStatisticsChartComponent {
+export class TeamStatisticsChartComponent implements OnInit {
   @Input() chartLineData: ChartData | undefined;
   @Input() options2: ChartOptions<'line'> | undefined;
   @Input() openedFindings: number | string = 0;
@@ -42,7 +37,83 @@ export class TeamStatisticsChartComponent {
 
   @Output() refreshDataEvent = new EventEmitter<void>();
 
+  isRefreshing: boolean = false;
+  chartOptions: ChartOptions<'line'> = {};
+
+  ngOnInit(): void {
+    this.initializeChartOptions();
+  }
+
+  initializeChartOptions(): void {
+    // Use the provided options or set defaults
+    if (this.options2) {
+      this.chartOptions = this.options2;
+    } else {
+      this.chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              usePointStyle: true,
+              padding: 15
+            }
+          },
+          tooltip: {
+            mode: 'index',
+            intersect: false,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            bodyFont: {
+              size: 12
+            },
+            titleFont: {
+              size: 14,
+              weight: 'bold'
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: {
+              display: false
+            }
+          },
+          y: {
+            suggestedMin: 0,
+            ticks: {
+              precision: 0
+            }
+          }
+        },
+        elements: {
+          line: {
+            tension: 0.4, // Smoother curves
+            borderWidth: 2
+          },
+          point: {
+            radius: 3,
+            hoverRadius: 5,
+            borderWidth: 2,
+            backgroundColor: 'white'
+          }
+        },
+        interaction: {
+          mode: 'nearest',
+          axis: 'x',
+          intersect: false
+        }
+      };
+    }
+  }
+
   refreshData(): void {
+    this.isRefreshing = true;
     this.refreshDataEvent.emit();
+
+    // Reset refreshing state after a short delay
+    setTimeout(() => {
+      this.isRefreshing = false;
+    }, 1000);
   }
 }
