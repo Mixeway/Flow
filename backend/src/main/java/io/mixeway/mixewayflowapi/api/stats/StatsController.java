@@ -2,9 +2,11 @@ package io.mixeway.mixewayflowapi.api.stats;
 
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoFindingStats;
+import io.mixeway.mixewayflowapi.db.entity.ScanInfo;
 import io.mixeway.mixewayflowapi.db.entity.Team;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoFindingStatsRepository;
 import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
+import io.mixeway.mixewayflowapi.domain.scaninfo.FindScanInfoService;
 import io.mixeway.mixewayflowapi.utils.PermissionFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -25,6 +27,7 @@ public class StatsController {
     private final CodeRepoFindingStatsRepository codeRepoFindingStatsRepository;
     private final FindCodeRepoService findCodeRepoService;
     private final PermissionFactory permissionFactory;
+    private final FindScanInfoService findScanInfoService;
 
     /**
      * Returns vulnerability trend data over time for repositories the user has access to
@@ -357,5 +360,48 @@ public class StatsController {
     // Helper method to update counts in the aggregation map
     private void updateCount(Map<String, Integer> map, String key, int value) {
         map.put(key, map.getOrDefault(key, 0) + value);
+    }
+
+    /**
+     * Returns aggregated dashboard statistics including team count, scan counts, etc.
+     */
+    @GetMapping("/dashboard-metrics")
+    public ResponseEntity<?> getDashboardMetrics(Principal principal) {
+        // Get all teams the user has access to
+        List<Team> accessibleTeams = permissionFactory.findTeams(principal);
+
+        // Get all code repos for accessible teams
+        List<CodeRepo> accessibleRepos = new ArrayList<>();
+        for (Team team : accessibleTeams) {
+            accessibleRepos.addAll(findCodeRepoService.findByTeam(team));
+        }
+
+        // Calculate monthly date range
+        LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
+
+        // Initialize counters
+        long totalScans = 0;
+        long monthlyScans = 0;
+
+        // For each repo, count total and monthly scans
+        for (CodeRepo repo : accessibleRepos) {
+            // We need to count ScanInfo records for each repo
+            List<ScanInfo> repoScans = findScanInfoService.findScanInfoByRepo(repo);
+            totalScans += repoScans.size();
+
+            // Count scans within the last 30 days
+            long repoMonthlyScans = repoScans.stream()
+                    .filter(scan -> scan.getInsertedDate().isAfter(thirtyDaysAgo))
+                    .count();
+            monthlyScans += repoMonthlyScans;
+        }
+
+        // Build the response
+        Map<String, Object> dashboardMetrics = new HashMap<>();
+        dashboardMetrics.put("teams", accessibleTeams.size());
+        dashboardMetrics.put("totalScans", totalScans);
+        dashboardMetrics.put("monthlyScans", monthlyScans);
+
+        return ResponseEntity.ok(dashboardMetrics);
     }
 }

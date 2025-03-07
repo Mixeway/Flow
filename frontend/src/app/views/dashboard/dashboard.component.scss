@@ -13,6 +13,154 @@
   }
 }
 
+// Security overview card
+.security-overview-card {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.3s ease;
+
+  &:hover {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  }
+
+  .security-summary-card {
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.03);
+    transition: transform 0.2s, box-shadow 0.2s;
+    background-color: var(--cui-card-bg, #fff);
+    border: 1px solid var(--cui-card-border-color, rgba(0, 0, 21, 0.125));
+
+    &:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+  }
+
+  // Summary Icons
+  .summary-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+
+    &.total-icon {
+      background-color: #0d6efd; // Primary blue
+    }
+
+    &.critical-icon {
+      background-color: #dc3545; // Danger red
+    }
+
+    &.fix-time-icon {
+      background-color: #6f42c1; // Purple
+    }
+
+    &.team-icon {
+      background-color: #0d6efd; // Primary blue
+    }
+
+    &.scan-icon {
+      background-color: #198754; // Success green
+    }
+
+    &.monthly-icon {
+      background-color: #0dcaf0; // Info blue
+    }
+
+    &.grade-icon {
+      background-color: #6610f2; // Purple
+    }
+  }
+
+  // Summary Data
+  .summary-data {
+    .summary-title {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--cui-text-muted, #768192);
+    }
+
+    .summary-value {
+      line-height: 1.2;
+      margin: 0.25rem 0;
+      color: var(--cui-body-color, #3c4b64);
+    }
+
+    .summary-trend {
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+
+      .text-success {
+        color: var(--cui-success, #198754) !important;
+      }
+
+      .text-danger {
+        color: var(--cui-danger, #dc3545) !important;
+      }
+
+      .text-muted {
+        color: var(--cui-text-muted, #768192) !important;
+      }
+    }
+  }
+
+  // Chart container
+  .chart-container {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    background-color: var(--cui-card-bg, #fff);
+    border: 1px solid var(--cui-card-border-color, rgba(0, 0, 21, 0.125));
+    border-radius: 8px;
+    margin-bottom: 15px;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    h6 {
+      font-weight: 600;
+      color: var(--cui-body-color, #3c4b64);
+    }
+
+    // Ensure chart is contained
+    canvas {
+      display: block;
+      max-width: 100%;
+      height: auto !important;
+    }
+
+    // Chart header styling
+    .d-flex {
+      padding: 0 6px;
+
+      h6 {
+        font-size: 0.95rem;
+        letter-spacing: 0.2px;
+      }
+
+      .btn-link {
+        transition: all 0.2s ease;
+        font-weight: 500;
+
+        &:hover {
+          transform: translateX(2px);
+        }
+
+        svg {
+          transition: transform 0.2s ease;
+        }
+
+        &:hover svg {
+          transform: translateX(2px);
+        }
+      }
+    }
+  }
+}
+
 // Search box styling
 .dashboard-search-box {
   max-width: 100%;
@@ -232,5 +380,16 @@ c-toast {
 
   c-toast-header {
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  }
+}
+
+// Responsive adjustments for security overview
+@media (max-width: 767.98px) {
+  .security-summary-card {
+    margin-bottom: 1rem;
+  }
+
+  .chart-container {
+    margin-top: 1rem;
   }
 }

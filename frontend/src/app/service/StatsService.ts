@@ -65,4 +65,10 @@ export class StatsService {
     getTeamsSummary(): Observable<any[]> {
         return this.http.get<any[]>(`${this.apiBaseUrl}/teams-summary`);
     }
+    /**
+     * Get dashboard metrics including team count, scan counts, etc.
+     */
+    getDashboardMetrics(): Observable<any> {
+        return this.http.get<any>(`${this.apiBaseUrl}/dashboard-metrics`, { withCredentials: true });
+    }
 }
