@@ -81,6 +81,7 @@ import {TeamVulnerabilitySummaryComponent} from "./team-vulnerability-summary/te
 import {TeamScanInfoComponent} from "./team-scan-info/team-scan-info.component";
 import {TeamStatisticsChartComponent} from "./team-statistics-chart/team-statistics-chart.component";
 import {TeamVulnerabilitiesTableComponent} from "./team-vulnerabilities-table/team-vulnerabilities-table.component";
+import {forkJoin} from "rxjs";
 
 interface Vulnerability {
     id: number;
@@ -254,6 +255,7 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
     scanInfos: any[] = [];
     scanInfosFiltered: any[] = [];
     cloudScanInfos: any[] = [];
+    allScanInfos: any[] = [];
 
     options = {
         maintainAspectRatio: false,
@@ -420,23 +422,22 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
 
     loadCodeReposAndCloudSubscriptionsInfo() {
         this.scanInfoLoading = true;
-        this.repoService.getReposByTeam(+this.teamId).subscribe({
-            next: (response) => {
-                this.reposData = Array.isArray(response) ? response : [];
-                this.scanInfos = response.scanInfos;
 
-                this.checkScanStatus();
-            },
-            error: () => {
-                this.scanInfoLoading = false;
-            }
-        });
-        this.cloudSubscriptionService.getCloudSubscriptionsByTeam(+this.teamId).subscribe({
-            next: (response) => {
-                this.cloudSubscriptionsData = Array.isArray(response) ? response : [];
-                this.cloudScanInfos = response.cloudScanInfos;
-                this.scanInfoLoading = false;
+        const reposObservable = this.repoService.getReposByTeam(+this.teamId);
+        const cloudSubscriptionsObservable = this.cloudSubscriptionService.getCloudSubscriptionsByTeam(+this.teamId);
 
+        forkJoin([reposObservable, cloudSubscriptionsObservable]).subscribe({
+            next: ([reposResponse, cloudSubscriptionsResponse]) => {
+                this.reposData = Array.isArray(reposResponse) ? reposResponse : [];
+                this.cloudSubscriptionsData = Array.isArray(cloudSubscriptionsResponse) ? cloudSubscriptionsResponse : [];
+
+                this.scanInfos = this.reposData.flatMap((item: any) => item.scanInfos || []);
+                this.cloudScanInfos = this.cloudSubscriptionsData.flatMap((item: any) => item.cloudScanInfos || []);
+
+                this.allScanInfos = [...this.scanInfos, ...this.cloudScanInfos];
+
+                this.scanInfoLoading = false;
+                console.log(this.allScanInfos);
                 this.checkScanStatus();
             },
             error: () => {

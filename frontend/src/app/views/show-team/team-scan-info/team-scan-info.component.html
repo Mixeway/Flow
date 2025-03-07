@@ -18,7 +18,7 @@
                     <!-- ngx-datatable -->
                     <ngx-datatable
                             class="bootstrap"
-                            [rows]="cloudScanInfos"
+                            [rows]="allScanInfos"
                             [columnMode]="'force'"
                             [footerHeight]="50"
                             [headerHeight]="50"
@@ -72,12 +72,75 @@
                                     let-value="value"
                                     let-row="row"
                             >
-                                <div class="vertical-align-multiple text-center">
-                                    <p>
-                                        <strong>Cloud Scan:</strong>
-                                        <c-badge color="danger">{{ row.criticalFindings }}</c-badge>
-                                        <!--                                                            <c-badge color="warning">{{ row.highFindings }}</c-badge> only critical cloud findings for now-->
-                                    </p>
+                                <div class="results-cell">
+                                    <div class="result-category">
+                                        <span class="category-label">SAST</span>
+                                        <div class="category-badges">
+                                            <c-badge color="danger" class="result-badge"
+                                                     *ngIf="row.sastCritical > 0">{{ row.sastCritical }}
+                                            </c-badge>
+                                            <c-badge color="warning" class="result-badge"
+                                                     *ngIf="row.sastHigh > 0">{{ row.sastHigh }}
+                                            </c-badge>
+                                            <c-badge color="info" class="result-badge"
+                                                     *ngIf="row.sastMedium > 0">{{ row.sastMedium }}
+                                            </c-badge>
+                                        </div>
+                                    </div>
+
+                                    <div class="result-category">
+                                        <span class="category-label">SCA</span>
+                                        <div class="category-badges">
+                                            <c-badge color="danger" class="result-badge"
+                                                     *ngIf="row.scaCritical > 0">{{ row.scaCritical }}
+                                            </c-badge>
+                                            <c-badge color="warning" class="result-badge"
+                                                     *ngIf="row.scaHigh > 0">{{ row.scaHigh }}
+                                            </c-badge>
+                                            <c-badge color="info" class="result-badge"
+                                                     *ngIf="row.scaMedium > 0">{{ row.scaMedium }}
+                                            </c-badge>
+                                        </div>
+                                    </div>
+
+                                    <div class="result-category">
+                                        <span class="category-label">IaC</span>
+                                        <div class="category-badges">
+                                            <c-badge color="danger" class="result-badge"
+                                                     *ngIf="row.iacCritical > 0">{{ row.iacCritical }}
+                                            </c-badge>
+                                            <c-badge color="warning" class="result-badge"
+                                                     *ngIf="row.iacHigh > 0">{{ row.iacHigh }}
+                                            </c-badge>
+                                            <c-badge color="info" class="result-badge"
+                                                     *ngIf="row.iacMedium > 0">{{ row.iacMedium }}
+                                            </c-badge>
+                                        </div>
+                                    </div>
+
+                                    <div class="result-category">
+                                        <span class="category-label">Secrets</span>
+                                        <div class="category-badges">
+                                            <c-badge color="danger" class="result-badge"
+                                                     *ngIf="row.secretsCritical > 0">{{ row.secretsCritical }}
+                                            </c-badge>
+                                            <c-badge color="warning" class="result-badge"
+                                                     *ngIf="row.secretsHigh > 0">{{ row.secretsHigh }}
+                                            </c-badge>
+                                            <c-badge color="info" class="result-badge"
+                                                     *ngIf="row.secretsMedium > 0">{{ row.secretsMedium }}
+                                            </c-badge>
+                                        </div>
+                                    </div>
+                                    <div class="vertical-align-multiple text-center">
+                                        <span class="category-label">Cloud Scan</span>
+                                        <div class="category-badges">
+                                            <c-badge color="danger" class="result-badge"
+                                                *ngIf="row.criticalFindings > 0">{{ row.criticalFindings }}
+                                            </c-badge>
+                                            <!--                                                            <c-badge color="warning">{{ row.highFindings }}</c-badge> only critical cloud findings for now-->
+                                        </div>
+                                    </div>
                                 </div>
                             </ng-template>
                         </ngx-datatable-column>

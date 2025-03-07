@@ -33,6 +33,6 @@ import { FormsModule } from '@angular/forms';
 })
 export class TeamScanInfoComponent {
   @Input() scanInfoLoading: boolean = false;
-  @Input() cloudScanInfos: any[] = [];
+  @Input() allScanInfos: any[] = [];
   @Input() scanInfoLimit: number = 15;
 }
