@@ -33,5 +33,8 @@ export class TeamService {
     update(change: ChangeTeamDto): Observable<any> {
         return this.http.post<any>(this.loginUrl + '/api/v1/team', change, { withCredentials: true });
     }
+    delete(id: number): Observable<any> {
+        return this.http.delete(`/api/v1/team/${id}`);
+    }
 
 }

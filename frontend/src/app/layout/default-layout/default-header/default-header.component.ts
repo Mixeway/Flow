@@ -146,5 +146,57 @@ export class DefaultHeaderComponent extends HeaderComponent {
     { id: 3, title: 'Add new layouts', value: 75, color: 'info' },
     { id: 4, title: 'Angular Version', value: 100, color: 'success' }
   ];
+// In default-header.component.ts
+
+  // Add this method to the DefaultHeaderComponent class in default-header.component.ts
+
+  public logout(): void {
+    // 1. First corrupting the cookie before deleting it
+    // This ensures that any requests using the cookie will fail immediately
+    document.cookie = 'flow-token=INVALID-TOKEN; path=/;';
+
+    // 2. Delete the cookie with multiple approaches
+    document.cookie = 'flow-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'flow-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/api;';
+    document.cookie = 'flow-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; domain=' + window.location.hostname + '; path=/;';
+
+    // 3. Clear localStorage
+    localStorage.removeItem('userRole');
+
+    // 4. Set a flag indicating we've logged out - the dashboard will check this
+    sessionStorage.setItem('manual_logout', 'true');
+
+    // 5. Override the XMLHttpRequest to block new cookie setting
+    // This is a temporary measure until the page refreshes
+    const originalSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
+    XMLHttpRequest.prototype.setRequestHeader = function(header, value) {
+      // Block any attempt to set authorization headers
+      if (header.toLowerCase() === 'authorization' ||
+          header.toLowerCase() === 'cookie' ||
+          header.toLowerCase() === 'x-auth-token') {
+        return;
+      }
+      originalSetRequestHeader.apply(this, [header, value]);
+    };
+
+    // 6. Handle fetch requests too
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options) {
+      if (options && options.headers) {
+        // Remove auth headers from options
+        if (options.headers instanceof Headers) {
+          options.headers.delete('Authorization');
+          options.headers.delete('Cookie');
+        }
+      }
+      return originalFetch(url, options);
+    };
+
+    // 7. Forcefully redirect to login page after a short delay
+    // This gives our code time to execute before the page transitions
+    setTimeout(() => {
+      window.location.href = '/login';
+    }, 50);
+  }
 
 }

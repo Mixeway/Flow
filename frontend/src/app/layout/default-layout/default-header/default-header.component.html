@@ -61,12 +61,12 @@
           Profile
         </a>
       </li>
-      <li>
-        <a cDropdownItem routerLink="">
-          <svg cIcon class="me-2" name="cilAccountLogout"></svg>
-          Logout
-        </a>
-      </li>
+        <li>
+            <a cDropdownItem (click)="logout()">
+                <svg cIcon class="me-2" name="cilAccountLogout"></svg>
+                Logout
+            </a>
+        </li>
     </ul>
   </c-dropdown>
 </ng-template>

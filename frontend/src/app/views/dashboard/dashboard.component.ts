@@ -266,6 +266,7 @@ export class DashboardComponent implements OnInit {
 
 
     ngOnInit(): void {
+
         let userRole = localStorage.getItem('userRole');
 
         this.authService.hc().subscribe({
