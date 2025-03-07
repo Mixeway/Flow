@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - new Statistic dashboard component
 - Integration with wiz cloud security posture management
 - New redesigned dashboards
+- new statistic dashboard
 
 ### Fixed
 - Team delete
