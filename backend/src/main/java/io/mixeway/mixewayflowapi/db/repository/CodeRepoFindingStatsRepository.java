@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CodeRepoFindingStatsRepository extends CrudRepository<CodeRepoFindingStats, Long> {
@@ -65,5 +66,21 @@ public interface CodeRepoFindingStatsRepository extends CrudRepository<CodeRepoF
     List<DailyFindings> findETAFindingsBetweenDates(@Param("startDate") LocalDate startDate,
                                                     @Param("endDate") LocalDate endDate,
                                                     @Param("repos") List<Long> repos);
+
+
+    /**
+     * Find all stats for a specific repository after a given date
+     */
+    List<CodeRepoFindingStats> findByCodeRepoAndDateInsertedAfter(CodeRepo codeRepo, LocalDateTime date);
+
+    /**
+     * Find the most recent stats record for a repository
+     */
+    Optional<CodeRepoFindingStats> findTopByCodeRepoOrderByDateInsertedDesc(CodeRepo codeRepo);
+
+    /**
+     * Find all stats for a specific repository
+     */
+    List<CodeRepoFindingStats> findByCodeRepoOrderByDateInsertedDesc(CodeRepo codeRepo);
 
 }
