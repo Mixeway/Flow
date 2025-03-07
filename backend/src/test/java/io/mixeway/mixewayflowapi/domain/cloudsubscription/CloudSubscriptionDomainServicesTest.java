@@ -89,7 +89,7 @@ class CloudSubscriptionDomainServicesTest {
     // Create CloudSubscription Tests
     @Test
     void testCreateCloudSubscription() {
-        CloudSubscription created = createCloudSubscriptionService.create("test-subscription", team.getId(), principal);
+        CloudSubscription created = createCloudSubscriptionService.create("test-subscription", team.getId(), principal, "ext-test-subscription");
 
         assertNotNull(created);
         assertEquals("test-subscription", created.getName());
@@ -98,17 +98,17 @@ class CloudSubscriptionDomainServicesTest {
 
     @Test
     void testCreateCloudSubscription_DuplicateName() {
-        createCloudSubscriptionService.create("test-subscription", team.getId(), principal);
+        createCloudSubscriptionService.create("test-subscription", team.getId(), principal, "ext-test-subscription");
 
         assertThrows(DuplicateCloudSubscriptionException.class, () -> {
-            createCloudSubscriptionService.create("test-subscription", team.getId(), principal);
+            createCloudSubscriptionService.create("test-subscription", team.getId(), principal, "ext-test-subscription-2");
         });
     }
 
     @Test
     void testCreateCloudSubscription_InvalidTeam() {
         assertThrows(TeamNotFoundException.class, () -> {
-            createCloudSubscriptionService.create("test-subscription", 999L, principal);
+            createCloudSubscriptionService.create("test-subscription", 999L, principal, "ext-test-subscription");
         });
     }
 
@@ -117,7 +117,7 @@ class CloudSubscriptionDomainServicesTest {
         doThrow(new UnauthorizedException()).when(permissionFactory).canUserManageTeam(any(), any());
 
         assertThrows(UnauthorizedException.class, () -> {
-            createCloudSubscriptionService.create("test-subscription", team.getId(), principal);
+            createCloudSubscriptionService.create("test-subscription", team.getId(), principal, "ext-test-subscription");
         });
     }
 
@@ -125,11 +125,11 @@ class CloudSubscriptionDomainServicesTest {
     @Test
     void testUpdateCloudSubscription() {
         // Create initial subscription
-        CloudSubscription initial = createCloudSubscriptionService.create("test-subscription", team.getId(), principal);
+        CloudSubscription initial = createCloudSubscriptionService.create("test-subscription", team.getId(), principal, "ext-test-subscription");
 
         // Update subscription
         CloudSubscription updated = updateCloudSubscriptionService.update(
-                initial.getId(), "updated-subscription", team.getId(), principal);
+                initial.getId(), "updated-subscription", team.getId(), principal, "ext-updated-subscription");
 
         assertNotNull(updated);
         assertEquals("updated-subscription", updated.getName());
@@ -139,19 +139,19 @@ class CloudSubscriptionDomainServicesTest {
     @Test
     void testUpdateCloudSubscription_NotFound() {
         assertThrows(CloudSubscriptionNotFoundException.class, () -> {
-            updateCloudSubscriptionService.update(999L, "updated-subscription", team.getId(), principal);
+            updateCloudSubscriptionService.update(999L, "updated-subscription", team.getId(), principal, "ext-updated-subscription");
         });
     }
 
     @Test
     void testUpdateCloudSubscription_DuplicateName() {
         // Create two subscriptions
-        CloudSubscription sub1 = createCloudSubscriptionService.create("sub1", team.getId(), principal);
-        CloudSubscription sub2 = createCloudSubscriptionService.create("sub2", team.getId(), principal);
+        CloudSubscription sub1 = createCloudSubscriptionService.create("sub1", team.getId(), principal, "ext-sub1");
+        CloudSubscription sub2 = createCloudSubscriptionService.create("sub2", team.getId(), principal, "ext-sub2");
 
         // Try to update sub2 to have the same name as sub1
         assertThrows(DuplicateCloudSubscriptionException.class, () -> {
-            updateCloudSubscriptionService.update(sub2.getId(), "sub1", team.getId(), principal);
+            updateCloudSubscriptionService.update(sub2.getId(), "sub1", team.getId(), principal, "ext-sub1-updated");
         });
     }
 
@@ -159,7 +159,7 @@ class CloudSubscriptionDomainServicesTest {
     @Test
     void testDeleteCloudSubscription() {
         // Create subscription
-        CloudSubscription toDelete = createCloudSubscriptionService.create("to-delete", team.getId(), principal);
+        CloudSubscription toDelete = createCloudSubscriptionService.create("to-delete", team.getId(), principal, "ext-to-delete");
 
         // Delete subscription
         deleteCloudSubscriptionService.delete(toDelete.getId(), team.getId(), principal);
@@ -179,8 +179,8 @@ class CloudSubscriptionDomainServicesTest {
     @Test
     void testFindCloudSubscriptionsByTeam() {
         // Create multiple subscriptions
-        createCloudSubscriptionService.create("sub1", team.getId(), principal);
-        createCloudSubscriptionService.create("sub2", team.getId(), principal);
+        createCloudSubscriptionService.create("sub1", team.getId(), principal, "ext-sub1");
+        createCloudSubscriptionService.create("sub2", team.getId(), principal, "ext-sub2");
 
         // Find subscriptions
         List<CloudSubscription> found = findCloudSubscriptionService.getByTeam(team.getId(), principal);
@@ -218,11 +218,11 @@ class CloudSubscriptionDomainServicesTest {
                 .orElseThrow();
 
         // Create subscription in original team
-        CloudSubscription subscription = createCloudSubscriptionService.create("test-sub", team.getId(), principal);
+        CloudSubscription subscription = createCloudSubscriptionService.create("test-sub", team.getId(), principal, "ext-test-sub");
 
         // Try to update subscription using another team's ID
         assertThrows(IllegalArgumentException.class, () -> {
-            updateCloudSubscriptionService.update(subscription.getId(), "new-name", anotherTeam.getId(), principal);
+            updateCloudSubscriptionService.update(subscription.getId(), "new-name", anotherTeam.getId(), principal, "ext-new-name");
         });
 
         // Try to delete subscription using another team's ID

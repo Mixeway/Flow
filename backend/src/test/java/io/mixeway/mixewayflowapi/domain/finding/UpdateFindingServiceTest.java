@@ -11,8 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
-import org.testcontainers.shaded.org.apache.commons.lang3.StringUtils;
-import org.testcontainers.shaded.org.checkerframework.checker.units.qual.A;
+import org.springframework.transaction.annotation.Transactional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -20,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @RunWith(SpringRunner.class)
 @ActiveProfiles("ut")
 @Import(TestConfig.class)
+@Transactional
 class UpdateFindingServiceTest {
 
     @Autowired
@@ -60,6 +60,5 @@ class UpdateFindingServiceTest {
         updateFindingService.reactivate(finding);
         finding = findFindingService.findById(2L).get();
         assertEquals(Finding.Status.EXISTING, finding.getStatus());
-
     }
 }

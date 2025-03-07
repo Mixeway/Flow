@@ -57,7 +57,6 @@ export class ThreatScoreComponent implements OnChanges {
                 fontFamily: 'inherit',
                 animations: {
                     enabled: true,
-                    easing: 'easeinout',
                     speed: 800
                 },
                 sparkline: {
