@@ -1,0 +1,69 @@
+.chart-container {
+  min-height: 160px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.threat-description {
+  font-size: 0.85rem;
+  max-width: 90%;
+  margin: 0 auto;
+  color: var(--cui-body-color);
+}
+
+.threat-legend {
+  margin-top: 0.5rem;
+  width: 100%;
+
+  .legend-item {
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    border-radius: 3px;
+    opacity: 0.6;
+    transition: all 0.2s ease;
+
+    &.active {
+      opacity: 1;
+      font-weight: 600;
+
+      &:nth-child(1) {
+        color: var(--cui-success);
+      }
+
+      &:nth-child(2) {
+        color: var(--cui-warning);
+      }
+
+      &:nth-child(3) {
+        color: var(--cui-danger);
+      }
+
+      &:nth-child(4) {
+        color: var(--cui-white);
+        background-color: var(--cui-danger);
+      }
+    }
+  }
+}
+
+// Dark theme specific adjustments
+:host-context(.c-dark-theme) {
+  .threat-description {
+    color: var(--cui-body-color);
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .chart-container {
+    min-height: 140px;
+  }
+
+  .threat-legend {
+    .legend-item {
+      font-size: 0.7rem;
+      padding: 2px 4px;
+    }
+  }
+}

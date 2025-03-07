@@ -1,0 +1,309 @@
+// Dashboard Container
+.dashboard-container {
+  padding: 1rem;
+}
+
+// Dashboard Header
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+
+  .dashboard-title {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+
+  .dashboard-subtitle {
+    color: var(--cui-text-muted, #768192);
+    margin-bottom: 0;
+  }
+
+  .filter-controls {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+
+    .form-label {
+      margin-bottom: 0.25rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+
+    .time-range-buttons {
+      display: flex;
+
+      button {
+        border-radius: 0;
+
+        &:first-child {
+          border-top-left-radius: 0.25rem;
+          border-bottom-left-radius: 0.25rem;
+        }
+
+        &:last-child {
+          border-top-right-radius: 0.25rem;
+          border-bottom-right-radius: 0.25rem;
+        }
+      }
+    }
+
+    .refresh-btn {
+      align-self: flex-end;
+      height: 38px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+
+    .filter-controls {
+      width: 100%;
+      flex-wrap: wrap;
+    }
+  }
+}
+
+// Summary Cards
+.summary-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+  overflow: hidden;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  }
+
+  .summary-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    color: white;
+
+    &.total-icon {
+      background-color: #0d6efd; // Primary blue
+    }
+
+    &.critical-icon {
+      background-color: #dc3545; // Danger red
+    }
+
+    &.fix-time-icon {
+      background-color: #6f42c1; // Purple
+    }
+
+    &.repo-icon {
+      background-color: #20c997; // Teal
+    }
+  }
+
+  .summary-data {
+    .summary-title {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--cui-text-muted, #768192);
+    }
+
+    .summary-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 0.25rem 0;
+    }
+
+    .summary-trend {
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+
+      .text-success {
+        color: #198754 !important; // Success green
+      }
+
+      .text-danger {
+        color: #dc3545 !important; // Danger red
+      }
+
+      .text-muted {
+        color: var(--cui-text-muted, #768192) !important;
+      }
+    }
+  }
+}
+
+// Charts
+.trend-chart-card, .distribution-chart-card {
+  transition: box-shadow 0.2s;
+
+  &:hover {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  }
+
+  .chart-container {
+    width: 100%;
+    position: relative;
+    background-color: transparent; // Use transparent instead of white to respect theme
+    border: none;
+    overflow: hidden;
+  }
+
+  // Remove any background artifacts
+  canvas {
+    z-index: 1; // Ensure canvas is above any background elements
+    position: relative;
+  }
+
+  // Remove default chart grid lines that might be visible
+  .c-chart {
+    background: transparent !important;
+    border: none !important;
+  }
+}
+
+// Tables
+.table-card {
+  transition: box-shadow 0.2s;
+
+  &:hover {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  }
+
+  th {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+}
+
+// Severity Badges
+.severity-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: white;
+  min-width: 2.5rem;
+  text-align: center;
+
+  &.severity-critical {
+    background-color: #dc3545; // Danger red
+  }
+
+  &.severity-high {
+    background-color: #fd7e14; // Orange
+  }
+
+  &.severity-medium {
+    background-color: #ffc107; // Warning yellow
+  }
+
+  &.severity-low {
+    background-color: #6c757d; // Secondary gray
+  }
+}
+
+// Source Badges
+.source-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: white;
+  min-width: 3.5rem;
+  text-align: center;
+
+  &.source-sast {
+    background-color: #20c997; // Teal
+  }
+
+  &.source-sca {
+    background-color: #0dcaf0; // Info blue
+  }
+
+  &.source-iac {
+    background-color: #6610f2; // Purple
+  }
+
+  &.source-secrets {
+    background-color: #d63384; // Pink
+  }
+}
+
+// Fixed/Removed Badge
+.fixed-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background-color: #198754; // Success green
+  color: white;
+  min-width: 2.5rem;
+  text-align: center;
+}
+
+// Loading Spinner
+.text-center {
+  text-align: center;
+}
+
+.py-5 {
+  padding-top: 3rem;
+  padding-bottom: 3rem;
+}
+
+// Responsive Adjustments
+@media (max-width: 992px) {
+  .chart-container {
+    height: 300px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .row > [class*="col-"] {
+    margin-bottom: 1rem;
+  }
+
+  .chart-container {
+    height: 250px !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .dashboard-header {
+    .dashboard-title {
+      font-size: 1.5rem;
+    }
+
+    .filter-controls {
+      flex-direction: column;
+      align-items: stretch;
+
+      .team-filter, .time-range-container {
+        width: 100%;
+      }
+
+      .refresh-btn {
+        align-self: flex-start;
+      }
+    }
+  }
+
+  .summary-card {
+    .summary-value {
+      font-size: 1.25rem;
+    }
+  }
+
+  .chart-container {
+    height: 200px !important;
+  }
+}

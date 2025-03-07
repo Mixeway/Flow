@@ -1,0 +1,301 @@
+<div class="dashboard-container">
+    <!-- Header with filters -->
+    <div class="dashboard-header mb-4">
+        <div class="title-section">
+            <h1 class="dashboard-title">Security Dashboard</h1>
+            <p class="dashboard-subtitle">Overview of security findings across your repositories</p>
+        </div>
+
+        <div class="filter-controls">
+            <div class="team-filter me-3">
+                <label cLabel for="teamSelect" class="form-label">Team</label>
+                <select cSelect id="teamSelect" class="form-select" (change)="onTeamChange($event)">
+                    <option value="">All Teams</option>
+                    <option *ngFor="let team of teamsSummary" [value]="team.teamId">{{ team.teamName }}</option>
+                </select>
+            </div>
+
+            <div class="time-range-container me-3">
+                <label class="form-label">Time Range</label>
+                <div class="time-range-buttons">
+                    <button cButton [color]="timeRange === 7 ? 'primary' : 'light'" (click)="onTimeRangeChange(7)">7 days</button>
+                    <button cButton [color]="timeRange === 30 ? 'primary' : 'light'" (click)="onTimeRangeChange(30)">30 days</button>
+                    <button cButton [color]="timeRange === 90 ? 'primary' : 'light'" (click)="onTimeRangeChange(90)">90 days</button>
+                </div>
+            </div>
+
+            <button cButton color="light" variant="ghost" class="refresh-btn" (click)="refreshData()" [cTooltip]="'Refresh data'">
+                <svg cIcon name="cil-sync"></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading spinner -->
+    <div *ngIf="isLoading" class="text-center py-5">
+        <c-spinner color="primary"></c-spinner>
+        <p class="mt-3 text-muted">Loading dashboard data...</p>
+    </div>
+
+    <div *ngIf="!isLoading" class="dashboard-content">
+        <!-- Summary Cards Row -->
+        <div class="row g-4 mb-4">
+            <!-- Total Findings Card -->
+            <div class="col-md-6 col-lg-3">
+                <c-card class="summary-card h-100">
+                    <c-card-body class="d-flex align-items-center p-3">
+                        <div class="summary-icon total-icon me-3">
+                            <svg cIcon name="cil-list" size="xl"></svg>
+                        </div>
+                        <div class="summary-data">
+                            <div class="summary-title">Total Open Findings</div>
+                            <div class="summary-value">{{ summaryData.openTotal | number }}</div>
+                            <div class="summary-trend">
+                                <svg cIcon [name]="getTrendIcon(getSeverityTrend('critical'))" [ngClass]="getTrendClass(getSeverityTrend('critical'))" size="sm"></svg>
+                                <span [ngClass]="getTrendClass(getSeverityTrend('critical'))">
+                  {{ getSeverityTrend('critical') === 'up' ? 'Increasing' : getSeverityTrend('critical') === 'down' ? 'Decreasing' : 'Stable' }}
+                </span>
+                            </div>
+                        </div>
+                    </c-card-body>
+                </c-card>
+            </div>
+
+            <!-- Critical Findings Card -->
+            <div class="col-md-6 col-lg-3">
+                <c-card class="summary-card h-100">
+                    <c-card-body class="d-flex align-items-center p-3">
+                        <div class="summary-icon critical-icon me-3">
+                            <svg cIcon name="cil-warning" size="xl"></svg>
+                        </div>
+                        <div class="summary-data">
+                            <div class="summary-title">Critical Findings</div>
+                            <div class="summary-value">{{ summaryData.criticalTotal | number }}</div>
+                            <div class="summary-trend">
+                                <svg cIcon [name]="getTrendIcon(getSeverityTrend('critical'))" [ngClass]="getTrendClass(getSeverityTrend('critical'))" size="sm"></svg>
+                                <span [ngClass]="getTrendClass(getSeverityTrend('critical'))">
+                  {{ getSeverityTrend('critical') === 'up' ? 'Increasing' : getSeverityTrend('critical') === 'down' ? 'Decreasing' : 'Stable' }}
+                </span>
+                            </div>
+                        </div>
+                    </c-card-body>
+                </c-card>
+            </div>
+
+            <!-- Average Fix Time Card -->
+            <div class="col-md-6 col-lg-3">
+                <c-card class="summary-card h-100">
+                    <c-card-body class="d-flex align-items-center p-3">
+                        <div class="summary-icon fix-time-icon me-3">
+                            <svg cIcon name="cil-clock" size="xl"></svg>
+                        </div>
+                        <div class="summary-data">
+                            <div class="summary-title">Avg. Fix Time</div>
+                            <div class="summary-value">{{ summaryData.averageFixTime || 0 }} days</div>
+                            <div class="summary-trend">
+                                <span class="text-muted">Current statistics</span>
+                            </div>
+                        </div>
+                    </c-card-body>
+                </c-card>
+            </div>
+
+            <!-- Repositories Card -->
+            <div class="col-md-6 col-lg-3">
+                <c-card class="summary-card h-100">
+                    <c-card-body class="d-flex align-items-center p-3">
+                        <div class="summary-icon repo-icon me-3">
+                            <svg cIcon name="cil-storage" size="xl"></svg>
+                        </div>
+                        <div class="summary-data">
+                            <div class="summary-title">Repositories</div>
+                            <div class="summary-value">{{ summaryData.totalRepos | number }}</div>
+                            <div class="summary-trend">
+                                <span class="text-muted">Monitored for issues</span>
+                            </div>
+                        </div>
+                    </c-card-body>
+                </c-card>
+            </div>
+        </div>
+
+        <!-- Vulnerability Trend Chart -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <c-card class="trend-chart-card">
+                    <c-card-header class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Vulnerability Trend</h5>
+                        <div class="chart-controls">
+                            <span class="text-muted me-2">Last {{ timeRange }} days</span>
+                        </div>
+                    </c-card-header>
+                    <c-card-body class="p-0 overflow-hidden">
+                        <div class="chart-container" style="height: 300px; padding: 16px;">
+                            <c-chart *ngIf="vulnerabilityTrendChartData" type="line" [data]="vulnerabilityTrendChartData" [options]="lineChartOptions"></c-chart>
+                        </div>
+                    </c-card-body>
+                </c-card>
+            </div>
+        </div>
+
+        <!-- Distribution Charts Row -->
+        <div class="row mb-4">
+            <!-- Severity Distribution -->
+            <div class="col-md-4">
+                <c-card class="distribution-chart-card h-100">
+                    <c-card-header>
+                        <h5 class="mb-0">Severity Distribution</h5>
+                    </c-card-header>
+                    <c-card-body class="p-0 overflow-hidden">
+                        <div class="chart-container" style="height: 250px; padding: 16px;">
+                            <c-chart *ngIf="severityDistributionChartData" type="doughnut" [data]="severityDistributionChartData" [options]="doughnutChartOptions"></c-chart>
+                        </div>
+                    </c-card-body>
+                </c-card>
+            </div>
+
+            <!-- Source Distribution -->
+            <div class="col-md-4">
+                <c-card class="distribution-chart-card h-100">
+                    <c-card-header>
+                        <h5 class="mb-0">Source Distribution</h5>
+                    </c-card-header>
+                    <c-card-body class="p-0 overflow-hidden">
+                        <div class="chart-container" style="height: 250px; padding: 16px;">
+                            <c-chart *ngIf="sourceDistributionChartData" type="doughnut" [data]="sourceDistributionChartData" [options]="doughnutChartOptions"></c-chart>
+                        </div>
+                    </c-card-body>
+                </c-card>
+            </div>
+
+            <!-- Status Distribution -->
+            <div class="col-md-4">
+                <c-card class="distribution-chart-card h-100">
+                    <c-card-header>
+                        <h5 class="mb-0">Status Distribution</h5>
+                    </c-card-header>
+                    <c-card-body class="p-0 overflow-hidden">
+                        <div class="chart-container" style="height: 250px; padding: 16px;">
+                            <c-chart *ngIf="statusDistributionChartData" type="doughnut" [data]="statusDistributionChartData" [options]="doughnutChartOptions"></c-chart>
+                        </div>
+                    </c-card-body>
+                </c-card>
+            </div>
+        </div>
+
+        <!-- Fix Progress Chart -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <c-card class="trend-chart-card">
+                    <c-card-header class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Fix Progress</h5>
+                    </c-card-header>
+                    <c-card-body class="p-0 overflow-hidden">
+                        <div class="chart-container" style="height: 250px; padding: 16px;">
+                            <c-chart *ngIf="fixProgressChartData" type="line" [data]="fixProgressChartData" [options]="lineChartOptions"></c-chart>
+                        </div>
+                    </c-card-body>
+                </c-card>
+            </div>
+        </div>
+
+        <!-- Top Repositories Table -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <c-card class="table-card">
+                    <c-card-header>
+                        <h5 class="mb-0">Top Vulnerable Repositories</h5>
+                    </c-card-header>
+                    <c-card-body>
+                        <div class="table-responsive">
+                            <table cTable hover class="align-middle">
+                                <thead>
+                                <tr>
+                                    <th scope="col">Repository Name</th>
+                                    <th scope="col">Team</th>
+                                    <th scope="col" class="text-center">Critical</th>
+                                    <th scope="col" class="text-center">High</th>
+                                    <th scope="col" class="text-center">Total Findings</th>
+                                    <th scope="col" class="text-end">Avg. Fix Time</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr *ngFor="let repo of topRepos">
+                                    <td class="fw-semibold">{{ repo.repoName }}</td>
+                                    <td>{{ repo.teamName }}</td>
+                                    <td class="text-center">
+                                        <span class="severity-badge severity-critical">{{ repo.criticalCount }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="severity-badge severity-high">{{ repo.highCount }}</span>
+                                    </td>
+                                    <td class="text-center fw-bold">{{ repo.totalVulnerabilities }}</td>
+                                    <td class="text-end">{{ repo.averageFixTime }} days</td>
+                                </tr>
+
+                                <!-- Empty state if no repos -->
+                                <tr *ngIf="topRepos.length === 0">
+                                    <td colspan="6" class="text-center py-4">
+                                        <svg cIcon name="cil-check-circle" width="24" height="24"></svg>
+                                        <p class="mt-2 mb-0">No repositories found with vulnerability data.</p>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </c-card-body>
+                </c-card>
+            </div>
+        </div>
+
+        <!-- Teams Summary Table -->
+        <div class="row">
+            <div class="col-12">
+                <c-card class="table-card">
+                    <c-card-header>
+                        <h5 class="mb-0">Teams Overview</h5>
+                    </c-card-header>
+                    <c-card-body>
+                        <div class="table-responsive">
+                            <table cTable hover class="align-middle">
+                                <thead>
+                                <tr>
+                                    <th scope="col">Team Name</th>
+                                    <th scope="col" class="text-center">Repositories</th>
+                                    <th scope="col" class="text-center">Critical</th>
+                                    <th scope="col" class="text-center">High</th>
+                                    <th scope="col" class="text-center">Total Findings</th>
+                                    <th scope="col" class="text-center">Fixed Findings</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr *ngFor="let team of teamsSummary">
+                                    <td class="fw-semibold">{{ team.teamName }}</td>
+                                    <td class="text-center">{{ team.repoCount }}</td>
+                                    <td class="text-center">
+                                        <span class="severity-badge severity-critical">{{ team.criticalCount }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="severity-badge severity-high">{{ team.highCount }}</span>
+                                    </td>
+                                    <td class="text-center fw-bold">{{ team.totalVulnerabilities }}</td>
+                                    <td class="text-center">
+                                        <span class="fixed-badge">{{ team.fixedVulnerabilities }}</span>
+                                    </td>
+                                </tr>
+
+                                <!-- Empty state if no teams -->
+                                <tr *ngIf="teamsSummary.length === 0">
+                                    <td colspan="6" class="text-center py-4">
+                                        <svg cIcon name="cil-check-circle" width="24" height="24"></svg>
+                                        <p class="mt-2 mb-0">No teams found with vulnerability data.</p>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </c-card-body>
+                </c-card>
+            </div>
+        </div>
+    </div>
+</div>

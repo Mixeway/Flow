@@ -23,6 +23,15 @@ export function getNavItems(): INavData[] {
       }
     },
     {
+      name: 'Statistics',
+      url: '/stats',
+      iconComponent: { name: 'cil-bar-chart' },
+      badge: {
+        color: 'success',
+        text: 'NEW'
+      }
+    },
+    {
       title: true,
       name: 'Details'
     },

@@ -23,6 +23,10 @@ export const routes: Routes = [
         loadChildren: () => import('./views/threat-intel/routes').then((m) => m.routes)
       },
       {
+        path: 'stats',
+        loadChildren: () => import('./views/security-dashboard/routes').then((m) => m.routes)
+      },
+      {
         path: 'show-repo/:id',
         loadChildren: () => import('./views/show-repo/routes').then((m) => m.routes)
       },
