@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.1.1] - 2025-03-11
+## [1.2.0] - 2025-03-07
 
 ### Introduced
 - new Statistic dashboard component
