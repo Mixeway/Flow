@@ -1,6 +1,16 @@
-FROM maven:3.9.8-openjdk-22 as maven_build
+FROM maven:3.9.8-amazoncorretto-17 as maven_build
 
 WORKDIR /app
+RUN curl -L https://download.oracle.com/java/22/archive/jdk-22_linux-x64_bin.tar.gz -o jdk22.tar.gz \
+    && mkdir -p /usr/local/jdk-22 \
+    && tar -xzf jdk22.tar.gz -C /usr/local/jdk-22 --strip-components=1 \
+    && rm jdk22.tar.gz
+
+# Set Java 22 as default for the build
+ENV JAVA_HOME=/usr/local/jdk-22
+ENV PATH="$JAVA_HOME/bin:$PATH"
+
+# Then continue with your maven build
 # Copy the pom.xml and the project files to the container
 COPY pom.xml .
 COPY src ./src
