@@ -1,118 +1,433 @@
-.dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  display: inline-block;
+// Remove custom overrides that were affecting CoreUI's native styling// Main container styles
+.repo-tabs-container {
+  margin-bottom: 2rem;
 }
 
-.critical {
-  background-color: red;
+// Remove custom tab button styling that was overriding CoreUI
+
+// Tab content styling
+.tab-content-panel {
+  padding: 1.5rem;
 }
 
-.high {
-  background-color: #f33d3d;
+// Improve spacing for tab content
+::ng-deep {
+  .tab-content {
+    padding: 0.5rem;
+  }
 }
 
-.medium {
-  background-color: #e38334;
-}
-
-.low {
-  background-color: #47a3d3;
-}
-.critical-t {
-  color: red;
-}
-
-.high-t {
-  color: #f33d3d;
-}
-
-.medium-t {
-  color: #e38334;
-}
-
-.low-t {
-  color: #47a3d3;
-}
-
-
-ngx-datatable .datatable-row-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.location-cell {
-  white-space: normal;
-  word-break: break-word;
-  max-width: 100%;
-}
-c-card {
-  margin-bottom: 10px;
-}
-/* In your styles.scss or component-specific styles */
-
-.markdown-body {
-  box-sizing: border-box;
-  min-width: 200px;
-  max-width: 980px;
-  margin: 0 auto;
-  padding: 45px;
-}
-
-/* Styles for vertical alignment in ngx-datatable cells */
-
-::ng-deep .ngx-datatable .datatable-body-cell {
-  display: flex;
-  align-items: center;
-}
-
-::ng-deep .ngx-datatable .datatable-body-cell-label {
-  flex: 1;
-}
-
-.cell-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  width: 100%;
-}
-
-.vertical-align-multiple {
+// Empty state styling for tables
+.empty-state {
   display: flex;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
-  height: 100%;
-}
-.comments-container {
-  .comment-item {
-    &:not(:last-child) {
-      border-bottom: 1px solid rgba(0,0,0,.125);
-      padding-bottom: 1rem;
-    }
+  padding: 3rem 1.5rem;
+  text-align: center;
 
-    .comment-avatar {
-      .rounded-circle {
-        background-color: #f8f9fa;
-        color: #6c757d;
-        font-weight: bold;
+  svg {
+    opacity: 0.5;
+    margin-bottom: 1rem;
+    color: var(--cui-primary);
+  }
+
+  h5 {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+
+  p {
+    color: var(--cui-secondary-color);
+    margin-bottom: 1.5rem;
+    max-width: 300px;
+  }
+}
+
+// Loading container
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 0;
+
+  .loading-text {
+    margin-top: 1rem;
+    color: var(--cui-secondary-color);
+  }
+}
+
+// Statistics tab styling
+.statistics-container {
+  // Trend chart styling
+  .trend-chart-card {
+    border-radius: 8px;
+    overflow: hidden;
+
+    .refresh-btn {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+
+      svg {
+        width: 18px;
+        height: 18px;
       }
     }
+  }
 
-    .comment-content {
-      background-color: #f8f9fa;
-      border-radius: 0.5rem;
-      padding: 0.5rem 1rem;
+  // Metrics cards styling
+  .stats-metrics-container {
+    .metric-card {
+      display: flex;
+      align-items: center;
+      padding: 1.25rem;
+      border-radius: 8px;
+      background-color: var(--cui-card-bg);
+      border: 1px solid var(--cui-card-border-color);
+      height: 100%;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+
+      .metric-icon {
+        width: 60px;
+        height: 60px;
+        min-width: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--cui-tertiary-bg);
+        border-radius: 12px;
+        margin-right: 1rem;
+
+        svg {
+          color: var(--cui-body-color);
+          opacity: 0.7;
+        }
+      }
+
+      .metric-content {
+        flex-grow: 1;
+
+        .metric-title {
+          font-size: 0.85rem;
+          font-weight: 600;
+          color: var(--cui-secondary-color);
+          margin-bottom: 0.5rem;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+          font-size: 1.75rem;
+          font-weight: 700;
+          margin-bottom: 0.75rem;
+          color: var(--cui-body-color);
+          display: flex;
+          align-items: baseline;
+
+          .metric-unit {
+            font-size: 0.875rem;
+            font-weight: 400;
+            color: var(--cui-secondary-color);
+            margin-left: 0.5rem;
+          }
+        }
+
+        .metric-progress {
+          height: 4px;
+          background-color: var(--cui-tertiary-bg);
+        }
+      }
+
+      // Different colors for different metric cards
+      &.opened-findings .metric-icon {
+        background-color: rgba(var(--cui-info-rgb), 0.1);
+
+        svg {
+          color: var(--cui-info);
+        }
+      }
+
+      &.closed-findings .metric-icon {
+        background-color: rgba(var(--cui-success-rgb), 0.1);
+
+        svg {
+          color: var(--cui-success);
+        }
+      }
+
+      &.reviewed-findings .metric-icon {
+        background-color: rgba(var(--cui-warning-rgb), 0.1);
+
+        svg {
+          color: var(--cui-warning);
+        }
+      }
+
+      &.fix-time .metric-icon {
+        background-color: rgba(var(--cui-danger-rgb), 0.1);
+
+        svg {
+          color: var(--cui-danger);
+        }
+      }
     }
   }
 }
-:host ::ng-deep {
-  .ngx-datatable {
-    .location-link {
-      &:hover {
-        text-decoration: underline !important;
+
+// Scan Info tab styling
+.scan-info-card {
+  border-radius: 8px;
+  overflow: hidden;
+
+  .scan-content {
+    // Search and filter controls
+    .scan-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+
+      .scan-search {
+        flex-grow: 1;
+        max-width: 500px;
+
+        .input-group-text {
+          background-color: var(--cui-tertiary-bg);
+        }
       }
+
+      .scan-page-size {
+        display: flex;
+        align-items: center;
+
+        .page-size-label {
+          margin-right: 0.5rem;
+          margin-bottom: 0;
+          font-weight: 500;
+        }
+
+        .page-size-select {
+          width: auto;
+        }
+      }
+    }
+
+    // Table styling
+    .scan-datatable {
+      .column-header {
+        font-weight: 600;
+      }
+
+      // Branch cell styling
+      .branch-cell {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+
+        .branch-icon {
+          width: 14px;
+          height: 14px;
+          opacity: 0.7;
+        }
+
+        .branch-name {
+          font-weight: 500;
+        }
+      }
+
+      // Commit cell styling
+      .commit-cell {
+        .commit-id {
+          background-color: var(--cui-tertiary-bg);
+          padding: 0.25rem 0.5rem;
+          border-radius: 4px;
+          font-size: 0.85rem;
+          display: inline-block;
+        }
+      }
+
+      // Date cell styling
+      .date-cell {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+
+        .date-icon {
+          width: 14px;
+          height: 14px;
+          opacity: 0.7;
+        }
+
+        .scan-date {
+          font-size: 0.85rem;
+        }
+      }
+
+      // Results cell styling
+      .results-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+
+        .result-category {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+
+          .category-label {
+            font-weight: 600;
+            font-size: 0.85rem;
+            width: 60px;
+          }
+
+          .category-badges {
+            display: flex;
+            gap: 0.35rem;
+
+            .result-badge {
+              min-width: 28px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Components tab styling
+.components-card {
+  border-radius: 8px;
+  overflow: hidden;
+
+  // Filter and controls styling
+  .components-controls {
+    .components-filter {
+      margin-bottom: 1rem;
+
+      .filter-group {
+        margin-bottom: 0.5rem;
+
+        .filter-label {
+          font-size: 0.85rem;
+          font-weight: 600;
+          margin-bottom: 0.35rem;
+          color: var(--cui-secondary-color);
+        }
+
+        .input-group-text {
+          background-color: var(--cui-tertiary-bg);
+        }
+
+        .filter-icon {
+          width: 14px;
+          height: 14px;
+          opacity: 0.7;
+        }
+      }
+    }
+
+    .components-pagination {
+      .page-size-label {
+        margin-bottom: 0;
+        font-weight: 500;
+      }
+
+      .page-size-select {
+        width: auto;
+      }
+    }
+  }
+
+  // Table styling
+  .components-datatable {
+    .group-cell, .name-cell, .version-cell {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .version-cell .badge {
+      font-size: 0.8rem;
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .tab-btn {
+    .tab-text {
+      font-size: 0.75rem;
+    }
+
+    .tab-icon {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  .scan-controls, .components-pagination {
+    flex-direction: column;
+    align-items: flex-start;
+
+    .scan-search, .scan-page-size, .components-count, .components-page-size {
+      width: 100%;
+      margin-bottom: 0.5rem;
+    }
+  }
+
+  .metric-card {
+    flex-direction: column;
+    text-align: center;
+
+    .metric-icon {
+      margin-right: 0 !important;
+      margin-bottom: 1rem;
+    }
+  }
+
+  .results-cell .result-category {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+}
+
+// General datatable styling for common alignment
+::ng-deep .ngx-datatable {
+  // Row and cell alignment
+  .datatable-body-row {
+    align-items: center;
+
+    .datatable-body-cell {
+      display: flex;
+      align-items: center;
+
+      // Center all cells by default
+      &-label {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    }
+  }
+
+  // Header alignment
+  .datatable-header {
+    .datatable-header-cell {
+      text-align: center;
     }
   }
 }

@@ -1,158 +1,338 @@
-<c-row>
-    <c-col xs>
-        <c-card class="mb-4">
-            <c-card-header>
-                Team Management
-            </c-card-header>
-            <c-card-body>
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <c-input-group class="input-group-lg">
-                            <span cInputGroupText class="bg-light">
-                                <svg cIcon name="cil-search" class="text-muted"></svg>
-                            </span>
-                            <input
-                                    type="text"
-                                    cFormControl
-                                    class="form-control form-control-lg shadow-none"
-                                    placeholder="Search teams by name, identifier, or users..."
-                                    [value]="searchTerm"
-                                    (input)="onSearch($event)"
-                            >
-                            <button
-                                    *ngIf="searchTerm"
-                                    cButton
-                                    color="secondary"
-                                    variant="outline"
-                                    class="px-4"
-                                    (click)="clearSearch()">
-                                <svg cIcon name="cil-x" class="me-0"></svg>
-                            </button>
-                        </c-input-group>
-                    </div>
-                </div>
-
-                <!-- Action buttons row -->
-                <div class="row mb-4">
-                    <div class="col">
+<!-- Main Dashboard Container -->
+<div class="dashboard-container">
+    <!-- Header area with summary stats -->
+    <c-row>
+        <c-col xs="12">
+            <div class="header-container mb-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h1 class="page-title">Team Management</h1>
+                    <div class="d-flex gap-2">
                         <button
                                 color="primary"
                                 cButton
-                                class="btn-lg me-2"
-                                (click)="openAddTeamModal()"
-                        >
-                            <svg cIcon class="me-2" name="cil-plus"></svg>
-                            Create Team
+                                class="btn-with-icon"
+                                (click)="openAddTeamModal()">
+                            <svg cIcon name="cil-plus"></svg>
+                            <span>Create Team</span>
                         </button>
-
                         <button
                                 color="primary"
+                                variant="outline"
                                 cButton
-                                class="btn-lg"
-                                (click)="openAddUsersToTeamModal()"
-                        >
-                            <svg cIcon class="me-2" name="cil-user-plus"></svg>
-                            Add Users to Team
+                                class="btn-with-icon"
+                                (click)="openAddUsersToTeamModal()">
+                            <svg cIcon name="cil-user-plus"></svg>
+                            <span>Add Users to Team</span>
                         </button>
                     </div>
                 </div>
-                <ngx-datatable
-                        class="bootstrap"
-                        [rows]="filteredTeams"
-                        [columnMode]="'force'"
-                        [footerHeight]="50"
-                        [headerHeight]="80"
-                        [rowHeight]="'auto'"
-                        [limit]="10">
-                    <ngx-datatable-column name="Team Name" prop="name" [sortable]="false"></ngx-datatable-column>
-                    <ngx-datatable-column name="Remote Identifier" prop="remoteIdentifier" [sortable]="false"></ngx-datatable-column>
-                    <ngx-datatable-column name="Users" prop="users" [sortable]="false">
-                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
-                            <ul cListGroup>
-                                <li *ngFor="let user of row.users" cListGroupItem>{{user.username}}</li>
-                            </ul>
-                        </ng-template>
-                    </ngx-datatable-column>
-                    <ngx-datatable-column name="Actions" prop="actions" [width]="150">
-                        <ng-template ngx-datatable-cell-template let-row="row">
-                            <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-outline-danger"
-                                        (click)='deleteTeam(row)'>
-                                    <svg cIcon name="cil-trash"></svg>
-                                </button>
-                                <button *ngIf="wizEnabled"
-                                        type="button"
-                                        class="btn btn-outline-primary"
-                                        (click)='openCloudSubscriptionsModal(row)'>
-                                    <svg cIcon name="cil-cloud"></svg>
-                                </button>
-                            </div>
-                        </ng-template>
-                    </ngx-datatable-column>
+            </div>
+        </c-col>
+    </c-row>
 
-                </ngx-datatable>
-            </c-card-body>
-        </c-card>
-    </c-col>
-</c-row>
+    <!-- Dashboard stats cards -->
+    <c-row class="mb-4">
+        <c-col sm="6" lg="3">
+            <c-card class="stat-card mb-4">
+                <c-card-body class="d-flex align-items-center">
+                    <div class="stat-icon-container">
+                        <svg cIcon name="cil-group" class="stat-icon"></svg>
+                    </div>
+                    <div class="ms-3">
+                        <div class="stat-label">Total Teams</div>
+                        <div class="stat-value">{{ teams.length }}</div>
+                    </div>
+                </c-card-body>
+            </c-card>
+        </c-col>
+        <c-col sm="6" lg="3">
+            <c-card class="stat-card mb-4">
+                <c-card-body class="d-flex align-items-center">
+                    <div class="stat-icon-container accent-blue">
+                        <svg cIcon name="cil-user" class="stat-icon"></svg>
+                    </div>
+                    <div class="ms-3">
+                        <div class="stat-label">Total Users</div>
+                        <div class="stat-value">{{ users.length }}</div>
+                    </div>
+                </c-card-body>
+            </c-card>
+        </c-col>
+        <c-col sm="6" lg="3">
+            <c-card class="stat-card mb-4">
+                <c-card-body class="d-flex align-items-center">
+                    <div class="stat-icon-container accent-green">
+                        <svg cIcon name="cil-shield-alt" class="stat-icon"></svg>
+                    </div>
+                    <div class="ms-3">
+                        <div class="stat-label">Secured Projects</div>
+                        <div class="stat-value">{{ getSecuredProjectsCount() }}</div>
+                    </div>
+                </c-card-body>
+            </c-card>
+        </c-col>
+        <c-col sm="6" lg="3">
+            <c-card class="stat-card mb-4">
+                <c-card-body class="d-flex align-items-center">
+                    <div class="stat-icon-container accent-purple" *ngIf="wizEnabled">
+                        <svg cIcon name="cil-cloud" class="stat-icon"></svg>
+                    </div>
+                    <div class="stat-icon-container accent-red" *ngIf="!wizEnabled">
+                        <svg cIcon name="cil-cloud-download" class="stat-icon"></svg>
+                    </div>
+                    <div class="ms-3">
+                        <div class="stat-label">Cloud Integration</div>
+                        <div class="stat-value">{{ wizEnabled ? 'Enabled' : 'Disabled' }}</div>
+                    </div>
+                </c-card-body>
+            </c-card>
+        </c-col>
+    </c-row>
+
+    <!-- Main content area -->
+    <c-row>
+        <c-col xs>
+            <c-card class="main-card">
+                <c-card-header class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Teams Overview</h5>
+                    <c-input-group class="search-container">
+            <span cInputGroupText class="search-icon-container">
+              <svg cIcon name="cil-search"></svg>
+            </span>
+                        <input
+                                type="text"
+                                cFormControl
+                                class="form-control search-input"
+                                placeholder="Search teams, identifiers, or users..."
+                                [value]="searchTerm"
+                                (input)="onSearch($event)">
+                        <button
+                                *ngIf="searchTerm"
+                                cButton
+                                color="secondary"
+                                variant="ghost"
+                                class="search-clear-btn"
+                                (click)="clearSearch()">
+                            <svg cIcon name="cil-x"></svg>
+                        </button>
+                    </c-input-group>
+                </c-card-header>
+                <c-card-body>
+                    <!-- Empty state when no teams -->
+                    <div *ngIf="filteredTeams.length === 0" class="empty-state">
+                        <svg cIcon name="cil-group" class="empty-icon"></svg>
+                        <h4 class="mt-3">No teams found</h4>
+                        <p class="text-muted">
+                            {{ searchTerm ? 'Try adjusting your search term or' : 'Get started by' }} creating a new team
+                        </p>
+                        <button
+                                color="primary"
+                                cButton
+                                class="btn-with-icon mt-2"
+                                (click)="openAddTeamModal()">
+                            <svg cIcon name="cil-plus"></svg>
+                            <span>Create Team</span>
+                        </button>
+                    </div>
+
+                    <!-- Teams table -->
+                    <div *ngIf="filteredTeams.length > 0" class="table-responsive">
+                        <ngx-datatable
+                                class="bootstrap teams-table"
+                                [rows]="filteredTeams"
+                                [columnMode]="'force'"
+                                [footerHeight]="50"
+                                [headerHeight]="60"
+                                [rowHeight]="'auto'"
+                                [limit]="10">
+                            <ngx-datatable-column name="Team" [width]="250">
+                                <ng-template ngx-datatable-cell-template let-row="row">
+                                    <div class="d-flex align-items-center">
+                                        <div class="team-icon-container">
+                                            <span class="team-icon">{{ getTeamInitials(row.name) }}</span>
+                                        </div>
+                                        <div class="ms-3">
+                                            <div class="team-name">{{ row.name }}</div>
+                                            <div *ngIf="row.remoteIdentifier" class="team-id">ID: {{ row.remoteIdentifier }}</div>
+                                        </div>
+                                    </div>
+                                </ng-template>
+                            </ngx-datatable-column>
+
+                            <ngx-datatable-column name="Members" [width]="180">
+                                <ng-template ngx-datatable-cell-template let-row="row">
+                                    <div class="d-flex align-items-center">
+                                        <div class="team-members-count">
+                                            <svg cIcon name="cil-user" class="me-2 small-icon"></svg>
+                                            {{ row.users.length }} {{ row.users.length === 1 ? 'Member' : 'Members' }}
+                                        </div>
+                                        <button
+                                                cButton
+                                                color="primary"
+                                                variant="ghost"
+                                                size="sm"
+                                                class="ms-2 view-members-btn"
+                                                (click)="toggleMembersView(row)">
+                                            {{ row.showMembers ? 'Hide' : 'View' }}
+                                        </button>
+                                    </div>
+                                    <div *ngIf="row.showMembers" class="mt-3 members-list">
+                                        <div *ngFor="let user of row.users" class="member-item">
+                                            <svg cIcon name="cil-user" class="me-2 small-icon"></svg>
+                                            {{ user.username }}
+                                        </div>
+                                        <div *ngIf="row.users.length === 0" class="text-muted">
+                                            No members in this team
+                                        </div>
+                                    </div>
+                                </ng-template>
+                            </ngx-datatable-column>
+
+                            <ngx-datatable-column name="Cloud Subscriptions" [width]="180" *ngIf="wizEnabled">
+                                <ng-template ngx-datatable-cell-template let-row="row">
+                                    <button
+                                            cButton
+                                            color="info"
+                                            variant="ghost"
+                                            size="sm"
+                                            class="cloud-subs-btn"
+                                            (click)="openCloudSubscriptionsModal(row)">
+                                        <svg cIcon name="cil-cloud" class="me-2 small-icon"></svg>
+                                        Manage Subscriptions
+                                    </button>
+                                </ng-template>
+                            </ngx-datatable-column>
+
+                            <ngx-datatable-column name="Actions" [width]="150">
+                                <ng-template ngx-datatable-cell-template let-row="row">
+                                    <div class="d-flex gap-2 action-buttons">
+                                        <button
+                                                cButton
+                                                color="primary"
+                                                variant="ghost"
+                                                size="sm"
+                                                class="action-btn"
+                                                (click)="editTeam(row)">
+                                            <svg cIcon name="cil-pencil"></svg>
+                                        </button>
+                                        <button
+                                                cButton
+                                                color="danger"
+                                                variant="ghost"
+                                                size="sm"
+                                                class="action-btn"
+                                                (click)="deleteTeam(row)">
+                                            <svg cIcon name="cil-trash"></svg>
+                                        </button>
+                                    </div>
+                                </ng-template>
+                            </ngx-datatable-column>
+                        </ngx-datatable>
+                    </div>
+                </c-card-body>
+            </c-card>
+        </c-col>
+    </c-row>
+</div>
 
 <!-- Add Team Modal -->
 <c-modal size="lg" id="addTeamModal" alignment="center" [visible]="visibleAddTeam" (visibleChange)="visibleAddTeam = $event">
     <c-modal-header>
-        <h5 cModalTitle>Add New Team</h5>
+        <h5 cModalTitle>Create New Team</h5>
     </c-modal-header>
     <c-modal-body>
-        <form [formGroup]="addTeamForm">
-            <c-input-group class="mb-3">
-                <span cInputGroupText>
-                    <svg cIcon name="cil-group" class="icon"></svg>
-                </span>
-                <input type="text" id="name" class="form-control" formControlName="name" placeholder="Team Name">
-            </c-input-group>
+        <form [formGroup]="addTeamForm" class="modal-form">
+            <div class="form-section">
+                <h6 class="section-title">Team Information</h6>
+                <c-input-group class="mb-3">
+          <span cInputGroupText class="input-icon">
+            <svg cIcon name="cil-group"></svg>
+          </span>
+                    <input
+                            type="text"
+                            id="name"
+                            class="form-control"
+                            formControlName="name"
+                            placeholder="Team Name">
+                </c-input-group>
+                <div *ngIf="addTeamForm.get('name')?.invalid && addTeamForm.get('name')?.touched" class="invalid-feedback d-block">
+                    Team name is required
+                </div>
 
-            <c-input-group class="flex-nowrap">
-        <span cInputGroupText id="remoteId">
-          <svg cIcon name="cil-blur" class="icon"></svg>
-        </span>
-                <input
-                        aria-describedby="addon-wrapping"
-                        aria-label="Remote Identifier"
-                        cFormControl
-                        type="text"
-                        class="form-control"
-                        id="remoteIdentifier"
-                        formControlName="remoteIdentifier"
-                        placeholder="Remote Identifier"
-                />
-            </c-input-group>
-            <br/>
-            <c-input-group class="mb-3">
-                <span cInputGroupText>
-                    <svg cIcon name="cil-user" class="icon"></svg>
-                </span>
-                <input type="text" id="userInput" class="form-control" formControlName="userInput" placeholder="Type to search users">
-            </c-input-group>
-            <div *ngIf="filteredUsers | async as users" style="max-height: 200px; overflow-y: auto;">
-                <ul class="list-group">
-                    <li class="list-group-item" *ngFor="let user of users" (click)="addUserToForm(user, 'addTeamForm')">
-                        {{ user.username }}
-                    </li>
-                </ul>
+                <c-input-group class="mb-3">
+          <span cInputGroupText class="input-icon">
+            <svg cIcon name="cil-blur"></svg>
+          </span>
+                    <input
+                            aria-label="Remote Identifier"
+                            cFormControl
+                            type="text"
+                            class="form-control"
+                            id="remoteIdentifier"
+                            formControlName="remoteIdentifier"
+                            placeholder="Remote Identifier (optional)">
+                </c-input-group>
             </div>
-            <div class="mt-3">
-                <h6>Selected Users:</h6>
-                <div *ngFor="let userId of addTeamForm.value.users" class="badge bg-primary me-1">
-                    {{ getUserNameById(userId) }}
-                    <button type="button" class="btn-close btn-close-white ms-2" aria-label="Close" (click)="removeUserFromForm(userId, 'addTeamForm')"></button>
+
+            <div class="form-section mt-4">
+                <h6 class="section-title">Team Members</h6>
+                <c-input-group class="mb-3">
+          <span cInputGroupText class="input-icon">
+            <svg cIcon name="cil-user"></svg>
+          </span>
+                    <input
+                            type="text"
+                            id="userInput"
+                            class="form-control"
+                            formControlName="userInput"
+                            placeholder="Search users by name...">
+                </c-input-group>
+
+                <div *ngIf="filteredUsers | async as users" class="users-dropdown">
+                    <ul class="users-list">
+                        <li *ngFor="let user of users"
+                            class="user-item"
+                            (click)="addUserToForm(user, 'addTeamForm')">
+                            <svg cIcon name="cil-user" class="me-2 small-icon"></svg>
+                            {{ user.username }}
+                        </li>
+                        <li *ngIf="users.length === 0" class="no-results">
+                            No matching users found
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="selected-users">
+                    <h6 class="selected-title">Selected Members</h6>
+                    <div *ngIf="addTeamForm.value.users?.length === 0" class="text-muted no-users-message">
+                        No users selected
+                    </div>
+                    <div class="users-badges">
+                        <div *ngFor="let userId of addTeamForm.value.users" class="user-badge">
+                            <span class="user-name">{{ getUserNameById(userId) }}</span>
+                            <button
+                                    type="button"
+                                    class="btn-close btn-close-white"
+                                    aria-label="Remove user"
+                                    (click)="removeUserFromForm(userId, 'addTeamForm')">
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </form>
     </c-modal-body>
     <c-modal-footer>
-        <button (click)="closeModal()" cButton color="secondary">
-            Close
+        <button (click)="closeModal()" cButton color="secondary" variant="ghost">
+            Cancel
         </button>
-        <button (click)="onSubmitAddTeam()" cButton color="primary" [disabled]="addTeamForm.invalid">Submit</button>
+        <button
+                (click)="onSubmitAddTeam()"
+                cButton
+                color="primary"
+                [disabled]="addTeamForm.invalid">
+            Create Team
+        </button>
     </c-modal-footer>
 </c-modal>
 
@@ -162,58 +342,88 @@
         <h5 cModalTitle>Add Users to Team</h5>
     </c-modal-header>
     <c-modal-body>
-        <form [formGroup]="addUsersToTeamForm">
-            <c-input-group class="mb-3">
-                <span cInputGroupText>
-                    <svg cIcon name="cil-group" class="icon"></svg>
-                </span>
-                <select id="team" class="form-select" formControlName="team" (change)="onTeamChange()">
-                    <option value="" disabled>Select Team</option>
-                    <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
-                </select>
-            </c-input-group>
-            <c-input-group class="mb-3">
-                <span cInputGroupText>
-                    <svg cIcon name="cil-user" class="icon"></svg>
-                </span>
-                <input type="text" id="userInput" class="form-control" formControlName="userInput" placeholder="Type to search users">
-            </c-input-group>
-            <div *ngIf="filteredUsersForAdd | async as users" style="max-height: 200px; overflow-y: auto;">
-                <ul class="list-group">
-                    <li class="list-group-item" *ngFor="let user of users" (click)="addUserToForm(user, 'addUsersToTeamForm')">
-                        {{ user.username }}
-                    </li>
-                </ul>
+        <form [formGroup]="addUsersToTeamForm" class="modal-form">
+            <div class="form-section">
+                <h6 class="section-title">Select Team</h6>
+                <c-input-group class="mb-3">
+          <span cInputGroupText class="input-icon">
+            <svg cIcon name="cil-group"></svg>
+          </span>
+                    <select
+                            id="team"
+                            class="form-select custom-select"
+                            formControlName="team"
+                            (change)="onTeamChange()">
+                        <option value="" disabled>Select a team</option>
+                        <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
+                    </select>
+                </c-input-group>
+                <div *ngIf="addUsersToTeamForm.get('team')?.invalid && addUsersToTeamForm.get('team')?.touched" class="invalid-feedback d-block">
+                    Please select a team
+                </div>
             </div>
-            <div class="mt-3">
-                <h6>Selected Users:</h6>
-                <div *ngFor="let userId of addUsersToTeamForm.value.users" class="badge bg-primary me-1">
-                    {{ getUserNameById(userId) }}
-                    <button type="button" class="btn-close btn-close-white ms-2" aria-label="Close" (click)="removeUserFromForm(userId, 'addUsersToTeamForm')"></button>
+
+            <div class="form-section mt-4">
+                <h6 class="section-title">Add Team Members</h6>
+                <c-input-group class="mb-3">
+          <span cInputGroupText class="input-icon">
+            <svg cIcon name="cil-user"></svg>
+          </span>
+                    <input
+                            type="text"
+                            id="userInput"
+                            class="form-control"
+                            formControlName="userInput"
+                            placeholder="Search users by name...">
+                </c-input-group>
+
+                <div *ngIf="filteredUsersForAdd | async as users" class="users-dropdown">
+                    <ul class="users-list">
+                        <li *ngFor="let user of users"
+                            class="user-item"
+                            (click)="addUserToForm(user, 'addUsersToTeamForm')">
+                            <svg cIcon name="cil-user" class="me-2 small-icon"></svg>
+                            {{ user.username }}
+                        </li>
+                        <li *ngIf="users.length === 0" class="no-results">
+                            No matching users found
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="selected-users">
+                    <h6 class="selected-title">Selected Members</h6>
+                    <div *ngIf="addUsersToTeamForm.value.users?.length === 0" class="text-muted no-users-message">
+                        No users selected
+                    </div>
+                    <div class="users-badges">
+                        <div *ngFor="let userId of addUsersToTeamForm.value.users" class="user-badge">
+                            <span class="user-name">{{ getUserNameById(userId) }}</span>
+                            <button
+                                    type="button"
+                                    class="btn-close btn-close-white"
+                                    aria-label="Remove user"
+                                    (click)="removeUserFromForm(userId, 'addUsersToTeamForm')">
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </form>
     </c-modal-body>
     <c-modal-footer>
-        <button (click)="closeModal()" cButton color="secondary">
-            Close
+        <button (click)="closeModal()" cButton color="secondary" variant="ghost">
+            Cancel
         </button>
-        <button (click)="onSubmitAddUsersToTeam()" cButton color="primary" [disabled]="addUsersToTeamForm.invalid">Submit</button>
+        <button
+                (click)="onSubmitAddUsersToTeam()"
+                cButton
+                color="primary"
+                [disabled]="addUsersToTeamForm.invalid">
+            Update Team Members
+        </button>
     </c-modal-footer>
 </c-modal>
-<c-toaster [placement]="position" class="p-3" position="fixed">
-    <c-toast
-            [color]="toastStatus"
-            (visibleChange)="onVisibleChange($event)"
-            [visible]="visible">
-        <c-toast-header>
-            Team Management
-        </c-toast-header>
-        <c-toast-body>
-            <p>{{toastMessage}}</p>
-        </c-toast-body>
-    </c-toast>
-</c-toaster>
 
 <!-- Cloud Subscriptions Modal -->
 <c-modal size="lg"
@@ -222,86 +432,93 @@
          [visible]="visibleCloudSubscriptions"
          (visibleChange)="visibleCloudSubscriptions = $event">
     <c-modal-header>
-        <h5 cModalTitle>Cloud Subscriptions - {{ selectedTeam?.name }}</h5>
+        <h5 cModalTitle>
+            <svg cIcon name="cil-cloud" class="me-2"></svg>
+            Cloud Subscriptions - {{ selectedTeam?.name }}
+        </h5>
     </c-modal-header>
     <c-modal-body>
         <!-- Add New Subscription Form -->
-        <div class="config-section p-4 mb-4 bg-light rounded shadow-sm">
-            <h6 class="text-primary mb-3">Add New Subscription</h6>
+        <div class="subscription-add-section">
+            <h6 class="section-title">Add New Subscription</h6>
             <div class="d-flex gap-2">
                 <c-input-group class="flex-grow-1">
-                    <span cInputGroupText>
-                        <svg cIcon name="cil-cloud"></svg>
-                    </span>
+          <span cInputGroupText class="input-icon">
+            <svg cIcon name="cil-cloud"></svg>
+          </span>
                     <input type="text"
                            cFormControl
                            [(ngModel)]="newSubscriptionName"
-                           placeholder="Enter subscription name">
+                           placeholder="Subscription name...">
                 </c-input-group>
                 <button cButton
                         color="primary"
                         [disabled]="!newSubscriptionName.trim()"
                         (click)="createCloudSubscription()"
-                        class="px-4">
-                    <svg cIcon name="cil-plus" class="me-1"></svg>
-                    Add
+                        class="btn-with-icon">
+                    <svg cIcon name="cil-plus"></svg>
+                    <span>Add</span>
                 </button>
             </div>
         </div>
 
         <!-- Existing Subscriptions List -->
-        <div class="config-section p-4 bg-light rounded shadow-sm">
-            <h6 class="text-primary mb-3">Existing Subscriptions</h6>
-            <ngx-datatable
-                    class="bootstrap"
-                    [rows]="cloudSubscriptions"
-                    [columnMode]="'force'"
-                    [headerHeight]="50"
-                    [footerHeight]="50"
-                    [rowHeight]="'auto'"
-                    [limit]="5"
-                    [scrollbarH]="true">
+        <div class="subscription-list-section">
+            <h6 class="section-title">Active Subscriptions</h6>
 
-                <ngx-datatable-column
-                        name="Name"
-                        prop="name"
-                        [flexGrow]="2">
-                    <ng-template ngx-datatable-cell-template let-row="row">
-                        <span class="d-flex align-items-center">
-                            <svg cIcon name="cil-cloud" class="me-2 text-primary"></svg>
-                            {{ row.name }}
-                        </span>
-                    </ng-template>
-                </ngx-datatable-column>
+            <!-- Empty state for no subscriptions -->
+            <div *ngIf="cloudSubscriptions.length === 0" class="empty-state smaller">
+                <svg cIcon name="cil-cloud-download" class="empty-icon"></svg>
+                <p class="mt-2 mb-0">No cloud subscriptions found</p>
+                <small class="text-muted">Add a new subscription to get started</small>
+            </div>
 
-                <ngx-datatable-column
-                        name="Actions"
-                        [flexGrow]="1"
-                        [sortable]="false">
-                    <ng-template ngx-datatable-cell-template let-row="row">
+            <!-- Subscriptions list -->
+            <div *ngIf="cloudSubscriptions.length > 0" class="active-subscriptions">
+                <div *ngFor="let subscription of cloudSubscriptions" class="subscription-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <svg cIcon name="cil-cloud" class="me-2 subscription-icon"></svg>
+                            <span class="subscription-name">{{ subscription.name }}</span>
+                        </div>
                         <button cButton
                                 color="danger"
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
-                                class="btn-icon"
-                                (click)="deleteCloudSubscription(row.id)">
+                                class="action-btn"
+                                (click)="deleteCloudSubscription(subscription.id)">
                             <svg cIcon name="cil-trash"></svg>
                         </button>
-                    </ng-template>
-                </ngx-datatable-column>
-            </ngx-datatable>
-
-            <!-- Empty State -->
-            <div *ngIf="cloudSubscriptions.length === 0"
-                 class="text-center p-4 text-muted">
-                <svg cIcon name="cil-cloud-download" size="xl" class="mb-3"></svg>
-                <p class="mb-0">No cloud subscriptions found</p>
+                    </div>
+                </div>
             </div>
         </div>
     </c-modal-body>
     <c-modal-footer>
-        <button (click)="visibleCloudSubscriptions = false" cButton color="secondary">
+        <button (click)="visibleCloudSubscriptions = false" cButton color="secondary" variant="ghost">
             Close
         </button>
     </c-modal-footer>
 </c-modal>
+
+<!-- Toast Notifications -->
+<c-toaster [placement]="position" class="p-3" position="fixed">
+    <c-toast
+            [color]="toastStatus"
+            (visibleChange)="onVisibleChange($event)"
+            [visible]="visible"
+            [autohide]="true"
+            [delay]="5000"
+            class="toast-notification">
+        <c-toast-header>
+            <svg *ngIf="toastStatus === 'success'" cIcon name="cil-check" class="me-2 toast-icon success"></svg>
+            <svg *ngIf="toastStatus === 'danger'" cIcon name="cil-warning" class="me-2 toast-icon danger"></svg>
+            <svg *ngIf="toastStatus === 'info'" cIcon name="cil-info" class="me-2 toast-icon info"></svg>
+            <strong class="me-auto">Team Management</strong>
+            <small>just now</small>
+        </c-toast-header>
+        <c-toast-body>
+            <p class="mb-0">{{toastMessage}}</p>
+        </c-toast-body>
+    </c-toast>
+</c-toaster>

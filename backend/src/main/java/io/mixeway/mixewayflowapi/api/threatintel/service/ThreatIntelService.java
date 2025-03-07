@@ -26,6 +26,7 @@ public class ThreatIntelService {
         ItemListResponse itemListResponse = findFindingService.getThreatIntelFindings(principal);
         itemListResponse.setNumberOfTeams(findTeamService.findAllTeams(principal).size());
         itemListResponse.setNumberOfAllProjects(findCodeRepoService.findCodeRepoForUser(principal).size());
+        itemListResponse.setNumberOfUniqueProjects(findCodeRepoService.findCodeRepoForUser(principal).size());
         itemListResponse.setOpenedVulnerabilities(findFindingService.countOpenedVulnerabilities(principal));
         return new ResponseEntity<>(itemListResponse,HttpStatus.OK);
     }

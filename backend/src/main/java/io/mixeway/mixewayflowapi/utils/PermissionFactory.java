@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -31,10 +32,32 @@ public class PermissionFactory {
             return userInfo.getTeams().stream().toList();
         }
     }
+    public Optional<Team> findById(Long teamId, Principal principal) {
+        UserInfo userInfo = findUserService.findUser(principal.getName());
+        Optional<Team> teamOptional = teamRepository.findById(teamId);
+
+        if (teamOptional.isPresent() && (userInfo.getRoles().contains(findRoleService.findUserRole("ADMIN"))
+                || userInfo.getTeams().contains(teamOptional.get()))) {
+            return teamOptional;
+        }
+        return Optional.empty();
+    }
+
 
     public void canUserManageTeam(Team team, Principal principal) {
         if (!findUserService.findUser(principal.getName()).getTeams().contains(team)) {
             throw new UnauthorizedException();
         }
     }
+    public void canUserAccessTeam(Team team, Principal principal) {
+        UserInfo userInfo = findUserService.findUser(principal.getName());
+        UserRole adminRole = findRoleService.findUserRole("ADMIN");
+
+        // Check if the user is an admin or belongs to the team
+        if (!userInfo.getRoles().contains(adminRole) && !userInfo.getTeams().contains(team)) {
+            throw new UnauthorizedException();
+        }
+    }
+
+
 }

@@ -1,9 +1,26 @@
-import {Component, OnInit} from '@angular/core';
-import {AlertComponent, CardBodyComponent, CardComponent, CardHeaderComponent, ColComponent} from "@coreui/angular";
-import {DatePipe, NgForOf, NgIf} from "@angular/common";
-import {IconSetService} from "@coreui/icons-angular";
-import {ThreatIntelService} from "../../../service/ThreatIntelService";
-import {brandSet, freeSet} from "@coreui/icons";
+import { Component, OnInit } from '@angular/core';
+import {
+    AlertComponent,
+    CardBodyComponent,
+    CardComponent,
+    CardHeaderComponent,
+    ColComponent,
+    TooltipDirective
+} from "@coreui/angular";
+import { DatePipe, NgForOf, NgIf, NgClass } from "@angular/common";
+import { IconDirective, IconSetService } from "@coreui/icons-angular";
+import { ThreatIntelService } from "../../../service/ThreatIntelService";
+import {
+    brandSet,
+    freeSet,
+    cilTrash,
+    cilNotes,
+    cilCalendar,
+    cilLink,
+    cilReload,
+    cilCheckAlt
+} from "@coreui/icons";
+import { RouterLink } from "@angular/router";
 
 interface Vulnerability {
     name: string;
@@ -13,10 +30,9 @@ interface Vulnerability {
     status?: string; // For reviewed vulnerabilities
 }
 
-
 @Component({
-  selector: 'app-reviews',
-  standalone: true,
+    selector: 'app-reviews',
+    standalone: true,
     imports: [
         ColComponent,
         CardComponent,
@@ -25,18 +41,34 @@ interface Vulnerability {
         NgForOf,
         DatePipe,
         NgIf,
-        AlertComponent
+        NgClass,
+        AlertComponent,
+        IconDirective,
+        TooltipDirective,
+        RouterLink
     ],
-  templateUrl: './reviews.component.html',
-  styleUrl: './reviews.component.scss'
+    templateUrl: './reviews.component.html',
+    styleUrls: ['./reviews.component.scss']
 })
-export class ReviewsComponent implements OnInit{
+export class ReviewsComponent implements OnInit {
     removedVulnerabilities: Vulnerability[] = [];
     reviewedVulnerabilities: Vulnerability[] = [];
+    isLoading: boolean = false;
 
-    constructor(public iconSet: IconSetService, private threatIntelService: ThreatIntelService) {
-        iconSet.icons = { ...freeSet, ...iconSet, ...brandSet }
-
+    constructor(
+        public iconSet: IconSetService,
+        private threatIntelService: ThreatIntelService
+    ) {
+        iconSet.icons = {
+            ...freeSet,
+            ...brandSet,
+            cilTrash,
+            cilNotes,
+            cilCalendar,
+            cilLink,
+            cilReload,
+            cilCheckAlt
+        };
     }
 
     getStatusEmoji(status: string | undefined): string {
@@ -52,27 +84,47 @@ export class ReviewsComponent implements OnInit{
         }
     }
 
+    getStatusClass(status: string | undefined): string {
+        switch (status) {
+            case 'WONT_FIX':
+                return 'wont-fix';
+            case 'ACCEPTED':
+                return 'accepted';
+            case 'FALSE_POSITIVE':
+                return 'false-positive';
+            default:
+                return '';
+        }
+    }
+
     ngOnInit(): void {
         this.loadRemoved();
         this.loadSupressed();
     }
 
-
-    private loadRemoved() {
+    loadRemoved() {
+        this.isLoading = true;
         this.threatIntelService.getTopRemoved().subscribe({
             next: (response) => {
                 this.removedVulnerabilities = response;
+                this.isLoading = false;
+            },
+            error: () => {
+                this.isLoading = false;
             }
         });
-
     }
 
-    private loadSupressed() {
+    loadSupressed() {
+        this.isLoading = true;
         this.threatIntelService.getTopReviewed().subscribe({
             next: (response) => {
                 this.reviewedVulnerabilities = response;
+                this.isLoading = false;
+            },
+            error: () => {
+                this.isLoading = false;
             }
         });
     }
-
 }

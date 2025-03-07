@@ -50,7 +50,10 @@ public class ProcessDTrackVulnDataService {
                     dto.getDescription(),
                     dto.getReferences(),
                     dto.getRecommendation(),
-                    mapSeverity(dto.getSeverity())
+                    mapSeverity(dto.getSeverity()),
+                    null,
+                    null,
+                    null
             );
             vulnerability.updateScoreInfos(dto.getEpssScore(), dto.getEpssPercentile(), null);
             Hibernate.initialize(vulnerability.getComponents());
@@ -67,6 +70,7 @@ public class ProcessDTrackVulnDataService {
                         component,
                         codeRepoBranch,
                         codeRepo,
+                        null,
                         vulnerability.getDescription(),
                         location,
                         vulnerability.getSeverity(),

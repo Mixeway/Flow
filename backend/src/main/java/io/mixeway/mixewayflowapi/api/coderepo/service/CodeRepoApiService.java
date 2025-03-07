@@ -1,6 +1,5 @@
 package io.mixeway.mixewayflowapi.api.coderepo.service;
 
-import ch.qos.logback.core.spi.ScanException;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.GetCodeReposResponseDto;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.Team;
@@ -15,7 +14,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.security.Principal;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -37,6 +35,20 @@ public class CodeRepoApiService {
     public CodeRepo getRepo(Long id, Principal principal) {
         return findCodeRepoService.findById(id, principal);
     }
+
+    public List<GetCodeReposResponseDto> getReposByTeam(Long teamId, Principal principal) {
+        Team team = findTeamService.findById(teamId)
+                .orElseThrow(() -> new TeamNotFoundException("Team not found"));
+
+        // Verify user has permission to access team
+        permissionFactory.canUserAccessTeam(team, principal);
+
+        List<CodeRepo> repos = findCodeRepoService.findByTeam(team);
+        return repos.stream()
+                .map(repo -> new GetCodeReposResponseDto(repo))
+                .collect(Collectors.toList());
+    }
+
 
     public void runScan(Long id, Principal principal) {
         CodeRepo repo = findCodeRepoService.findById(id, principal);

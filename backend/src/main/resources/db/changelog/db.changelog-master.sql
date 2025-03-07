@@ -615,3 +615,53 @@ CREATE TABLE cloud_subscription (
                                     CONSTRAINT fk_team FOREIGN KEY (team_id) REFERENCES team(id),
                                     CONSTRAINT uk_name_team UNIQUE (name, team_id)
 );
+
+--changeset majaberej:add_cloud_subscription_to_finding
+ALTER TABLE finding
+    ADD COLUMN cloud_subscription_id BIGINT NULL,
+    ADD CONSTRAINT fk_cloud_subscription FOREIGN KEY (cloud_subscription_id) REFERENCES cloud_subscription(id);
+
+--changeset majaberej:coderepo_coderepo_branch_null
+ALTER TABLE finding
+    ALTER COLUMN coderepo_branch_id DROP NOT NULL,
+    ALTER COLUMN coderepo_id DROP NOT NULL;
+
+--changeset majaberej:add_external_project_name_to_cloud_subscription
+ALTER TABLE cloud_subscription
+    ADD COLUMN external_project_name VARCHAR(255) NULL;
+
+--changeset majaberej:add_scan_status_to_cloud_subscription
+ALTER TABLE cloud_subscription
+    ADD COLUMN scan_status VARCHAR(20) NOT NULL DEFAULT 'NOT_PERFORMED';
+
+--changeset majaberej:add_cloud_scan_info_table
+CREATE TABLE cloud_scan_info (
+                           id BIGSERIAL PRIMARY KEY,
+                           cloud_subscription_id BIGINT NOT NULL,
+                           inserted_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                           scan_status VARCHAR(20) NOT NULL DEFAULT 'NOT_PERFORMED',
+                           high_findings INT NOT NULL DEFAULT 0,
+                           critical_findings INT NOT NULL DEFAULT 0,
+                           CONSTRAINT fk_scan_info_cloud_subscription FOREIGN KEY (cloud_subscription_id) REFERENCES cloud_subscription(id)
+);
+
+--changeset majaberej:add_cloud_finding_stats
+CREATE TABLE cloud_subscription_finding_stats (
+                                         id SERIAL PRIMARY KEY,
+                                         cloud_subscription_id INTEGER NOT NULL,
+                                         date_inserted TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                         critical_findings INTEGER NOT NULL,
+                                         high_findings INTEGER NOT NULL,
+                                         opened_findings INTEGER NOT NULL,
+                                         removed_findings INTEGER NOT NULL,
+                                         average_fix_time INTEGER NOT NULL,
+                                         FOREIGN KEY (cloud_subscription_id) REFERENCES coderepo(id)
+);
+
+--changeset majaberej:update_cloud_finding_stats_fk
+ALTER TABLE cloud_subscription_finding_stats
+DROP CONSTRAINT cloud_subscription_finding_stats_cloud_subscription_id_fkey;
+
+ALTER TABLE cloud_subscription_finding_stats
+    ADD CONSTRAINT cloud_subscription_finding_stats_cloud_subscription_id_fkey
+        FOREIGN KEY (cloud_subscription_id) REFERENCES cloud_subscription(id);

@@ -1,295 +1,611 @@
-<c-row>
-    <c-col xs>
-        <c-card class="mb-4">
-            <c-card-header>
-                User management
-            </c-card-header>
-            <c-card-body>
-                <!-- Search row with improved styling -->
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <c-input-group class="input-group-lg">
-                    <span cInputGroupText class="bg-light">
-                        <svg cIcon name="cil-search" class="text-muted"></svg>
-                    </span>
-                            <input
-                                    type="text"
-                                    cFormControl
-                                    class="form-control form-control-lg shadow-none"
-                                    placeholder="Search users by name, role, team..."
-                                    [value]="searchTerm"
-                                    (input)="onSearch($event)"
-                            >
-                            <button
-                                    *ngIf="searchTerm"
-                                    cButton
-                                    color="secondary"
-                                    variant="outline"
-                                    class="px-4"
-                                    (click)="clearSearch()">
-                                <svg cIcon name="cil-x" class="me-0"></svg>
-                            </button>
-                        </c-input-group>
-                    </div>
+<!-- Main Dashboard Container -->
+<div class="dashboard-container">
+    <!-- Header area with summary stats -->
+    <c-row>
+        <c-col xs="12">
+            <div class="header-container mb-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h1 class="page-title">User Management</h1>
+                    <button
+                            color="primary"
+                            cButton
+                            class="btn-with-icon"
+                            (click)="openAddNewUserModal()">
+                        <svg cIcon name="cil-user-plus"></svg>
+                        <span>Add New User</span>
+                    </button>
                 </div>
+            </div>
+        </c-col>
+    </c-row>
 
-                <!-- Action buttons row -->
-                <div class="row mb-4">
-                    <div class="col">
+    <!-- Dashboard stats cards -->
+    <c-row class="mb-4">
+        <c-col sm="6" lg="3">
+            <c-card class="stat-card mb-4">
+                <c-card-body class="d-flex align-items-center">
+                    <div class="stat-icon-container">
+                        <svg cIcon name="cil-user" class="stat-icon"></svg>
+                    </div>
+                    <div class="ms-3">
+                        <div class="stat-label">Total Users</div>
+                        <div class="stat-value">{{ users.length }}</div>
+                    </div>
+                </c-card-body>
+            </c-card>
+        </c-col>
+        <c-col sm="6" lg="3">
+            <c-card class="stat-card mb-4">
+                <c-card-body class="d-flex align-items-center">
+                    <div class="stat-icon-container accent-blue">
+                        <svg cIcon name="cil-shield-alt" class="stat-icon"></svg>
+                    </div>
+                    <div class="ms-3">
+                        <div class="stat-label">Admins</div>
+                        <div class="stat-value">{{ getCountByRole('ADMIN') }}</div>
+                    </div>
+                </c-card-body>
+            </c-card>
+        </c-col>
+        <c-col sm="6" lg="3">
+            <c-card class="stat-card mb-4">
+                <c-card-body class="d-flex align-items-center">
+                    <div class="stat-icon-container accent-green">
+                        <svg cIcon name="cil-people" class="stat-icon"></svg>
+                    </div>
+                    <div class="ms-3">
+                        <div class="stat-label">Team Managers</div>
+                        <div class="stat-value">{{ getCountByRole('TEAM_MANAGER') }}</div>
+                    </div>
+                </c-card-body>
+            </c-card>
+        </c-col>
+        <c-col sm="6" lg="3">
+            <c-card class="stat-card mb-4">
+                <c-card-body class="d-flex align-items-center">
+                    <div class="stat-icon-container accent-purple">
+                        <svg cIcon name="cil-check-circle" class="stat-icon"></svg>
+                    </div>
+                    <div class="ms-3">
+                        <div class="stat-label">Active Users</div>
+                        <div class="stat-value">{{ getActiveUsersCount() }}</div>
+                    </div>
+                </c-card-body>
+            </c-card>
+        </c-col>
+    </c-row>
+
+    <!-- Main content area -->
+    <c-row>
+        <c-col xs>
+            <c-card class="main-card">
+                <c-card-header class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Users Overview</h5>
+                    <c-input-group class="search-container">
+            <span cInputGroupText class="search-icon-container">
+              <svg cIcon name="cil-search"></svg>
+            </span>
+                        <input
+                                type="text"
+                                cFormControl
+                                class="form-control search-input"
+                                placeholder="Search by name, role, team..."
+                                [value]="searchTerm"
+                                (input)="onSearch($event)">
+                        <button
+                                *ngIf="searchTerm"
+                                cButton
+                                color="secondary"
+                                variant="ghost"
+                                class="search-clear-btn"
+                                (click)="clearSearch()">
+                            <svg cIcon name="cil-x"></svg>
+                        </button>
+                    </c-input-group>
+                </c-card-header>
+                <c-card-body>
+                    <!-- Empty state when no users -->
+                    <div *ngIf="filteredUsers.length === 0" class="empty-state">
+                        <svg cIcon name="cil-user" class="empty-icon"></svg>
+                        <h4 class="mt-3">No users found</h4>
+                        <p class="text-muted">
+                            {{ searchTerm ? 'Try adjusting your search term or' : 'Get started by' }} adding a new user
+                        </p>
                         <button
                                 color="primary"
                                 cButton
-                                class="btn-lg"
-                                (click)="openAddNewUserModal()"
-                        >
-                            <svg cIcon class="me-2" name="cil-user-plus"></svg>
-                            Add new User
+                                class="btn-with-icon mt-2"
+                                (click)="openAddNewUserModal()">
+                            <svg cIcon name="cil-user-plus"></svg>
+                            <span>Add New User</span>
                         </button>
                     </div>
-                </div>
-                <ngx-datatable
-                        class="bootstrap"
-                        [rows]="filteredUsers"
-                        [columnMode]="'force'"
-                        [footerHeight]="50"
-                        [headerHeight]="80"
-                        [rowHeight]="'auto'"
-                        [limit]="10">
 
-                    <ngx-datatable-column name="Username" prop="username" [sortable]="false"></ngx-datatable-column>
-                    <ngx-datatable-column name="Role" prop="role" [sortable]="false"></ngx-datatable-column>
-                    <ngx-datatable-column name="Teams" prop="teams" [sortable]="false">
-                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
-                            <ul cListGroup>
-                                <li *ngFor="let team of row.teams" cListGroupItem>{{team.name}}</li>
-                            </ul>
-                        </ng-template>
-                    </ngx-datatable-column>
-                    <ngx-datatable-column name="Active" prop="active" [width]="50">
-                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value"
-                                     let-row="row">
-                            <svg cIcon name="{{ row.active === true ? 'cil-check' : 'cil-x-circle'}}"
-                                 title="cil-check"
-                                 size="3xl"
-                                 class="{{ row.active === true ? 'icon-check' : 'icon-cross'}}"></svg>
-                        </ng-template>
-                    </ngx-datatable-column>
-                    <ngx-datatable-column name="Change<br/>Role" prop="name2" [width]="50">
-                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value"
-                                     let-row="row">
-                            <button type="button" class="btn btn-outline-info"
-                                    (click)='openRoleModal(row)'>
-                                <svg cIcon name="cil-transfer"></svg>
-                            </button>
+                    <!-- Users table -->
+                    <div *ngIf="filteredUsers.length > 0" class="table-responsive">
+                        <ngx-datatable
+                                class="bootstrap users-table"
+                                [rows]="filteredUsers"
+                                [columnMode]="'force'"
+                                [footerHeight]="50"
+                                [headerHeight]="60"
+                                [rowHeight]="'auto'"
+                                [limit]="10">
+                            <ngx-datatable-column name="User" [width]="250">
+                                <ng-template ngx-datatable-cell-template let-row="row">
+                                    <div class="d-flex align-items-center">
+                                        <div class="user-avatar">
+                                            <span class="avatar-text">{{ getUserInitials(row.username) }}</span>
+                                        </div>
+                                        <div class="ms-3">
+                                            <div class="user-name">{{ row.username }}</div>
+                                            <div class="user-role">
+                        <span class="badge" [ngClass]="getRoleBadgeClass(row.role)">
+                          {{ formatRoleDisplay(row.role) }}
+                        </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </ng-template>
+                            </ngx-datatable-column>
 
-                        </ng-template>
-                    </ngx-datatable-column>
-                    <ngx-datatable-column name="Manage<br/>teams" prop="name2" [width]="50">
-                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value"
-                                     let-row="row">
-                            <button type="button" class="btn btn-outline-info"
-                                    (click)='openTeamModal(row)'>
-                                <svg cIcon name="cil-vector"></svg>
-                            </button>
+                            <ngx-datatable-column name="Status" [width]="100">
+                                <ng-template ngx-datatable-cell-template let-row="row">
+                  <span class="status-badge" [ngClass]="{'active': row.active, 'inactive': !row.active}">
+                    <svg cIcon [name]="row.active ? 'cil-check-circle' : 'cil-x-circle'" class="status-icon"></svg>
+                      {{ row.active ? 'Active' : 'Inactive' }}
+                  </span>
+                                </ng-template>
+                            </ngx-datatable-column>
 
-                        </ng-template>
-                    </ngx-datatable-column>
-                    <ngx-datatable-column name="Change<br/>password" prop="name2" [width]="50">
-                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value"
-                                     let-row="row">
-                            <button type="button" class="btn btn-outline-info"
-                                    (click)='openChangePasswordModal(row)'>
-                                <svg cIcon name="cil-lock-locked"></svg>
-                            </button>
+                            <ngx-datatable-column name="Teams" [width]="180">
+                                <ng-template ngx-datatable-cell-template let-row="row">
+                                    <div class="d-flex align-items-center">
+                                        <div class="teams-count">
+                                            <svg cIcon name="cil-group" class="me-2 small-icon"></svg>
+                                            {{ row.teams.length }} {{ row.teams.length === 1 ? 'Team' : 'Teams' }}
+                                        </div>
+                                        <button
+                                                cButton
+                                                color="primary"
+                                                variant="ghost"
+                                                size="sm"
+                                                class="ms-2 view-teams-btn"
+                                                (click)="toggleTeamsView(row)">
+                                            {{ row.showTeams ? 'Hide' : 'View' }}
+                                        </button>
+                                    </div>
+                                    <div *ngIf="row.showTeams" class="mt-3 teams-list">
+                                        <div *ngFor="let team of row.teams" class="team-item">
+                                            <svg cIcon name="cil-group" class="me-2 small-icon"></svg>
+                                            {{ team.name }}
+                                        </div>
+                                        <div *ngIf="row.teams.length === 0" class="text-muted">
+                                            No teams assigned
+                                        </div>
+                                    </div>
+                                </ng-template>
+                            </ngx-datatable-column>
 
-                        </ng-template>
-                    </ngx-datatable-column>
-                    <ngx-datatable-column name="Activate/<br/>Deactivate" prop="name2" [width]="50">
-                        <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value"
-                                     let-row="row">
-                            <button *ngIf="row.active === true" type="button" class="btn btn-outline-warning icon-cross"
-                                    (click)='deactivateUser(row)'>
-                                <svg cIcon name="cil-trash"></svg>
-                            </button>
-                            <button *ngIf="row.active === false" type="button" class="btn btn-outline-success icon-check"
-                                    (click)='activate(row)'>
-                                <svg cIcon name="cil-loop-circular"></svg>
-                            </button>
+                            <ngx-datatable-column name="Actions" [width]="180">
+                                <ng-template ngx-datatable-cell-template let-row="row">
+                                    <div class="d-flex gap-2 action-buttons">
+                                        <button
+                                                type="button"
+                                                cButton
+                                                color="primary"
+                                                variant="ghost"
+                                                size="sm"
+                                                class="action-btn"
+                                                title="Change Role"
+                                                (click)="openRoleModal(row)">
+                                            <svg cIcon name="cil-transfer"></svg>
+                                        </button>
 
-                        </ng-template>
-                    </ngx-datatable-column>
+                                        <button
+                                                type="button"
+                                                cButton
+                                                color="primary"
+                                                variant="ghost"
+                                                size="sm"
+                                                class="action-btn"
+                                                title="Manage Teams"
+                                                (click)="openTeamModal(row)">
+                                            <svg cIcon name="cil-vector"></svg>
+                                        </button>
 
-                </ngx-datatable>
-            </c-card-body>
-        </c-card>
-    </c-col>
-</c-row>
+                                        <button
+                                                type="button"
+                                                cButton
+                                                color="primary"
+                                                variant="ghost"
+                                                size="sm"
+                                                class="action-btn"
+                                                title="Change Password"
+                                                (click)="openChangePasswordModal(row)">
+                                            <svg cIcon name="cil-lock-locked"></svg>
+                                        </button>
+
+                                        <button
+                                                type="button"
+                                                cButton
+                                                [color]="row.active ? 'warning' : 'success'"
+                                                variant="ghost"
+                                                size="sm"
+                                                class="action-btn"
+                                                [title]="row.active ? 'Deactivate User' : 'Activate User'"
+                                                (click)="row.active ? deactivateUser(row) : activate(row)">
+                                            <svg cIcon [name]="row.active ? 'cil-trash' : 'cil-loop-circular'"></svg>
+                                        </button>
+                                    </div>
+                                </ng-template>
+                            </ngx-datatable-column>
+                        </ngx-datatable>
+                    </div>
+                </c-card-body>
+            </c-card>
+        </c-col>
+    </c-row>
+</div>
 
 <!-- Add New User Modal -->
 <c-modal size="lg" id="addNewUserModal" alignment="center" [visible]="visibleAddNewUser" (visibleChange)="visibleAddNewUser = $event">
     <c-modal-header>
-        <h5 cModalTitle>Add New User</h5>
+        <h5 cModalTitle>
+            <svg cIcon name="cil-user-plus" class="me-2"></svg>
+            Add New User
+        </h5>
     </c-modal-header>
     <c-modal-body>
-        <form [formGroup]="addNewUserForm">
-            <c-input-group class="mb-3">
-                <span cInputGroupText>
-                    <svg cIcon name="cil-user" class="icon"></svg>
-                </span>
-                <input type="text" id="username" class="form-control" formControlName="username" placeholder="Username">
-            </c-input-group>
-            <c-input-group class="mb-3">
-                <span cInputGroupText>
-                    <svg cIcon name="cil-lock-locked" class="icon"></svg>
-                </span>
-                <input type="password" id="passwordAdded" class="form-control" formControlName="password" placeholder="Password">
-            </c-input-group>
-            <c-input-group class="mb-3">
-                <span cInputGroupText>
-                    <svg cIcon name="cil-people" class="icon"></svg>
-                </span>
-                <select id="roleAdded" class="form-select" formControlName="role">
-                    <option value="" disabled>Select Role</option>
-                    <option value="USER">User</option>
-                    <option value="ADMIN">Admin</option>
-                    <option value="TEAM_MANAGER">Team Manager</option>
-                </select>
-            </c-input-group>
-            <c-input-group class="mb-3">
-                <span cInputGroupText>
-                    <svg cIcon name="cil-list" class="icon"></svg>
-                </span>
-                <input type="text" id="teamInputAdded" class="form-control" formControlName="teamInput" placeholder="Type to search teams">
-            </c-input-group>
-            <div *ngIf="filteredTeams | async as teams" style="max-height: 200px; overflow-y: auto;">
-                <ul class="list-group">
-                    <li class="list-group-item" *ngFor="let team of teams" (click)="addTeamToAddUserForm(team)">
-                        {{ team.name }}
-                    </li>
-                </ul>
+        <form [formGroup]="addNewUserForm" class="modal-form">
+            <div class="form-section">
+                <h6 class="section-title">User Information</h6>
+                <c-input-group class="mb-3">
+          <span cInputGroupText class="input-icon">
+            <svg cIcon name="cil-user"></svg>
+          </span>
+                    <input
+                            type="text"
+                            id="username"
+                            class="form-control"
+                            formControlName="username"
+                            placeholder="Username">
+                </c-input-group>
+                <div *ngIf="addNewUserForm.get('username')?.invalid && addNewUserForm.get('username')?.touched" class="invalid-feedback d-block">
+                    Username is required
+                </div>
+
+                <c-input-group class="mb-3">
+          <span cInputGroupText class="input-icon">
+            <svg cIcon name="cil-lock-locked"></svg>
+          </span>
+                    <input
+                            type="password"
+                            id="passwordAdded"
+                            class="form-control"
+                            formControlName="password"
+                            placeholder="Password">
+                </c-input-group>
+                <div *ngIf="addNewUserForm.get('password')?.invalid && addNewUserForm.get('password')?.touched" class="invalid-feedback d-block">
+                    Password is required
+                </div>
             </div>
-            <div class="mt-3">
-                <h6>Selected Teams:</h6>
-                <div *ngFor="let teamId of addNewUserForm.value.teams" class="badge bg-primary me-1">
-                    {{ getTeamNameById(teamId) }}
-                    <button type="button" class="btn-close btn-close-white ms-2" aria-label="Close" (click)="removeTeamFromAddUserForm(teamId)"></button>
+
+            <div class="form-section mt-4">
+                <h6 class="section-title">Role Assignment</h6>
+                <c-input-group class="mb-3">
+          <span cInputGroupText class="input-icon">
+            <svg cIcon name="cil-people"></svg>
+          </span>
+                    <select
+                            id="roleAdded"
+                            class="form-select custom-select"
+                            formControlName="role">
+                        <option value="" disabled>Select Role</option>
+                        <option value="USER">User</option>
+                        <option value="ADMIN">Admin</option>
+                        <option value="TEAM_MANAGER">Team Manager</option>
+                    </select>
+                </c-input-group>
+                <div *ngIf="addNewUserForm.get('role')?.invalid && addNewUserForm.get('role')?.touched" class="invalid-feedback d-block">
+                    Please select a role
+                </div>
+            </div>
+
+            <div class="form-section mt-4">
+                <h6 class="section-title">Team Assignment</h6>
+                <c-input-group class="mb-3">
+          <span cInputGroupText class="input-icon">
+            <svg cIcon name="cil-group"></svg>
+          </span>
+                    <input
+                            type="text"
+                            id="teamInputAdded"
+                            class="form-control"
+                            formControlName="teamInput"
+                            placeholder="Search teams by name...">
+                </c-input-group>
+
+                <div *ngIf="filteredTeams | async as teams" class="teams-dropdown">
+                    <ul class="teams-list">
+                        <li *ngFor="let team of teams"
+                            class="team-item dropdown-item"
+                            (click)="addTeamToAddUserForm(team)">
+                            <svg cIcon name="cil-group" class="me-2 small-icon"></svg>
+                            {{ team.name }}
+                        </li>
+                        <li *ngIf="teams.length === 0" class="no-results">
+                            No matching teams found
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="selected-teams">
+                    <h6 class="selected-title">Selected Teams</h6>
+                    <div *ngIf="addNewUserForm.value.teams?.length === 0" class="text-muted no-teams-message">
+                        No teams selected
+                    </div>
+                    <div class="teams-badges">
+                        <div *ngFor="let teamId of addNewUserForm.value.teams" class="team-badge">
+                            <span class="team-name">{{ getTeamNameById(teamId) }}</span>
+                            <button
+                                    type="button"
+                                    class="btn-close btn-close-white"
+                                    aria-label="Remove team"
+                                    (click)="removeTeamFromAddUserForm(teamId)">
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </form>
     </c-modal-body>
     <c-modal-footer>
-        <button (click)="closeModal()" cButton color="secondary">
-            Close
+        <button (click)="closeModal()" cButton color="secondary" variant="ghost">
+            Cancel
         </button>
-        <button (click)="onSubmitAddNewUser()" cButton color="primary" [disabled]="addNewUserForm.invalid">Submit</button>
+        <button
+                (click)="onSubmitAddNewUser()"
+                cButton
+                color="primary"
+                [disabled]="addNewUserForm.invalid">
+            Create User
+        </button>
     </c-modal-footer>
 </c-modal>
 
-
 <!-- Change Role Modal -->
-<c-modal size="lg" id="changeRoleModal" alignment="center" [visible]="visibleRoleModal" (visibleChange)="visibleRoleModal = $event">
+<c-modal size="sm" id="changeRoleModal" alignment="center" [visible]="visibleRoleModal" (visibleChange)="visibleRoleModal = $event">
     <c-modal-header>
-        <h5 cModalTitle>Change Role</h5>
+        <h5 cModalTitle>
+            <svg cIcon name="cil-transfer" class="me-2"></svg>
+            Change User Role
+        </h5>
     </c-modal-header>
     <c-modal-body>
+        <div *ngIf="selectedUser" class="selected-user-info mb-4">
+            <div class="d-flex align-items-center">
+                <div class="user-avatar smaller">
+                    <span class="avatar-text">{{ getUserInitials(selectedUser.username) }}</span>
+                </div>
+                <div class="ms-3">
+                    <div class="user-name">{{ selectedUser.username }}</div>
+                    <div class="user-current-role">Current Role:
+                        <span class="badge" [ngClass]="getRoleBadgeClass(selectedUser.role)">
+              {{ formatRoleDisplay(selectedUser.role) }}
+            </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <form [formGroup]="changeRoleForm">
-            <c-input-group class="mb-3">
-                <span cInputGroupText>
-                    <svg cIcon name="cil-people" class="icon"></svg>
-                </span>
-                <select id="role" class="form-select" formControlName="role">
-                    <option value="" disabled>Select Role</option>
-                    <option value="USER">User</option>
-                    <option value="ADMIN">Admin</option>
-                    <option value="TEAM_MANAGER">Team Manager</option>
-                </select>
-            </c-input-group>
+            <div class="form-section">
+                <h6 class="section-title">Select New Role</h6>
+                <c-input-group>
+          <span cInputGroupText class="input-icon">
+            <svg cIcon name="cil-people"></svg>
+          </span>
+                    <select id="role" class="form-select custom-select" formControlName="role">
+                        <option value="" disabled>Select Role</option>
+                        <option value="USER">User</option>
+                        <option value="ADMIN">Admin</option>
+                        <option value="TEAM_MANAGER">Team Manager</option>
+                    </select>
+                </c-input-group>
+                <div *ngIf="changeRoleForm.get('role')?.invalid && changeRoleForm.get('role')?.touched" class="invalid-feedback d-block">
+                    Please select a role
+                </div>
+            </div>
         </form>
     </c-modal-body>
     <c-modal-footer>
-        <button (click)="closeModal()" cButton color="secondary">
-            Close
+        <button (click)="closeModal()" cButton color="secondary" variant="ghost">
+            Cancel
         </button>
-        <button (click)="onSubmitChangeRole()" cButton color="primary" [disabled]="changeRoleForm.invalid">Submit</button>
+        <button
+                (click)="onSubmitChangeRole()"
+                cButton
+                color="primary"
+                [disabled]="changeRoleForm.invalid">
+            Update Role
+        </button>
     </c-modal-footer>
 </c-modal>
 
 <!-- Manage Teams Modal -->
 <c-modal size="lg" id="changeTeamModal" alignment="center" [visible]="visibleTeamModal" (visibleChange)="visibleTeamModal = $event">
     <c-modal-header>
-        <h5 cModalTitle>Manage Teams</h5>
+        <h5 cModalTitle>
+            <svg cIcon name="cil-vector" class="me-2"></svg>
+            Manage User Teams
+        </h5>
     </c-modal-header>
     <c-modal-body>
-        <form [formGroup]="changeTeamForm">
-            <c-input-group class="mb-3">
-                <span cInputGroupText>
-                    <svg cIcon name="cil-list" class="icon"></svg>
-                </span>
-                <input type="text" id="teamInput" class="form-control" formControlName="teamInput" placeholder="Type to search teams">
-            </c-input-group>
-            <div *ngIf="filteredTeams | async as teams" style="max-height: 200px; overflow-y: auto;">
-                <ul class="list-group">
-                    <li class="list-group-item" *ngFor="let team of teams" (click)="addTeamToForm(team)">
-                        {{ team.name }}
-                    </li>
-                </ul>
+        <div *ngIf="selectedUser" class="selected-user-info mb-4">
+            <div class="d-flex align-items-center">
+                <div class="user-avatar smaller">
+                    <span class="avatar-text">{{ getUserInitials(selectedUser.username) }}</span>
+                </div>
+                <div class="ms-3">
+                    <div class="user-name">{{ selectedUser.username }}</div>
+                    <div class="user-teams-count">
+                        <svg cIcon name="cil-group" class="me-1 small-icon"></svg>
+                        {{ selectedUser.teams.length }} {{ selectedUser.teams.length === 1 ? 'Team' : 'Teams' }} assigned
+                    </div>
+                </div>
             </div>
-            <div class="mt-3">
-                <h6>Selected Teams:</h6>
-                <div *ngFor="let teamId of changeTeamForm.value.teams" class="badge bg-primary me-1">
-                    {{ getTeamNameById(teamId) }}
-                    <button type="button" class="btn-close btn-close-white ms-2" aria-label="Close" (click)="removeTeamFromForm(teamId)"></button>
+        </div>
+
+        <form [formGroup]="changeTeamForm">
+            <div class="form-section">
+                <h6 class="section-title">Assign Teams</h6>
+                <c-input-group class="mb-3">
+          <span cInputGroupText class="input-icon">
+            <svg cIcon name="cil-group"></svg>
+          </span>
+                    <input
+                            type="text"
+                            id="teamInput"
+                            class="form-control"
+                            formControlName="teamInput"
+                            placeholder="Search teams by name...">
+                </c-input-group>
+
+                <div *ngIf="filteredTeams | async as teams" class="teams-dropdown">
+                    <ul class="teams-list">
+                        <li *ngFor="let team of teams"
+                            class="team-item dropdown-item"
+                            (click)="addTeamToForm(team)">
+                            <svg cIcon name="cil-group" class="me-2 small-icon"></svg>
+                            {{ team.name }}
+                        </li>
+                        <li *ngIf="teams.length === 0" class="no-results">
+                            No matching teams found
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="selected-teams">
+                    <h6 class="selected-title">Selected Teams</h6>
+                    <div *ngIf="changeTeamForm.value.teams?.length === 0" class="text-muted no-teams-message">
+                        No teams selected
+                    </div>
+                    <div class="teams-badges">
+                        <div *ngFor="let teamId of changeTeamForm.value.teams" class="team-badge">
+                            <span class="team-name">{{ getTeamNameById(teamId) }}</span>
+                            <button
+                                    type="button"
+                                    class="btn-close btn-close-white"
+                                    aria-label="Remove team"
+                                    (click)="removeTeamFromForm(teamId)">
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </form>
     </c-modal-body>
     <c-modal-footer>
-        <button (click)="closeModal()" cButton color="secondary">
-            Close
+        <button (click)="closeModal()" cButton color="secondary" variant="ghost">
+            Cancel
         </button>
-        <button (click)="onSubmitTeamChange()" cButton color="primary" [disabled]="changeTeamForm.invalid">Submit</button>
+        <button
+                (click)="onSubmitTeamChange()"
+                cButton
+                color="primary">
+            Update Teams
+        </button>
     </c-modal-footer>
 </c-modal>
 
 <!-- Change Password Modal -->
-<c-modal size="lg" id="changePasswordModal" alignment="center" [visible]="visibleChangePassword" (visibleChange)="visibleChangePassword = $event">
+<c-modal size="sm" id="changePasswordModal" alignment="center" [visible]="visibleChangePassword" (visibleChange)="visibleChangePassword = $event">
     <c-modal-header>
-        <h5 cModalTitle>Change Password</h5>
+        <h5 cModalTitle>
+            <svg cIcon name="cil-lock-locked" class="me-2"></svg>
+            Change User Password
+        </h5>
     </c-modal-header>
     <c-modal-body>
+        <div *ngIf="selectedUser" class="selected-user-info mb-4">
+            <div class="d-flex align-items-center">
+                <div class="user-avatar smaller">
+                    <span class="avatar-text">{{ getUserInitials(selectedUser.username) }}</span>
+                </div>
+                <div class="ms-3">
+                    <div class="user-name">{{ selectedUser.username }}</div>
+                </div>
+            </div>
+        </div>
+
         <form [formGroup]="changePasswordForm">
-            <c-input-group class="mb-3">
-                <span cInputGroupText>
-                    <svg cIcon name="cil-lock-locked" class="icon"></svg>
-                </span>
-                <input type="password" id="password" class="form-control" formControlName="password" placeholder="Password">
-            </c-input-group>
-            <c-input-group class="mb-3">
-                <span cInputGroupText>
-                    <svg cIcon name="cil-lock-locked" class="icon"></svg>
-                </span>
-                <input type="password" id="confirmPassword" class="form-control" formControlName="confirmPassword" placeholder="Confirm Password">
-            </c-input-group>
+            <div class="form-section">
+                <h6 class="section-title">Set New Password</h6>
+                <c-input-group class="mb-3">
+          <span cInputGroupText class="input-icon">
+            <svg cIcon name="cil-lock-locked"></svg>
+          </span>
+                    <input
+                            type="password"
+                            id="password"
+                            class="form-control"
+                            formControlName="password"
+                            placeholder="New Password">
+                </c-input-group>
+                <div *ngIf="changePasswordForm.get('password')?.invalid && changePasswordForm.get('password')?.touched" class="invalid-feedback d-block">
+                    Password is required
+                </div>
+
+                <c-input-group>
+          <span cInputGroupText class="input-icon">
+            <svg cIcon name="cil-check-circle"></svg>
+          </span>
+                    <input
+                            type="password"
+                            id="confirmPassword"
+                            class="form-control"
+                            formControlName="confirmPassword"
+                            placeholder="Confirm New Password">
+                </c-input-group>
+                <div *ngIf="passwordMismatch" class="invalid-feedback d-block">
+                    Passwords do not match
+                </div>
+            </div>
         </form>
     </c-modal-body>
     <c-modal-footer>
-        <button (click)="closeModal()" cButton color="secondary">
-            Close
+        <button (click)="closeModal()" cButton color="secondary" variant="ghost">
+            Cancel
         </button>
-        <button (click)="onSubmitChangePassword()" cButton color="primary" [disabled]="changePasswordForm.invalid">Submit</button>
+        <button
+                (click)="onSubmitChangePassword()"
+                cButton
+                color="primary"
+                [disabled]="changePasswordForm.invalid || passwordMismatch">
+            Update Password
+        </button>
     </c-modal-footer>
 </c-modal>
 
+<!-- Toast Notifications -->
 <c-toaster [placement]="position" class="p-3" position="fixed">
     <c-toast
             [color]="toastStatus"
             (visibleChange)="onVisibleChange($event)"
-            [visible]="visible">
+            [visible]="visible"
+            [autohide]="true"
+            [delay]="5000"
+            class="toast-notification">
         <c-toast-header>
-            Team Management
+            <svg *ngIf="toastStatus === 'success'" cIcon name="cil-check" class="me-2 toast-icon success"></svg>
+            <svg *ngIf="toastStatus === 'danger'" cIcon name="cil-warning" class="me-2 toast-icon danger"></svg>
+            <svg *ngIf="toastStatus === 'info'" cIcon name="cil-info" class="me-2 toast-icon info"></svg>
+            <strong class="me-auto">User Management</strong>
+            <small>just now</small>
         </c-toast-header>
         <c-toast-body>
-            <p>{{toastMessage}}</p>
+            <p class="mb-0">{{toastMessage}}</p>
         </c-toast-body>
     </c-toast>
 </c-toaster>

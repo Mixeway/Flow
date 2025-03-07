@@ -1,15 +1,31 @@
-<c-card class="h-100 flex-grow-1">
+<c-card class="h-100">
     <c-card-header>
-        Threat Score
+        <strong>Threat Score</strong>
+        <c-badge *ngIf="threatLevelText" [color]="threatLevelColor" class="ms-2">
+            {{ threatLevelText }}
+        </c-badge>
     </c-card-header>
-    <c-card-body>
-        <apx-chart
-                [series]="chartOptions.series"
-                [chart]="chartOptions.chart"
-                [plotOptions]="chartOptions.plotOptions"
-                [fill]="chartOptions.fill"
-                [labels]="chartOptions.labels"
-                [grid]="chartOptions.grid">
-        </apx-chart>
+    <c-card-body class="d-flex flex-column align-items-center justify-content-center">
+        <div class="chart-container mb-2">
+            <apx-chart
+                    [series]="chartOptions.series"
+                    [chart]="chartOptions.chart"
+                    [plotOptions]="chartOptions.plotOptions"
+                    [fill]="chartOptions.fill"
+                    [labels]="chartOptions.labels"
+                    [grid]="chartOptions.grid">
+            </apx-chart>
+        </div>
+
+        <div class="score-details text-center">
+            <p class="mb-2 threat-description">{{ threatDescription }}</p>
+
+            <div class="threat-legend d-flex justify-content-between w-100 mt-2">
+                <span class="legend-item" [ngClass]="{'active': Number(threatScore) <= 20}">Low</span>
+                <span class="legend-item" [ngClass]="{'active': Number(threatScore) > 20 && Number(threatScore) <= 40}">Medium</span>
+                <span class="legend-item" [ngClass]="{'active': Number(threatScore) > 40 && Number(threatScore) <= 80}">High</span>
+                <span class="legend-item" [ngClass]="{'active': Number(threatScore) > 80}">Critical</span>
+            </div>
+        </div>
     </c-card-body>
 </c-card>

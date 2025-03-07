@@ -26,9 +26,15 @@ export class TeamService {
     get(): Observable<any> {
         return this.http.get<any>(this.loginUrl + '/api/v1/team',{ withCredentials: true });
     }
+
+    getTeam(id: string): Observable<any> {
+        return this.http.get<any>(this.loginUrl + '/api/v1/team/' + id ,{ withCredentials: true });
+    }
     update(change: ChangeTeamDto): Observable<any> {
         return this.http.post<any>(this.loginUrl + '/api/v1/team', change, { withCredentials: true });
     }
-
+    delete(id: number): Observable<any> {
+        return this.http.delete(`/api/v1/team/${id}`);
+    }
 
 }

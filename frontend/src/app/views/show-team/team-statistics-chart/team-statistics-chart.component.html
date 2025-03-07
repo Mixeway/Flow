@@ -1,0 +1,100 @@
+<c-row>
+    <!-- Chart Column -->
+    <c-col lg="8" md="12">
+        <c-card class="statistics-card chart-card mb-4">
+            <c-card-header class="card-header">
+                <h5 class="title">Vulnerability Trend</h5>
+                <div class="refresh-button" [class.refreshing]="isRefreshing" (click)="refreshData()" cTooltip="Refresh data">
+                    <svg cIcon name="cilSync"></svg>
+                </div>
+            </c-card-header>
+            <c-card-body>
+                <div class="chart-container">
+                    <c-chart
+                            type="line"
+                            [data]="chartLineData"
+                            [options]="chartOptions">
+                    </c-chart>
+                </div>
+            </c-card-body>
+        </c-card>
+    </c-col>
+
+    <!-- Stats Column -->
+    <c-col lg="4" md="12">
+        <c-card class="statistics-card stats-card mb-4">
+            <c-card-header class="card-header">
+                <h5 class="title">Key Metrics</h5>
+            </c-card-header>
+            <c-card-body>
+                <div class="stats-container">
+                    <c-row>
+                        <!-- Opened Findings -->
+                        <c-col md="6" sm="6" class="mb-3">
+                            <div class="stat-widget info">
+                                <div class="stat-header">
+                                    <h6 class="stat-title">OPENED FINDINGS</h6>
+                                    <div class="stat-icon">
+                                        <svg cIcon name="cilChartLine"></svg>
+                                    </div>
+                                </div>
+                                <div class="stat-value">{{ openedFindings }}</div>
+                                <div class="stat-progress">
+                                    <div class="progress-bar" [style.width.%]="75"></div>
+                                </div>
+                            </div>
+                        </c-col>
+
+                        <!-- Closed Findings -->
+                        <c-col md="6" sm="6" class="mb-3">
+                            <div class="stat-widget success">
+                                <div class="stat-header">
+                                    <h6 class="stat-title">CLOSED FINDINGS</h6>
+                                    <div class="stat-icon">
+                                        <svg cIcon name="cilInput"></svg>
+                                    </div>
+                                </div>
+                                <div class="stat-value">{{ removedFindings }}</div>
+                                <div class="stat-progress">
+                                    <div class="progress-bar" [style.width.%]="75"></div>
+                                </div>
+                            </div>
+                        </c-col>
+
+                        <!-- Reviewed Findings -->
+                        <c-col md="6" sm="6" class="mb-3">
+                            <div class="stat-widget warning">
+                                <div class="stat-header">
+                                    <h6 class="stat-title">REVIEWED FINDINGS</h6>
+                                    <div class="stat-icon">
+                                        <svg cIcon name="cilBrush"></svg>
+                                    </div>
+                                </div>
+                                <div class="stat-value">{{ reviewedFindings }}</div>
+                                <div class="stat-progress">
+                                    <div class="progress-bar" [style.width.%]="80"></div>
+                                </div>
+                            </div>
+                        </c-col>
+
+                        <!-- Time to Fix -->
+                        <c-col md="6" sm="6" class="mb-3">
+                            <div class="stat-widget danger">
+                                <div class="stat-header">
+                                    <h6 class="stat-title">TIME TO FIX [DAYS]</h6>
+                                    <div class="stat-icon">
+                                        <svg cIcon name="cilClock"></svg>
+                                    </div>
+                                </div>
+                                <div class="stat-value">{{ fixTime }}</div>
+                                <div class="stat-progress">
+                                    <div class="progress-bar" [style.width.%]="65"></div>
+                                </div>
+                            </div>
+                        </c-col>
+                    </c-row>
+                </div>
+            </c-card-body>
+        </c-card>
+    </c-col>
+</c-row>

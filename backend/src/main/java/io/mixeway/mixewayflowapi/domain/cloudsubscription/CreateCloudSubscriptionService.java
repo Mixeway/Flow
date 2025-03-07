@@ -26,7 +26,7 @@ public class CreateCloudSubscriptionService {
 
 
     @Transactional
-    public CloudSubscription create(String name, Long teamId, Principal principal) {
+    public CloudSubscription create(String name, Long teamId, Principal principal, String externalProjectName) {
         Team team = findTeamService.findById(teamId)
                 .orElseThrow(() -> {
                     log.warn("Attempted to create cloud subscription for non-existent team id: {}", teamId);
@@ -40,9 +40,9 @@ public class CreateCloudSubscriptionService {
             throw new DuplicateCloudSubscriptionException("Cloud subscription with name " + name + " already exists for team");
         }
 
-        CloudSubscription subscription = new CloudSubscription(name, team);
+        CloudSubscription subscription = new CloudSubscription(name, team, externalProjectName);
         CloudSubscription saved = cloudSubscriptionRepository.save(subscription);
-        log.info("Created new cloud subscription: {} for team: {}", name, team.getName());
+        log.info("Created new cloud subscription: {} for team: {}", externalProjectName, team.getName());
         return saved;
     }
 }

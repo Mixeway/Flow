@@ -1,394 +1,874 @@
-<app-widgets-dropdown *ngIf="widgetStats" [stats]="widgetStats" />
-<br/>
-
-<c-row *ngIf="canManage">
-  <c-card class="mb-4">
-    <c-card-body>
-      <button color="primary" cButton (click)="importRepoModal()">
-        <svg cIcon class="me-2" name="cil-code"></svg>
-        Import new repositories (BULK)
-      </button>
-        &nbsp;
-        <button color="light" cButton (click)="importSingleRepoModal()">
-            <svg cIcon class="me-2" name="cil-clone"></svg>
-            Import single repo
-        </button>
-      &nbsp;
-      <button color="info" cButton (click)="createNewTeamModal()">
-        <svg cIcon class="me-2" name="cil-people"></svg>
-        Add new Team
-      </button>
-    </c-card-body>
-  </c-card>
+<!-- Enhanced Dashboard Header with Overview Stats (Only shown when security overview is hidden) -->
+<c-row *ngIf="widgetStats && !showSecurityOverview" class="mb-4">
+    <c-col>
+        <app-widgets-dropdown [stats]="widgetStats"/>
+    </c-col>
 </c-row>
 
+<!-- Security Overview Section -->
+<c-row class="mb-4">
+    <c-col>
+        <c-card class="security-overview-card">
+            <c-card-header class="d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>Security & Performance Overview</strong>
+                    <small class="text-muted ms-2">Key metrics across your organization</small>
+                </div>
+                <button color="link" cButton variant="ghost" class="p-0" (click)="toggleSecurityOverview()">
+                    <svg cIcon [name]="showSecurityOverview ? 'cil-chevron-top' : 'cil-chevron-bottom'"></svg>
+                </button>
+            </c-card-header>
+            <c-card-body *ngIf="showSecurityOverview">
+                <!-- Summary Cards Row -->
+                <c-row class="g-3 mb-4">
+                    <!-- Total Findings Card -->
+                    <c-col md="6" lg="3">
+                        <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
+                            <div class="summary-icon total-icon me-3">
+                                <svg cIcon name="cil-list" size="xl" class="text-white"></svg>
+                            </div>
+                            <div class="summary-data">
+                                <div class="summary-title text-muted">Total Open Findings</div>
+                                <div class="summary-value fs-4 fw-bold">{{ securityStats?.openTotal || '0' }}</div>
+                                <div class="summary-trend d-flex align-items-center">
+                                    <svg cIcon [name]="getSecurityTrendIcon('total')" class="me-1" size="sm"></svg>
+                                    <span [ngClass]="getSecurityTrendClass('total')">
+                                        {{ getSecurityTrendText('total') }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </c-col>
+
+                    <!-- Critical Findings Card -->
+                    <c-col md="6" lg="3">
+                        <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
+                            <div class="summary-icon critical-icon me-3">
+                                <svg cIcon name="cil-warning" size="xl" class="text-white"></svg>
+                            </div>
+                            <div class="summary-data">
+                                <div class="summary-title text-muted">Critical Findings</div>
+                                <div class="summary-value fs-4 fw-bold">{{ securityStats?.criticalTotal || '0' }}</div>
+                                <div class="summary-trend d-flex align-items-center">
+                                    <svg cIcon [name]="getSecurityTrendIcon('critical')" class="me-1" size="sm"></svg>
+                                    <span [ngClass]="getSecurityTrendClass('critical')">
+                                        {{ getSecurityTrendText('critical') }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </c-col>
+
+                    <!-- Average Fix Time Card -->
+                    <c-col md="6" lg="3">
+                        <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
+                            <div class="summary-icon fix-time-icon me-3">
+                                <svg cIcon name="cil-clock" size="xl" class="text-white"></svg>
+                            </div>
+                            <div class="summary-data">
+                                <div class="summary-title text-muted">Avg. Fix Time</div>
+                                <div class="summary-value fs-4 fw-bold">{{ securityStats?.averageFixTime || '0' }} days</div>
+                                <div class="summary-trend d-flex align-items-center">
+                                    <span class="text-muted">Current statistics</span>
+                                </div>
+                            </div>
+                        </div>
+                    </c-col>
+
+                    <!-- Total Repositories Card -->
+                    <c-col md="6" lg="3">
+                        <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
+                            <div class="summary-icon score-icon me-3">
+                                <svg cIcon name="cil-storage" size="xl" class="text-white"></svg>
+                            </div>
+                            <div class="summary-data">
+                                <div class="summary-title text-muted">Total Repositories</div>
+                                <div class="summary-value fs-4 fw-bold">{{ securityStats?.totalRepos || '0' }}</div>
+                                <div class="summary-trend d-flex align-items-center">
+                                    <a [routerLink]="['/security-dashboard']" class="text-decoration-none">
+                                        View details <svg cIcon name="cil-arrow-right" size="sm"></svg>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </c-col>
+                </c-row>
+
+                <!-- Additional Metrics Row (from the widget stats) -->
+                <c-row class="g-3 mb-4" *ngIf="widgetStats">
+                    <!-- Monitored Teams Card -->
+                    <c-col md="6" lg="3">
+                        <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
+                            <div class="summary-icon team-icon me-3">
+                                <svg cIcon name="cil-people" size="xl" class="text-white"></svg>
+                            </div>
+                            <div class="summary-data">
+                                <div class="summary-title text-muted">Monitored Teams</div>
+                                <div class="summary-value fs-4 fw-bold">{{ widgetStats?.teams || '0' }}</div>
+                                <div class="summary-trend d-flex align-items-center">
+                                    <span class="text-muted">Active teams</span>
+                                </div>
+                            </div>
+                        </div>
+                    </c-col>
+
+                    <!-- Total Scans Card -->
+                    <c-col md="6" lg="3">
+                        <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
+                            <div class="summary-icon scan-icon me-3">
+                                <svg cIcon name="cil-magnifying-glass" size="xl" class="text-white"></svg>
+                            </div>
+                            <div class="summary-data">
+                                <div class="summary-title text-muted">Total Scans</div>
+                                <div class="summary-value fs-4 fw-bold">{{ widgetStats?.totalScans || '0' }}</div>
+                                <div class="summary-trend d-flex align-items-center">
+                                    <span class="text-muted">All-time scans</span>
+                                </div>
+                            </div>
+                        </div>
+                    </c-col>
+
+                    <!-- Monthly Scans Card -->
+                    <c-col md="6" lg="3">
+                        <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
+                            <div class="summary-icon monthly-icon me-3">
+                                <svg cIcon name="cil-calendar" size="xl" class="text-white"></svg>
+                            </div>
+                            <div class="summary-data">
+                                <div class="summary-title text-muted">Monthly Scans</div>
+                                <div class="summary-value fs-4 fw-bold">{{ widgetStats?.monthlyScans || '0' }}</div>
+                                <div class="summary-trend d-flex align-items-center">
+                                    <span class="text-muted">Last 30 days</span>
+                                </div>
+                            </div>
+                        </div>
+                    </c-col>
+
+                    <!-- Security Score Card -->
+                    <c-col md="6" lg="3">
+                        <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
+                            <div class="summary-icon grade-icon me-3">
+                                <svg cIcon name="cil-shield-alt" size="xl" class="text-white"></svg>
+                            </div>
+                            <div class="summary-data">
+                                <div class="summary-title text-muted">Security Score</div>
+                                <div class="summary-value fs-4 fw-bold">{{ calculateSecurityScore() }}</div>
+                                <div class="summary-trend d-flex align-items-center">
+                                    <a [routerLink]="['/stats']" class="text-decoration-none">
+                                        View details <svg cIcon name="cil-arrow-right" size="sm"></svg>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </c-col>
+                </c-row>
+
+                <!-- Vulnerability Trend Chart -->
+                <c-row>
+                    <c-col>
+                        <div class="chart-container p-3 rounded">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="mb-0">
+                                    <svg cIcon name="cil-chart-line" class="me-2 text-primary" width="16"></svg>
+                                    Vulnerability Trend (Last 30 Days)
+                                </h6>
+                                <a [routerLink]="['/security-dashboard']" class="btn btn-sm btn-link text-decoration-none">
+                                    Details <svg cIcon name="cil-arrow-right" size="sm"></svg>
+                                </a>
+                            </div>
+                            <div style="height: 240px; padding-bottom: 20px; position: relative; overflow: hidden;">
+                                <c-chart *ngIf="vulnerabilityTrendData" type="line" [data]="vulnerabilityTrendData" [options]="chartOptions"></c-chart>
+                                <div *ngIf="!vulnerabilityTrendData" class="d-flex justify-content-center align-items-center h-100">
+                                    <c-spinner color="primary" size="sm" class="me-2"></c-spinner>
+                                    <span>Loading chart data...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </c-col>
+                </c-row>
+            </c-card-body>
+        </c-card>
+    </c-col>
+</c-row>
+
+<!-- Admin Actions Bar - Conditionally shown -->
+<c-row *ngIf="canManage" class="mb-4">
+    <c-col>
+        <c-card class="dashboard-actions-card">
+            <c-card-header>
+                <strong>Administrative Actions</strong>
+            </c-card-header>
+            <c-card-body class="d-flex gap-3">
+                <button color="primary" cButton (click)="importRepoModal()">
+                    <svg cIcon class="me-2" name="cil-code"></svg>
+                    Bulk Repository Import
+                </button>
+                <button color="light" cButton (click)="importSingleRepoModal()">
+                    <svg cIcon class="me-2" name="cil-clone"></svg>
+                    Single Repository Import
+                </button>
+                <button color="info" cButton (click)="createNewTeamModal()">
+                    <svg cIcon class="me-2" name="cil-people"></svg>
+                    Add New Team
+                </button>
+            </c-card-body>
+        </c-card>
+    </c-col>
+</c-row>
+
+<!-- Main Dashboard Content -->
 <c-row>
-  <c-col xs>
-    <c-card class="mb-4">
-      <c-card-body>
-        <div>
-          <c-input-group class="mb-3">
-            <span cInputGroupText id="filterTable">
-              <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
-            </span>
-            <input
-                    aria-describedby="addon-wrapping"
-                    aria-label="Filter"
-                    type="text"
-                    class="form-control"
-                    placeholder="Filter results"
-                    (input)="updateFilter($event)"
-            />
-          </c-input-group>
-        </div>
-        <br/>
-        <ngx-datatable
-                class="bootstrap"
-                [rows]="rows"
-                [columns]="columns"
-                [columnMode]="'force'"
-                [footerHeight]="50"
-                [headerHeight]="50"
-                [rowHeight]="'auto'"
-                [limit]="10"
-        >
-          <ngx-datatable-column name="" prop="name2" [width]="50" [sortable]="false">
-            <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
-              <button type="button" class="btn btn-outline-info" (click)='click(row)'>
-                <svg cIcon name="cil-magnifying-glass"></svg>
-              </button>
-            </ng-template>
-          </ngx-datatable-column>
-          <ngx-datatable-column name="Target" prop="target" [width]="350">
-            <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
-              <b>{{ row.target }}</b><br/>
-              <small><a href="{{ row.repo_url }}">{{ row.repo_url }}</a></small>
-            </ng-template>
-          </ngx-datatable-column>
-          <ngx-datatable-column name="Team" prop="team"></ngx-datatable-column>
-          <ngx-datatable-column name="SAST">
-            <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
-              <svg cIcon *ngIf="row.sast === 'DANGER'" name="cil-face-dead" size="3xl" style="color: #b02424"></svg>
-              <svg cIcon *ngIf="row.sast === 'SUCCESS'" name="cil-happy" size="3xl" style="color: #72d321"></svg>
-              <svg cIcon *ngIf="row.sast === 'WARNING'" name="cil-warning" size="3xl" style="color: #e86333"></svg>
-              <svg cIcon *ngIf="row.sast === 'NOT_PERFORMED'" name="cil-deaf" size="3xl" style="color: #e3d0d0"></svg>
-                <c-spinner *ngIf="row.sast === 'RUNNING'" style="color: #c1a7a7"></c-spinner>
-            </ng-template>
-          </ngx-datatable-column>
-          <ngx-datatable-column name="SCA">
-            <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
-              <svg cIcon *ngIf="row.sca === 'DANGER'" name="cil-face-dead" size="3xl" style="color: #b02424"></svg>
-              <svg cIcon *ngIf="row.sca === 'SUCCESS'" name="cil-happy" size="3xl" style="color: #72d321"></svg>
-              <svg cIcon *ngIf="row.sca === 'WARNING'" name="cil-warning" size="3xl" style="color: #e86333"></svg>
-              <svg cIcon *ngIf="row.sca === 'NOT_PERFORMED'" name="cil-deaf" size="3xl" style="color: #e3d0d0"></svg>
-                <c-spinner *ngIf="row.sca === 'RUNNING'" style="color: #c1a7a7"></c-spinner>
+    <c-col xs="12">
+        <c-card class="mb-4">
+            <c-card-body>
+                <c-tabs [activeItemKey]="0">
+                    <!-- Tab Navigation -->
+                    <c-tabs-list variant="underline-border">
+                        <button cTab [itemKey]="0" class="px-4 py-3">
+                            <svg cIcon name="cil-code" class="me-2"></svg>
+                            Repositories
+                        </button>
+                        <button cTab [itemKey]="1" class="px-4 py-3">
+                            <svg cIcon name="cil-cloud" class="me-2"></svg>
+                            Cloud Subscriptions
+                        </button>
+                        <button cTab [itemKey]="2" class="px-4 py-3">
+                            <svg cIcon name="cil-people" class="me-2"></svg>
+                            Teams
+                        </button>
+                    </c-tabs-list>
 
-            </ng-template>
-          </ngx-datatable-column>
-          <ngx-datatable-column name="Secrets">
-            <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
-              <svg cIcon *ngIf="row.secrets === 'DANGER'" name="cil-face-dead" size="3xl" style="color: #b02424"></svg>
-              <svg cIcon *ngIf="row.secrets === 'SUCCESS'" name="cil-happy" size="3xl" style="color: #72d321"></svg>
-              <svg cIcon *ngIf="row.secrets === 'WARNING'" name="cil-warning" size="3xl" style="color: #e86333"></svg>
-              <svg cIcon *ngIf="row.secrets === 'NOT_PERFORMED'" name="cil-deaf" size="3xl" style="color: #e3d0d0"></svg>
-                <c-spinner *ngIf="row.secrets === 'RUNNING'" style="color: #c1a7a7"></c-spinner>
+                    <!-- Repositories Tab Content -->
+                    <c-tabs-content>
+                        <c-tab-panel class="p-3" [itemKey]="0">
+                            <!-- Search & Filter -->
+                            <c-row class="mb-4">
+                                <c-col>
+                                    <c-input-group class="dashboard-search-box">
+                                        <span cInputGroupText>
+                                          <svg cIcon name="cil-magnifying-glass"></svg>
+                                        </span>
+                                        <input
+                                                aria-label="Filter repositories"
+                                                type="text"
+                                                class="form-control"
+                                                placeholder="Search repositories by name, team, or status..."
+                                                (input)="updateFilter($event)"
+                                        />
+                                    </c-input-group>
+                                </c-col>
+                            </c-row>
 
-            </ng-template>
-          </ngx-datatable-column>
-          <ngx-datatable-column name="IaC">
-            <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
-              <svg cIcon *ngIf="row.iac === 'DANGER'" name="cil-face-dead" size="3xl" style="color: #b02424"></svg>
-              <svg cIcon *ngIf="row.iac === 'SUCCESS'" name="cil-happy" size="3xl" style="color: #72d321"></svg>
-              <svg cIcon *ngIf="row.iac === 'WARNING'" name="cil-warning" size="3xl" style="color: #e86333"></svg>
-              <svg cIcon *ngIf="row.iac === 'NOT_PERFORMED'" name="cil-deaf" size="3xl" style="color: #e3d0d0"></svg>
-                <c-spinner *ngIf="row.iac === 'RUNNING'" style="color: #c1a7a7"></c-spinner>
+                            <!-- Status Legend Toggle -->
+                            <c-row class="mb-3">
+                                <c-col>
+                                    <button
+                                            cButton
+                                            color="light"
+                                            size="sm"
+                                            variant="ghost"
+                                            class="mb-2"
+                                            (click)="toggleStatusLegend()"
+                                    >
+                                        <svg cIcon name="cil-info" class="me-1"></svg>
+                                        {{ showStatusLegend ? 'Hide Status Legend' : 'View Status Legend' }}
+                                    </button>
 
-            </ng-template>
-          </ngx-datatable-column>
-          <!-- Add other columns as needed -->
-        </ngx-datatable>
-      </c-card-body>
-    </c-card>
-  </c-col>
+                                    <!-- Collapsible Status Legend -->
+                                    <div class="status-legend d-flex gap-4 align-items-center flex-wrap" *ngIf="showStatusLegend">
+                                        <div class="legend-item d-flex align-items-center">
+                                            <span class="status-indicator danger"></span>
+                                            <small>Critical Issues</small>
+                                        </div>
+                                        <div class="legend-item d-flex align-items-center">
+                                            <span class="status-indicator warning"></span>
+                                            <small>Warnings</small>
+                                        </div>
+                                        <div class="legend-item d-flex align-items-center">
+                                            <span class="status-indicator success"></span>
+                                            <small>No Issues</small>
+                                        </div>
+                                        <div class="legend-item d-flex align-items-center">
+                                            <span class="status-indicator neutral"></span>
+                                            <small>Not Scanned</small>
+                                        </div>
+                                        <div class="legend-item d-flex align-items-center">
+                                            <c-spinner size="sm"></c-spinner>
+                                            <small class="ms-2">Running</small>
+                                        </div>
+                                    </div>
+                                </c-col>
+                            </c-row>
+
+                            <!-- Repository Data Table (Same as original) -->
+                            <ngx-datatable
+                                    class="bootstrap security-table"
+                                    [rows]="rows"
+                                    [columns]="columns"
+                                    [columnMode]="'force'"
+                                    [footerHeight]="50"
+                                    [headerHeight]="50"
+                                    [rowHeight]="'auto'"
+                                    [limit]="10"
+                            >
+                                <!-- Action Column -->
+                                <ngx-datatable-column name="" prop="name2" [width]="60" [sortable]="false" [resizeable]="false">
+                                    <ng-template ngx-datatable-cell-template let-row="row">
+                                        <button type="button" class="btn btn-sm btn-primary" (click)="click(row)">
+                                            <svg cIcon name="cil-magnifying-glass"></svg>
+                                        </button>
+                                    </ng-template>
+                                </ngx-datatable-column>
+
+                                <!-- Target Column -->
+                                <ngx-datatable-column name="Repository" prop="target" [width]="350">
+                                    <ng-template ngx-datatable-cell-template let-row="row">
+                                        <div class="d-flex flex-column">
+                                            <span class="fw-bold">{{ row.target }}</span>
+                                            <small class="text-muted">
+                                                <a href="{{ row.repo_url }}" target="_blank" class="repo-link">
+                                                    <svg cIcon name="cil-external-link" size="sm" class="me-1"></svg>{{ row.repo_url }}
+                                                </a>
+                                            </small>
+                                        </div>
+                                    </ng-template>
+                                </ngx-datatable-column>
+
+                                <!-- Team Column -->
+                                <ngx-datatable-column name="Team" prop="team" [width]="150">
+                                    <ng-template ngx-datatable-cell-template let-row="row">
+                                        <span class="team-badge">{{ row.team }}</span>
+                                    </ng-template>
+                                </ngx-datatable-column>
+
+                                <!-- Security Scan Columns -->
+                                <ngx-datatable-column name="SAST" [width]="100">
+                                    <ng-template ngx-datatable-header-template>
+                                        <span class="scan-type-header" cTooltip="Static Application Security Testing">SAST</span>
+                                    </ng-template>
+                                    <ng-template ngx-datatable-cell-template let-row="row">
+                                        <div class="scan-status-cell">
+                                            <div
+                                                    class="scan-status-indicator"
+                                                    [ngClass]="{
+                                                    'danger': row.sast === 'DANGER',
+                                                    'success': row.sast === 'SUCCESS',
+                                                    'warning': row.sast === 'WARNING',
+                                                    'neutral': row.sast === 'NOT_PERFORMED'
+                                                  }"
+                                            >
+                                                <svg *ngIf="row.sast === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.sast === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
+                                                <svg *ngIf="row.sast === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.sast === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
+                                                <c-spinner *ngIf="row.sast === 'RUNNING'" size="sm"></c-spinner>
+                                            </div>
+                                        </div>
+                                    </ng-template>
+                                </ngx-datatable-column>
+
+                                <!-- SCA Column -->
+                                <ngx-datatable-column name="SCA" [width]="100">
+                                    <ng-template ngx-datatable-header-template>
+                                        <span class="scan-type-header" cTooltip="Software Composition Analysis">SCA</span>
+                                    </ng-template>
+                                    <ng-template ngx-datatable-cell-template let-row="row">
+                                        <div class="scan-status-cell">
+                                            <div
+                                                    class="scan-status-indicator"
+                                                    [ngClass]="{
+                                                    'danger': row.sca === 'DANGER',
+                                                    'success': row.sca === 'SUCCESS',
+                                                    'warning': row.sca === 'WARNING',
+                                                    'neutral': row.sca === 'NOT_PERFORMED'
+                                                  }"
+                                            >
+                                                <svg *ngIf="row.sca === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.sca === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
+                                                <svg *ngIf="row.sca === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.sca === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
+                                                <c-spinner *ngIf="row.sca === 'RUNNING'" size="sm"></c-spinner>
+                                            </div>
+                                        </div>
+                                    </ng-template>
+                                </ngx-datatable-column>
+
+                                <!-- Secrets Column -->
+                                <ngx-datatable-column name="Secrets" [width]="100">
+                                    <ng-template ngx-datatable-header-template>
+                                        <span class="scan-type-header" cTooltip="Secret Detection">Secrets</span>
+                                    </ng-template>
+                                    <ng-template ngx-datatable-cell-template let-row="row">
+                                        <div class="scan-status-cell">
+                                            <div
+                                                    class="scan-status-indicator"
+                                                    [ngClass]="{
+                                                    'danger': row.secrets === 'DANGER',
+                                                    'success': row.secrets === 'SUCCESS',
+                                                    'warning': row.secrets === 'WARNING',
+                                                    'neutral': row.secrets === 'NOT_PERFORMED'
+                                                  }"
+                                            >
+                                                <svg *ngIf="row.secrets === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.secrets === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
+                                                <svg *ngIf="row.secrets === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.secrets === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
+                                                <c-spinner *ngIf="row.secrets === 'RUNNING'" size="sm"></c-spinner>
+                                            </div>
+                                        </div>
+                                    </ng-template>
+                                </ngx-datatable-column>
+
+                                <!-- IaC Column -->
+                                <ngx-datatable-column name="IaC" [width]="100">
+                                    <ng-template ngx-datatable-header-template>
+                                        <span class="scan-type-header" cTooltip="Infrastructure as Code">IaC</span>
+                                    </ng-template>
+                                    <ng-template ngx-datatable-cell-template let-row="row">
+                                        <div class="scan-status-cell">
+                                            <div
+                                                    class="scan-status-indicator"
+                                                    [ngClass]="{
+                                                    'danger': row.iac === 'DANGER',
+                                                    'success': row.iac === 'SUCCESS',
+                                                    'warning': row.iac === 'WARNING',
+                                                    'neutral': row.iac === 'NOT_PERFORMED'
+                                                  }"
+                                            >
+                                                <svg *ngIf="row.iac === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.iac === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
+                                                <svg *ngIf="row.iac === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.iac === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
+                                                <c-spinner *ngIf="row.iac === 'RUNNING'" size="sm"></c-spinner>
+                                            </div>
+                                        </div>
+                                    </ng-template>
+                                </ngx-datatable-column>
+                            </ngx-datatable>
+                        </c-tab-panel>
+                    </c-tabs-content>
+
+                    <!-- Cloud Subscriptions Tab Content (Same as original) -->
+                    <c-tabs-content>
+                        <c-tab-panel class="p-3" [itemKey]="1">
+                            <!-- Existing cloud subscription content -->
+                            <!-- Search & Filter -->
+                            <c-row class="mb-4">
+                                <c-col>
+                                    <c-input-group class="dashboard-search-box">
+                                        <span cInputGroupText>
+                                          <svg cIcon name="cil-magnifying-glass"></svg>
+                                        </span>
+                                        <input
+                                                aria-label="Filter cloud subscriptions"
+                                                type="text"
+                                                class="form-control"
+                                                placeholder="Search cloud subscriptions..."
+                                                (input)="updateCloudFilter($event)"
+                                        />
+                                    </c-input-group>
+                                </c-col>
+                            </c-row>
+
+                            <!-- Data Table -->
+                            <ngx-datatable
+                                    class="bootstrap security-table"
+                                    [rows]="cloudRows"
+                                    [columns]="cloudColumns"
+                                    [columnMode]="'force'"
+                                    [footerHeight]="50"
+                                    [headerHeight]="50"
+                                    [rowHeight]="'auto'"
+                                    [limit]="10"
+                            >
+                                <!-- Existing table content -->
+                            </ngx-datatable>
+                        </c-tab-panel>
+                    </c-tabs-content>
+
+                    <!-- Teams Tab Content (Same as original) -->
+                    <c-tabs-content>
+                        <c-tab-panel class="p-3" [itemKey]="2">
+                            <!-- Existing teams content -->
+                            <!-- Search & Filter -->
+                            <c-row class="mb-4">
+                                <c-col>
+                                    <c-input-group class="dashboard-search-box">
+                                        <span cInputGroupText>
+                                          <svg cIcon name="cil-magnifying-glass"></svg>
+                                        </span>
+                                        <input
+                                                aria-label="Filter teams"
+                                                type="text"
+                                                class="form-control"
+                                                placeholder="Search teams..."
+                                                (input)="updateTeamsFilter($event)"
+                                        />
+                                    </c-input-group>
+                                </c-col>
+                            </c-row>
+
+                            <!-- Data Table -->
+                            <ngx-datatable
+                                    class="bootstrap security-table"
+                                    [rows]="teams"
+                                    [columns]="teamsColumns"
+                                    [columnMode]="'force'"
+                                    [footerHeight]="50"
+                                    [headerHeight]="50"
+                                    [rowHeight]="'auto'"
+                                    [limit]="10"
+                            >
+                                <!-- Existing table content -->
+                            </ngx-datatable>
+                        </c-tab-panel>
+                    </c-tabs-content>
+                </c-tabs>
+            </c-card-body>
+        </c-card>
+    </c-col>
 </c-row>
-
+<!-- Modal Dialogs (Same as original) -->
+<!-- Import Repository Modal -->
+<!-- Repository List Modal -->
+<!-- Single Repository Import Modal -->
+<!-- Add New Team Modal -->
+<!-- Notification Toast -->
+<!-- Import Repository Modal -->
 <c-modal id="importRepoModal" alignment="center" [visible]="visible" (visibleChange)="handleImportRepoChange($event)">
-  <c-modal-header>
-    <h5 cModalTitle>Import repository</h5>
-  </c-modal-header>
-  <c-modal-body>
-    <div class="d-flex justify-content-center mb-3">
-      <button
-              cButton
-              type="button"
-              class="btn btn-primary custom-btn"
-              [class]="{'active': selectedRepo === 'GitLab'}"
-              (click)="selectRepoType('GitLab')"
-              [cTooltip]="'GitLab Repo Type'"
-              cTooltipPlacement="top"
-
-      >
-        <svg cIcon name="cib-gitlab" size="4xl" class="custom-icon"></svg>
-      </button>
-      <button
-              cButton
-              type="button"
-              class="btn btn-primary ms-3 custom-btn"
-              [class]="{'active': selectedRepo === 'GitHub'}"
-              (click)="selectRepoType('GitHub')"
-              [cTooltip]="'GitHub Repo Type'"
-              cTooltipPlacement="top"
-      >
-        <svg cIcon name="cib-github" size="4xl" class="custom-icon"></svg>
-      </button>
-    </div>
-    <form [formGroup]="importRepoForm" (ngSubmit)="onSubmit()" cForm>
-      <c-input-group class="flex-nowrap">
-        <span cInputGroupText id="addon-wrapping">
-          <svg cIcon name="cil-link" class="icon"></svg>
-        </span>
-        <input
-                aria-describedby="addon-wrapping"
-                aria-label="Repository URL"
-                cFormControl
-                type="url"
-                class="form-control"
-                id="repoUrl"
-                formControlName="repoUrl"
-                placeholder="Repository URL"
-                required
-        />
-      </c-input-group>
-      <br/>
-      <c-input-group class="flex-nowrap">
-        <span cInputGroupText id="addon-wrapping2">
-          <svg cIcon name="cil-lock-locked" class="icon"></svg>
-        </span>
-        <input
-                aria-describedby="addon-wrapping"
-                aria-label="Access Token"
-                cFormControl
-                type="password"
-                class="form-control"
-                id="accessToken"
-                formControlName="accessToken"
-                placeholder="Access Token"
-                required
-        />
-      </c-input-group>
-      <br/>
-      <c-input-group class="mb-3">
-        <span cInputGroupText id="addon-wrapping3">
-          <svg cIcon name="cil-people" class="icon"></svg>
-        </span>
-        <select cSelect id="inputGroupSelect01" formControlName="team">
-          <option value="" disabled selected>Select Team...</option>
-          <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
-        </select>
-      </c-input-group>
-    </form>
-  </c-modal-body>
-  <c-modal-footer>
-    <button (click)="closeModal()" cButton color="secondary">Close</button>
-    <button (click)="onSubmit()" cButton color="primary" [disabled]="importRepoForm.invalid">Select projects...</button>
-  </c-modal-footer>
-</c-modal>
-
-<c-modal size="xl" id="repoListModal" alignment="center" [visible]="visibleList" (visibleChange)="handleListRepoChange($event)">
-  <c-modal-header>
-    <h5 cModalTitle>List of the repositories to import</h5>
-  </c-modal-header>
-  <c-modal-body>
-    <div *ngIf="isLoading; else tableTemplate" class="d-flex justify-content-center align-items-center" style="height: 200px;">
-      <div class="text-center">
-        <c-spinner></c-spinner>
-        <div>Loading...</div>
-      </div>
-    </div>
-    <ng-template #tableTemplate>
-      <div>
-        <c-input-group class="mb-3">
-          <span cInputGroupText id="filterTableRepositories">
-            <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
-          </span>
-          <input aria-describedby="addon-wrapping"
-                 aria-label="Access Token"
-                 type="text" class="form-control" placeholder="Filter results" (input)="updateFilterRepo($event)"
-          />
-        </c-input-group>
-      </div>
-      <br/>
-      <ngx-datatable
-              class="bootstrap"
-              [rows]="repoRows"
-              [columns]="columns"
-              [columnMode]="'force'"
-              [footerHeight]="50"
-              [headerHeight]="50"
-              [rowHeight]="'auto'"
-              [limit]="10"
-      >
-        <ngx-datatable-column name="Name" prop="name"></ngx-datatable-column>
-        <ngx-datatable-column name="URL" prop="repo_url"></ngx-datatable-column>
-        <ngx-datatable-column name="Namespace" prop="namespace"></ngx-datatable-column>
-        <ngx-datatable-column name="Import" [width]="50">
-          <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-value="value" let-row="row">
-            <button *ngIf="!row.imported" type="button" class="btn btn-outline-primary" (click)="importRepo(row)">
-              <svg cIcon name="cil-cloud-download"></svg>
-            </button>
-            <button *ngIf="row.imported" type="button" class="btn btn-success" disabled>
-              <svg cIcon name="cil-check"></svg>
-            </button>
-          </ng-template>
-        </ngx-datatable-column>
-      </ngx-datatable>
-    </ng-template>
-  </c-modal-body>
-  <c-modal-footer>
-    <button (click)="closeModal()" cButton color="secondary">
-      Close
-    </button>
-  </c-modal-footer>
-</c-modal>
-
-<c-modal id="importSingleRepoModal" alignment="center" [visible]="visibleSingleRepoModal" (visibleChange)="handleImportSingleRepoChange($event)">
     <c-modal-header>
-        <h5 cModalTitle>Import Single repository</h5>
+        <h5 cModalTitle>Import Repositories</h5>
     </c-modal-header>
     <c-modal-body>
-        <div class="d-flex justify-content-center mb-3">
-            <button
-                    cButton
-                    type="button"
-                    class="btn btn-primary custom-btn"
-                    [class]="{'active': selectedRepo === 'GitLab'}"
-                    (click)="selectRepoType('GitLab')"
-                    [cTooltip]="'Import Single GitLab repo'"
-                    cTooltipPlacement="top"
-
-            >
-                <svg cIcon name="cib-gitlab" size="4xl" class="custom-icon"></svg>
-            </button>
-            <button
-                    cButton
-                    type="button"
-                    class="btn btn-primary ms-3 custom-btn"
-                    [class]="{'active': selectedRepo === 'GitHub'}"
-                    (click)="selectRepoType('GitHub')"
-                    [cTooltip]="'Import Single GitHub repo'"
-                    cTooltipPlacement="top"
-            >
-                <svg cIcon name="cib-github" size="4xl" class="custom-icon"></svg>
-            </button>
+        <!-- Repository Type Selection -->
+        <div class="repo-type-selector mb-4">
+            <h6 class="mb-3">Select Repository Type</h6>
+            <div class="d-flex justify-content-center gap-4">
+                <button
+                        cButton
+                        type="button"
+                        class="repo-type-btn"
+                        [class.active]="selectedRepo === 'GitLab'"
+                        (click)="selectRepoType('GitLab')"
+                        cTooltip="Import from GitLab"
+                        cTooltipPlacement="top"
+                >
+                    <svg cIcon name="cib-gitlab" size="3xl"></svg>
+                    <span class="repo-type-label">GitLab</span>
+                </button>
+                <button
+                        cButton
+                        type="button"
+                        class="repo-type-btn"
+                        [class.active]="selectedRepo === 'GitHub'"
+                        (click)="selectRepoType('GitHub')"
+                        cTooltip="Import from GitHub"
+                        cTooltipPlacement="top"
+                >
+                    <svg cIcon name="cib-github" size="3xl"></svg>
+                    <span class="repo-type-label">GitHub</span>
+                </button>
+            </div>
         </div>
-        <form [formGroup]="importSingleRepoForm" (ngSubmit)="onSubmit()" cForm>
-            <c-input-group class="flex-nowrap">
-                <span cInputGroupText id="addon-wrapping6">
-                  <svg cIcon name="cil-link" class="icon"></svg>
-                </span>
-                <input
-                        aria-describedby="addon-wrapping"
-                        aria-label="Repository URL (to project)"
-                        cFormControl
-                        type="url"
-                        class="form-control"
-                        id="repoUrl2"
-                        formControlName="repoUrl"
-                        placeholder="Repository URL (to project)"
-                        required
-                />
-            </c-input-group>
-            <br/>
-            <c-input-group class="flex-nowrap">
-                <span cInputGroupText id="addon-wrapping5">
-                  <svg cIcon name="cil-lock-locked" class="icon"></svg>
-                </span>
-                <input
-                        aria-describedby="addon-wrapping"
-                        aria-label="Access Token"
-                        cFormControl
-                        type="password"
-                        class="form-control"
-                        id="accessToken2"
-                        formControlName="accessToken"
-                        placeholder="Access Token"
-                        required
-                />
-            </c-input-group>
-            <br/>
-            <c-input-group class="mb-3">
-                <span cInputGroupText id="addon-wrapping4">
-                  <svg cIcon name="cil-people" class="icon"></svg>
-                </span>
-                <select cSelect id="inputGroupSelect02" formControlName="team">
-                    <option value="" disabled selected>Select Team...</option>
-                    <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
-                </select>
-            </c-input-group>
+
+        <!-- Import Repository Form -->
+        <form [formGroup]="importRepoForm" cForm>
+            <div class="mb-3">
+                <label for="repoUrl" class="form-label">Repository URL</label>
+                <c-input-group class="has-validation">
+          <span cInputGroupText>
+            <svg cIcon name="cil-link"></svg>
+          </span>
+                    <input
+                            cFormControl
+                            type="url"
+                            id="repoUrl"
+                            formControlName="repoUrl"
+                            placeholder="https://gitlab.com/your-group"
+                            required
+                    />
+                    <div class="invalid-feedback" *ngIf="importRepoForm.get('repoUrl')?.invalid && importRepoForm.get('repoUrl')?.touched">
+                        Please enter a valid URL
+                    </div>
+                </c-input-group>
+            </div>
+
+            <div class="mb-3">
+                <label for="accessToken" class="form-label">Access Token</label>
+                <c-input-group class="has-validation">
+          <span cInputGroupText>
+            <svg cIcon name="cil-lock-locked"></svg>
+          </span>
+                    <input
+                            cFormControl
+                            type="password"
+                            id="accessToken"
+                            formControlName="accessToken"
+                            placeholder="Your access token"
+                            required
+                    />
+                    <div class="invalid-feedback" *ngIf="importRepoForm.get('accessToken')?.invalid && importRepoForm.get('accessToken')?.touched">
+                        Access token is required
+                    </div>
+                </c-input-group>
+            </div>
+
+            <div class="mb-3">
+                <label for="inputGroupSelect01" class="form-label">Team</label>
+                <c-input-group class="has-validation">
+          <span cInputGroupText>
+            <svg cIcon name="cil-people"></svg>
+          </span>
+                    <select cSelect id="inputGroupSelect01" formControlName="team" required>
+                        <option value="" disabled selected>Select Team...</option>
+                        <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
+                    </select>
+                    <div class="invalid-feedback" *ngIf="importRepoForm.get('team')?.invalid && importRepoForm.get('team')?.touched">
+                        Please select a team
+                    </div>
+                </c-input-group>
+            </div>
         </form>
     </c-modal-body>
     <c-modal-footer>
-        <button (click)="closeModal()" cButton color="secondary">Close</button>
-        <button (click)="onSubmitSingleRepo()" cButton color="primary" [disabled]="importSingleRepoForm.invalid">Import single repo</button>
+        <button (click)="closeModal()" cButton color="secondary">Cancel</button>
+        <button (click)="onSubmit()" cButton color="primary" [disabled]="importRepoForm.invalid">
+            <svg cIcon name="cil-cloud-download" class="me-1"></svg> Browse Repositories
+        </button>
     </c-modal-footer>
 </c-modal>
 
+<!-- Repository List Modal -->
+<c-modal size="xl" id="repoListModal" alignment="center" [visible]="visibleList" (visibleChange)="handleListRepoChange($event)">
+    <c-modal-header>
+        <h5 cModalTitle>Available Repositories</h5>
+    </c-modal-header>
+    <c-modal-body>
+        <!-- Loading State -->
+        <div *ngIf="isLoading" class="text-center p-5">
+            <c-spinner color="primary" size="sm"></c-spinner>
+            <p class="mt-3">Loading repositories...</p>
+        </div>
 
-<c-modal size="lg" id="newTeamModal" alignment="center" [visible]="visibleNewTeam" (visibleChange)="handleNewTeam($event)">
-  <c-modal-header>
-    <h5 cModalTitle>Add new Team</h5>
-  </c-modal-header>
-  <c-modal-body>
-    <form [formGroup]="newTeamForm" (ngSubmit)="onSubmitNewTeam()" cForm>
-      <c-input-group class="flex-nowrap">
-        <span cInputGroupText id="addon-wrapping1">
-          <svg cIcon name="cil-people" class="icon"></svg>
+        <!-- Repository List -->
+        <ng-container *ngIf="!isLoading">
+            <!-- Filter Input -->
+            <c-input-group class="mb-4">
+        <span cInputGroupText>
+          <svg cIcon name="cil-magnifying-glass"></svg>
         </span>
-        <input
-                aria-describedby="addon-wrapping"
-                aria-label="Team Name"
-                cFormControl
-                type="text"
-                class="form-control"
-                id="teamName"
-                formControlName="name"
-                placeholder="Team name"
-                required
-        />
-      </c-input-group>
-        <br/>
-        <c-input-group class="flex-nowrap">
-        <span cInputGroupText id="remoteId">
-          <svg cIcon name="cil-blur" class="icon"></svg>
-        </span>
-            <input
-                    aria-describedby="addon-wrapping"
-                    aria-label="Remote Identifier"
-                    cFormControl
-                    type="text"
-                    class="form-control"
-                    id="remoteIdentifier"
-                    formControlName="remoteIdentifier"
-                    placeholder="Remote Identifier"
-            />
-        </c-input-group>
-    </form>
-  </c-modal-body>
-  <c-modal-footer>
-    <button (click)="closeNewTeamModal()" cButton color="secondary">Close</button>
-    <button (click)="onSubmitNewTeam()" cButton color="primary" [disabled]="newTeamForm.invalid">Add new Team</button>
-  </c-modal-footer>
+                <input
+                        type="text"
+                        class="form-control"
+                        placeholder="Filter repositories..."
+                        (input)="updateFilterRepo($event)"
+                />
+            </c-input-group>
+
+            <!-- Repository Table -->
+            <ngx-datatable
+                    class="bootstrap"
+                    [rows]="repoRows"
+                    [columnMode]="'force'"
+                    [footerHeight]="50"
+                    [headerHeight]="50"
+                    [rowHeight]="'auto'"
+                    [limit]="10"
+            >
+                <ngx-datatable-column name="Name" prop="name"></ngx-datatable-column>
+                <ngx-datatable-column name="Namespace" prop="namespace"></ngx-datatable-column>
+                <ngx-datatable-column name="URL" prop="repo_url"></ngx-datatable-column>
+                <ngx-datatable-column name="Import" [width]="80" [sortable]="false">
+                    <ng-template ngx-datatable-cell-template let-row="row">
+                        <button *ngIf="!row.imported" cButton color="primary" size="sm" (click)="importRepo(row)">
+                            <svg cIcon name="cil-cloud-download"></svg>
+                        </button>
+                        <button *ngIf="row.imported" cButton color="success" size="sm" disabled>
+                            <svg cIcon name="cil-check"></svg>
+                        </button>
+                    </ng-template>
+                </ngx-datatable-column>
+            </ngx-datatable>
+        </ng-container>
+    </c-modal-body>
+    <c-modal-footer>
+        <button (click)="closeModal()" cButton color="primary">Done</button>
+    </c-modal-footer>
 </c-modal>
+
+<!-- Single Repository Import Modal -->
+<c-modal id="importSingleRepoModal" alignment="center" [visible]="visibleSingleRepoModal" (visibleChange)="handleImportSingleRepoChange($event)">
+    <c-modal-header>
+        <h5 cModalTitle>Import Single Repository</h5>
+    </c-modal-header>
+    <c-modal-body>
+        <!-- Repository Type Selection -->
+        <div class="repo-type-selector mb-4">
+            <h6 class="mb-3">Select Repository Type</h6>
+            <div class="d-flex justify-content-center gap-4">
+                <button
+                        cButton
+                        type="button"
+                        class="repo-type-btn"
+                        [class.active]="selectedRepo === 'GitLab'"
+                        (click)="selectRepoType('GitLab')"
+                        cTooltip="Import from GitLab"
+                        cTooltipPlacement="top"
+                >
+                    <svg cIcon name="cib-gitlab" size="3xl"></svg>
+                    <span class="repo-type-label">GitLab</span>
+                </button>
+                <button
+                        cButton
+                        type="button"
+                        class="repo-type-btn"
+                        [class.active]="selectedRepo === 'GitHub'"
+                        (click)="selectRepoType('GitHub')"
+                        cTooltip="Import from GitHub"
+                        cTooltipPlacement="top"
+                >
+                    <svg cIcon name="cib-github" size="3xl"></svg>
+                    <span class="repo-type-label">GitHub</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Import Single Repository Form -->
+        <form [formGroup]="importSingleRepoForm" cForm>
+            <div class="mb-3">
+                <label for="repoUrl2" class="form-label">Repository URL</label>
+                <c-input-group class="has-validation">
+          <span cInputGroupText>
+            <svg cIcon name="cil-link"></svg>
+          </span>
+                    <input
+                            cFormControl
+                            type="url"
+                            id="repoUrl2"
+                            formControlName="repoUrl"
+                            placeholder="https://gitlab.com/org/project"
+                            required
+                    />
+                    <div class="invalid-feedback" *ngIf="importSingleRepoForm.get('repoUrl')?.invalid && importSingleRepoForm.get('repoUrl')?.touched">
+                        Please enter a valid repository URL
+                    </div>
+                </c-input-group>
+                <small class="text-muted">Enter the direct URL to your repository</small>
+            </div>
+
+            <div class="mb-3">
+                <label for="accessToken2" class="form-label">Access Token</label>
+                <c-input-group class="has-validation">
+          <span cInputGroupText>
+            <svg cIcon name="cil-lock-locked"></svg>
+          </span>
+                    <input
+                            cFormControl
+                            type="password"
+                            id="accessToken2"
+                            formControlName="accessToken"
+                            placeholder="Your access token"
+                            required
+                    />
+                    <div class="invalid-feedback" *ngIf="importSingleRepoForm.get('accessToken')?.invalid && importSingleRepoForm.get('accessToken')?.touched">
+                        Access token is required
+                    </div>
+                </c-input-group>
+            </div>
+
+            <div class="mb-3">
+                <label for="inputGroupSelect02" class="form-label">Team</label>
+                <c-input-group class="has-validation">
+          <span cInputGroupText>
+            <svg cIcon name="cil-people"></svg>
+          </span>
+                    <select cSelect id="inputGroupSelect02" formControlName="team" required>
+                        <option value="" disabled selected>Select Team...</option>
+                        <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
+                    </select>
+                    <div class="invalid-feedback" *ngIf="importSingleRepoForm.get('team')?.invalid && importSingleRepoForm.get('team')?.touched">
+                        Please select a team
+                    </div>
+                </c-input-group>
+            </div>
+        </form>
+    </c-modal-body>
+    <c-modal-footer>
+        <button (click)="closeModal()" cButton color="secondary">Cancel</button>
+        <button (click)="onSubmitSingleRepo()" cButton color="primary" [disabled]="importSingleRepoForm.invalid">
+            <svg cIcon name="cil-cloud-download" class="me-1"></svg> Import Repository
+        </button>
+    </c-modal-footer>
+</c-modal>
+
+<!-- Add New Team Modal -->
+<c-modal id="newTeamModal" alignment="center" [visible]="visibleNewTeam" (visibleChange)="handleNewTeam($event)">
+    <c-modal-header>
+        <h5 cModalTitle>Add New Team</h5>
+    </c-modal-header>
+    <c-modal-body>
+        <form [formGroup]="newTeamForm" cForm>
+            <div class="mb-3">
+                <label for="teamName" class="form-label">Team Name</label>
+                <c-input-group class="has-validation">
+          <span cInputGroupText>
+            <svg cIcon name="cil-people"></svg>
+          </span>
+                    <input
+                            cFormControl
+                            type="text"
+                            id="teamName"
+                            formControlName="name"
+                            placeholder="Enter team name"
+                            required
+                    />
+                    <div class="invalid-feedback" *ngIf="newTeamForm.get('name')?.invalid && newTeamForm.get('name')?.touched">
+                        Team name is required
+                    </div>
+                </c-input-group>
+            </div>
+
+            <div class="mb-3">
+                <label for="remoteIdentifier" class="form-label">Remote Identifier (Optional)</label>
+                <c-input-group>
+          <span cInputGroupText>
+            <svg cIcon name="cil-blur"></svg>
+          </span>
+                    <input
+                            cFormControl
+                            type="text"
+                            id="remoteIdentifier"
+                            formControlName="remoteIdentifier"
+                            placeholder="Remote identifier (optional)"
+                    />
+                </c-input-group>
+                <small class="text-muted">Used for mapping to external systems</small>
+            </div>
+        </form>
+    </c-modal-body>
+    <c-modal-footer>
+        <button (click)="closeNewTeamModal()" cButton color="secondary">Cancel</button>
+        <button (click)="onSubmitNewTeam()" cButton color="primary" [disabled]="newTeamForm.invalid">
+            <svg cIcon name="cil-plus" class="me-1"></svg> Create Team
+        </button>
+    </c-modal-footer>
+</c-modal>
+
+<!-- Notification Toast -->
 <c-toaster [placement]="position" class="p-3" position="fixed">
-  <c-toast
-          [color]="toastStatus"
-          (visibleChange)="onVisibleChange($event)"
-          [visible]="visibleToast">
-    <c-toast-header>
-      Dashboard notification
-    </c-toast-header>
-    <c-toast-body>
-      <p>{{toastMessage}}</p>
-    </c-toast-body>
-  </c-toast>
+    <c-toast
+            [color]="toastStatus"
+            (visibleChange)="onVisibleChange($event)"
+            [visible]="visibleToast"
+            [autohide]="true"
+            [delay]="5000"
+    >
+        <c-toast-header>
+            <svg cIcon name="cil-bell" class="me-2"></svg>
+            <strong>Notification</strong>
+        </c-toast-header>
+        <c-toast-body>
+            <p class="mb-0">{{ toastMessage }}</p>
+        </c-toast-body>
+    </c-toast>
 </c-toaster>

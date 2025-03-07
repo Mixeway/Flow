@@ -19,11 +19,11 @@ import {
   DropdownToggleDirective,
   DropdownMenuDirective,
   DropdownItemDirective,
-  DropdownDividerDirective
+  DropdownDividerDirective, CardComponent, CardBodyComponent
 } from '@coreui/angular';
 import { ChartjsComponent } from '@coreui/angular-chartjs';
 import {IconDirective} from "@coreui/icons-angular";
-import {NgIf} from "@angular/common";
+import {NgClass, NgIf} from "@angular/common";
 
 @Component({
   selector: 'app-widgets-dropdown',
@@ -46,7 +46,10 @@ import {NgIf} from "@angular/common";
     DropdownDividerDirective,
     ChartjsComponent,
     IconDirective,
-    NgIf
+    NgIf,
+    CardComponent,
+    CardBodyComponent,
+    NgClass
   ]
 })
 export class WidgetsDropdownComponent implements OnInit, AfterContentInit {

@@ -1,54 +1,85 @@
-<c-card class="h-100">
-    <c-card-body class="h-100 p-3">
-        <c-row class="h-100 g-3">
-            <c-col xs="6" class="d-flex">
-                <c-widget-stat-f
-                        [title]="'Number of repositories covered'"
-                        class="flex-fill"
-                        color="primary"
-                        [value]="allProjects"
-                >
-                    <ng-template cTemplateId="widgetIconTemplate">
-                        <svg [cIcon]="icons.cilChartPie" size="xl" width="24"></svg>
-                    </ng-template>
-                </c-widget-stat-f>
-            </c-col>
-            <c-col xs="6" class="d-flex">
-                <c-widget-stat-f
-                        [title]="'Number of Teams'"
-                        class="flex-fill"
-                        color="warning"
-                        [value]="teams"
-                >
-                    <ng-template cTemplateId="widgetIconTemplate">
-                        <svg [cIcon]="icons.cilPeople" size="xl" width="24"></svg>
-                    </ng-template>
-                </c-widget-stat-f>
-            </c-col>
-            <c-col xs="6" class="d-flex">
-                <c-widget-stat-f
-                        [title]="'Number of opened vulnerabilities'"
-                        class="flex-fill"
-                        color="success"
-                        [value]="openedVulns"
-                >
-                    <ng-template cTemplateId="widgetIconTemplate">
-                        <svg [cIcon]="icons.cilBug" size="xl" width="24"></svg>
-                    </ng-template>
-                </c-widget-stat-f>
-            </c-col>
-            <c-col xs="6" class="d-flex">
-                <c-widget-stat-f
-                        [title]="'Repositories at risk'"
-                        class="flex-fill"
-                        color="danger"
-                        [value]="percentage + '%'"
-                >
-                    <ng-template cTemplateId="widgetIconTemplate">
-                        <svg [cIcon]="icons.cilChart" size="xl" width="24"></svg>
-                    </ng-template>
-                </c-widget-stat-f>
-            </c-col>
-        </c-row>
-    </c-card-body>
-</c-card>
+<div class="statistics-dashboard">
+    <c-row class="stats-row g-4">
+        <!-- Repositories Covered -->
+        <c-col sm="6" xl="3">
+            <div class="stat-card primary">
+                <div class="stat-content">
+                    <div>
+                        <div class="stat-title">REPOSITORIES COVERED</div>
+                        <div class="stat-value">{{ allProjects | number }}</div>
+                    </div>
+                    <div class="stat-change positive" *ngIf="repositoriesTrend > 0">
+                        <svg cIcon name="cilArrowTop" size="sm"></svg>
+                        <span>{{ repositoriesTrend }}% from last month</span>
+                    </div>
+                </div>
+                <div class="stat-icon">
+                    <svg [cIcon]="icons.cilChartPie" width="24"></svg>
+                </div>
+                <div class="bg-decoration"></div>
+            </div>
+        </c-col>
+
+        <!-- Number of Teams -->
+        <c-col sm="6" xl="3">
+            <div class="stat-card warning">
+                <div class="stat-content">
+                    <div>
+                        <div class="stat-title">ACTIVE TEAMS</div>
+                        <div class="stat-value">{{ teams | number }}</div>
+                    </div>
+                    <div class="stat-change positive" *ngIf="teamsTrend > 0">
+                        <svg cIcon name="cilArrowTop" size="sm"></svg>
+                        <span>{{ teamsTrend }}% from last month</span>
+                    </div>
+                </div>
+                <div class="stat-icon">
+                    <svg [cIcon]="icons.cilPeople" width="24"></svg>
+                </div>
+                <div class="bg-decoration"></div>
+            </div>
+        </c-col>
+
+        <!-- Open Vulnerabilities -->
+        <c-col sm="6" xl="3">
+            <div class="stat-card success">
+                <div class="stat-content">
+                    <div>
+                        <div class="stat-title">OPEN VULNERABILITIES</div>
+                        <div class="stat-value">{{ openedVulns | number }}</div>
+                    </div>
+                    <div *ngIf="vulnChange !== 0" [ngClass]="vulnChange > 0 ? 'stat-change negative' : 'stat-change positive'">
+                        <svg *ngIf="vulnChange > 0" cIcon name="cilArrowTop" size="sm"></svg>
+                        <svg *ngIf="vulnChange < 0" cIcon name="cilArrowBottom" size="sm"></svg>
+                        <span>{{ absVulnChange }}% from last week</span>
+                    </div>
+                </div>
+                <div class="stat-icon">
+                    <svg [cIcon]="icons.cilBug" width="24"></svg>
+                </div>
+                <div class="bg-decoration"></div>
+            </div>
+        </c-col>
+
+        <!-- Repositories at Risk -->
+        <c-col sm="6" xl="3">
+            <div class="stat-card danger">
+                <div class="stat-content">
+                    <div>
+                        <div class="stat-title">REPOS AT RISK</div>
+                        <div class="stat-value">{{ percentage }}%</div>
+                    </div>
+                    <div *ngIf="riskChange !== 0" [ngClass]="riskChange > 0 ? 'stat-change negative' : 'stat-change positive'">
+                        <svg *ngIf="riskChange > 0" cIcon name="cilArrowTop" size="sm"></svg>
+                        <svg *ngIf="riskChange < 0" cIcon name="cilArrowBottom" size="sm"></svg>
+                        <span>{{ absRiskChange }}% from last week</span>
+                    </div>
+                </div>
+                <div class="stat-icon">
+                    <svg [cIcon]="icons.cilChart" width="24"></svg>
+                </div>
+                <div class="bg-decoration"></div>
+            </div>
+        </c-col>
+    </c-row>
+</div>

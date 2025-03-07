@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2025-03-07
+
+### Introduced
+- new Statistic dashboard component
+- Integration with wiz cloud security posture management
+- New redesigned dashboards
+- new statistic dashboard
+
+### Fixed
+- Team delete
+
+
 ## [1.1.1] - 2025-02-04
 
 ### Introduced

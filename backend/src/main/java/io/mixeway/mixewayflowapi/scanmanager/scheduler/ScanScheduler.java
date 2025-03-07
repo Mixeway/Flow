@@ -1,21 +1,16 @@
 package io.mixeway.mixewayflowapi.scanmanager.scheduler;
 
-import ch.qos.logback.core.spi.ScanException;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
-import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GetCodeRepoInfoService;
-import io.mixeway.mixewayflowapi.integrations.scanner.sca.apiclient.KEVApiClient;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.service.SCAService;
 import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import org.aspectj.apache.bcel.classfile.Code;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -53,10 +48,20 @@ public class ScanScheduler {
     }
 
     /**
+     * Scheduled task that runs every day at 1 AM.
+     * This method fetches cloud vulnerability findings from Cloud Scanner.
+     */
+    @Scheduled(cron = "0 0 1 * * ?")
+    public void runEveryDayAt1AM() {
+        scanManagerService.runCloudScansForAllSubscriptions();
+        log.info("[Scheduler] Fetched cloud vulnerability findings.");
+    }
+
+    /**
      * Scheduled task that runs every day at 3 AM.
      * This method scans all code repositories concurrently using a fixed thread pool.
      */
-    @Scheduled(cron = "0 0 1 * * ?")
+    @Scheduled(cron = "0 0 3 * * ?")
     public void runEveryDayAt3AM() {
         Iterable<CodeRepo> codeRepos = codeRepoRepository.findAll();
         ExecutorService executorService = Executors.newFixedThreadPool(THREAD_POOL_SIZE);

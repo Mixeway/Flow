@@ -1,82 +1,91 @@
-<c-col xs="12" class="d-flex flex-column">
-    <c-card class="w-100 mb-3" style="height: 300px; overflow: auto;" >
-        <c-card-header>
-            Recently removed vulnerabilities
-        </c-card-header>
-        <c-card-body>
-            <div class="list-group" *ngIf="removedVulnerabilities.length > 0">
-                <div
-                        *ngFor="let vuln of removedVulnerabilities"
-                        class="list-group-item"
-                >
-                    <div class="d-flex justify-content-between">
-                        <!-- Name of the Vulnerability -->
-                        <div>
-                            <strong>{{ vuln.name }}</strong>
-                        </div>
-                        <!-- Trash Icon -->
-                        <div>
-                            <span class="fs-4">🚮</span>
-                        </div>
-                    </div>
-                    <!-- Second Row -->
-                    <div class="d-flex justify-content-between small text-muted mt-1">
-                        <!-- Repository URL under the name -->
-                        <div>
-                            <a [href]="'/#/show-repo/' + vuln.repoId" target="_blank">{{ vuln.repositoryUrl }}</a>
-                        </div>
-                        <!-- Date Deleted under the icon -->
-                        <div>
-                            {{ vuln.dateDeleted | date: 'mediumDate' }}
-                        </div>
-                    </div>
+<c-col xs="12" class="d-flex flex-column gap-4">
+    <!-- Removed Vulnerabilities Card -->
+    <div class="activity-card">
+        <div class="card-header">
+            <h5 class="header-title">
+                <svg cIcon name="cilTrash" size="lg"></svg>
+                Recently Removed Vulnerabilities
+            </h5>
+            <div class="header-actions">
+                <div class="action-btn" cTooltip="Refresh" (click)="loadRemoved()">
+                    <svg cIcon name="cilReload"></svg>
                 </div>
             </div>
-            <c-alert color="success" class="d-flex align-items-center" *ngIf="!removedVulnerabilities ||removedVulnerabilities.length == 0">
-                <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Info:">
-                    <use xlink:href="#info-fill" />
-                </svg>
-                <div>There are no removed vulnerabilities at this moment to display.</div>
-            </c-alert>
+        </div>
 
-        </c-card-body>
-    </c-card>
+        <div class="card-body" style="max-height: 320px;">
+            <!-- Empty state -->
+            <div class="empty-state" *ngIf="!removedVulnerabilities || removedVulnerabilities.length === 0">
+                <svg cIcon name="cilCheckAlt" width="48" height="48"></svg>
+                <h5>No Removed Vulnerabilities</h5>
+                <p>There are no recently removed vulnerabilities to display at this moment.</p>
+            </div>
 
-    <!-- Second Small Card -->
-    <c-card class="w-100" style="height: 280px; overflow: auto;">
-        <c-card-header>
-            Recently reviewed vulnerabilities
-        </c-card-header>
-        <c-card-body>
-            <div class="list-group"  *ngIf="reviewedVulnerabilities.length > 0">
-                <div
-                        *ngFor="let vuln of reviewedVulnerabilities"
-                        class="list-group-item"
-                >
-                    <div class="d-flex justify-content-between align-items-center">
-                        <!-- Name of the Vulnerability -->
-                        <div>
-                            <strong>{{ vuln.name }}</strong>
-                            <!-- Small link below the name -->
-                            <div class="small text-muted">
-                                <a [href]="'/#/show-repo/' + vuln.repoId" target="_blank">{{ vuln.repositoryUrl }}</a>
-                            </div>
+            <!-- Vulnerabilities list -->
+            <ul class="activity-list" *ngIf="removedVulnerabilities && removedVulnerabilities.length > 0">
+                <li class="activity-item" *ngFor="let vuln of removedVulnerabilities">
+                    <div class="item-header">
+                        <h6 class="item-title">{{ vuln.name }}</h6>
+                    </div>
+
+                    <div class="item-meta">
+                        <a [routerLink]="['/show-repo', vuln.repoId]" class="repo-link">
+                            <svg cIcon name="cilLink" size="sm"></svg>
+                            {{ vuln.repositoryUrl }}
+                        </a>
+
+                        <div class="date">
+                            <svg cIcon name="cilCalendar" size="sm"></svg>
+                            {{ vuln.dateDeleted | date: 'MMM d, y' }}
                         </div>
-                        <!-- Status with Emoji -->
-                        <div class="d-flex align-items-center">
-                            <span class="me-2 fs-4">{{ getStatusEmoji(vuln.status) }}</span>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Reviewed Vulnerabilities Card -->
+    <div class="activity-card">
+        <div class="card-header">
+            <h5 class="header-title">
+                <svg cIcon name="cilNotes" size="lg"></svg>
+                Recently Reviewed Vulnerabilities
+            </h5>
+            <div class="header-actions">
+                <div class="action-btn" cTooltip="Refresh" (click)="loadSupressed()">
+                    <svg cIcon name="cilReload"></svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body" style="max-height: 320px;">
+            <!-- Empty state -->
+            <div class="empty-state" *ngIf="!reviewedVulnerabilities || reviewedVulnerabilities.length === 0">
+                <svg cIcon name="cilCheckAlt" width="48" height="48"></svg>
+                <h5>No Reviewed Vulnerabilities</h5>
+                <p>There are no recently reviewed vulnerabilities to display at this moment.</p>
+            </div>
+
+            <!-- Vulnerabilities list -->
+            <ul class="activity-list" *ngIf="reviewedVulnerabilities && reviewedVulnerabilities.length > 0">
+                <li class="activity-item" *ngFor="let vuln of reviewedVulnerabilities">
+                    <div class="item-header">
+                        <h6 class="item-title">{{ vuln.name }}</h6>
+
+                        <div class="item-status" [ngClass]="getStatusClass(vuln.status)">
+                            <span class="status-icon">{{ getStatusEmoji(vuln.status) }}</span>
                             <span>{{ vuln.status }}</span>
                         </div>
                     </div>
-                </div>
-            </div>
-            <c-alert color="success" class="d-flex align-items-center" *ngIf="!reviewedVulnerabilities ||reviewedVulnerabilities.length == 0">
-                <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Info:">
-                    <use xlink:href="#info-fill" />
-                </svg>
-                <div>There are no reviewed vulnerabilities at this moment to display.</div>
-            </c-alert>
-        </c-card-body>
-    </c-card>
 
+                    <div class="item-meta">
+                        <a [routerLink]="['/show-repo', vuln.repoId]" class="repo-link">
+                            <svg cIcon name="cilLink" size="sm"></svg>
+                            {{ vuln.repositoryUrl }}
+                        </a>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
 </c-col>

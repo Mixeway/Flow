@@ -37,4 +37,9 @@ public class AdminApiService {
         return findSettingsService.getAdditionalScannerConfig();
     }
 
+    public boolean isWizEnabled() {
+        Settings settings = findSettingsService.get();
+        return settings.isEnableWiz();
+    }
+
 }

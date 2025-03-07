@@ -1,0 +1,109 @@
+<c-row>
+    <!-- Repository overview card -->
+    <c-col [md]="7" [sm]="12">
+        <c-card class="mb-4 h-100 repository-card">
+            <c-card-header class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <h2 class="mb-0 repo-title">
+                        {{ repoData?.name }}
+                    </h2>
+                    <div class="scan-status">
+                        <c-spinner
+                                *ngIf="scanRunning"
+                                size="sm"
+                                [cTooltip]="'Scan in progress'"
+                                class="scan-spinner"
+                        ></c-spinner>
+                        <span *ngIf="scanRunning" class="scan-text ms-2">Scanning</span>
+                    </div>
+                </div>
+                <div class="repo-actions" *ngIf="userRole === 'ADMIN' || userRole === 'TEAM_MANAGER'">
+                    <button
+                            *ngIf="!scanRunning"
+                            cButton
+                            color="info"
+                            variant="ghost"
+                            size="sm"
+                            [cTooltip]="'Start a new security scan'"
+                            (click)="runScan()"
+                    >
+                        <svg cIcon name="cil-media-play" class="me-1"></svg>
+                        Scan
+                    </button>
+                    <button
+                            cButton
+                            color="primary"
+                            variant="ghost"
+                            size="sm"
+                            [cTooltip]="'Change repository team'"
+                            (click)="openChangeTeamModal()"
+                    >
+                        <svg cIcon name="cil-people" class="me-1"></svg>
+                        Team
+                    </button>
+                </div>
+            </c-card-header>
+
+            <c-card-body class="d-flex flex-column">
+                <div class="repo-metadata mb-4">
+                    <div class="repo-link d-flex align-items-center mb-3">
+                        <svg cIcon name="cib-github" class="repo-icon me-2"></svg>
+                        <a href="{{ repoData?.repourl }}" target="_blank" class="repo-url">
+                            {{ repoData?.repourl }}
+                        </a>
+                    </div>
+
+                    <div class="repo-details d-flex flex-wrap gap-4">
+                        <div class="detail-item">
+                            <div class="detail-label">Default Branch</div>
+                            <div class="detail-value">{{ repoData?.defaultBranch.name }}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Created</div>
+                            <div class="detail-value">{{ repoData?.insertedDate | date:'mediumDate' }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Language breakdown section -->
+                <div class="language-section mt-auto">
+                    <h3 class="language-title">Languages</h3>
+                    <div class="language-grid">
+                        <div class="language-item" *ngFor="let lang of topLanguages">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="language-name">{{ lang.name }}</span>
+                                <span class="language-percent">{{ lang.value }}%</span>
+                            </div>
+                            <c-progress
+                                    thin
+                                    [color]="lang.color"
+                                    [value]="lang.value"
+                                    class="language-progress"
+                            ></c-progress>
+                        </div>
+                    </div>
+                </div>
+            </c-card-body>
+        </c-card>
+    </c-col>
+
+    <!-- Vulnerabilities chart card -->
+    <c-col [md]="5" [sm]="12">
+        <c-card class="mb-4 h-100 vulnerability-card">
+            <c-card-header>
+                <h3 class="vuln-title mb-0">Vulnerability Sources</h3>
+            </c-card-header>
+            <c-card-body>
+                <div class="chart-container">
+                    <c-chart type="pie" [data]="chartPieData" [options]="options" class="vulnerability-chart"></c-chart>
+                </div>
+                <div class="chart-legend mt-3" *ngIf="chartPieData?.labels?.length">
+                    <div class="legend-item" *ngFor="let label of chartPieData.labels; let i = index">
+                        <div class="legend-color" [style.background-color]="chartPieData.datasets[0].backgroundColor[i]"></div>
+                        <div class="legend-label">{{ label }}</div>
+                    </div>
+                </div>
+            </c-card-body>
+        </c-card>
+    </c-col>
+</c-row>

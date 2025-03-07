@@ -2,7 +2,8 @@ import {
     AfterViewInit,
     ChangeDetectorRef,
     Component,
-    OnInit, ViewEncapsulation,
+    OnInit,
+    ViewEncapsulation,
 } from '@angular/core';
 import {
     MarkdownModule,
@@ -72,7 +73,11 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { FindingSourceStatDTO } from '../../model/FindingSourceStatDTO';
 import { FindingDTO, SingleFindingDTO } from '../../model/FindingDTO';
 import { FormsModule } from '@angular/forms';
-import {TeamService} from "../../service/TeamService";
+import { TeamService } from "../../service/TeamService";
+import {RepositoryInfoComponent} from "./repository-info/repository-info.component";
+import {VulnerabilitySummaryComponent} from "./vulnerability-summary/vulnerability-summary.component";
+import {VulnerabilitiesTableComponent} from "./vulnerabilities-table/vulnerabilities-table.component";
+import {VulnerabilityDetailsComponent} from "./vulnerability-details/vulnerability-details.component";
 
 interface Vulnerability {
     id: number;
@@ -188,6 +193,10 @@ interface TeamUser {
         ListGroupItemDirective,
         TooltipDirective,
         MarkdownModule,
+        RepositoryInfoComponent,
+        VulnerabilitySummaryComponent,
+        VulnerabilitiesTableComponent,
+        VulnerabilityDetailsComponent,
     ],
     templateUrl: './show-repo.component.html',
     styleUrls: ['./show-repo.component.scss'],
@@ -339,6 +348,14 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
     confirmationText: string = '';
     availableTeams: Team[] = [];
     selectedNewTeamId: number | null = null;
+
+    // Comment properties
+    newComment: string = '';
+    isAddingComment: boolean = false;
+
+    // Selected branch
+    selectedBranch: string | null = null;
+
     constructor(
         public iconSet: IconSetService,
         private repoService: RepoService,
@@ -378,6 +395,46 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         this.loadSourceStats();
         this.loadFindings();
         this.loadFindingStats();
+
+        // Enhanced chart options
+        this.options2 = {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        boxWidth: 12,
+                        usePointStyle: true,
+                        pointStyle: 'circle'
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    padding: 10,
+                    bodyFont: {
+                        size: 12
+                    },
+                    titleFont: {
+                        size: 13,
+                        weight: 'bold'
+                    }
+                }
+            }
+        };
     }
 
     loadRepoInfo() {
@@ -407,6 +464,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
             },
         });
     }
+
     loadFindings() {
         this.vulnerabilitiesLoading = true;
         this.repoService.getFindingsDefBranch(+this.repoId).subscribe({
@@ -470,7 +528,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         return Math.round(Math.random() * 100);
     }
 
-    click(row: Vulnerability) {
+    viewVulnerabilityDetails(row: Vulnerability) {
         this.selectedRowId = row.id;
         this.detailsModal = true;
         this.repoService.getFinding(+this.repoId, this.selectedRowId).subscribe({
@@ -558,9 +616,9 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
             .slice(0, 4); // Take the top 4 entries
     }
 
-    refreshData() {
-        alert('clicked');
-    }
+    // refreshData() {
+    //     alert('clicked');
+    // }
     suppressFinding() {
         // Implement your logic to handle the suppression of the finding here
         if (this.selectedRowId && this.suppressReason) {
@@ -792,8 +850,6 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         );
     }
 
-    protected readonly JSON = JSON;
-
     runScan() {
         this.repoService.runScan(+this.repoId).subscribe({
             next: (response) => {
@@ -877,8 +933,6 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
             );
         });
     }
-    newComment: string = '';
-    isAddingComment: boolean = false;
 
     addComment() {
         if (!this.newComment?.trim() || this.isAddingComment || this.selectedRowId === null) {
@@ -915,86 +969,6 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
             });
     }
 
-    selectedBranch: string | null = null;
-
-
-    getRepositoryLink(): string {
-        if (!this.singleVuln?.vulnsResponseDto?.location || !this.repoData?.repourl) {
-            return '#';
-        }
-
-        const location = this.singleVuln.vulnsResponseDto.location;
-        const repoUrl = this.repoData.repourl;
-        // Use selected branch, fall back to default branch
-        const branch = this.selectedBranch || this.repoData?.defaultBranch?.name;
-
-        // Extract file path and line number from location
-        const match = location.match(/(.*):(\d+)/);
-        if (!match) return repoUrl;
-
-        const [, filePath, lineNumber] = match;
-
-        if (repoUrl.includes('github.com')) {
-            return `${repoUrl}/blob/${branch}/${filePath}#L${lineNumber}`;
-        } else if (repoUrl.includes('gitlab.com')) {
-            const baseUrl = repoUrl.replace(/\/?$/, '');
-            return `${baseUrl}/-/blob/${branch}/${filePath}#L${lineNumber}`;
-        }
-
-        return repoUrl;
-    }
-    getFormattedLocation(): string {
-        if (!this.singleVuln?.vulnsResponseDto?.location) {
-            return 'Location not available';
-        }
-
-        const location = this.singleVuln.vulnsResponseDto.location;
-        // Extract file path and line number
-        const match = location.match(/(.*):(\d+)/);
-        if (!match) return location;
-
-        const [, filePath, lineNumber] = match;
-        // Return the full path with line number
-        return `${filePath}:${lineNumber}`;
-    }
-
-    getRepositoryLinkForRow(row: any): string {
-        if (!row?.location || !this.repoData?.repourl) {
-            return '#';
-        }
-
-        const location = row.location;
-        const repoUrl = this.repoData.repourl;
-        const branch = this.selectedBranch || this.repoData?.defaultBranch?.name;
-
-        const match = location.match(/(.*):(\d+)/);
-        if (!match) return repoUrl;
-
-        const [, filePath, lineNumber] = match;
-
-        if (repoUrl.includes('github.com')) {
-            return `${repoUrl}/blob/${branch}/${filePath}#L${lineNumber}`;
-        } else if (repoUrl.includes('gitlab.com')) {
-            const baseUrl = repoUrl.replace(/\/?$/, '');
-            return `${baseUrl}/-/blob/${branch}/${filePath}#L${lineNumber}`;
-        }
-
-        return repoUrl;
-    }
-
-    getFormattedLocationForRow(row: any): string {
-        if (!row?.location) {
-            return 'Location not available';
-        }
-
-        const location = row.location;
-        const match = location.match(/(.*):(\d+)/);
-        if (!match) return location;
-
-        const [, filePath, lineNumber] = match;
-        // Return the full path with line number
-        return `${filePath}:${lineNumber}`;
-    }
     openChangeTeamModal() {
         // Load available teams first
         this.teamService.get().subscribe({
@@ -1034,7 +1008,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
     }
     closeChangeTeamModal() {
         this.changeTeamModalVisible = false;
-        this.selectedNewTeamId = 0;
+        this.selectedNewTeamId = null;
     }
 
     confirmTeamChange() {
@@ -1045,5 +1019,50 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
     closeConfirmationModal() {
         this.confirmationModalVisible = false;
         this.confirmationText = '';
+    }
+
+
+    /**
+     * Clear all filters for vulnerabilities
+     */
+    clearVulnerabilityFilters(): void {
+        this.filters = {
+            actions: '',
+            name: '',
+            location: '',
+            source: '',
+            status: '',
+            severity: '',
+            dates: '',
+        };
+        this.showRemoved = false;
+        this.showSuppressed = false;
+        this.applyFilters();
+    }
+
+    /**
+     * Clear all filters for components
+     */
+    clearComponentFilters(): void {
+        this.filtersNew = {
+            group: '',
+            name: '',
+            version: '',
+        };
+        this.applyFiltersNew();
+    }
+
+    /**
+     * Handle refresh data with visual feedback
+     */
+    refreshData(): void {
+        // Show loading feedback
+        this.toastStatus = 'info';
+        this.toastMessage = 'Refreshing statistics data...';
+        this.toggleToast();
+
+        // Reload relevant data
+        this.loadFindingStats();
+        this.loadSourceStats();
     }
 }

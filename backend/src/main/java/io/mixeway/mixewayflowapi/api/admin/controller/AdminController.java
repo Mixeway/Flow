@@ -5,7 +5,6 @@ import io.mixeway.mixewayflowapi.api.admin.dto.ConfigScaRequestDto;
 import io.mixeway.mixewayflowapi.api.admin.dto.ConfigSmtpRequestDto;
 import io.mixeway.mixewayflowapi.api.admin.dto.ConfigWizRequestDto;
 import io.mixeway.mixewayflowapi.api.admin.service.AdminApiService;
-import io.mixeway.mixewayflowapi.api.coderepo.dto.CreateCodeRepoRequestDto;
 import io.mixeway.mixewayflowapi.db.entity.Settings;
 import io.mixeway.mixewayflowapi.utils.StatusDTO;
 import jakarta.validation.Valid;
@@ -82,6 +81,18 @@ public class AdminController {
             return new ResponseEntity<>(adminApiService.getAdditionalScannerConfig(), HttpStatus.OK);
         } catch (Exception e) {
             log.error("[AdminSettings] Error getting additional scanner configuration {}", e.getLocalizedMessage());
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @GetMapping(value = "/api/v1/admin/settings/wizenabled")
+    public ResponseEntity<Boolean> isWizEnabled() {
+        try {
+            boolean wizEnabled = adminApiService.isWizEnabled();
+            return new ResponseEntity<>(wizEnabled, HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("[AdminSettings] Error checking if Wiz is enabled {}", e.getLocalizedMessage());
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
     }

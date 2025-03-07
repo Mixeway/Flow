@@ -1,0 +1,84 @@
+<c-row>
+    <c-col [md]="12" [sm]="12">
+        <c-card class="mb-4 subscription-card">
+            <c-card-header class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <h2 class="mb-0 subscription-title">
+                        {{ cloudSubscriptionData?.external_project_name }}
+                    </h2>
+                    <div class="scan-status" *ngIf="scanRunning">
+                        <c-spinner
+                                size="sm"
+                                [cTooltip]="'Scan in progress'"
+                                class="scan-spinner"
+                        ></c-spinner>
+                        <span class="scan-text ms-2">Scanning</span>
+                    </div>
+                </div>
+                <div class="subscription-actions" *ngIf="userRole === 'ADMIN' || userRole === 'TEAM_MANAGER'">
+                    <button
+                            *ngIf="!scanRunning"
+                            cButton
+                            color="info"
+                            variant="ghost"
+                            size="sm"
+                            [cTooltip]="'Start a new security scan'"
+                            (click)="runScan()"
+                    >
+                        <svg cIcon name="cil-media-play" class="me-1"></svg>
+                        Scan
+                    </button>
+                    <button
+                            cButton
+                            color="primary"
+                            variant="ghost"
+                            size="sm"
+                            [cTooltip]="'Change subscription team'"
+                            (click)="openChangeTeamModal()"
+                    >
+                        <svg cIcon name="cil-people" class="me-1"></svg>
+                        Team
+                    </button>
+                </div>
+            </c-card-header>
+
+            <c-card-body class="d-flex flex-column justify-content-center">
+                <div class="subscription-metadata">
+                    <div class="metadata-grid">
+                        <div class="metadata-item">
+                            <div class="metadata-label">Team</div>
+                            <div class="metadata-value">
+                                <svg cIcon name="cil-people" class="metadata-icon me-2"></svg>
+                                {{ cloudSubscriptionData?.team.name }}
+                            </div>
+                        </div>
+
+                        <div class="metadata-item">
+                            <div class="metadata-label">Project ID</div>
+                            <div class="metadata-value">
+                                <svg cIcon name="cil-fingerprint" class="metadata-icon me-2"></svg>
+                                {{ cloudSubscriptionData?.name }}
+                            </div>
+                        </div>
+
+                        <div class="metadata-item" *ngIf="cloudSubscriptionData?.provider">
+                            <div class="metadata-label">Cloud Provider</div>
+                            <div class="metadata-value">
+                                <svg [cIcon]="getProviderIcon()" class="metadata-icon me-2"></svg>
+                                {{ getFormattedProvider() }}
+                            </div>
+                        </div>
+
+                        <div class="metadata-item" *ngIf="cloudSubscriptionData?.insertedDate">
+                            <div class="metadata-label">Added on</div>
+                            <div class="metadata-value">
+                                <svg cIcon name="cil-calendar" class="metadata-icon me-2"></svg>
+                                {{ cloudSubscriptionData?.insertedDate | date }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </c-card-body>
+        </c-card>
+    </c-col>
+</c-row>

@@ -99,9 +99,11 @@ export class LoginComponent implements OnInit{
         }
     }
     ngOnInit() {
+
         this.getStatus();
         this.authService.hc().subscribe({
             next: () => {
+
                 this.router.navigate(['/dashboard']);
             },
             error: () => {

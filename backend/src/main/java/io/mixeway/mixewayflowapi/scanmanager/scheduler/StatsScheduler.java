@@ -1,8 +1,8 @@
 package io.mixeway.mixewayflowapi.scanmanager.scheduler;
 
-import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
-import io.mixeway.mixewayflowapi.db.entity.CodeRepoFindingStats;
-import io.mixeway.mixewayflowapi.db.entity.Finding;
+import io.mixeway.mixewayflowapi.db.entity.*;
+import io.mixeway.mixewayflowapi.domain.cloudsubscription.FindCloudSubscriptionService;
+import io.mixeway.mixewayflowapi.domain.cloudsubscriptionfindingstats.CreateCloudSubscriptionFindingStatsService;
 import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.coderepofindingstats.CreateCodeRepoFindingStatsService;
 import io.mixeway.mixewayflowapi.domain.finding.FindFindingService;
@@ -27,6 +27,38 @@ public class StatsScheduler {
     private final FindCodeRepoService findCodeRepoService;
     private final FindFindingService findFindingService;
     private final CreateCodeRepoFindingStatsService createCodeRepoFindingStatsService;
+    private final FindCloudSubscriptionService findCloudSubscriptionService;
+    private final CreateCloudSubscriptionFindingStatsService createCloudSubscriptionFindingStatsService;
+
+    /**
+     * Scheduled task that runs every day at 2 AM.
+     * This method collects findings statistics for each cloud subscription, calculates metrics,
+     * and saves the statistics for further analysis.
+     */
+    @Scheduled(cron = "0 0 2 * * ?")
+    @Transactional
+    public void collectAndSaveCloudStats() {
+        log.info("[StatusService] Starting generation of stats for Cloud Subscriptions...");
+
+        for (CloudSubscription cloudSubscription : findCloudSubscriptionService.findAll()) {
+            List<Finding> findings = findFindingService.getCloudSubscriptionFindings(cloudSubscription);
+
+            int criticalFindings = countFindings(findings, Finding.Source.CLOUD_SCANNER, Finding.Severity.CRITICAL, Finding.Status.EXISTING, Finding.Status.NEW);
+            int highFindings = countFindings(findings, Finding.Source.CLOUD_SCANNER, Finding.Severity.HIGH, Finding.Status.EXISTING, Finding.Status.NEW);
+
+            int openedFindings = criticalFindings + highFindings;
+            int removedFindings = countFindings(findings, null, null, Finding.Status.REMOVED);
+            int averageFixTime = calculateAverageFixTime(findings);
+
+            CloudSubscriptionFindingStats cloudStats = new CloudSubscriptionFindingStats(
+                    cloudSubscription, criticalFindings, highFindings,
+                    openedFindings, removedFindings, averageFixTime
+            );
+
+            createCloudSubscriptionFindingStatsService.create(cloudStats);
+        }
+        log.info("[StatusService] Finished generation of stats for Cloud Subscriptions...");
+    }
 
     /**
      * Scheduled task that runs every day at 3 AM.

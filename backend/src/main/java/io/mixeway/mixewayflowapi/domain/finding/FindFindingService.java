@@ -1,6 +1,7 @@
 package io.mixeway.mixewayflowapi.domain.finding;
 
 import io.mixeway.mixewayflowapi.api.coderepo.dto.VulnStatsResponseDto;
+import io.mixeway.mixewayflowapi.api.teamfindings.dto.TeamVulnStatsResponseDto;
 import io.mixeway.mixewayflowapi.api.threatintel.dto.ItemListResponse;
 import io.mixeway.mixewayflowapi.api.threatintel.dto.RemovedVulnerabilityDTO;
 import io.mixeway.mixewayflowapi.api.threatintel.dto.ReviewedVulnerabilityDTO;
@@ -30,6 +31,10 @@ public class FindFindingService {
         return findingRepository.countFindingsBySource(codeRepo.getId());
     }
 
+    public TeamVulnStatsResponseDto countFindingStatsForTeam(List<Long> codeRepoIds, List<Long> cloudSubscriptionIds) {
+        return findingRepository.countFindingsByTeam(codeRepoIds, cloudSubscriptionIds);
+    }
+
     public List<Finding> getCodeRepoFindings(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch){
         if (codeRepoBranch == null) {
             codeRepoBranch = codeRepo.getDefaultBranch();
@@ -39,6 +44,11 @@ public class FindFindingService {
     public Optional<Finding> findById(Long id) {
         return findingRepository.findById(id);
     }
+
+    public List<Finding> getCloudSubscriptionFindings(CloudSubscription cloudSubscription) {
+        return findingRepository.findByCloudSubscription(cloudSubscription);
+    }
+
 
     public List<Finding> findByVulnerability(Vulnerability vulnerability) {
         return findingRepository.findByVulnerability(vulnerability);

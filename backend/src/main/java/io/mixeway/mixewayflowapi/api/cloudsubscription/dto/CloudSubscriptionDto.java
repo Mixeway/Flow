@@ -8,7 +8,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class CloudSubscriptionDTO {
+public class CloudSubscriptionDto {
     @NotBlank(message = "Name is required")
     private String name;
 }

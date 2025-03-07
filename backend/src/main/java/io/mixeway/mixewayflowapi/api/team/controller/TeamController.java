@@ -5,7 +5,9 @@ import io.mixeway.mixewayflowapi.api.team.dto.CreateTeamRequestDto;
 import io.mixeway.mixewayflowapi.api.team.dto.TeamDto;
 import io.mixeway.mixewayflowapi.domain.team.ChangeTeamService;
 import io.mixeway.mixewayflowapi.domain.team.CreateTeamService;
+import io.mixeway.mixewayflowapi.domain.team.DeleteTeamService;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
+import io.mixeway.mixewayflowapi.exceptions.TeamHasResourcesException;
 import io.mixeway.mixewayflowapi.utils.StatusDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,10 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.List;
@@ -30,6 +29,8 @@ public class TeamController {
     private final CreateTeamService createTeamService;
     private final FindTeamService findTeamService;
     private final ChangeTeamService changeTeamService;
+    private final DeleteTeamService deleteTeamService;
+
 
     @PreAuthorize("hasAuthority('TEAM_MANAGER')")
     @PostMapping(value= "/api/v1/team/create")
@@ -52,6 +53,17 @@ public class TeamController {
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }
     }
+
+    @PreAuthorize("hasAuthority('USER')")
+    @GetMapping(value= "/api/v1/team/{id}")
+    public ResponseEntity<TeamDto> getTeam(@PathVariable("id") Long id, Principal principal){
+        try {
+            return new ResponseEntity<>(findTeamService.findTeamById(id, principal), HttpStatus.OK);
+        } catch (Exception e){
+            return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+        }
+    }
+
     @PreAuthorize("hasAuthority('TEAM_MANAGER')")
     @PostMapping(value= "/api/v1/team")
     public ResponseEntity<StatusDTO> modifyAccessToTeam(@Valid @RequestBody ChangeTeamRequestDto changeTeamRequestDto, Principal principal){
@@ -64,6 +76,21 @@ public class TeamController {
             return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.OK);
         } catch (Exception e){
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('TEAM_MANAGER')")
+    @DeleteMapping(value= "/api/v1/team/{id}")
+    public ResponseEntity<StatusDTO> deleteTeam(@PathVariable("id") Long id, Principal principal){
+        try {
+            deleteTeamService.deleteTeam(id, principal);
+            return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.OK);
+        } catch (TeamHasResourcesException e){
+            log.error("[Team] Cannot delete team with ID {} by {}, reason: {}", id, principal.getName(), e.getMessage());
+            return new ResponseEntity<>(new StatusDTO(e.getMessage()), HttpStatus.CONFLICT);
+        } catch (Exception e){
+            log.error("[Team] Error deleting team with ID {} by {}, reason: {}", id, principal.getName(), e.getMessage());
+            return new ResponseEntity<>(new StatusDTO("Error deleting team"), HttpStatus.BAD_REQUEST);
         }
     }
 

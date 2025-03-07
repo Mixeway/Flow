@@ -1,0 +1,167 @@
+.dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.critical {
+  background-color: red;
+}
+
+.high {
+  background-color: #f33d3d;
+}
+
+.medium {
+  background-color: #e38334;
+}
+
+.low {
+  background-color: #47a3d3;
+}
+
+.critical-t {
+  color: red;
+}
+
+.high-t {
+  color: #f33d3d;
+}
+
+.medium-t {
+  color: #e38334;
+}
+
+.low-t {
+  color: #47a3d3;
+}
+
+.location-cell {
+  white-space: normal;
+  word-break: break-word;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+
+// Vulnerability information
+.vuln-info {
+  .vuln-name {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+  }
+
+  .vuln-metadata {
+    font-size: 0.8rem;
+    color: var(--cui-secondary-color);
+
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+
+      .meta-item {
+        display: flex;
+        align-items: center;
+
+        .meta-icon {
+          width: 14px;
+          height: 14px;
+          opacity: 0.75;
+        }
+
+        &.status-info {
+          .status-text {
+            font-weight: 600;
+
+            &.status-new {
+              color: var(--cui-danger);
+            }
+
+            &.status-existing {
+              color: var(--cui-warning);
+            }
+
+            &.status-removed {
+              color: var(--cui-success);
+            }
+
+            &.status-supressed {
+              color: var(--cui-secondary);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Empty state
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  text-align: center;
+
+  svg {
+    color: var(--cui-primary);
+    opacity: 0.7;
+    margin-bottom: 1rem;
+  }
+
+  h5 {
+    margin-bottom: 0.5rem;
+  }
+
+  p {
+    color: var(--cui-secondary-color);
+    max-width: 300px;
+  }
+}
+
+/* Styles for vertical alignment in ngx-datatable cells */
+:host ::ng-deep {
+  .ngx-datatable .datatable-body-cell {
+    display: flex;
+    align-items: center;
+  }
+
+  .ngx-datatable .datatable-body-cell-label {
+    flex: 1;
+  }
+
+  // Center only for specific columns
+  .ngx-datatable .datatable-column.centered-column {
+    .datatable-header-cell {
+      text-align: center;
+    }
+
+    .datatable-body-cell {
+      justify-content: center;
+
+      .datatable-body-cell-label {
+        justify-content: center;
+      }
+    }
+  }
+
+  // Fix vertical alignment for all cells when name has multiple lines
+  .ngx-datatable .datatable-body-row {
+    align-items: center;
+
+    .datatable-body-cell {
+      align-self: center;
+    }
+  }
+}
