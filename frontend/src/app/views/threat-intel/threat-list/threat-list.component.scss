@@ -1,12 +1,16 @@
 .threats-container {
   height: 100%;
+  display: flex;
+  flex-direction: column;
 
   .threats-card {
     height: 100%;
     border-radius: var(--cui-border-radius);
-    box-shadow: var(--cui-shadow-sm);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--cui-border-color, rgba(0, 0, 0, 0.1));
     display: flex;
     flex-direction: column;
+    background-color: var(--cui-card-bg, var(--cui-body-bg, #343a40));
 
     .card-header {
       padding: 1rem 1.25rem;
@@ -29,8 +33,10 @@
 
     .card-body {
       padding: 0;
-      overflow-y: auto;
       flex: 1;
+      overflow: hidden; // Prevents content from overflowing
+      display: flex;
+      flex-direction: column;
     }
   }
 
@@ -38,6 +44,10 @@
     list-style: none;
     margin: 0;
     padding: 0;
+    overflow-y: auto; // Enable vertical scrolling
+    max-height: 100%; // Use available space
+    flex: 1;
+    background-color: var(--cui-card-bg, var(--cui-body-bg, #343a40));
 
     .threat-item {
       padding: 0.875rem 1.25rem;
@@ -46,9 +56,14 @@
       align-items: center;
       justify-content: space-between;
       transition: background-color 0.2s ease;
+      background-color: var(--cui-card-bg, var(--cui-body-bg, #343a40));
+
+      &:nth-child(odd) {
+        background-color: var(--cui-tertiary-bg, rgba(0, 0, 0, 0.05));
+      }
 
       &:hover {
-        background-color: var(--cui-tertiary-bg);
+        background-color: var(--cui-card-cap-bg, rgba(0, 0, 0, 0.2));
       }
 
       &:last-child {
@@ -202,33 +217,11 @@
           padding: 1.25rem;
           background-color: var(--cui-card-bg);
           border: 1px solid var(--cui-border-color);
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
 
-          &.factor-positive {
-            border-left: 4px solid var(--cui-danger);
-
-            .factor-icon {
-              background-color: var(--cui-danger);
-
-              svg {
-                color: white;
-              }
-            }
-
-            .status-check {
-              color: var(--cui-danger);
-            }
-          }
-
-          &.factor-negative {
-            border-left: 4px solid var(--cui-secondary);
-
-            .factor-icon {
-              background-color: var(--cui-secondary);
-
-              svg {
-                color: white;
-              }
-            }
+          &:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--cui-shadow-sm);
           }
 
           .factor-header {
@@ -244,6 +237,7 @@
               align-items: center;
               justify-content: center;
               margin-right: 0.75rem;
+              background-color: rgba(var(--cui-primary-rgb), 0.1);
 
               svg {
                 width: 16px;
@@ -257,18 +251,13 @@
             }
           }
 
-          .factor-value {
-            font-size: 1.5rem;
+          .factor-status {
             margin-bottom: 0.75rem;
-            font-weight: 700;
 
-            .status-check {
-              font-size: 1.75rem;
-            }
-
-            .status-cross {
-              font-size: 1.75rem;
-              color: var(--cui-secondary);
+            .badge {
+              padding: 0.4rem 0.75rem;
+              font-weight: 500;
+              font-size: 0.875rem;
             }
           }
 
@@ -296,6 +285,11 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            transition: background-color 0.2s ease;
+
+            &:hover {
+              background-color: var(--cui-tertiary-bg);
+            }
 
             &:last-child {
               border-bottom: none;
@@ -344,36 +338,83 @@
     }
   }
 }
-/* Spacing between sections */
-.threat-description,
-.risk-factors-section,
-.affected-resources,
-.recommended-actions {
-  margin-bottom: 20px;
+
+// Light theme enhancements
+:root.light-theme {
+  .threats-container {
+    .threats-card {
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.07);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      background-color: white;
+
+      .card-header {
+        background-color: white;
+        border-bottom: 1px solid var(--cui-border-color);
+      }
+
+      .threats-list {
+        background-color: white;
+
+        .threat-item {
+          background-color: white;
+
+          &:nth-child(odd) {
+            background-color: rgba(0, 0, 0, 0.02);
+          }
+
+          &:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+          }
+
+          .threat-meta {
+            .urgency-badge {
+              &.urgent {
+                background-color: rgba(var(--cui-danger-rgb), 0.1);
+              }
+
+              &.notable {
+                background-color: rgba(var(--cui-warning-rgb), 0.1);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Modal light theme enhancements
+    .threat-details-modal {
+      .risk-factor {
+        background-color: white;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+      }
+
+      .resources-list, .action-list {
+        background-color: white;
+      }
+    }
+  }
 }
 
-/* Subtle styling for factor info */
-.factor-info {
-  font-size: 0.875rem;
-  color: #6c757d; /* Gray for less prominence */
-}
+// Responsive adjustments
+@media (max-width: 768px) {
+  .threats-container {
+    .threats-card {
+      .threat-item {
+        flex-direction: column;
+        align-items: flex-start;
 
-/* Ensure grid layout is responsive (adjust as needed) */
-.risk-factors-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-}
+        .threat-meta {
+          margin-top: 0.5rem;
+          width: 100%;
+          justify-content: flex-end;
+        }
+      }
+    }
 
-/* Style resource items */
-.resource-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-}
-
-/* Center no-resources message */
-.no-resources {
-  padding: 20px;
+    .threat-details-modal {
+      .risk-factors-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  }
 }

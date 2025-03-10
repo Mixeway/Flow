@@ -13,10 +13,12 @@
     position: relative;
     display: flex;
     flex-direction: column;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.05);
 
     &:hover {
       transform: translateY(-5px);
-      box-shadow: var(--cui-shadow);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
     }
 
     .stat-icon {
@@ -29,10 +31,6 @@
       display: flex;
       align-items: center;
       justify-content: center;
-
-      svg {
-        color: white;
-      }
     }
 
     .stat-content {
@@ -42,14 +40,14 @@
       flex-direction: column;
       justify-content: space-between;
       z-index: 1;
+      position: relative;
     }
 
     .stat-title {
       font-size: 0.875rem;
-      font-weight: 500;
+      font-weight: 600;
       margin-bottom: 0.5rem;
-      color: var(--cui-body-color);
-      opacity: 0.8;
+      opacity: 0.9;
     }
 
     .stat-value {
@@ -63,6 +61,7 @@
       display: flex;
       align-items: center;
       font-size: 0.875rem;
+      font-weight: 500;
 
       svg {
         margin-right: 0.25rem;
@@ -88,56 +87,190 @@
       opacity: 0.1;
     }
 
-    // Colors for different card types
+    // Theme-aware card styling
     &.primary {
-      background-color: var(--cui-primary-rgb, 51, 102, 255);
+      background: linear-gradient(135deg, rgba(var(--cui-primary-rgb), 0.9), rgba(var(--cui-primary-rgb), 1));
       color: white;
 
       .stat-title {
-        color: rgba(255, 255, 255, 0.8);
+        color: rgba(255, 255, 255, 0.9);
       }
 
-      .stat-icon, .bg-decoration {
+      .stat-icon {
         background-color: rgba(255, 255, 255, 0.2);
+        svg {
+          color: white;
+        }
+      }
+
+      .bg-decoration {
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+
+      .stat-change {
+        &.positive {
+          color: rgba(255, 255, 255, 0.9);
+        }
       }
     }
 
     &.warning {
-      background-color: var(--cui-warning-rgb, 255, 193, 7);
-      color: white;
+      background: linear-gradient(135deg, rgba(var(--cui-warning-rgb), 0.9), rgba(var(--cui-warning-rgb), 1));
+      color: var(--cui-body-color-dark, white);
 
       .stat-title {
-        color: rgba(255, 255, 255, 0.8);
+        color: rgba(var(--cui-body-color-rgb-dark, 255, 255, 255), 0.9);
       }
 
-      .stat-icon, .bg-decoration {
+      .stat-icon {
         background-color: rgba(255, 255, 255, 0.2);
+        svg {
+          color: var(--cui-body-color-dark, white);
+        }
+      }
+
+      .bg-decoration {
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+
+      .stat-change {
+        &.positive {
+          color: rgba(var(--cui-body-color-rgb-dark, 255, 255, 255), 0.9);
+        }
       }
     }
 
     &.success {
-      background-color: var(--cui-success-rgb, 40, 167, 69);
+      background: linear-gradient(135deg, rgba(var(--cui-success-rgb), 0.9), rgba(var(--cui-success-rgb), 1));
       color: white;
 
       .stat-title {
-        color: rgba(255, 255, 255, 0.8);
+        color: rgba(255, 255, 255, 0.9);
       }
 
-      .stat-icon, .bg-decoration {
+      .stat-icon {
         background-color: rgba(255, 255, 255, 0.2);
+        svg {
+          color: white;
+        }
+      }
+
+      .bg-decoration {
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+
+      .stat-change {
+        &.positive, &.negative {
+          color: rgba(255, 255, 255, 0.9);
+        }
       }
     }
 
     &.danger {
-      background-color: var(--cui-danger-rgb, 220, 53, 69);
+      background: linear-gradient(135deg, rgba(var(--cui-danger-rgb), 0.9), rgba(var(--cui-danger-rgb), 1));
       color: white;
 
       .stat-title {
-        color: rgba(255, 255, 255, 0.8);
+        color: rgba(255, 255, 255, 0.9);
       }
 
-      .stat-icon, .bg-decoration {
+      .stat-icon {
         background-color: rgba(255, 255, 255, 0.2);
+        svg {
+          color: white;
+        }
+      }
+
+      .bg-decoration {
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+
+      .stat-change {
+        &.positive, &.negative {
+          color: rgba(255, 255, 255, 0.9);
+        }
+      }
+    }
+  }
+}
+
+// Add a theme toggle class for light theme variation
+:root.light-theme {
+  .statistics-dashboard {
+    .stat-card {
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+
+      &:hover {
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+      }
+
+      // Light theme alternative - for better contrast
+      &.primary, &.warning, &.success, &.danger {
+        background: white;
+        color: var(--cui-body-color);
+        border-left: 4px solid;
+
+        .stat-title {
+          color: var(--cui-body-color);
+          opacity: 0.7;
+        }
+
+        .stat-value {
+          color: var(--cui-body-color);
+        }
+
+        .stat-icon svg {
+          color: white;
+        }
+      }
+
+      &.primary {
+        border-left-color: var(--cui-primary);
+
+        .stat-icon {
+          background-color: var(--cui-primary);
+        }
+
+        .bg-decoration {
+          background-color: rgba(var(--cui-primary-rgb), 0.1);
+        }
+      }
+
+      &.warning {
+        border-left-color: var(--cui-warning);
+
+        .stat-icon {
+          background-color: var(--cui-warning);
+        }
+
+        .bg-decoration {
+          background-color: rgba(var(--cui-warning-rgb), 0.1);
+        }
+      }
+
+      &.success {
+        border-left-color: var(--cui-success);
+
+        .stat-icon {
+          background-color: var(--cui-success);
+        }
+
+        .bg-decoration {
+          background-color: rgba(var(--cui-success-rgb), 0.1);
+        }
+      }
+
+      &.danger {
+        border-left-color: var(--cui-danger);
+
+        .stat-icon {
+          background-color: var(--cui-danger);
+        }
+
+        .bg-decoration {
+          background-color: rgba(var(--cui-danger-rgb), 0.1);
+        }
       }
     }
   }

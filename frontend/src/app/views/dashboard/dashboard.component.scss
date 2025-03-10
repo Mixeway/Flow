@@ -393,3 +393,111 @@ c-toast {
     margin-top: 1rem;
   }
 }
+// Additional styles to ensure consistency across all datatables
+
+// Add these styles to your existing dashboard.component.scss file
+
+// Common ngx-datatable styles across all tabs
+.security-table {
+  border-radius: 4px;
+  overflow: hidden;
+
+  // Consistent header styles for all tables
+  .datatable-header-cell {
+    font-weight: 600;
+    color: var(--cui-body-color, #3c4b64);
+    padding: 0.75rem 1rem;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0, 0, 21, 0.125);
+  }
+
+  // Consistent row styles for all tables
+  .datatable-body-row {
+    border-bottom: 1px solid rgba(0, 0, 21, 0.075);
+    transition: background-color 0.2s ease;
+
+    &:hover {
+      background-color: rgba(0, 0, 21, 0.03);
+    }
+  }
+
+  // Consistent cell styles for all tables
+  .datatable-body-cell {
+    padding: 0.75rem 1rem;
+    vertical-align: middle;
+  }
+
+  // Apply consistent scan status styling across all tables
+  .scan-status-cell {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+  }
+
+  .scan-status-indicator {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    color: white;
+
+    &.danger {
+      background-color: rgba(229, 83, 83, 0.15);
+      color: #e55353;
+    }
+
+    &.warning {
+      background-color: rgba(249, 177, 21, 0.15);
+      color: #f9b115;
+    }
+
+    &.success {
+      background-color: rgba(46, 184, 92, 0.15);
+      color: #2eb85c;
+    }
+
+    &.neutral {
+      background-color: rgba(206, 210, 216, 0.15);
+      color: #8a93a2;
+    }
+  }
+
+  // Consistent scan type header styling for all tables
+  .scan-type-header {
+    font-weight: 600;
+    color: #3c4b64;
+    white-space: nowrap;
+  }
+}
+
+// Team badge styling for all tables
+.team-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 16px;
+  background-color: #ebedef;
+  color: #4f5d73;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+// Status legend for all tabs
+.status-legend {
+  padding: 0.5rem 0;
+  margin-bottom: 1rem;
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    margin-right: 1rem;
+
+    small {
+      margin-left: 0.35rem;
+      font-size: 0.8rem;
+      color: #6c757d;
+    }
+  }
+}

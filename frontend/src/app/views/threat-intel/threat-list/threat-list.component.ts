@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { AfterViewInit, Component, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
 import {
     AlertComponent,
     BadgeComponent,
@@ -32,7 +32,8 @@ import {
     cilUser,
     cilFolder,
     cilCheckAlt,
-    cilTask
+    cilTask,
+    cilBan
 } from '@coreui/icons';
 
 interface Item {
@@ -77,9 +78,12 @@ interface Project {
     templateUrl: './threat-list.component.html',
     styleUrls: ['./threat-list.component.scss']
 })
-export class ThreatListComponent implements AfterViewInit, OnChanges {
+export class ThreatListComponent implements AfterViewInit, OnChanges, OnInit {
     @Input()
     items: Item[] = [];
+
+    // Theme detection - integrate with your theme service if you have one
+    @Input() theme: 'light' | 'dark' = 'dark';
 
     selectedItem: Item | null = null;
     modalVisible: boolean = false;
@@ -100,8 +104,13 @@ export class ThreatListComponent implements AfterViewInit, OnChanges {
             cilUser,
             cilFolder,
             cilCheckAlt,
-            cilTask
+            cilTask,
+            cilBan
         };
+    }
+
+    ngOnInit(): void {
+        this.detectTheme();
     }
 
     openModal(item: Item) {
@@ -190,6 +199,52 @@ export class ThreatListComponent implements AfterViewInit, OnChanges {
             if (currentItems && currentItems.length > 0) {
                 this.sortItems();
             }
+        }
+
+        // Update theme if changed
+        if (changes['theme']) {
+            this.updateThemeClass();
+        }
+    }
+
+    /**
+     * Detect current theme from CoreUI if possible,
+     * otherwise use system preference
+     */
+    private detectTheme(): void {
+        // You can integrate with your existing theme service here
+        // This is a basic implementation that checks for dark mode preference
+
+        // Check if CoreUI has a theme class on the body or html element
+        const hasLightThemeClass = document.documentElement.classList.contains('light-theme') ||
+            document.body.classList.contains('light-theme') ||
+            document.documentElement.getAttribute('data-coreui-theme') === 'light';
+
+        const hasDarkThemeClass = document.documentElement.classList.contains('dark-theme') ||
+            document.body.classList.contains('dark-theme') ||
+            document.documentElement.getAttribute('data-coreui-theme') === 'dark';
+
+        if (hasLightThemeClass) {
+            this.theme = 'light';
+        } else if (hasDarkThemeClass) {
+            this.theme = 'dark';
+        } else {
+            // Use system preference as fallback
+            const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            this.theme = prefersDarkMode ? 'dark' : 'light';
+        }
+
+        this.updateThemeClass();
+    }
+
+    /**
+     * Apply the appropriate theme class to the root element
+     */
+    private updateThemeClass(): void {
+        if (this.theme === 'light') {
+            document.documentElement.classList.add('light-theme');
+        } else {
+            document.documentElement.classList.remove('light-theme');
         }
     }
 }

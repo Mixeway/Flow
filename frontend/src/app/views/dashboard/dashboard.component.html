@@ -448,17 +448,16 @@
                         </c-tab-panel>
                     </c-tabs-content>
 
-                    <!-- Cloud Subscriptions Tab Content (Same as original) -->
+                    <!-- Cloud Subscriptions Tab Content (Updated to match repository styling) -->
                     <c-tabs-content>
                         <c-tab-panel class="p-3" [itemKey]="1">
-                            <!-- Existing cloud subscription content -->
                             <!-- Search & Filter -->
                             <c-row class="mb-4">
                                 <c-col>
                                     <c-input-group class="dashboard-search-box">
-                                        <span cInputGroupText>
-                                          <svg cIcon name="cil-magnifying-glass"></svg>
-                                        </span>
+                    <span cInputGroupText>
+                      <svg cIcon name="cil-magnifying-glass"></svg>
+                    </span>
                                         <input
                                                 aria-label="Filter cloud subscriptions"
                                                 type="text"
@@ -470,7 +469,7 @@
                                 </c-col>
                             </c-row>
 
-                            <!-- Data Table -->
+                            <!-- Data Table (Updated to match repository styling) -->
                             <ngx-datatable
                                     class="bootstrap security-table"
                                     [rows]="cloudRows"
@@ -481,22 +480,71 @@
                                     [rowHeight]="'auto'"
                                     [limit]="10"
                             >
-                                <!-- Existing table content -->
+                                <!-- Action Column -->
+                                <ngx-datatable-column name="" prop="name2" [width]="60" [sortable]="false" [resizeable]="false">
+                                    <ng-template ngx-datatable-cell-template let-row="row">
+                                        <button type="button" class="btn btn-sm btn-primary" (click)="cloudClick(row)">
+                                            <svg cIcon name="cil-magnifying-glass"></svg>
+                                        </button>
+                                    </ng-template>
+                                </ngx-datatable-column>
+
+                                <!-- Cloud Subscription Column -->
+                                <ngx-datatable-column name="Cloud Subscription" prop="cloudSubscription" [width]="350">
+                                    <ng-template ngx-datatable-cell-template let-row="row">
+                                        <div class="d-flex flex-column">
+                                            <span class="fw-bold">{{ row.externalProjectName }}</span>
+                                            <small class="text-muted">{{ row.cloudSubscription }}</small>
+                                        </div>
+                                    </ng-template>
+                                </ngx-datatable-column>
+
+                                <!-- Team Column -->
+                                <ngx-datatable-column name="Team" prop="team" [width]="150">
+                                    <ng-template ngx-datatable-cell-template let-row="row">
+                                        <span class="team-badge">{{ row.team }}</span>
+                                    </ng-template>
+                                </ngx-datatable-column>
+
+                                <!-- Cloud Scan Column -->
+                                <ngx-datatable-column name="Cloud Scan" [width]="100">
+                                    <ng-template ngx-datatable-header-template>
+                                        <span class="scan-type-header" cTooltip="Cloud Security Scan">Cloud Scan</span>
+                                    </ng-template>
+                                    <ng-template ngx-datatable-cell-template let-row="row">
+                                        <div class="scan-status-cell">
+                                            <div
+                                                    class="scan-status-indicator"
+                                                    [ngClass]="{
+                                'danger': row.scanStatus === 'DANGER',
+                                'success': row.scanStatus === 'SUCCESS',
+                                'warning': row.scanStatus === 'WARNING',
+                                'neutral': row.scanStatus === 'NOT_PERFORMED'
+                              }"
+                                            >
+                                                <svg *ngIf="row.scanStatus === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.scanStatus === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
+                                                <svg *ngIf="row.scanStatus === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.scanStatus === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
+                                                <c-spinner *ngIf="row.scanStatus === 'RUNNING'" size="sm"></c-spinner>
+                                            </div>
+                                        </div>
+                                    </ng-template>
+                                </ngx-datatable-column>
                             </ngx-datatable>
                         </c-tab-panel>
                     </c-tabs-content>
 
-                    <!-- Teams Tab Content (Same as original) -->
+                    <!-- Teams Tab Content (Updated to match repository styling) -->
                     <c-tabs-content>
                         <c-tab-panel class="p-3" [itemKey]="2">
-                            <!-- Existing teams content -->
                             <!-- Search & Filter -->
                             <c-row class="mb-4">
                                 <c-col>
                                     <c-input-group class="dashboard-search-box">
-                                        <span cInputGroupText>
-                                          <svg cIcon name="cil-magnifying-glass"></svg>
-                                        </span>
+                    <span cInputGroupText>
+                      <svg cIcon name="cil-magnifying-glass"></svg>
+                    </span>
                                         <input
                                                 aria-label="Filter teams"
                                                 type="text"
@@ -508,7 +556,7 @@
                                 </c-col>
                             </c-row>
 
-                            <!-- Data Table -->
+                            <!-- Data Table (Updated to match repository styling) -->
                             <ngx-datatable
                                     class="bootstrap security-table"
                                     [rows]="teams"
@@ -519,7 +567,154 @@
                                     [rowHeight]="'auto'"
                                     [limit]="10"
                             >
-                                <!-- Existing table content -->
+                                <!-- Action Column -->
+                                <ngx-datatable-column name="" prop="name2" [width]="60" [sortable]="false" [resizeable]="false">
+                                    <ng-template ngx-datatable-cell-template let-row="row">
+                                        <button type="button" class="btn btn-sm btn-primary" (click)="teamClick(row)">
+                                            <svg cIcon name="cil-magnifying-glass"></svg>
+                                        </button>
+                                    </ng-template>
+                                </ngx-datatable-column>
+
+                                <!-- Team Column -->
+                                <ngx-datatable-column name="Team" prop="name" [width]="350">
+                                    <ng-template ngx-datatable-cell-template let-row="row">
+                                        <div class="d-flex flex-column">
+                                            <span class="fw-bold">{{ row.name }}</span>
+                                            <small class="text-muted">{{ row.remoteIdentifier }}</small>
+                                        </div>
+                                    </ng-template>
+                                </ngx-datatable-column>
+
+                                <!-- SAST Column -->
+                                <ngx-datatable-column name="SAST" [width]="100">
+                                    <ng-template ngx-datatable-header-template>
+                                        <span class="scan-type-header" cTooltip="Static Application Security Testing">SAST</span>
+                                    </ng-template>
+                                    <ng-template ngx-datatable-cell-template let-row="row">
+                                        <div class="scan-status-cell">
+                                            <div
+                                                    class="scan-status-indicator"
+                                                    [ngClass]="{
+                                'danger': row.sastStatus === 'DANGER',
+                                'success': row.sastStatus === 'SUCCESS',
+                                'warning': row.sastStatus === 'WARNING',
+                                'neutral': row.sastStatus === 'NOT_PERFORMED'
+                              }"
+                                            >
+                                                <svg *ngIf="row.sastStatus === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.sastStatus === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
+                                                <svg *ngIf="row.sastStatus === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.sastStatus === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
+                                                <c-spinner *ngIf="row.sastStatus === 'RUNNING'" size="sm"></c-spinner>
+                                            </div>
+                                        </div>
+                                    </ng-template>
+                                </ngx-datatable-column>
+
+                                <!-- SCA Column -->
+                                <ngx-datatable-column name="SCA" [width]="100">
+                                    <ng-template ngx-datatable-header-template>
+                                        <span class="scan-type-header" cTooltip="Software Composition Analysis">SCA</span>
+                                    </ng-template>
+                                    <ng-template ngx-datatable-cell-template let-row="row">
+                                        <div class="scan-status-cell">
+                                            <div
+                                                    class="scan-status-indicator"
+                                                    [ngClass]="{
+                                'danger': row.scaStatus === 'DANGER',
+                                'success': row.scaStatus === 'SUCCESS',
+                                'warning': row.scaStatus === 'WARNING',
+                                'neutral': row.scaStatus === 'NOT_PERFORMED'
+                              }"
+                                            >
+                                                <svg *ngIf="row.scaStatus === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.scaStatus === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
+                                                <svg *ngIf="row.scaStatus === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.scaStatus === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
+                                                <c-spinner *ngIf="row.scaStatus === 'RUNNING'" size="sm"></c-spinner>
+                                            </div>
+                                        </div>
+                                    </ng-template>
+                                </ngx-datatable-column>
+
+                                <!-- Secrets Column -->
+                                <ngx-datatable-column name="Secrets" [width]="100">
+                                    <ng-template ngx-datatable-header-template>
+                                        <span class="scan-type-header" cTooltip="Secret Detection">Secrets</span>
+                                    </ng-template>
+                                    <ng-template ngx-datatable-cell-template let-row="row">
+                                        <div class="scan-status-cell">
+                                            <div
+                                                    class="scan-status-indicator"
+                                                    [ngClass]="{
+                                'danger': row.secretsStatus === 'DANGER',
+                                'success': row.secretsStatus === 'SUCCESS',
+                                'warning': row.secretsStatus === 'WARNING',
+                                'neutral': row.secretsStatus === 'NOT_PERFORMED'
+                              }"
+                                            >
+                                                <svg *ngIf="row.secretsStatus === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.secretsStatus === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
+                                                <svg *ngIf="row.secretsStatus === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.secretsStatus === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
+                                                <c-spinner *ngIf="row.secretsStatus === 'RUNNING'" size="sm"></c-spinner>
+                                            </div>
+                                        </div>
+                                    </ng-template>
+                                </ngx-datatable-column>
+
+                                <!-- IaC Column -->
+                                <ngx-datatable-column name="IaC" [width]="100">
+                                    <ng-template ngx-datatable-header-template>
+                                        <span class="scan-type-header" cTooltip="Infrastructure as Code">IaC</span>
+                                    </ng-template>
+                                    <ng-template ngx-datatable-cell-template let-row="row">
+                                        <div class="scan-status-cell">
+                                            <div
+                                                    class="scan-status-indicator"
+                                                    [ngClass]="{
+                                'danger': row.iacStatus === 'DANGER',
+                                'success': row.iacStatus === 'SUCCESS',
+                                'warning': row.iacStatus === 'WARNING',
+                                'neutral': row.iacStatus === 'NOT_PERFORMED'
+                              }"
+                                            >
+                                                <svg *ngIf="row.iacStatus === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.iacStatus === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
+                                                <svg *ngIf="row.iacStatus === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.iacStatus === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
+                                                <c-spinner *ngIf="row.iacStatus === 'RUNNING'" size="sm"></c-spinner>
+                                            </div>
+                                        </div>
+                                    </ng-template>
+                                </ngx-datatable-column>
+
+                                <!-- Cloud Scan Column -->
+                                <ngx-datatable-column name="Cloud Scan" [width]="100">
+                                    <ng-template ngx-datatable-header-template>
+                                        <span class="scan-type-header" cTooltip="Cloud Security Scan">Cloud Scan</span>
+                                    </ng-template>
+                                    <ng-template ngx-datatable-cell-template let-row="row">
+                                        <div class="scan-status-cell">
+                                            <div
+                                                    class="scan-status-indicator"
+                                                    [ngClass]="{
+                                'danger': row.cloudScanStatus === 'DANGER',
+                                'success': row.cloudScanStatus === 'SUCCESS',
+                                'warning': row.cloudScanStatus === 'WARNING',
+                                'neutral': row.cloudScanStatus === 'NOT_PERFORMED'
+                              }"
+                                            >
+                                                <svg *ngIf="row.cloudScanStatus === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.cloudScanStatus === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
+                                                <svg *ngIf="row.cloudScanStatus === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.cloudScanStatus === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
+                                                <c-spinner *ngIf="row.cloudScanStatus === 'RUNNING'" size="sm"></c-spinner>
+                                            </div>
+                                        </div>
+                                    </ng-template>
+                                </ngx-datatable-column>
                             </ngx-datatable>
                         </c-tab-panel>
                     </c-tabs-content>

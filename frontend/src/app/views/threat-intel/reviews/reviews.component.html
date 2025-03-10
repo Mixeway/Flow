@@ -1,7 +1,7 @@
 <c-col xs="12" class="d-flex flex-column gap-4">
     <!-- Removed Vulnerabilities Card -->
-    <div class="activity-card">
-        <div class="card-header">
+    <c-card class="activity-card h-100">
+        <c-card-header>
             <h5 class="header-title">
                 <svg cIcon name="cilTrash" size="lg"></svg>
                 Recently Removed Vulnerabilities
@@ -11,9 +11,9 @@
                     <svg cIcon name="cilReload"></svg>
                 </div>
             </div>
-        </div>
+        </c-card-header>
 
-        <div class="card-body" style="max-height: 320px;">
+        <c-card-body style="max-height: 320px; overflow-y: auto;">
             <!-- Empty state -->
             <div class="empty-state" *ngIf="!removedVulnerabilities || removedVulnerabilities.length === 0">
                 <svg cIcon name="cilCheckAlt" width="48" height="48"></svg>
@@ -41,12 +41,12 @@
                     </div>
                 </li>
             </ul>
-        </div>
-    </div>
+        </c-card-body>
+    </c-card>
 
     <!-- Reviewed Vulnerabilities Card -->
-    <div class="activity-card">
-        <div class="card-header">
+    <c-card class="activity-card h-100">
+        <c-card-header>
             <h5 class="header-title">
                 <svg cIcon name="cilNotes" size="lg"></svg>
                 Recently Reviewed Vulnerabilities
@@ -56,9 +56,9 @@
                     <svg cIcon name="cilReload"></svg>
                 </div>
             </div>
-        </div>
+        </c-card-header>
 
-        <div class="card-body" style="max-height: 320px;">
+        <c-card-body style="max-height: 320px; overflow-y: auto;">
             <!-- Empty state -->
             <div class="empty-state" *ngIf="!reviewedVulnerabilities || reviewedVulnerabilities.length === 0">
                 <svg cIcon name="cilCheckAlt" width="48" height="48"></svg>
@@ -86,6 +86,6 @@
                     </div>
                 </li>
             </ul>
-        </div>
-    </div>
+        </c-card-body>
+    </c-card>
 </c-col>
