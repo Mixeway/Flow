@@ -1065,4 +1065,11 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         this.loadFindingStats();
         this.loadSourceStats();
     }
+
+    onFindingSuppressed(): void {
+        this.toastStatus = 'success';
+        this.toastMessage = 'Successfully Suppressed finding';
+        this.toggleToast();
+        this.loadFindings();
+    }
 }

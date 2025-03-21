@@ -573,6 +573,8 @@
         (reactivateFindingEvent)="reactivateFinding()"
         (addCommentEvent)="addComment()"
         (newCommentChange)="newComment = $event"
+        [repoId]="repoId"
+        (suppressed)="onFindingSuppressed()"
 ></app-vulnerability-details>
 
 <!-- Toast Notifications -->
