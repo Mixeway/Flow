@@ -111,7 +111,8 @@
                                         <div class="metric-content">
                                             <h6 class="metric-title">Opened Findings</h6>
                                             <div class="metric-value">{{ getLastOpenedFindings() === 0 ? 'None' : getLastOpenedFindings() }}</div>
-                                            <c-progress class="metric-progress" thin [value]="75" color="info"></c-progress>
+                                            <c-progress class="metric-progress" thin [value]="75"
+                                                        color="info"></c-progress>
                                         </div>
                                     </div>
                                 </c-col>
@@ -124,7 +125,8 @@
                                         <div class="metric-content">
                                             <h6 class="metric-title">Closed Findings</h6>
                                             <div class="metric-value">{{ getLastRemovedFinding() === 0 ? 'None' : getLastRemovedFinding() }}</div>
-                                            <c-progress class="metric-progress" thin [value]="75" color="success"></c-progress>
+                                            <c-progress class="metric-progress" thin [value]="75"
+                                                        color="success"></c-progress>
                                         </div>
                                     </div>
                                 </c-col>
@@ -137,7 +139,8 @@
                                         <div class="metric-content">
                                             <h6 class="metric-title">Reviewed Findings</h6>
                                             <div class="metric-value">{{ getLastRevievedFinding() === 0 ? 'None' : getLastRevievedFinding() }}</div>
-                                            <c-progress class="metric-progress" thin [value]="80" color="warning"></c-progress>
+                                            <c-progress class="metric-progress" thin [value]="80"
+                                                        color="warning"></c-progress>
                                         </div>
                                     </div>
                                 </c-col>
@@ -149,8 +152,10 @@
                                         </div>
                                         <div class="metric-content">
                                             <h6 class="metric-title">Time to Fix</h6>
-                                            <div class="metric-value">{{ getLastFixTime() === 0 ? 'Unknown' : getLastFixTime() }} <span class="metric-unit">days</span></div>
-                                            <c-progress class="metric-progress" thin [value]="65" color="danger"></c-progress>
+                                            <div class="metric-value">{{ getLastFixTime() === 0 ? 'Unknown' : getLastFixTime() }}
+                                                <span class="metric-unit">days</span></div>
+                                            <c-progress class="metric-progress" thin [value]="65"
+                                                        color="danger"></c-progress>
                                         </div>
                                     </div>
                                 </c-col>
@@ -289,36 +294,60 @@
                                                     <div class="result-category">
                                                         <span class="category-label">SAST</span>
                                                         <div class="category-badges">
-                                                            <c-badge color="danger" class="result-badge" *ngIf="row.sastCritical > 0">{{ row.sastCritical }}</c-badge>
-                                                            <c-badge color="warning" class="result-badge" *ngIf="row.sastHigh > 0">{{ row.sastHigh }}</c-badge>
-                                                            <c-badge color="info" class="result-badge" *ngIf="row.sastMedium > 0">{{ row.sastMedium }}</c-badge>
+                                                            <c-badge color="danger" class="result-badge"
+                                                                     *ngIf="row.sastCritical > 0">{{ row.sastCritical }}
+                                                            </c-badge>
+                                                            <c-badge color="warning" class="result-badge"
+                                                                     *ngIf="row.sastHigh > 0">{{ row.sastHigh }}
+                                                            </c-badge>
+                                                            <c-badge color="info" class="result-badge"
+                                                                     *ngIf="row.sastMedium > 0">{{ row.sastMedium }}
+                                                            </c-badge>
                                                         </div>
                                                     </div>
 
                                                     <div class="result-category">
                                                         <span class="category-label">SCA</span>
                                                         <div class="category-badges">
-                                                            <c-badge color="danger" class="result-badge" *ngIf="row.scaCritical > 0">{{ row.scaCritical }}</c-badge>
-                                                            <c-badge color="warning" class="result-badge" *ngIf="row.scaHigh > 0">{{ row.scaHigh }}</c-badge>
-                                                            <c-badge color="info" class="result-badge" *ngIf="row.scaMedium > 0">{{ row.scaMedium }}</c-badge>
+                                                            <c-badge color="danger" class="result-badge"
+                                                                     *ngIf="row.scaCritical > 0">{{ row.scaCritical }}
+                                                            </c-badge>
+                                                            <c-badge color="warning" class="result-badge"
+                                                                     *ngIf="row.scaHigh > 0">{{ row.scaHigh }}
+                                                            </c-badge>
+                                                            <c-badge color="info" class="result-badge"
+                                                                     *ngIf="row.scaMedium > 0">{{ row.scaMedium }}
+                                                            </c-badge>
                                                         </div>
                                                     </div>
 
                                                     <div class="result-category">
                                                         <span class="category-label">IaC</span>
                                                         <div class="category-badges">
-                                                            <c-badge color="danger" class="result-badge" *ngIf="row.iacCritical > 0">{{ row.iacCritical }}</c-badge>
-                                                            <c-badge color="warning" class="result-badge" *ngIf="row.iacHigh > 0">{{ row.iacHigh }}</c-badge>
-                                                            <c-badge color="info" class="result-badge" *ngIf="row.iacMedium > 0">{{ row.iacMedium }}</c-badge>
+                                                            <c-badge color="danger" class="result-badge"
+                                                                     *ngIf="row.iacCritical > 0">{{ row.iacCritical }}
+                                                            </c-badge>
+                                                            <c-badge color="warning" class="result-badge"
+                                                                     *ngIf="row.iacHigh > 0">{{ row.iacHigh }}
+                                                            </c-badge>
+                                                            <c-badge color="info" class="result-badge"
+                                                                     *ngIf="row.iacMedium > 0">{{ row.iacMedium }}
+                                                            </c-badge>
                                                         </div>
                                                     </div>
 
                                                     <div class="result-category">
                                                         <span class="category-label">Secrets</span>
                                                         <div class="category-badges">
-                                                            <c-badge color="danger" class="result-badge" *ngIf="row.secretsCritical > 0">{{ row.secretsCritical }}</c-badge>
-                                                            <c-badge color="warning" class="result-badge" *ngIf="row.secretsHigh > 0">{{ row.secretsHigh }}</c-badge>
-                                                            <c-badge color="info" class="result-badge" *ngIf="row.secretsMedium > 0">{{ row.secretsMedium }}</c-badge>
+                                                            <c-badge color="danger" class="result-badge"
+                                                                     *ngIf="row.secretsCritical > 0">{{ row.secretsCritical }}
+                                                            </c-badge>
+                                                            <c-badge color="warning" class="result-badge"
+                                                                     *ngIf="row.secretsHigh > 0">{{ row.secretsHigh }}
+                                                            </c-badge>
+                                                            <c-badge color="info" class="result-badge"
+                                                                     *ngIf="row.secretsMedium > 0">{{ row.secretsMedium }}
+                                                            </c-badge>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -331,7 +360,9 @@
                                         <svg cIcon name="cil-magnifying-glass" width="48" height="48"></svg>
                                         <h5>No scan history found</h5>
                                         <p>No scans match your search criteria or no scans have been performed yet.</p>
-                                        <button cButton color="primary" (click)="updateScanInfoFilter({target: {value: ''}})">Clear search</button>
+                                        <button cButton color="primary"
+                                                (click)="updateScanInfoFilter({target: {value: ''}})">Clear search
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -345,7 +376,8 @@
                         <ng-container *ngFor="let group of grouppedDataTypes; let i = index">
                             <c-accordion-item [visible]="isAccordionVisible[i]">
                                 <ng-template cTemplateId="accordionHeaderTemplate">
-                                    <button (click)="toggleAccordion(i)" [collapsed]="!isAccordionVisible[i]" cAccordionButton>
+                                    <button (click)="toggleAccordion(i)" [collapsed]="!isAccordionVisible[i]"
+                                            cAccordionButton>
                                         {{ group.categoryGroup }}
                                     </button>
                                 </ng-template>
@@ -353,13 +385,19 @@
                                     <div class="accordion-body">
                                         <c-card *ngFor="let appDataType of group.appDataTypes" class="mb-3">
                                             <c-card-header>
-                                                <c-badge color="primary">{{ appDataType.categoryName }} - {{ appDataType.name }}</c-badge>
+                                                <c-badge color="primary">{{ appDataType.categoryName }}
+                                                    - {{ appDataType.name }}
+                                                </c-badge>
                                             </c-card-header>
                                             <c-card-body>
                                                 <ul cListGroup>
-                                                    <li *ngFor="let locationKey of getKeys(appDataType.location)" cListGroupItem>
-                                                        <c-badge color="secondary">{{ locationKey }}</c-badge> :
-                                                        <c-badge color="secondary">{{ appDataType?.location?.[locationKey] }}</c-badge>
+                                                    <li *ngFor="let locationKey of getKeys(appDataType.location)"
+                                                        cListGroupItem>
+                                                        <c-badge color="secondary">{{ locationKey }}</c-badge>
+                                                        :
+                                                        <c-badge
+                                                                color="secondary">{{ appDataType?.location?.[locationKey] }}
+                                                        </c-badge>
                                                     </li>
                                                 </ul>
                                             </c-card-body>
@@ -507,7 +545,8 @@
                                     <svg cIcon name="cil-puzzle" width="48" height="48"></svg>
                                     <h5>No components found</h5>
                                     <p>No components match your filter criteria.</p>
-                                    <button cButton color="primary" (click)="clearComponentFilters()">Clear filters</button>
+                                    <button cButton color="primary" (click)="clearComponentFilters()">Clear filters
+                                    </button>
                                 </div>
                             </div>
                         </c-card-body>
@@ -524,7 +563,7 @@
                                 role="img"
                                 aria-label="Info:"
                         >
-                            <use xlink:href="#info-fill" />
+                            <use xlink:href="#info-fill"/>
                         </svg>
                         <div>
                             This part will be developed in next releases. In this section You will discover
@@ -543,7 +582,7 @@
                                 role="img"
                                 aria-label="Info:"
                         >
-                            <use xlink:href="#info-fill" />
+                            <use xlink:href="#info-fill"/>
                         </svg>
                         <div>
                             This part will be developed in next releases. In this section You will discover
@@ -585,7 +624,7 @@
             Finding management
         </c-toast-header>
         <c-toast-body>
-            <p>{{toastMessage}}</p>
+            <p>{{ toastMessage }}</p>
         </c-toast-body>
     </c-toast>
 </c-toaster>

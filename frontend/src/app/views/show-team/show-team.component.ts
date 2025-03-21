@@ -431,13 +431,18 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
                 this.reposData = Array.isArray(reposResponse) ? reposResponse : [];
                 this.cloudSubscriptionsData = Array.isArray(cloudSubscriptionsResponse) ? cloudSubscriptionsResponse : [];
 
-                this.scanInfos = this.reposData.flatMap((item: any) => item.scanInfos || []);
-                this.cloudScanInfos = this.cloudSubscriptionsData.flatMap((item: any) => item.cloudScanInfos || []);
+                this.scanInfos = this.reposData.flatMap((item: any) =>
+                    (item.scanInfos || []).map((scanInfo: any) => ({ ...scanInfo, target: item.target }))
+                );
+
+                this.cloudScanInfos = this.cloudSubscriptionsData.flatMap((item: any) =>
+                    (item.cloudScanInfos || []).map((cloudScanInfo: any) => ({ ...cloudScanInfo, target: item.external_project_name }))
+                );
 
                 this.allScanInfos = [...this.scanInfos, ...this.cloudScanInfos];
 
+
                 this.scanInfoLoading = false;
-                console.log(this.allScanInfos);
                 this.checkScanStatus();
             },
             error: () => {
