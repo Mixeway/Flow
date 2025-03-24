@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.1] - 2025-03-24
+
+### Fixed
+- Team statuses
+- Team lazy loading during push event
+
 ## [1.2.0] - 2025-03-07
 
 ### Introduced

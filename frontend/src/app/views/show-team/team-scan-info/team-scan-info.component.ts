@@ -9,8 +9,9 @@ import {
   SpinnerComponent
 } from '@coreui/angular';
 import { NgxDatatableModule } from '@swimlane/ngx-datatable';
-import { DatePipe, NgIf } from '@angular/common';
+import {DatePipe, JsonPipe, NgForOf, NgIf} from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import {IconDirective} from "@coreui/icons-angular";
 
 @Component({
   selector: 'app-team-scan-info',
@@ -26,7 +27,10 @@ import { FormsModule } from '@angular/forms';
     BadgeComponent,
     DatePipe,
     NgIf,
-    FormsModule
+    FormsModule,
+    IconDirective,
+    JsonPipe,
+    NgForOf
   ],
   templateUrl: './team-scan-info.component.html',
   styleUrls: ['./team-scan-info.component.scss']

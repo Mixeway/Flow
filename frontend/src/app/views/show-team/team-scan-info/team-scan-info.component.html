@@ -1,9 +1,11 @@
 <c-row class="d-flex align-items-stretch">
     <c-col xs="12">
         <c-card>
+
             <c-card-header>
                 <h5 class="mb-0 text-center"><strong>Scan Statistics</strong></h5>
             </c-card-header>
+
             <c-card-body>
                 <!-- Spinner -->
                 <div
@@ -13,8 +15,10 @@
                 >
                     <c-spinner color="primary"></c-spinner>
                 </div>
+
                 <!-- Content displays when data is loaded -->
                 <div *ngIf="!scanInfoLoading">
+
                     <!-- ngx-datatable -->
                     <ngx-datatable
                             class="bootstrap"
@@ -24,126 +28,69 @@
                             [headerHeight]="50"
                             [rowHeight]="'auto'"
                             [limit]="scanInfoLimit"
-                            [sorts]="[{prop: 'insertedDate', dir: 'desc'}]"
-                    >
-                        <!-- Performed Scan Column -->
-                        <ngx-datatable-column
-                                name="Scan Date"
-                                prop="insertedDate"
-                                [sortable]="false"
-                                [width]="150"
-                                headerClass="text-center"
-                                cellClass="text-center"
-                        >
-                            <ng-template ngx-datatable-header-template>
-                                <div class="text-center">
-                                    <strong>Scan Date</strong>
-                                </div>
+                            [sorts]="[{prop: 'insertedDate', dir: 'desc'}]">
+
+                        <!-- Date Column -->
+                        <ngx-datatable-column name="Scan Date" prop="insertedDate">
+                            <ng-template let-row="row" ngx-datatable-cell-template>
+                                {{ row.insertedDate | date:'medium' }}
                             </ng-template>
-                            <ng-template
-                                    ngx-datatable-cell-template
-                                    let-rowIndex="rowIndex"
-                                    let-value="value"
-                                    let-row="row"
-                            >
-                                <div class="d-flex align-items-center justify-content-center h-100">
-                                    {{ row.insertedDate | date:'medium' }}
-                                </div>
+                        </ngx-datatable-column>
+
+                        <!-- Cloud Subscription/CodeRepo Column -->
+                        <ngx-datatable-column name="Cloud Subscription/Repository" prop="target">
+                            <ng-template let-row="row" ngx-datatable-cell-template>
+                                {{ row.target}}
                             </ng-template>
                         </ngx-datatable-column>
 
                         <!-- Results Column -->
-                        <ngx-datatable-column
-                                name="Results"
-                                prop="insertedDate"
-                                [sortable]="false"
-                                [width]="500"
-                                headerClass="text-center"
-                                cellClass="text-center"
-                        >
-                            <ng-template ngx-datatable-header-template>
-                                <div class="text-center">
-                                    <strong>Results</strong>
-                                </div>
-                            </ng-template>
-                            <ng-template
-                                    ngx-datatable-cell-template
-                                    let-rowIndex="rowIndex"
-                                    let-value="value"
-                                    let-row="row"
-                            >
-                                <div class="results-cell">
-                                    <div class="result-category">
-                                        <span class="category-label">SAST</span>
+                        <ngx-datatable-column name="Results">
+                            <ng-template let-row="row" ngx-datatable-cell-template>
+                                <div class="d-flex flex-column">
+                                    <div class="result-category d-flex align-items-center">
+                                        <span class="category-label me-4">SCA</span>
                                         <div class="category-badges">
-                                            <c-badge color="danger" class="result-badge"
-                                                     *ngIf="row.sastCritical > 0">{{ row.sastCritical }}
-                                            </c-badge>
-                                            <c-badge color="warning" class="result-badge"
-                                                     *ngIf="row.sastHigh > 0">{{ row.sastHigh }}
-                                            </c-badge>
-                                            <c-badge color="info" class="result-badge"
-                                                     *ngIf="row.sastMedium > 0">{{ row.sastMedium }}
-                                            </c-badge>
+                                            <c-badge color="danger" class="result-badge" *ngIf="row.sastCritical > 0">{{ row.scaCritical }}</c-badge>
+                                            <c-badge color="warning" class="result-badge" *ngIf="row.sastHigh > 0">{{ row.scaHigh }}</c-badge>
                                         </div>
                                     </div>
 
-                                    <div class="result-category">
-                                        <span class="category-label">SCA</span>
+
+                                    <div class="result-category d-flex align-items-center">
+                                        <span class="category-label me-4">SCA</span>
                                         <div class="category-badges">
-                                            <c-badge color="danger" class="result-badge"
-                                                     *ngIf="row.scaCritical > 0">{{ row.scaCritical }}
-                                            </c-badge>
-                                            <c-badge color="warning" class="result-badge"
-                                                     *ngIf="row.scaHigh > 0">{{ row.scaHigh }}
-                                            </c-badge>
-                                            <c-badge color="info" class="result-badge"
-                                                     *ngIf="row.scaMedium > 0">{{ row.scaMedium }}
-                                            </c-badge>
+                                            <c-badge color="danger" class="result-badge" *ngIf="row.scaCritical > 0">{{ row.scaCritical }}</c-badge>
+                                            <c-badge color="warning" class="result-badge" *ngIf="row.scaHigh > 0">{{ row.scaHigh }}</c-badge>
                                         </div>
                                     </div>
 
-                                    <div class="result-category">
-                                        <span class="category-label">IaC</span>
+                                    <div class="result-category d-flex align-items-center">
+                                        <span class="category-label me-4">IaC</span>
                                         <div class="category-badges">
-                                            <c-badge color="danger" class="result-badge"
-                                                     *ngIf="row.iacCritical > 0">{{ row.iacCritical }}
-                                            </c-badge>
-                                            <c-badge color="warning" class="result-badge"
-                                                     *ngIf="row.iacHigh > 0">{{ row.iacHigh }}
-                                            </c-badge>
-                                            <c-badge color="info" class="result-badge"
-                                                     *ngIf="row.iacMedium > 0">{{ row.iacMedium }}
-                                            </c-badge>
+                                            <c-badge color="danger" class="result-badge" *ngIf="row.iacCritical > 0">{{ row.iacCritical }}</c-badge>
+                                            <c-badge color="warning" class="result-badge" *ngIf="row.iacHigh > 0">{{ row.iacHigh }}</c-badge>
                                         </div>
                                     </div>
 
-                                    <div class="result-category">
-                                        <span class="category-label">Secrets</span>
+                                    <div class="result-category d-flex align-items-center">
+                                        <span class="category-label me-4">Secrets</span>
                                         <div class="category-badges">
-                                            <c-badge color="danger" class="result-badge"
-                                                     *ngIf="row.secretsCritical > 0">{{ row.secretsCritical }}
-                                            </c-badge>
-                                            <c-badge color="warning" class="result-badge"
-                                                     *ngIf="row.secretsHigh > 0">{{ row.secretsHigh }}
-                                            </c-badge>
-                                            <c-badge color="info" class="result-badge"
-                                                     *ngIf="row.secretsMedium > 0">{{ row.secretsMedium }}
-                                            </c-badge>
+                                            <c-badge color="danger" class="result-badge" *ngIf="row.secretsCritical > 0">{{ row.secretsCritical }}</c-badge>
+                                            <c-badge color="warning" class="result-badge" *ngIf="row.secretsHigh > 0">{{ row.secretsHigh }}</c-badge>
                                         </div>
                                     </div>
-                                    <div class="vertical-align-multiple text-center">
-                                        <span class="category-label">Cloud Scan</span>
+
+                                    <div class="result-category d-flex align-items-center">
+                                        <span class="category-label me-4">Cloud Scan</span>
                                         <div class="category-badges">
-                                            <c-badge color="danger" class="result-badge"
-                                                *ngIf="row.criticalFindings > 0">{{ row.criticalFindings }}
-                                            </c-badge>
-                                            <!--                                                            <c-badge color="warning">{{ row.highFindings }}</c-badge> only critical cloud findings for now-->
+                                            <c-badge color="danger" class="result-badge" *ngIf="row.criticalFindings > 0">{{ row.criticalFindings }}</c-badge>
                                         </div>
                                     </div>
                                 </div>
                             </ng-template>
                         </ngx-datatable-column>
+
                     </ngx-datatable>
                 </div>
             </c-card-body>
