@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.net.ConnectException;
@@ -63,6 +64,7 @@ public class SCAService {
      *
      * @param codeRepo The code repository for which the project will be created.
      */
+    @Transactional
     public void createDtrackProject(CodeRepo codeRepo) {
         Settings settings = findSettingsService.get();
         dependencyTrackApiClientService.createProject(settings, codeRepo);
@@ -80,6 +82,7 @@ public class SCAService {
      * @throws IOException          If an I/O error occurs during the scan process.
      * @throws InterruptedException If the scan process is interrupted.
      */
+    @Transactional
     public boolean runScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) throws IOException, InterruptedException, ScanException {
         Settings settings = findSettingsService.get();
         return dependencyTrackApiClientService.runScan(repoDir, codeRepo, settings, codeRepoBranch);
