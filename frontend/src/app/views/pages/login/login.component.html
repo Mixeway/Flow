@@ -1,57 +1,124 @@
-<div class="bg-light dark:bg-transparent min-vh-100 d-flex flex-row align-items-center">
-    <c-container breakpoint="md">
-        <c-row class="justify-content-center">
-            <c-col lg="10" xl="8">
-                <c-card-group>
-                    <c-card class="p-4" *ngIf="password">
-                        <c-card-body>
-                            <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-                                <h1>Login</h1>
-                                <p class="text-body-secondary">Sign In to your account</p>
-                                <c-input-group class="mb-3">
-                  <span cInputGroupText>
-                    <svg cIcon name="cilUser"></svg>
-                  </span>
-                                    <input formControlName="username" autoComplete="username" cFormControl placeholder="Username" />
-                                </c-input-group>
-                                <c-input-group class="mb-4">
-                  <span cInputGroupText>
-                    <svg cIcon name="cilLockLocked"></svg>
-                  </span>
-                                    <input
-                                            formControlName="password"
-                                            autoComplete="current-password"
-                                            cFormControl
-                                            placeholder="Password"
-                                            type="password"
-                                    />
-                                </c-input-group>
-                                <c-row>
-                                    <c-col xs="6">
-                                        <button type="submit" cButton class="px-4" color="primary">
-                                            Login
-                                        </button>
-                                    </c-col>
-                                </c-row>
-                            </form>
-                        </c-card-body>
-                    </c-card>
-                    <c-card class="p-4" *ngIf="sso">
-                        <c-card-body>
-                            <div class="button-container">
-                                <button class="primary-button" (click)="redirectToSSO()">Proceed with SSO Login</button>
-                            </div>
-                        </c-card-body>
-                    </c-card>
-                    <c-card [ngStyle]="{'minWidth.%': 44}" class="text-white bg-info-subtle py-5">
-                        <c-card-body class="text-center">
-                            <div class="image-container">
-                                <img src="assets/images/logo_fill_text.png" class="img-fluid" alt="">
-                            </div>
-                        </c-card-body>
-                    </c-card>
-                </c-card-group>
-            </c-col>
-        </c-row>
-    </c-container>
+<div class="login-container" [ngClass]="{'dark-mode': darkMode}">
+    <button type="button" class="theme-toggle" [ngClass]="{'dark-mode': darkMode}" (click)="toggleDarkMode()">
+        <svg *ngIf="!darkMode" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+        </svg>
+        <svg *ngIf="darkMode" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2"></path>
+            <path d="M12 20v2"></path>
+            <path d="m4.93 4.93 1.41 1.41"></path>
+            <path d="m17.66 17.66 1.41 1.41"></path>
+            <path d="M2 12h2"></path>
+            <path d="M20 12h2"></path>
+            <path d="m6.34 17.66-1.41 1.41"></path>
+            <path d="m19.07 4.93-1.41 1.41"></path>
+        </svg>
+    </button>
+
+    <c-card-group class="login-card-group fade-in-up">
+        <!-- Password Login Card -->
+        <c-card class="auth-card" [ngClass]="{'dark-mode': darkMode}" *ngIf="password">
+            <c-card-body>
+                <h1 class="card-title" [ngClass]="{'dark-mode': darkMode}">Welcome back</h1>
+                <p class="card-subtitle" [ngClass]="{'dark-mode': darkMode}">Sign in to your account</p>
+
+                <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+                    <div class="input-group">
+                        <div class="form-floating">
+                            <input
+                                    id="username"
+                                    formControlName="username"
+                                    autoComplete="username"
+                                    cFormControl
+                                    class="form-control"
+                                    [ngClass]="{'dark-mode': darkMode, 'is-invalid': isFieldInvalid('username')}"
+                                    placeholder="Username" />
+                            <label for="username" [ngClass]="{'dark-mode': darkMode}">Username</label>
+                        </div>
+                    </div>
+
+                    <span class="form-error" *ngIf="isFieldInvalid('username')">Username is required</span>
+
+                    <div class="input-group">
+                        <div class="form-floating">
+                            <input
+                                    id="password"
+                                    formControlName="password"
+                                    autoComplete="current-password"
+                                    cFormControl
+                                    class="form-control"
+                                    [ngClass]="{'dark-mode': darkMode, 'is-invalid': isFieldInvalid('password')}"
+                                    placeholder="Password"
+                                    [type]="showPassword ? 'text' : 'password'" />
+                            <label for="password" [ngClass]="{'dark-mode': darkMode}">Password</label>
+                        </div>
+                        <span class="input-group-text" [ngClass]="{'dark-mode': darkMode}" (click)="togglePasswordVisibility()">
+              <svg *ngIf="!showPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              <svg *ngIf="showPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path>
+                <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path>
+                <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path>
+                <line x1="2" x2="22" y1="2" y2="22"></line>
+              </svg>
+            </span>
+                    </div>
+
+                    <span class="form-error" *ngIf="isFieldInvalid('password')">Password is required</span>
+
+                    <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="rememberMe" formControlName="rememberMe">
+                            <label class="form-check-label" for="rememberMe" [ngClass]="{'dark-mode': darkMode}">
+                                Remember me
+                            </label>
+                        </div>
+                        <a href="#" class="text-decoration-none" [ngClass]="{'text-primary': !darkMode, 'text-info': darkMode}">Forgot password?</a>
+                    </div>
+
+                    <button
+                            type="submit"
+                            class="btn btn-primary mt-3"
+                            [class.loading]="isLoading"
+                            [disabled]="loginForm.invalid || isLoading">
+                        Sign in
+                    </button>
+
+                    <div *ngIf="loginError" class="alert alert-danger mt-3" role="alert">
+                        {{ loginError }}
+                    </div>
+                </form>
+            </c-card-body>
+        </c-card>
+
+        <!-- SSO Login Card -->
+        <c-card class="auth-card" [ngClass]="{'dark-mode': darkMode}" *ngIf="sso">
+            <c-card-body class="d-flex flex-column align-items-center justify-content-center">
+                <h1 class="card-title text-center mb-2" [ngClass]="{'dark-mode': darkMode}">Single Sign-On</h1>
+                <p class="card-subtitle text-center" [ngClass]="{'dark-mode': darkMode}">Sign in with your organization credentials</p>
+
+                <button (click)="redirectToSSO()" class="btn-sso mt-4" [ngClass]="{'dark-mode': darkMode}" [class.loading]="isLoading">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M11 12H3"></path>
+                        <path d="m15 16 4-4-4-4"></path>
+                        <path d="M4 4v16"></path>
+                        <path d="M19 12h2"></path>
+                    </svg>
+                    Continue with SSO
+                </button>
+            </c-card-body>
+        </c-card>
+
+        <!-- Brand Card -->
+        <c-card class="brand-card">
+            <c-card-body>
+                <div class="image-container">
+                    <img src="assets/images/logo_fill_text.png" alt="Company Logo">
+                </div>
+            </c-card-body>
+        </c-card>
+    </c-card-group>
 </div>

@@ -130,7 +130,7 @@
                     </c-card-header>
                     <c-card-body class="p-0 overflow-hidden">
                         <div class="chart-container" style="height: 300px; padding: 16px;">
-                            <c-chart *ngIf="vulnerabilityTrendChartData" type="line" [data]="vulnerabilityTrendChartData" [options]="lineChartOptions"></c-chart>
+                            <c-chart style="max-height: 100%; width: 100%;" *ngIf="vulnerabilityTrendChartData" type="line" [data]="vulnerabilityTrendChartData" [options]="lineChartOptions"></c-chart>
                         </div>
                     </c-card-body>
                 </c-card>
@@ -191,7 +191,7 @@
                     </c-card-header>
                     <c-card-body class="p-0 overflow-hidden">
                         <div class="chart-container" style="height: 250px; padding: 16px;">
-                            <c-chart *ngIf="fixProgressChartData" type="line" [data]="fixProgressChartData" [options]="lineChartOptions"></c-chart>
+                            <c-chart style="max-height: 100%; width: 100%;" *ngIf="fixProgressChartData" type="line" [data]="fixProgressChartData" [options]="lineChartOptions"></c-chart>
                         </div>
                     </c-card-body>
                 </c-card>

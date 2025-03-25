@@ -85,7 +85,7 @@ export function getNavItems(): INavData[] {
     return allNavItems.filter(item => item.name !== 'Users' && item.name !== 'Settings');
   } else if (userRole === 'USER') {
 
-    return allNavItems.filter(item => ['Dashboard', 'Cloud', 'Threat Intelligence', 'Vulnerabilities', 'Components', 'Docs'].includes(item.name ?? ''));
+    return allNavItems.filter(item => ['Dashboard', 'Cloud', 'Threat Intelligence', 'Statistics', 'Vulnerabilities', 'Components', 'Docs'].includes(item.name ?? ''));
   }
 
   return []; // Default empty array if no role matches or role is undefined

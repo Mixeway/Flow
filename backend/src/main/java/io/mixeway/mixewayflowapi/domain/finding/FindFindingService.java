@@ -13,6 +13,7 @@ import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import io.mixeway.mixewayflowapi.domain.user.FindUserService;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.aop.AopInvocationException;
 import org.springframework.stereotype.Service;
 
 import java.security.Principal;
@@ -98,7 +99,11 @@ public class FindFindingService {
                 item.setCount(projection.getCount());
                 item.setEpss(projection.getEpss());
                 item.setPii(projection.isPii());
-                item.setExploitAvailable(projection.isExploitAvailable());
+                try {
+                    item.setExploitAvailable(projection.isExploitAvailable());
+                } catch (NullPointerException | AopInvocationException e) {
+                    item.setExploitAvailable(false); // Or whatever default you want
+                }
                 item.setProjects(new ArrayList<>());
 
                 itemMap.put(vulnerabilityName, item);

@@ -134,6 +134,8 @@ export class DashboardComponent implements OnInit {
     widgetStats: any;
     canManage: boolean = false;
     @Output() userRoleSet: EventEmitter<string> = new EventEmitter<string>();
+    trendDataLoaded: boolean = false;
+
 
     // Security overview section properties
     showSecurityOverview: boolean = true;
@@ -350,11 +352,13 @@ export class DashboardComponent implements OnInit {
                 console.error('Error loading security summary data:', error);
             }
         });
+        this.trendDataLoaded = false; // Reset loading flag before making the request
 
         // Load trend data (last 30 days)
         this.statsService.getVulnerabilityTrend(null, 30).subscribe({
             next: (data) => {
                 this.securityTrendData = data;
+                this.trendDataLoaded = true; // Set flag to true regardless of data content
                 this.prepareVulnerabilityTrendChart();
             },
             error: (error) => {

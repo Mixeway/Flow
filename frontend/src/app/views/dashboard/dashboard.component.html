@@ -177,10 +177,22 @@
                                 </a>
                             </div>
                             <div style="height: 240px; padding-bottom: 20px; position: relative; overflow: hidden;">
-                                <c-chart *ngIf="vulnerabilityTrendData" type="line" [data]="vulnerabilityTrendData" [options]="chartOptions"></c-chart>
-                                <div *ngIf="!vulnerabilityTrendData" class="d-flex justify-content-center align-items-center h-100">
+                                <c-chart *ngIf="vulnerabilityTrendData"
+                                         type="line"
+                                         [data]="vulnerabilityTrendData"
+                                         [options]="chartOptions"
+                                         style="max-height: 100%; width: 100%;">
+                                </c-chart>
+                                <!-- Loading state -->
+                                <div *ngIf="!vulnerabilityTrendData && !trendDataLoaded" class="d-flex justify-content-center align-items-center h-100">
                                     <c-spinner color="primary" size="sm" class="me-2"></c-spinner>
                                     <span>Loading chart data...</span>
+                                </div>
+                                <!-- Empty data state -->
+                                <div *ngIf="!vulnerabilityTrendData && trendDataLoaded" class="d-flex justify-content-center align-items-center h-100 flex-column">
+                                    <svg cIcon name="cil-chart-line" class="text-muted mb-2" width="24" height="24"></svg>
+                                    <span class="text-muted">No trend data available</span>
+                                    <small class="text-muted mt-1">Run security scans to generate trend data</small>
                                 </div>
                             </div>
                         </div>
