@@ -3,9 +3,11 @@ package io.mixeway.mixewayflowapi.integrations.scanner.sca.apiclient;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.db.entity.Settings;
+import io.mixeway.mixewayflowapi.db.entity.Team;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
 import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.dtrack.ProcessDTrackVulnDataService;
+import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import io.mixeway.mixewayflowapi.exceptions.ScanException;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.dto.*;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.service.CdxGenService;
@@ -16,6 +18,7 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 import reactor.core.publisher.Mono;
@@ -27,6 +30,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Base64;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -43,6 +47,7 @@ public class DependencyTrackApiClientService {
     private final ProcessDTrackVulnDataService processDTrackVulnDataService;
     private final CdxGenService cdxGenService;
     private final CodeRepoRepository codeRepoRepository;
+    private final FindTeamService findTeamService;
 
     @Value("${dependency-track.url}")
     private String dependencyTrackUrl;
@@ -171,7 +176,16 @@ public class DependencyTrackApiClientService {
      * @param settings  The settings containing the API key.
      * @param codeRepo  The code repository for which the project is created.
      */
+    @Transactional(readOnly = true)
     public void createProject(Settings settings, CodeRepo codeRepo) {
+        // Fetch the team eagerly using FindTeamService to avoid LazyInitializationException
+        Optional<Team> teamOptional = findTeamService.findById(codeRepo.getTeam().getId());
+        if (teamOptional.isEmpty()) {
+            throw new EntityNotFoundException("Team not found with ID: " + codeRepo.getTeam().getId());
+        }
+
+        String projectName = teamOptional.get().getName() + "-" + codeRepo.getName();
+
         WebClient webClient = WebClient.builder()
                 .baseUrl(dependencyTrackUrl + Constants.DEPENDENCYTRACK_GET_PROJECTS)
                 .defaultHeader(Constants.DEPENDENCYTRACK_APIKEY_HEADER, settings.getScaApiKey())
@@ -179,7 +193,7 @@ public class DependencyTrackApiClientService {
                 .build();
 
         Mono<ResponseEntity<CreateProjectResponseDto>> responseMono = webClient.method(HttpMethod.PUT)
-                .bodyValue(new CreateProjectRequestDto(codeRepo.getTeam().getName() + "-" + codeRepo.getName()))
+                .bodyValue(new CreateProjectRequestDto(projectName))
                 .retrieve()
                 .toEntity(CreateProjectResponseDto.class);
 
@@ -191,7 +205,7 @@ public class DependencyTrackApiClientService {
                 log.info("[Dependency Track] Created Project for {} - {}", codeRepo.getRepourl(), response.getBody().getUuid());
             }
         } catch (Exception e){
-            log.error("[SCA Service] Unable to connect with dTrack");
+            log.error("[SCA Service] Unable to connect with dTrack: {}", e.getMessage());
         }
     }
 

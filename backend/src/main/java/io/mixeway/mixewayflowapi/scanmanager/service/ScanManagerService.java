@@ -12,6 +12,7 @@ import io.mixeway.mixewayflowapi.domain.finding.CreateFindingService;
 import io.mixeway.mixewayflowapi.domain.settings.FindSettingsService;
 import io.mixeway.mixewayflowapi.domain.vulnerability.FindVulnerabilityService;
 import io.mixeway.mixewayflowapi.domain.vulnerability.UpdateVulnerabilityService;
+import io.mixeway.mixewayflowapi.exceptions.GitException;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GitCommentService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GitService;
 import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.dto.CloudScannerReport;
@@ -321,26 +322,40 @@ public class ScanManagerService {
     }
 
     /**
-     * Fetches the repository based on the provided commit ID or branch.
-     *
-     * @param commitId The commit ID.
-     * @param repoUrl The repository URL.
-     * @param accessToken The access token for the repository.
-     * @param codeRepoBranch The branch to fetch.
-     * @param repoDir The directory to store the repository.
-     * @throws IOException If an I/O error occurs.
-     * @throws InterruptedException If the operation is interrupted.
+     * Modified fetchRepository method to handle the zero commit ID case by getting the latest commit from the branch.
+     * This is an excerpt from the ScanManagerService class focusing on the fixed method.
      */
     private String fetchRepository(String commitId, String repoUrl, String accessToken,
                                    CodeRepoBranch codeRepoBranch, String repoDir)
             throws IOException, InterruptedException {
-        if (commitId == null) {
-            commitId = gitService.fetchBranch(repoUrl, accessToken, codeRepoBranch, repoDir);
+
+        // Check specifically for the zero commit ID
+        if (commitId == null || "0000000000000000000000000000000000000000".equals(commitId)) {
+            // If the commit ID is null or the zero hash, get the latest commit from the branch
+            log.info("[ScanManagerService] Zero commit ID detected. Getting latest commit from branch: {}",
+                    codeRepoBranch.getName());
+
+            // fetchBranch will clone the specified branch and return its latest commit ID
+            return gitService.fetchBranch(repoUrl, accessToken, codeRepoBranch, repoDir);
         } else {
-            gitService.fetchCommit(repoUrl, accessToken, commitId, repoDir);
-            gitService.checkoutCommit(repoDir, commitId);
+            try {
+                // Normal case - fetch the specific commit
+                gitService.fetchCommit(repoUrl, accessToken, commitId, repoDir);
+                gitService.checkoutCommit(repoDir, commitId);
+                return commitId;
+            } catch (GitException e) {
+                // If fetching the specific commit fails, fall back to the latest commit from the branch
+                log.warn("[ScanManagerService] Failed to fetch commit {}: {}. Getting latest commit from branch: {}",
+                        commitId, e.getMessage(), codeRepoBranch.getName());
+
+                // Clean up the directory before retrying
+                cleanUp(repoDir);
+                new File(repoDir).mkdirs();
+
+                // Get the latest commit from the branch
+                return gitService.fetchBranch(repoUrl, accessToken, codeRepoBranch, repoDir);
+            }
         }
-        return commitId;
     }
 
     /**

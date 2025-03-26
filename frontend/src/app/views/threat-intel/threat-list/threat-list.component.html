@@ -69,107 +69,123 @@
     <!-- Body -->
     <c-modal-body>
         <!-- Threat Description -->
-        <div class="threat-description">
-            <p>{{ getThreatDescription(selectedItem?.name) }}</p>
+        <div class="threat-description p-3 mb-4 rounded">
+            <h6 class="mb-2">
+                <svg cIcon name="cilInfo" class="me-2"></svg>
+                Description
+            </h6>
+            <p class="mb-0">{{ getThreatDescription(selectedItem?.name) }}</p>
         </div>
 
         <!-- Risk Factors Section -->
-        <div class="risk-factors-section">
-            <h6 class="section-title">
-                <svg cIcon name="cilWarning" class="me-1"></svg>
+        <div class="risk-factors-section mb-4">
+            <h6 class="section-title mb-3">
+                <svg cIcon name="cilWarning" class="me-2"></svg>
                 Risk Factors
             </h6>
-            <div class="risk-factors-grid">
+
+            <div class="row">
                 <!-- EPSS Score -->
-                <div class="risk-factor">
-                    <div class="factor-header">
-                        <div class="factor-icon">
-                            <svg cIcon name="cilSpeedometer" [ngClass]="{'text-danger': selectedItem && selectedItem.epss > 0.5, 'text-success': !selectedItem || !selectedItem.epss || selectedItem.epss <= 0.5}"></svg>
+                <div class="col-md-4 mb-3">
+                    <div class="risk-factor-card p-3 h-100 border rounded">
+                        <div class="factor-icon mb-2">
+                            <svg cIcon name="cilSpeedometer" size="xl" [ngClass]="{'text-danger': selectedItem && selectedItem.epss > 0.5, 'text-success': !selectedItem || !selectedItem.epss || selectedItem.epss <= 0.5}"></svg>
                         </div>
-                        <div class="factor-name">EPSS Score</div>
+                        <h6 class="factor-name mb-2">EPSS Score</h6>
+                        <div class="factor-status mb-2">
+                            <span class="badge py-2 px-3" [ngClass]="{'bg-danger': selectedItem && selectedItem.epss > 0.5, 'bg-success': !selectedItem || !selectedItem.epss || selectedItem.epss <= 0.5}">
+                                {{ selectedItem && selectedItem.epss > 0.5 ? 'High Risk' : 'Low Risk' }}
+                            </span>
+                        </div>
+                        <p class="factor-info small mb-0">Exploit Prediction Scoring System indicates likelihood of exploitation in the wild.</p>
                     </div>
-                    <div class="factor-status">
-                        <span class="badge" [ngClass]="{'bg-danger': selectedItem && selectedItem.epss > 0.5, 'bg-success': !selectedItem || !selectedItem.epss || selectedItem.epss <= 0.5}">
-                            {{ selectedItem && selectedItem.epss > 0.5 ? 'High Risk' : 'Low Risk' }}
-                        </span>
-                    </div>
-                    <div class="factor-info">Exploit Prediction Scoring System indicates this vulnerability is more likely to be exploited in the wild.</div>
                 </div>
 
                 <!-- PII Exposure Risk -->
-                <div class="risk-factor">
-                    <div class="factor-header">
-                        <div class="factor-icon">
-                            <svg cIcon name="cilUser" [ngClass]="{'text-danger': selectedItem && selectedItem.pii, 'text-success': !selectedItem || !selectedItem.pii}"></svg>
+                <div class="col-md-4 mb-3">
+                    <div class="risk-factor-card p-3 h-100 border rounded">
+                        <div class="factor-icon mb-2">
+                            <svg cIcon name="cilUser" size="xl" [ngClass]="{'text-danger': selectedItem && selectedItem.pii, 'text-success': !selectedItem || !selectedItem.pii}"></svg>
                         </div>
-                        <div class="factor-name">PII Exposure Risk</div>
+                        <h6 class="factor-name mb-2">PII Exposure Risk</h6>
+                        <div class="factor-status mb-2">
+                            <span class="badge py-2 px-3" [ngClass]="{'bg-danger': selectedItem && selectedItem.pii, 'bg-success': !selectedItem || !selectedItem.pii}">
+                                {{ selectedItem && selectedItem.pii ? 'Risk Present' : 'No Risk' }}
+                            </span>
+                        </div>
+                        <p class="factor-info small mb-0">This vulnerability could potentially expose personally identifiable information.</p>
                     </div>
-                    <div class="factor-status">
-                        <span class="badge" [ngClass]="{'bg-danger': selectedItem && selectedItem.pii, 'bg-success': !selectedItem || !selectedItem.pii}">
-                            {{ selectedItem && selectedItem.pii ? 'Risk Present' : 'No Risk' }}
-                        </span>
-                    </div>
-                    <div class="factor-info">This vulnerability could potentially expose personally identifiable information.</div>
                 </div>
 
                 <!-- Exploit Available -->
-                <div class="risk-factor">
-                    <div class="factor-header">
-                        <div class="factor-icon">
-                            <svg cIcon name="cilCode" [ngClass]="{'text-danger': selectedItem && selectedItem.exploitAvailable, 'text-success': !selectedItem || !selectedItem.exploitAvailable}"></svg>
+                <div class="col-md-4 mb-3">
+                    <div class="risk-factor-card p-3 h-100 border rounded">
+                        <div class="factor-icon mb-2">
+                            <svg cIcon name="cilCode" size="xl" [ngClass]="{'text-danger': selectedItem && selectedItem.exploitAvailable, 'text-success': !selectedItem || !selectedItem.exploitAvailable}"></svg>
                         </div>
-                        <div class="factor-name">Exploit Available</div>
+                        <h6 class="factor-name mb-2">Exploit Available</h6>
+                        <div class="factor-status mb-2">
+                            <span class="badge py-2 px-3" [ngClass]="{'bg-danger': selectedItem && selectedItem.exploitAvailable, 'bg-success': !selectedItem || !selectedItem.exploitAvailable}">
+                                {{ selectedItem && selectedItem.exploitAvailable ? 'Exploit Available' : 'No Exploit' }}
+                            </span>
+                        </div>
+                        <p class="factor-info small mb-0">A public exploit for this vulnerability is available in the wild.</p>
                     </div>
-                    <div class="factor-status">
-                        <span class="badge" [ngClass]="{'bg-danger': selectedItem && selectedItem.exploitAvailable, 'bg-success': !selectedItem || !selectedItem.exploitAvailable}">
-                            {{ selectedItem && selectedItem.exploitAvailable ? 'Exploit Available' : 'No Exploit' }}
-                        </span>
-                    </div>
-                    <div class="factor-info">A public exploit for this vulnerability is available in the wild.</div>
                 </div>
             </div>
         </div>
 
         <!-- Affected Resources Section -->
-        <div class="affected-resources">
-            <h6 class="section-title">
-                <svg cIcon name="cilApps" class="me-1"></svg>
-                Affected Resources <span class="badge bg-primary ms-2">{{ selectedItem?.projects?.length || 0 }}</span>
-            </h6>
-            <div class="resources-list" style="max-height: 200px; overflow-y: auto;">
-                <div class="resource-item" *ngFor="let project of selectedItem?.projects">
-                    <div class="resource-name">
-                        <svg cIcon name="cilFolder" class="me-2"></svg>
-                        {{ project.name }}
+        <div class="affected-resources mb-4">
+            <div class="section-header d-flex justify-content-between align-items-center mb-3">
+                <h6 class="section-title mb-0">
+                    <svg cIcon name="cilApps" class="me-2"></svg>
+                    Affected Resources
+                </h6>
+                <span class="badge bg-primary">{{ selectedItem?.projects?.length || 0 }}</span>
+            </div>
+
+            <div class="resources-container p-3 rounded">
+                <div class="resources-list" style="max-height: 200px; overflow-y: auto;">
+                    <div class="resource-item p-2 mb-2 border-bottom" *ngFor="let project of selectedItem?.projects">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="resource-name d-flex align-items-center">
+                                <svg cIcon name="cilFolder" class="me-2 text-primary"></svg>
+                                <span class="fw-bold">{{ project.name }}</span>
+                            </div>
+                            <div class="resource-link">
+                                <a [href]="project.href" target="_blank">
+                                    <button cButton color="primary" size="sm">
+                                        <svg cIcon name="cilExternalLink" size="sm" class="me-1"></svg>
+                                        View
+                                    </button>
+                                </a>
+                            </div>
+                        </div>
                     </div>
-                    <div class="resource-link">
-                        <a [href]="project.href" target="_blank">
-                            <button cButton color="primary" size="sm">
-                                <svg cIcon name="cilExternalLink" size="sm" class="me-1"></svg>
-                                View Resource
-                            </button>
-                        </a>
+
+                    <div class="no-resources text-center py-4" *ngIf="hasNoProjects()">
+                        <svg cIcon name="cilBan" size="xl" class="mb-2 text-muted"></svg>
+                        <p class="text-muted mb-0">No affected resources found.</p>
                     </div>
-                </div>
-                <div class="no-resources text-center" *ngIf="hasNoProjects()">
-                    <svg cIcon name="cilBan" size="lg" class="mb-2"></svg>
-                    <p>No affected resources found.</p>
                 </div>
             </div>
         </div>
 
         <!-- Recommended Actions -->
         <div class="recommended-actions">
-            <h6 class="section-title">
-                <svg cIcon name="cilTask" class="me-1"></svg>
+            <h6 class="section-title mb-3">
+                <svg cIcon name="cilTask" class="me-2"></svg>
                 Recommended Actions
             </h6>
-            <ul class="action-list">
-                <li>Review and rotate any exposed API keys</li>
-                <li>Implement proper key management policies</li>
-                <li>Use environment variables for sensitive credentials</li>
-                <li>Implement proper access controls</li>
-            </ul>
+            <div class="p-3 rounded">
+                <ul class="action-list mb-0 ps-3">
+                    <li class="mb-2">Review and rotate any exposed API keys</li>
+                    <li class="mb-2">Implement proper key management policies</li>
+                    <li class="mb-2">Use environment variables for sensitive credentials</li>
+                    <li>Implement proper access controls</li>
+                </ul>
+            </div>
         </div>
     </c-modal-body>
 

@@ -13,6 +13,7 @@ import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import io.mixeway.mixewayflowapi.domain.user.FindUserService;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.aop.AopInvocationException;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Log4j2
 public class FindFindingService {
     private final FindingRepository findingRepository;
     private final FindCodeRepoService findCodeRepoService;
@@ -84,6 +86,8 @@ public class FindFindingService {
         return mapProjectionsToItems(combinedProjections);
     }
 
+    // All other methods remain unchanged...
+
     private ItemListResponse mapProjectionsToItems(List<ItemProjection> projections) {
         Map<String, Item> itemMap = new HashMap<>();
         List<Long> allProjectIds = new ArrayList<>();
@@ -98,20 +102,24 @@ public class FindFindingService {
                 item.setUrgency(projection.getUrgency());
                 item.setCount(projection.getCount());
                 item.setEpss(projection.getEpss());
-                item.setPii(projection.isPii());
-                try {
-                    item.setExploitAvailable(projection.isExploitAvailable());
-                } catch (NullPointerException | AopInvocationException e) {
-                    item.setExploitAvailable(false); // Or whatever default you want
-                }
+
+                // Handle nullable primitive values safely
+                item.setPii(safeGetBoolean(projection::isPii, false));
+                item.setExploitAvailable(safeGetBoolean(projection::isExploitAvailable, false));
+
                 item.setProjects(new ArrayList<>());
 
                 itemMap.put(vulnerabilityName, item);
             } else {
                 // Update count and other fields if necessary
                 item.setCount(item.getCount() + projection.getCount());
-                item.setPii(item.isPii() || projection.isPii());
-                item.setExploitAvailable(item.isExploitAvailable() || projection.isExploitAvailable());
+
+                // Safely get boolean values
+                boolean projPii = safeGetBoolean(projection::isPii, false);
+                boolean projExploitAvailable = safeGetBoolean(projection::isExploitAvailable, false);
+
+                item.setPii(item.isPii() || projPii);
+                item.setExploitAvailable(item.isExploitAvailable() || projExploitAvailable);
 
                 // Determine the highest urgency
                 String existingUrgency = item.getUrgency();
@@ -125,7 +133,6 @@ public class FindFindingService {
 
             // Map project names and IDs to Project objects
             String[] projectNames = projection.getProjectNames().toArray(String[]::new);
-            //Integer[] projectIds = projection.getProjectIds().toArray(Integer[]::new);
             List<Object> projectIdObjects = projection.getProjectIds();
             long[] projectIds = projectIdObjects.stream()
                     .mapToLong(obj -> {
@@ -138,7 +145,6 @@ public class FindFindingService {
                         }
                     })
                     .toArray();
-           // allProjectIds.addAll(Arrays.stream(projectIds).toList());
 
             if (projectNames != null && projectIds != null) {
                 for (int i = 0; i < projectNames.length; i++) {
@@ -163,6 +169,33 @@ public class FindFindingService {
         response.setNumberOfUniqueProjects(numberOfUniqueProjects);
 
         return response;
+    }
+
+    /**
+     * Safely access a boolean value from a projection method, handling potential exceptions
+     *
+     * @param booleanSupplier The function returning a boolean value that might throw an exception
+     * @param defaultValue The default value to return if an exception is caught
+     * @return The boolean value or the default value if an exception occurs
+     */
+    private boolean safeGetBoolean(BooleanSupplier booleanSupplier, boolean defaultValue) {
+        try {
+            return booleanSupplier.getAsBoolean();
+        } catch (Exception e) {
+            // This catches any exception, including NullPointerException, AopInvocationException, etc.
+            if (e instanceof AopInvocationException) {
+                log.debug("AopInvocationException caught when accessing boolean value from projection: {}", e.getMessage());
+            }
+            return defaultValue;
+        }
+    }
+
+    /**
+     * Functional interface for providing a boolean value that might throw an exception
+     */
+    @FunctionalInterface
+    private interface BooleanSupplier {
+        boolean getAsBoolean() throws Exception;
     }
 
 

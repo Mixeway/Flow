@@ -11,11 +11,13 @@
     display: flex;
     flex-direction: column;
     background-color: var(--cui-card-bg, var(--cui-body-bg, #343a40));
+    overflow: hidden; /* Prevent overflow of inner content */
 
     .card-header {
       padding: 1rem 1.25rem;
       background-color: var(--cui-card-cap-bg);
       border-bottom: 1px solid var(--cui-border-color);
+      flex-shrink: 0; /* Prevent header from shrinking */
 
       .header-title {
         font-weight: 600;
@@ -34,9 +36,10 @@
     .card-body {
       padding: 0;
       flex: 1;
-      overflow: hidden; // Prevents content from overflowing
+      min-height: 0; /* Important to allow content to scroll */
       display: flex;
       flex-direction: column;
+      overflow: hidden; /* Prevent content from overflowing */
     }
   }
 
@@ -44,10 +47,10 @@
     list-style: none;
     margin: 0;
     padding: 0;
-    overflow-y: auto; // Enable vertical scrolling
-    max-height: 100%; // Use available space
-    flex: 1;
+    overflow-y: auto; /* Enable vertical scrolling */
+    flex: 1; /* Take all available space */
     background-color: var(--cui-card-bg, var(--cui-body-bg, #343a40));
+    min-height: 0; /* Important for Firefox to enable scrolling in flexbox */
 
     .threat-item {
       padding: 0.875rem 1.25rem;
@@ -179,7 +182,7 @@
       .threat-description {
         margin-bottom: 1.5rem;
         padding: 1rem;
-        background-color: rgba(var(--cui-info-rgb), 0.05);
+        background-color: transparent;
         border-left: 4px solid var(--cui-info);
         border-radius: var(--cui-border-radius);
 
@@ -215,7 +218,7 @@
         .risk-factor {
           border-radius: var(--cui-border-radius);
           padding: 1.25rem;
-          background-color: var(--cui-card-bg);
+          background-color: transparent;
           border: 1px solid var(--cui-border-color);
           transition: transform 0.2s ease, box-shadow 0.2s ease;
 
@@ -273,7 +276,7 @@
         margin-bottom: 1.5rem;
 
         .resources-list {
-          background-color: var(--cui-card-bg);
+          background-color: transparent;
           border: 1px solid var(--cui-border-color);
           border-radius: var(--cui-border-radius);
           max-height: 200px;
@@ -316,7 +319,7 @@
 
       .recommended-actions {
         .action-list {
-          background-color: var(--cui-card-bg);
+          background-color: transparent;
           border: 1px solid var(--cui-border-color);
           border-radius: var(--cui-border-radius);
           padding: 1rem 1rem 1rem 2.5rem;
@@ -384,12 +387,12 @@
     // Modal light theme enhancements
     .threat-details-modal {
       .risk-factor {
-        background-color: white;
+        background-color: transparent;
         border: 1px solid rgba(0, 0, 0, 0.08);
       }
 
       .resources-list, .action-list {
-        background-color: white;
+        background-color: transparent;
       }
     }
   }
