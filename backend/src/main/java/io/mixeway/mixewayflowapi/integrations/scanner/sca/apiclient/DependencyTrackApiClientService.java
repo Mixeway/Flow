@@ -176,7 +176,7 @@ public class DependencyTrackApiClientService {
      * @param settings  The settings containing the API key.
      * @param codeRepo  The code repository for which the project is created.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public void createProject(Settings settings, CodeRepo codeRepo) {
         // Fetch the team eagerly using FindTeamService to avoid LazyInitializationException
         Optional<Team> teamOptional = findTeamService.findById(codeRepo.getTeam().getId());
@@ -184,7 +184,8 @@ public class DependencyTrackApiClientService {
             throw new EntityNotFoundException("Team not found with ID: " + codeRepo.getTeam().getId());
         }
 
-        String projectName = teamOptional.get().getName() + "-" + codeRepo.getName();
+        Team team = teamOptional.get();
+        String projectName = team.getName() + "-" + codeRepo.getName();
 
         WebClient webClient = WebClient.builder()
                 .baseUrl(dependencyTrackUrl + Constants.DEPENDENCYTRACK_GET_PROJECTS)
@@ -244,6 +245,7 @@ public class DependencyTrackApiClientService {
      * @throws IOException          If an I/O error occurs during the scan.
      * @throws InterruptedException If the scan process is interrupted.
      */
+    @Transactional
     public boolean runScan(String dir, CodeRepo codeRepo, Settings settings, CodeRepoBranch codeRepoBranch) throws IOException, InterruptedException, ScanException {
         File sbomFile = findSbom(dir);
         if (sbomFile == null) {
