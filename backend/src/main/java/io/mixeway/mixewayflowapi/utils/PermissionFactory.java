@@ -45,7 +45,8 @@ public class PermissionFactory {
 
 
     public void canUserManageTeam(Team team, Principal principal) {
-        if (!findUserService.findUser(principal.getName()).getTeams().contains(team)) {
+        UserInfo userInfo = findUserService.findUser(principal.getName());
+        if (!userInfo.getHighestRole().equals(Role.ADMIN) && !userInfo.getTeams().contains(team)) {
             throw new UnauthorizedException();
         }
     }
