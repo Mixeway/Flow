@@ -29,7 +29,7 @@ public class CloudScannerService {
 
     public String fetchVulnerabilityFindings(String projectId, String wizAuthToken) {
         String query = "query VulnerabilityFindings($project_name: [String!]) { " +
-                "vulnerabilityFindings(first: 800 filterBy: {status: [OPEN, IN_PROGRESS], assetType: VIRTUAL_MACHINE, severity: [CRITICAL, HIGH], hasExploit: true, hasFix: true, detectionMethod: [PACKAGE, OS], projectId: $project_name} orderBy: {direction: DESC}) { " +
+                "vulnerabilityFindings(first: 800 filterBy: {status: [OPEN, IN_PROGRESS], assetType: VIRTUAL_MACHINE, severity: CRITICAL, hasExploit: true, hasFix: true, detectionMethod: [PACKAGE, OS], projectId: $project_name} orderBy: {direction: DESC}) { " +
                 "nodes { name severity vulnerableAsset { ... on VulnerableAssetBase { subscriptionExternalId name } } detailedName CVEDescription version fixedVersion remediation epssProbability epssPercentile hasExploit} }}";
 
         String variables = "{\"project_name\":\"" + projectId + "\"}";
