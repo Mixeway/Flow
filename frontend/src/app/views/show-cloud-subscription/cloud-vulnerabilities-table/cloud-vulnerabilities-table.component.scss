@@ -164,4 +164,49 @@
       align-self: center;
     }
   }
+
+  // Severity styling
+  .severity-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+
+    .severity-badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 30px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: inline-block;
+      line-height: 1;
+      white-space: nowrap;
+
+      &.severity-critical {
+        background-color: rgba(220, 53, 69, 0.15);
+        color: #dc3545;
+      }
+
+      &.severity-high {
+        background-color: rgba(244, 67, 54, 0.15);
+        color: #f44336;
+      }
+
+      &.severity-medium {
+        background-color: rgba(255, 152, 0, 0.15);
+        color: #ff9800;
+      }
+
+      &.severity-low {
+        background-color: rgba(33, 150, 243, 0.15);
+        color: #2196f3;
+      }
+
+      &.severity-info {
+        background-color: rgba(0, 188, 212, 0.15);
+        color: #00bcd4;
+      }
+    }
+  }
 }

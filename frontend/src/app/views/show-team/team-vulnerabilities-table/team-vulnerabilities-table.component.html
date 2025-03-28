@@ -130,6 +130,13 @@
                                 class="form-control filter-input"
                                 placeholder="Search vulnerability..."
                                 (input)="updateFilterName($event)">
+                        <select class="form-select form-select-sm mt-1" (change)="updateFilterStatus($event)">
+                            <option value="">All Statuses</option>
+                            <option value="New">New</option>
+                            <option value="Existing">Existing</option>
+                            <option value="Removed">Removed</option>
+                            <option value="Supressed">Suppressed</option>
+                        </select>
                     </ng-template>
                     <ng-template ngx-datatable-cell-template let-row="row">
                         <div class="vuln-content">

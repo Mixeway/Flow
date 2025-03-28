@@ -3,8 +3,10 @@ package io.mixeway.mixewayflowapi.domain.cloudsubscription;
 
 import io.mixeway.mixewayflowapi.db.entity.CloudSubscription;
 import io.mixeway.mixewayflowapi.db.entity.Team;
+import io.mixeway.mixewayflowapi.db.entity.UserInfo;
 import io.mixeway.mixewayflowapi.db.repository.CloudSubscriptionRepository;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
+import io.mixeway.mixewayflowapi.domain.user.FindUserService;
 import io.mixeway.mixewayflowapi.exceptions.DuplicateCloudSubscriptionException;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
 import io.mixeway.mixewayflowapi.utils.PermissionFactory;
@@ -22,7 +24,7 @@ public class CreateCloudSubscriptionService {
     private final CloudSubscriptionRepository cloudSubscriptionRepository;
     private final FindTeamService findTeamService;
     private final PermissionFactory permissionFactory;
-
+    private final FindUserService findUserService;
 
 
     @Transactional
@@ -33,7 +35,10 @@ public class CreateCloudSubscriptionService {
                     return new TeamNotFoundException("Team not found");
                 });
 
-        permissionFactory.canUserManageTeam(team, principal);
+        UserInfo userInfo = findUserService.findUser(principal.getName());
+        if (!userInfo.getHighestRole().equals("ADMIN")) {
+            permissionFactory.canUserManageTeam(team, principal);
+        }
 
         if (cloudSubscriptionRepository.existsByNameAndTeam(name, team)) {
             log.warn("Attempted to create duplicate cloud subscription: {} for team: {}", name, team.getName());

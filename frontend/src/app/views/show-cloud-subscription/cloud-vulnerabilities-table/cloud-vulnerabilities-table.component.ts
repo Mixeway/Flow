@@ -65,6 +65,7 @@ export class CloudVulnerabilitiesTableComponent {
   @Output() updateFilterLocationEvent = new EventEmitter<any>();
   @Output() updateFilterStatusEvent = new EventEmitter<any>();
   @Output() updateFilterSeverityEvent = new EventEmitter<any>();
+  @Output() toggleShowRemovedEvent = new EventEmitter<any>();
   @Output() viewVulnerabilityDetailsEvent = new EventEmitter<Vulnerability>();
   @Output() vulnerabilitiesLimitChange = new EventEmitter<number>();
 
@@ -94,6 +95,10 @@ export class CloudVulnerabilitiesTableComponent {
    */
   updateFilterSeverity(event: any): void {
     this.updateFilterSeverityEvent.emit(event);
+  }
+
+  toggleShowRemoved(event: any): void {
+    this.toggleShowRemovedEvent.emit(event);
   }
 
   /**

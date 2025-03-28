@@ -16,16 +16,7 @@ public class CreateCloudScanInfoService {
 
     public CloudScanInfo createOrUpdateCloudScanInfo(CloudSubscription cloudSubscription, CloudSubscription.ScanStatus scanStatus, int highFindings, int criticalFindings) {
 
-        Optional<CloudScanInfo> existingScanInfoOpt = cloudScanInfoRepository.findByCloudSubscription(cloudSubscription);
-
-        CloudScanInfo cloudScanInfo;
-
-        if (existingScanInfoOpt.isPresent()) {
-            cloudScanInfo = existingScanInfoOpt.get();
-            cloudScanInfo.updateScanInfo(scanStatus, highFindings, criticalFindings);
-        } else {
-            cloudScanInfo = new CloudScanInfo(cloudSubscription, scanStatus, highFindings, criticalFindings);
-        }
+        CloudScanInfo cloudScanInfo = new CloudScanInfo(cloudSubscription, scanStatus, highFindings, criticalFindings);
 
         return cloudScanInfoRepository.save(cloudScanInfo);
     }
