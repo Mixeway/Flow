@@ -65,6 +65,9 @@ import {CloudSubscriptionInfoComponent} from "./cloud-subscription-info/cloud-su
 import {CloudVulnerabilitySummaryComponent} from "./cloud-vulnerability-summary/cloud-vulnerability-summary.component";
 import {CloudVulnerabilitiesTableComponent} from "./cloud-vulnerabilities-table/cloud-vulnerabilities-table.component";
 import {CloudVulnerabilityDetailsComponent} from "./cloud-vulnerability-details/cloud-vulnerability-details.component";
+import {
+    TeamVulnerabilitiesTableComponent
+} from "../show-team/team-vulnerabilities-table/team-vulnerabilities-table.component";
 
 interface Vulnerability {
     id: number;
@@ -158,6 +161,7 @@ export interface CloudSubscriptionFindingStats {
         CloudVulnerabilitiesTableComponent,
         CloudVulnerabilityDetailsComponent,
         NgClass,
+        TeamVulnerabilitiesTableComponent,
     ],
     templateUrl: './show-cloud-subscription.component.html',
     styleUrls: ['./show-cloud-subscription.component.scss'],
@@ -232,7 +236,6 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
     };
 
     showRemoved: boolean = false;
-    showSuppressed: boolean = false;
     detailsModal: boolean = false;
     selectedRowId: number | null = null;
 
@@ -386,8 +389,7 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
         );
         const cloudScanData = this.cloudSubscriptionFindingStats.map(
             (stat) => stat.criticalFindings + stat.highFindings
-        );
-
+        )
         this.chartLineData = {
             labels: labels,
             datasets: [
@@ -466,6 +468,13 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
         this.applyFilters();
     }
 
+
+    toggleShowRemoved(event: any) {
+        this.showRemoved = event.target.checked;
+        this.applyFilters();
+    }
+
+
     applyFilters() {
         this.filteredVulns = this.vulns.filter((vuln) => {
             const matchesFilters = Object.keys(this.filters).every((key) => {
@@ -478,9 +487,7 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
                     .includes(filterValue.toLowerCase());
             });
 
-            const matchesStatus =
-                (this.showRemoved || vuln.status !== 'REMOVED') &&
-                (this.showSuppressed || vuln.status !== 'SUPRESSED');
+            const matchesStatus = (this.showRemoved || vuln.status !== 'REMOVED');
 
             return matchesFilters && matchesStatus;
         });

@@ -27,11 +27,16 @@ public class FindCloudSubscriptionService {
     private final PermissionFactory permissionFactory;
     private final FindUserService findUserService;
 
+
     public List<CloudSubscription> getByTeam(Long teamId, Principal principal) {
         Team team = findTeamService.findById(teamId)
                 .orElseThrow(() -> new TeamNotFoundException("Team not found"));
 
-        permissionFactory.canUserManageTeam(team, principal);
+        UserInfo userInfo = findUserService.findUser(principal.getName());
+
+        if (!userInfo.getHighestRole().equals("ADMIN")) {
+            permissionFactory.canUserManageTeam(team, principal);
+        }
 
         return cloudSubscriptionRepository.findByTeam(team);
     }
