@@ -78,6 +78,8 @@ RUN mkdir /opt/kics
 RUN mkdir /opt/dtrack
 COPY --from=kics /app/bin/kics /usr/local/bin/kics
 COPY --from=kics /app/bin/assets /opt/tools/kics/assets
+RUN rm -rf /opt/tools/kics/assets/queries/openAPI
+RUN rm -rf /opt/tools/kics/assets/queries/common/passwords_and_secrets
 
 # Setup Dependency-Track
 RUN wget https://github.com/DependencyTrack/dependency-track/releases/download/4.11.6/dependency-track-bundled.jar -P /opt/dtrack/
