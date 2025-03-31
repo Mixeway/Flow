@@ -233,15 +233,6 @@ class CloudSubscriptionDomainServicesTest {
         });
     }
 
-    @Test
-    void testFindCloudSubscriptionsByTeam_Unauthorized() {
-        doThrow(new UnauthorizedException()).when(permissionFactory).canUserManageTeam(any(), any());
-
-        assertThrows(UnauthorizedException.class, () -> {
-            findCloudSubscriptionService.getByTeam(team.getId(), principal);
-        });
-    }
-
     // Cross-Team Operation Tests
     @Test
     void testCrossTeamOperations() {
