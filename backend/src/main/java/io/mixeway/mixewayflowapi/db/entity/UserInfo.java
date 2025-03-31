@@ -54,7 +54,7 @@ public class UserInfo {
     private boolean active;
 
     // Private constructor for JPA
-    protected UserInfo() {
+    public UserInfo() {
         this.id = 0;
         this.username = null;
         this.password = null;

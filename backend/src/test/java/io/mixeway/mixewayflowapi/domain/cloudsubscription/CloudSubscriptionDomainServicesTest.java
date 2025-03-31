@@ -3,15 +3,20 @@ package io.mixeway.mixewayflowapi.domain.cloudsubscription;
 import io.mixeway.mixewayflowapi.config.TestConfig;
 import io.mixeway.mixewayflowapi.db.entity.CloudSubscription;
 import io.mixeway.mixewayflowapi.db.entity.Team;
+import io.mixeway.mixewayflowapi.db.entity.UserInfo;
+import io.mixeway.mixewayflowapi.db.entity.UserRole;
 import io.mixeway.mixewayflowapi.db.repository.CloudSubscriptionRepository;
 import io.mixeway.mixewayflowapi.db.repository.TeamRepository;
 import io.mixeway.mixewayflowapi.domain.team.CreateTeamService;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
+import io.mixeway.mixewayflowapi.domain.user.FindUserService;
 import io.mixeway.mixewayflowapi.exceptions.CloudSubscriptionNotFoundException;
 import io.mixeway.mixewayflowapi.exceptions.DuplicateCloudSubscriptionException;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
 import io.mixeway.mixewayflowapi.exceptions.UnauthorizedException;
 import io.mixeway.mixewayflowapi.utils.PermissionFactory;
+import io.mixeway.mixewayflowapi.utils.Role;
+import org.apache.catalina.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -23,8 +28,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.Principal;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -50,6 +54,9 @@ class CloudSubscriptionDomainServicesTest {
 
     @Autowired
     private FindTeamService findTeamService;
+
+    @Autowired
+    private FindUserService findUserService;
 
     @Autowired
     private CreateTeamService createTeamService;
@@ -112,12 +119,40 @@ class CloudSubscriptionDomainServicesTest {
         });
     }
 
+
     @Test
     void testCreateCloudSubscription_Unauthorized() {
+        // Arrange
+        Long teamId = 1L;
+        String username = "testUser";
+        UserInfo userInfo = new UserInfo();
+        Set<UserRole> roles = new HashSet<>();
+        UserRole userRole = new UserRole();
+        userRole.setName("USER");
+        roles.add(userRole);
+        userInfo.assignRoles(roles);
+
+        Team team = mock(Team.class);
+        when(team.getName()).thenReturn("TeamName");
+
+        CloudSubscriptionRepository cloudSubscriptionRepository = mock(CloudSubscriptionRepository.class);
+
+        FindTeamService findTeamService = mock(FindTeamService.class);
+        when(findTeamService.findById(teamId)).thenReturn(Optional.of(team));
+
+        FindUserService findUserService = mock(FindUserService.class);
+        when(findUserService.findUser(username)).thenReturn(userInfo);
+
+        PermissionFactory permissionFactory = mock(PermissionFactory.class);
         doThrow(new UnauthorizedException()).when(permissionFactory).canUserManageTeam(any(), any());
 
+        Principal principal = mock(Principal.class);
+        when(principal.getName()).thenReturn(username);
+
+        CreateCloudSubscriptionService createCloudSubscriptionService = new CreateCloudSubscriptionService(cloudSubscriptionRepository, findTeamService, permissionFactory, findUserService);
+
         assertThrows(UnauthorizedException.class, () -> {
-            createCloudSubscriptionService.create("test-subscription", team.getId(), principal, "ext-test-subscription");
+            createCloudSubscriptionService.create("test-subscription", teamId, principal, "ext-test-subscription");
         });
     }
 
