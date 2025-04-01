@@ -1,7 +1,9 @@
 package io.mixeway.mixewayflowapi.scanmanager.scheduler;
 
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
+import io.mixeway.mixewayflowapi.db.entity.ScanInfo;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
+import io.mixeway.mixewayflowapi.domain.scaninfo.FindScanInfoService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GetCodeRepoInfoService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.service.SCAService;
 import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
@@ -13,12 +15,12 @@ import org.springframework.stereotype.Service;
 
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 /**
  * Scheduler service responsible for managing and executing periodic scans on code repositories.
@@ -34,13 +36,14 @@ public class ScanScheduler {
     private final SCAService scaService;
     private static final int THREAD_POOL_SIZE = 15; // Adjust the pool size as needed
     private final GetCodeRepoInfoService getCodeRepoInfoService;
-
+    private final FindScanInfoService findScanInfoService;
+    private static final int MAX_REPOS_TO_SCAN = 50; // Maximum number of repositories to scan per day
+    private static final int DAYS_SINCE_LAST_SCAN = 7; // Number of days since last scan to trigger a new scan
 
     /**
      * Initializes the SCA environment after the application startup.
      * This method is executed automatically after the bean's properties have been set.
      *
-     * @throws URISyntaxException If an error occurs related to URI syntax during initialization.
      */
     @PostConstruct
     public void runAfterStartup() {
@@ -59,16 +62,30 @@ public class ScanScheduler {
 
     /**
      * Scheduled task that runs every day at 3 AM.
-     * This method scans all code repositories concurrently using a fixed thread pool.
+     * This method scans up to MAX_REPOS_TO_SCAN repositories that haven't been scanned
+     * in the last DAYS_SINCE_LAST_SCAN days, prioritizing the oldest scans first.
      */
     @Scheduled(cron = "0 0 3 * * ?")
     public void runEveryDayAt3AM() {
-        Iterable<CodeRepo> codeRepos = codeRepoRepository.findAll();
+        List<CodeRepo> allRepos = new ArrayList<>();
+        codeRepoRepository.findAll().forEach(allRepos::add);
+
+        // Get repositories that haven't been scanned in the last specified days
+        List<CodeRepo> reposToScan = getReposNotScannedRecently(allRepos);
+
+        // Limit to MAX_REPOS_TO_SCAN repositories
+        if (reposToScan.size() > MAX_REPOS_TO_SCAN) {
+            reposToScan = reposToScan.subList(0, MAX_REPOS_TO_SCAN);
+        }
+
+        log.info("[Scheduler] Starting scan for {} repositories that haven't been scanned in the last {} days",
+                reposToScan.size(), DAYS_SINCE_LAST_SCAN);
+
         ExecutorService executorService = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
 
         try {
             List<Future<?>> futures = new ArrayList<>();
-            codeRepos.forEach(repo -> {
+            reposToScan.forEach(repo -> {
                 Future<?> future = executorService.submit(() -> {
                     scanManagerService.scanRepository(repo, repo.getDefaultBranch(), null, null);
                 });
@@ -83,9 +100,51 @@ public class ScanScheduler {
                     log.error("Error waiting for task completion", e);
                 }
             }
+
+            log.info("[Scheduler] Completed scanning {} repositories", reposToScan.size());
         } finally {
             executorService.shutdown();
         }
+    }
+
+    /**
+     * Finds repositories that haven't been scanned in the last DAYS_SINCE_LAST_SCAN days
+     * and sorts them by their last scan date, with the oldest scans first.
+     *
+     * @param allRepos List of all repositories
+     * @return List of repositories that haven't been scanned recently, sorted by scan date (oldest first)
+     */
+    private List<CodeRepo> getReposNotScannedRecently(List<CodeRepo> allRepos) {
+        LocalDateTime cutoffDate = LocalDateTime.now().minusDays(DAYS_SINCE_LAST_SCAN);
+
+        // Create a map of repositories to their most recent scan date
+        Map<CodeRepo, LocalDateTime> repoToLastScanDate = new HashMap<>();
+
+        for (CodeRepo repo : allRepos) {
+            List<ScanInfo> scanInfos = findScanInfoService.findScanInfoByRepo(repo);
+            if (scanInfos != null && !scanInfos.isEmpty()) {
+                // Find the most recent scan date
+                LocalDateTime lastScanDate = scanInfos.stream()
+                        .map(ScanInfo::getInsertedDate)
+                        .max(LocalDateTime::compareTo)
+                        .orElse(LocalDateTime.MIN);
+
+                repoToLastScanDate.put(repo, lastScanDate);
+            } else {
+                // No scan info, treat as never scanned (highest priority)
+                repoToLastScanDate.put(repo, LocalDateTime.MIN);
+            }
+        }
+
+        // Filter out repositories that have been scanned recently
+
+        return allRepos.stream()
+                .filter(repo -> {
+                    LocalDateTime lastScanDate = repoToLastScanDate.get(repo);
+                    return lastScanDate.isBefore(cutoffDate);
+                })
+                .sorted(Comparator.comparing(repoToLastScanDate::get))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -110,7 +169,6 @@ public class ScanScheduler {
 
     @Scheduled(initialDelay = 0, fixedRate = 43200000)
     public void processKEV() throws MalformedURLException {
-
         scanManagerService.processKEV();
     }
 }
