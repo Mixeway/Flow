@@ -2,6 +2,7 @@ package io.mixeway.mixewayflowapi.domain.team;
 
 import io.mixeway.mixewayflowapi.api.team.dto.SimpleUserDto;
 import io.mixeway.mixewayflowapi.api.team.dto.TeamDto;
+import io.mixeway.mixewayflowapi.api.team.dto.TeamIdDto;
 import io.mixeway.mixewayflowapi.db.entity.Team;
 import io.mixeway.mixewayflowapi.db.entity.UserInfo;
 import io.mixeway.mixewayflowapi.db.repository.TeamRepository;
@@ -40,6 +41,16 @@ public class FindTeamService {
                     .build());
         }
         return  teamDtos;
+    }
+
+    public List<TeamIdDto> findAllTeamsIds(Principal principal){
+        List<TeamIdDto> teamIdDtos = new ArrayList<>();
+        for (Team team : permissionFactory.findTeams(principal)){
+            teamIdDtos.add(TeamIdDto.builder()
+                    .remoteIdentifier(team.getRemoteIdentifier())
+                    .build());
+        }
+        return  teamIdDtos;
     }
 
     public TeamDto findTeamById(Long teamId, Principal principal) {

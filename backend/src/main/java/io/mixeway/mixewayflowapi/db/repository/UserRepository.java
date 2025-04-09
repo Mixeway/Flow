@@ -18,4 +18,5 @@ public interface UserRepository extends CrudRepository<UserInfo, Long> {
     List<UserInfo> getUsersByTeamId(@Param("teamId") Long teamId);
 
     Optional<UserInfo> findByApiKey(String apiKey);
+
 }
