@@ -27,7 +27,9 @@ public class TeamService {
 
         if (userOptional.isPresent()) {
             boolean isAdmin = "ADMIN".equals(userOptional.get().getHighestRole());
-            log.info("[Team Service] User's {} API key validation succeeded", userOptional.get().getUsername());
+            if (isAdmin) {
+                log.info("[Team Service] User's {} API key validation succeeded", userOptional.get().getUsername());
+            }
             return isAdmin;
         } else {
             return false;
