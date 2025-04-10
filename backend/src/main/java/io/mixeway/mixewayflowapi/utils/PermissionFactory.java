@@ -38,7 +38,7 @@ public class PermissionFactory {
     public Page<Team> findTeams(Principal principal, Pageable pageable) {
         UserInfo userInfo = findUserService.findUser(principal.getName());
         if (userInfo.getHighestRole().equals("ADMIN")) {
-            return teamRepository.findAllWithPagination(pageable);
+            return teamRepository.findAllPageable(pageable);
         }
         else throw new UnauthorizedException();
     }

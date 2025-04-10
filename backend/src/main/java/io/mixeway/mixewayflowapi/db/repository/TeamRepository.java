@@ -19,7 +19,7 @@ public interface TeamRepository extends CrudRepository<Team, Long>  {
     List<Team> findAll();
 
     @Query("SELECT t FROM Team t")
-    Page<Team> findAllWithPagination(Pageable pageable);
+    Page<Team> findAllPageable(Pageable pageable);
 
     /**
      * Removes all user associations for a specific team from the join table

@@ -10,6 +10,7 @@ import io.mixeway.mixewayflowapi.api.coderepo.mapper.FindingMapper;
 import io.mixeway.mixewayflowapi.api.teamfindings.mapper.TeamFindingAndVulnsMapper;
 import io.mixeway.mixewayflowapi.api.teamfindings.mapper.TeamFindingMapper;
 import io.mixeway.mixewayflowapi.db.entity.*;
+import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
 import io.mixeway.mixewayflowapi.db.repository.UserRepository;
 import io.mixeway.mixewayflowapi.domain.cloudsubscription.FindCloudSubscriptionService;
 import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
@@ -19,6 +20,9 @@ import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import io.mixeway.mixewayflowapi.utils.StatusDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.security.Principal;
@@ -38,6 +42,7 @@ public class FindingsByTeamService {
     private final FindFindingService findFindingService;
     private final UpdateFindingService updateFindingService;
     private final UserRepository userRepository;
+    private final FindingRepository findingRepository;
 
     public List<TeamVulnsResponseDto> getCloudAndRepoFindings(Long teamId, Principal principal) {
         Team team = findTeamService.findById(teamId)
@@ -98,30 +103,32 @@ public class FindingsByTeamService {
         }
     }
 
-    public List<TeamFindingsAndVulnsResponseDto> getCloudAndRepoFindingsAndVulns(String remoteIdentifier, Principal principal) {
+    public Page<TeamFindingsAndVulnsResponseDto> getCloudAndRepoFindingsAndVulns(String remoteIdentifier, Principal principal, Pageable pageable) {
         List<Team> teams = findTeamService.findByRemoteId(remoteIdentifier);
 
         if (teams.isEmpty()) {
             throw new IllegalArgumentException("Team not found with remote ID: " + remoteIdentifier);
         }
 
+        List<CodeRepo> codeRepos = teams.stream()
+                .flatMap(team -> findCodeRepoService.findByTeam(team).stream())
+                .collect(Collectors.toList());
 
-        return teams.stream().flatMap(team -> {
-            List<CodeRepo> codeRepos = findCodeRepoService.findByTeam(team);
-            List<Finding> codeReposFindings = codeRepos.stream()
-                    .flatMap(codeRepo -> findFindingService.getCodeRepoFindings(codeRepo, null).stream())
-                    .collect(Collectors.toList());
+        List<CloudSubscription> cloudSubscriptions = teams.stream()
+                .flatMap(team -> findCloudSubscriptionService.getByTeam(team.getId(), principal).stream())
+                .collect(Collectors.toList());
 
-            List<CloudSubscription> cloudSubscriptions = findCloudSubscriptionService.getByTeam(team.getId(), principal);
-            List<Finding> cloudSubscriptionsFindings = cloudSubscriptions.stream()
-                    .flatMap(cloudSubscription -> findFindingService.getCloudSubscriptionFindings(cloudSubscription).stream())
-                    .collect(Collectors.toList());
+        Page<Finding> codeRepoFindingsPage = findingRepository.findByCodeReposPageable(codeRepos, pageable);
+        Page<Finding> cloudSubscriptionFindingsPage = findingRepository.findByCloudSubscriptionsPageable(cloudSubscriptions, pageable);
 
-            List<Finding> findingsByTeam = Stream.concat(codeReposFindings.stream(), cloudSubscriptionsFindings.stream())
-                    .collect(Collectors.toList());
+        List<Finding> combinedFindings = Stream.concat(
+                codeRepoFindingsPage.getContent().stream(),
+                cloudSubscriptionFindingsPage.getContent().stream()
+        ).collect(Collectors.toList());
 
-            return TeamFindingAndVulnsMapper.mapToDtoList(remoteIdentifier, findingsByTeam).stream();
-        }).collect(Collectors.toList());
+        List<TeamFindingsAndVulnsResponseDto> dtos = TeamFindingAndVulnsMapper.mapToDtoList(remoteIdentifier, combinedFindings);
+
+        return new PageImpl<>(dtos, pageable, codeRepoFindingsPage.getTotalElements() + cloudSubscriptionFindingsPage.getTotalElements());
     }
 
 

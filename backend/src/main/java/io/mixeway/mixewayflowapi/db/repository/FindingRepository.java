@@ -6,6 +6,8 @@ import io.mixeway.mixewayflowapi.db.entity.*;
 import io.mixeway.mixewayflowapi.db.projection.ItemProjection;
 import io.mixeway.mixewayflowapi.db.projection.RemovedVulnerabilityProjection;
 import io.mixeway.mixewayflowapi.db.projection.ReviewedVulnerabilityProjection;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -77,5 +79,12 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
 
     @Query(value = "SELECT * FROM combined_items_view", nativeQuery = true)
     List<ItemProjection> findCombinedItemsForAdmin();
+
+    @Query("SELECT f FROM Finding f WHERE f.codeRepo IN :codeRepos")
+    Page<Finding> findByCodeReposPageable(@Param("codeRepos") List<CodeRepo> codeRepos, Pageable pageable);
+
+    @Query("SELECT f FROM Finding f WHERE f.cloudSubscription IN :cloudSubscriptions")
+    Page<Finding> findByCloudSubscriptionsPageable(@Param("cloudSubscriptions") List<CloudSubscription> cloudSubscriptions, Pageable pageable);
+
 }
 
