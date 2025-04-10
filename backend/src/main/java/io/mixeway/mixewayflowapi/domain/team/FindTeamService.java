@@ -9,6 +9,8 @@ import io.mixeway.mixewayflowapi.db.repository.TeamRepository;
 import io.mixeway.mixewayflowapi.db.repository.UserRepository;
 import io.mixeway.mixewayflowapi.utils.PermissionFactory;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.security.Principal;
@@ -43,14 +45,12 @@ public class FindTeamService {
         return  teamDtos;
     }
 
-    public List<TeamIdDto> findAllTeamsIds(Principal principal){
-        List<TeamIdDto> teamIdDtos = new ArrayList<>();
-        for (Team team : permissionFactory.findTeams(principal)){
-            teamIdDtos.add(TeamIdDto.builder()
-                    .remoteIdentifier(team.getRemoteIdentifier())
-                    .build());
-        }
-        return  teamIdDtos;
+    public Page<TeamIdDto> findAllTeamsIds(Principal principal, Pageable pageable) {
+        Page<Team> teams = permissionFactory.findTeams(principal, pageable);
+
+        return teams.map(team -> TeamIdDto.builder()
+                .remoteIdentifier(team.getRemoteIdentifier())
+                .build());
     }
 
     public TeamDto findTeamById(Long teamId, Principal principal) {

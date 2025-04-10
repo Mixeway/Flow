@@ -4,13 +4,13 @@ import io.mixeway.mixewayflowapi.api.coderepo.dto.CommentDto;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.GetFindingResponseDto;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.VulnsResponseDto;
 import io.mixeway.mixewayflowapi.api.team.dto.TeamDto;
+import io.mixeway.mixewayflowapi.api.teamfindings.dto.TeamFindingsAndVulnsResponseDto;
 import io.mixeway.mixewayflowapi.api.teamfindings.dto.TeamVulnsResponseDto;
 import io.mixeway.mixewayflowapi.api.coderepo.mapper.FindingMapper;
+import io.mixeway.mixewayflowapi.api.teamfindings.mapper.TeamFindingAndVulnsMapper;
 import io.mixeway.mixewayflowapi.api.teamfindings.mapper.TeamFindingMapper;
-import io.mixeway.mixewayflowapi.db.entity.CloudSubscription;
-import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
-import io.mixeway.mixewayflowapi.db.entity.Finding;
-import io.mixeway.mixewayflowapi.db.entity.Team;
+import io.mixeway.mixewayflowapi.db.entity.*;
+import io.mixeway.mixewayflowapi.db.repository.UserRepository;
 import io.mixeway.mixewayflowapi.domain.cloudsubscription.FindCloudSubscriptionService;
 import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.finding.FindFindingService;
@@ -37,6 +37,7 @@ public class FindingsByTeamService {
     private final FindTeamService findTeamService;
     private final FindFindingService findFindingService;
     private final UpdateFindingService updateFindingService;
+    private final UserRepository userRepository;
 
     public List<TeamVulnsResponseDto> getCloudAndRepoFindings(Long teamId, Principal principal) {
         Team team = findTeamService.findById(teamId)
@@ -84,6 +85,45 @@ public class FindingsByTeamService {
             throw new IllegalArgumentException("Finding does not belong to the specified team or resources.");
         }
     }
+
+    public boolean isValidApiKey(String apiKey) {
+        Optional<UserInfo> userOptional = userRepository.findByApiKey(apiKey);
+
+        if (userOptional.isPresent()) {
+            boolean isAdmin = "ADMIN".equals(userOptional.get().getHighestRole());
+            log.info("[Team Service] User's {} API key validation succeeded", userOptional.get().getUsername());
+            return isAdmin;
+        } else {
+            return false;
+        }
+    }
+
+    public List<TeamFindingsAndVulnsResponseDto> getCloudAndRepoFindingsAndVulns(String remoteIdentifier, Principal principal) {
+        List<Team> teams = findTeamService.findByRemoteId(remoteIdentifier);
+
+        if (teams.isEmpty()) {
+            throw new IllegalArgumentException("Team not found with remote ID: " + remoteIdentifier);
+        }
+
+
+        return teams.stream().flatMap(team -> {
+            List<CodeRepo> codeRepos = findCodeRepoService.findByTeam(team);
+            List<Finding> codeReposFindings = codeRepos.stream()
+                    .flatMap(codeRepo -> findFindingService.getCodeRepoFindings(codeRepo, null).stream())
+                    .collect(Collectors.toList());
+
+            List<CloudSubscription> cloudSubscriptions = findCloudSubscriptionService.getByTeam(team.getId(), principal);
+            List<Finding> cloudSubscriptionsFindings = cloudSubscriptions.stream()
+                    .flatMap(cloudSubscription -> findFindingService.getCloudSubscriptionFindings(cloudSubscription).stream())
+                    .collect(Collectors.toList());
+
+            List<Finding> findingsByTeam = Stream.concat(codeReposFindings.stream(), cloudSubscriptionsFindings.stream())
+                    .collect(Collectors.toList());
+
+            return TeamFindingAndVulnsMapper.mapToDtoList(remoteIdentifier, findingsByTeam).stream();
+        }).collect(Collectors.toList());
+    }
+
 
     public StatusDTO supressTeamFindingBulk(Long id, List<Long> findingIds, Principal principal) {
         Optional<Team> teamOptional = findTeamService.findById(id);

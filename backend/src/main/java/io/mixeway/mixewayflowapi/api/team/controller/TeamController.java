@@ -14,6 +14,8 @@ import io.mixeway.mixewayflowapi.utils.StatusDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -69,12 +71,12 @@ public class TeamController {
 
     @PreAuthorize("hasAuthority('ADMIN')")
     @GetMapping(value = "/api/v1/teamsIds")
-    public ResponseEntity<List<TeamIdDto>> getTeamsIds(@RequestHeader("X-API-KEY") String apiKey, Principal principal) {
+    public ResponseEntity<Page<TeamIdDto>> getTeamsIds(@RequestHeader("X-API-KEY") String apiKey, Principal principal, Pageable pageable) {
         try {
             if (!teamService.isValidApiKey(apiKey)) {
                 return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
             }
-            return new ResponseEntity<>(teamService.getTeamIds(principal), HttpStatus.OK);
+            return new ResponseEntity<>(teamService.getTeamIds(principal, pageable), HttpStatus.OK);
         } catch (Exception e){
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }

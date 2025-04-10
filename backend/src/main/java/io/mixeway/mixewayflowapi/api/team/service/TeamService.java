@@ -6,6 +6,8 @@ import io.mixeway.mixewayflowapi.db.repository.UserRepository;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.security.Principal;
@@ -33,7 +35,7 @@ public class TeamService {
     }
 
 
-    public List<TeamIdDto> getTeamIds(Principal principal) {
-        return findTeamService.findAllTeamsIds(principal);
+    public Page<TeamIdDto> getTeamIds(Principal principal, Pageable pageable) {
+        return findTeamService.findAllTeamsIds(principal, pageable);
     }
 }
