@@ -1,6 +1,7 @@
 package io.mixeway.mixewayflowapi.domain.team;
 
 import io.mixeway.mixewayflowapi.api.team.dto.TeamDto;
+import io.mixeway.mixewayflowapi.api.team.dto.TeamIdDto;
 import io.mixeway.mixewayflowapi.config.TestConfig;
 import io.mixeway.mixewayflowapi.db.entity.Team;
 import org.junit.jupiter.api.Test;
@@ -10,6 +11,10 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -18,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 
 @SpringBootTest
 @RunWith(SpringRunner.class)
@@ -60,4 +66,14 @@ class FindTeamServiceTest {
         List<Team> teams = findTeamService.findAll();
         assertTrue( teams.size() >= 3);
     }
+
+    @Test
+    void findAllTeamsIds() {
+        Mockito.when(principal.getName()).thenReturn("admin");
+
+        Pageable pageable = PageRequest.of(0, 10);
+
+        Page<TeamIdDto> teams = findTeamService.findAllTeamsIds(principal, pageable);
+
+        assertTrue(teams.getContent().size() >= 3);    }
 }

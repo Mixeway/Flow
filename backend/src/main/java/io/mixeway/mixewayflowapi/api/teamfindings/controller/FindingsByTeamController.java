@@ -1,11 +1,15 @@
 package io.mixeway.mixewayflowapi.api.teamfindings.controller;
 
 import io.mixeway.mixewayflowapi.api.coderepo.dto.GetFindingResponseDto;
+import io.mixeway.mixewayflowapi.api.team.dto.TeamIdDto;
+import io.mixeway.mixewayflowapi.api.teamfindings.dto.TeamFindingsAndVulnsResponseDto;
 import io.mixeway.mixewayflowapi.api.teamfindings.dto.TeamVulnsResponseDto;
 import io.mixeway.mixewayflowapi.api.teamfindings.service.FindingsByTeamService;
 import io.mixeway.mixewayflowapi.utils.StatusDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,6 +33,19 @@ public class FindingsByTeamController {
         } catch (Exception e) {
             log.error("Error fetching findings for team: {}", id);
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @GetMapping(value = "/api/v1/teamfindings/{remoteIdentifier}")
+    public ResponseEntity<Page<TeamFindingsAndVulnsResponseDto>> getTeamFindings(@RequestHeader("X-API-KEY") String apiKey, @PathVariable("remoteIdentifier") String remoteIdentifier, Principal principal, Pageable pageable) {
+        try {
+            if (!findingsByTeamService.isValidApiKey(apiKey)) {
+                return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+            }
+            return new ResponseEntity<>(findingsByTeamService.getCloudAndRepoFindingsAndVulns(remoteIdentifier, principal, pageable), HttpStatus.OK);
+        } catch (Exception e){
+            return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }
     }
 

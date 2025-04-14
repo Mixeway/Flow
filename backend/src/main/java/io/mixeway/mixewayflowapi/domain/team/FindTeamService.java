@@ -2,12 +2,15 @@ package io.mixeway.mixewayflowapi.domain.team;
 
 import io.mixeway.mixewayflowapi.api.team.dto.SimpleUserDto;
 import io.mixeway.mixewayflowapi.api.team.dto.TeamDto;
+import io.mixeway.mixewayflowapi.api.team.dto.TeamIdDto;
 import io.mixeway.mixewayflowapi.db.entity.Team;
 import io.mixeway.mixewayflowapi.db.entity.UserInfo;
 import io.mixeway.mixewayflowapi.db.repository.TeamRepository;
 import io.mixeway.mixewayflowapi.db.repository.UserRepository;
 import io.mixeway.mixewayflowapi.utils.PermissionFactory;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.security.Principal;
@@ -40,6 +43,14 @@ public class FindTeamService {
                     .build());
         }
         return  teamDtos;
+    }
+
+    public Page<TeamIdDto> findAllTeamsIds(Principal principal, Pageable pageable) {
+        Page<Team> teams = permissionFactory.findTeams(principal, pageable);
+
+        return teams.map(team -> TeamIdDto.builder()
+                .remoteIdentifier(team.getRemoteIdentifier())
+                .build());
     }
 
     public TeamDto findTeamById(Long teamId, Principal principal) {

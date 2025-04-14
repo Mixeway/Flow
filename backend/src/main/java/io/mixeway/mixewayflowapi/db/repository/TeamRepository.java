@@ -1,6 +1,8 @@
 package io.mixeway.mixewayflowapi.db.repository;
 
 import io.mixeway.mixewayflowapi.db.entity.Team;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
@@ -15,6 +17,10 @@ public interface TeamRepository extends CrudRepository<Team, Long>  {
 
     List<Team> findByRemoteIdentifier(String remoteIdentifier);
     List<Team> findAll();
+
+    @Query("SELECT t FROM Team t")
+    Page<Team> findAllPageable(Pageable pageable);
+
     /**
      * Removes all user associations for a specific team from the join table
      *

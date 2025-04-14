@@ -3,6 +3,8 @@ package io.mixeway.mixewayflowapi.api.team.controller;
 import io.mixeway.mixewayflowapi.api.team.dto.ChangeTeamRequestDto;
 import io.mixeway.mixewayflowapi.api.team.dto.CreateTeamRequestDto;
 import io.mixeway.mixewayflowapi.api.team.dto.TeamDto;
+import io.mixeway.mixewayflowapi.api.team.dto.TeamIdDto;
+import io.mixeway.mixewayflowapi.api.team.service.TeamService;
 import io.mixeway.mixewayflowapi.domain.team.ChangeTeamService;
 import io.mixeway.mixewayflowapi.domain.team.CreateTeamService;
 import io.mixeway.mixewayflowapi.domain.team.DeleteTeamService;
@@ -12,6 +14,8 @@ import io.mixeway.mixewayflowapi.utils.StatusDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -30,6 +34,7 @@ public class TeamController {
     private final FindTeamService findTeamService;
     private final ChangeTeamService changeTeamService;
     private final DeleteTeamService deleteTeamService;
+    private final TeamService teamService;
 
 
     @PreAuthorize("hasAuthority('TEAM_MANAGER')")
@@ -59,6 +64,19 @@ public class TeamController {
     public ResponseEntity<TeamDto> getTeam(@PathVariable("id") Long id, Principal principal){
         try {
             return new ResponseEntity<>(findTeamService.findTeamById(id, principal), HttpStatus.OK);
+        } catch (Exception e){
+            return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @GetMapping(value = "/api/v1/teamsIds")
+    public ResponseEntity<Page<TeamIdDto>> getTeamsIds(@RequestHeader("X-API-KEY") String apiKey, Principal principal, Pageable pageable) {
+        try {
+            if (!teamService.isValidApiKey(apiKey)) {
+                return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+            }
+            return new ResponseEntity<>(teamService.getTeamIds(principal, pageable), HttpStatus.OK);
         } catch (Exception e){
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }
