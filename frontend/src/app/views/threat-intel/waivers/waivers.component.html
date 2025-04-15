@@ -38,6 +38,11 @@
             <ngx-datatable-column name="Vulnerability Name" prop="vulnerabilityName"></ngx-datatable-column>
             <ngx-datatable-column name="Scope" prop="scope"></ngx-datatable-column>
             <ngx-datatable-column name="Scope Detail" prop="scopeDetail"></ngx-datatable-column>
+            <ngx-datatable-column name="Path Pattern" prop="pathRegex">
+                <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-row="row">
+                    {{ row.pathRegex || 'All Paths' }}
+                </ng-template>
+            </ngx-datatable-column>
             <ngx-datatable-column name="Inserted By" prop="insertedBy"></ngx-datatable-column>
             <ngx-datatable-column name="Inserted Date" prop="insertedDate">
                 <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-row="row">
@@ -109,6 +114,17 @@
                         placeholder="Select Team..."
                         [searchable]="true"
                 ></ng-select>
+            </div>
+            <div class="mb-3">
+                <label for="pathRegex" class="form-label">Path Regex (Optional)</label>
+                <input
+                        type="text"
+                        class="form-control"
+                        id="pathRegex"
+                        formControlName="pathRegex"
+                        placeholder="e.g., /path/to/file/test/*"
+                />
+                <small class="form-text text-muted">Regular expression to match file paths. Leave empty to apply to all paths.</small>
             </div>
         </form>
     </c-modal-body>

@@ -10,7 +10,7 @@ import {
   InputGroupTextDirective,
   FormControlDirective,
   FormLabelDirective,
-  FormSelectDirective, FormDirective,
+  FormSelectDirective, FormDirective, AlertModule,
 } from '@coreui/angular';
 import {IconDirective, IconSetService} from '@coreui/icons-angular';
 import { ThreatIntelService } from '../../../service/ThreatIntelService';
@@ -22,6 +22,7 @@ import { NgxDatatableModule } from '@swimlane/ngx-datatable';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { NgSelectModule } from '@ng-select/ng-select';
 import {DatePipe, NgIf} from "@angular/common";
+import { HttpErrorResponse } from '@angular/common/http';
 
 interface CodeRepo {
   id: number;
@@ -39,6 +40,7 @@ interface RuleDTO{
   teamId: number;
   vulnerabilityId: string;
   codeRepoId: number;
+  pathRegex?: string; // Added pathRegex field
 }
 interface Team {
   id: number;
@@ -50,6 +52,7 @@ interface SuppressRuleResponseDTO {
   vulnerabilityName: string;
   scope: 'GLOBAL' | 'PROJECT' | 'TEAM';
   scopeDetail: string; // Now contains the name instead of ID
+  pathRegex?: string; // Added pathRegex field
   insertedBy: string;
   insertedDate: Date;
 }
@@ -77,6 +80,7 @@ interface SuppressRuleResponseDTO {
     DatePipe,
     FormDirective,
     NgIf,
+    AlertModule,
   ],
   templateUrl: './waivers.component.html',
   styleUrls: ['./waivers.component.scss'],
@@ -87,6 +91,7 @@ export class WaiversComponent implements OnInit {
   suppressRules: SuppressRuleResponseDTO[] = [];
   filteredSuppressRules: SuppressRuleResponseDTO[] = [];
   filterValue: string = '';
+  errorMessage: string = '';
 
   createRuleModalVisible: boolean = false;
   createRuleForm: FormGroup;
@@ -108,6 +113,7 @@ export class WaiversComponent implements OnInit {
       scope: ['', Validators.required],
       project: [''],
       team: [''],
+      pathRegex: [''] // Added pathRegex field to form
     });
   }
 
@@ -116,9 +122,13 @@ export class WaiversComponent implements OnInit {
       next: (response) => {
         this.suppressRules = response;
         this.filteredSuppressRules = [...this.suppressRules];
+        // Debug log to check what's coming back
+        console.log('Loaded suppress rules:', response);
       },
       error: (error) => {
-        // Handle error
+        // Log the error
+        console.error('Error loading suppress rules:', error);
+        this.errorMessage = 'Failed to load suppress rules. Please try again later or contact your administrator.';
       },
     });
   }
@@ -129,7 +139,7 @@ export class WaiversComponent implements OnInit {
         this.rows = response;
       },
       error: (error) => {
-        // Handle error
+        console.error('Error loading code repos:', error);
       },
     });
   }
@@ -140,7 +150,7 @@ export class WaiversComponent implements OnInit {
         this.teams = response;
       },
       error: (error) => {
-        // Handle error
+        console.error('Error loading teams:', error);
       },
     });
   }
@@ -151,37 +161,6 @@ export class WaiversComponent implements OnInit {
     this.loadRules();
   }
 
-  // initializeDummyData() {
-  //   this.suppressRules = [
-  //     {
-  //       id: 1,
-  //       vulnerabilityName: 'SQL Injection',
-  //       scope: 'GLOBAL',
-  //       scopeDetail: '',
-  //       insertedBy: 'admin',
-  //       insertedDate: new Date('2023-09-01'),
-  //     },
-  //     {
-  //       id: 2,
-  //       vulnerabilityName: 'XSS',
-  //       scope: 'PROJECT',
-  //       scopeDetail: 'Project A', // Now using project name
-  //       insertedBy: 'user1',
-  //       insertedDate: new Date('2023-09-15'),
-  //     },
-  //     {
-  //       id: 3,
-  //       vulnerabilityName: 'CSRF',
-  //       scope: 'TEAM',
-  //       scopeDetail: 'Team Alpha', // Now using team name
-  //       insertedBy: 'user2',
-  //       insertedDate: new Date('2023-10-01'),
-  //     },
-  //   ];
-  //
-  //   this.filteredSuppressRules = [...this.suppressRules];
-  // }
-
   updateFilter(event: any) {
     const val = event.target.value.toLowerCase();
 
@@ -191,7 +170,9 @@ export class WaiversComponent implements OnInit {
           d.vulnerabilityName.toLowerCase().includes(val) ||
           d.scope.toLowerCase().includes(val) ||
           d.scopeDetail.toLowerCase().includes(val) ||
-          d.insertedBy.toLowerCase().includes(val)
+          d.insertedBy.toLowerCase().includes(val) ||
+          // Include pathRegex in filtering
+          (d.pathRegex && d.pathRegex.toLowerCase().includes(val))
       );
     });
 
@@ -205,17 +186,21 @@ export class WaiversComponent implements OnInit {
         this.loadRules();
       },
       error: (error) => {
-        // Handle error
+        this.errorMessage = 'Failed to delete rule. Please try again later or contact your administrator.';
       },
     });
   }
 
   openCreateRuleModal() {
+    this.errorMessage = '';
     this.createRuleModalVisible = true;
   }
 
   handleCreateRuleModalChange(event: any) {
     this.createRuleModalVisible = event;
+    if (!event) {
+      this.errorMessage = '';
+    }
   }
 
   onScopeChange(event: any) {
@@ -231,6 +216,10 @@ export class WaiversComponent implements OnInit {
     }
   }
 
+  onAlertClose() {
+    this.errorMessage = '';
+  }
+
   onCreateRuleSubmit() {
     if (this.createRuleForm.valid) {
       const formData = this.createRuleForm.value;
@@ -239,24 +228,26 @@ export class WaiversComponent implements OnInit {
         scope: formData.scope,
         vulnerabilityId: formData.vulnerabilityName,
         teamId: formData.team,
-        codeRepoId: formData.project
+        codeRepoId: formData.project,
+        pathRegex: formData.pathRegex // Include pathRegex in the request
       }
 
       this.threatIntelService.createRule(rule).subscribe({
         next: (response) => {
           this.loadRules();
+
+          // Close the modal
+          this.createRuleModalVisible = false;
+          // Reset the form
+          this.createRuleForm.reset();
+          this.showProjectSelect = false;
+          this.showTeamSelect = false;
         },
         error: (error) => {
-          // Handle error
+            this.errorMessage = 'Problem adding suppress rule. Please check if all fields are valid and try again. If the problem persists, contact your administrator.';
+
         },
       });
-
-      // Close the modal
-      this.createRuleModalVisible = false;
-      // Reset the form
-      this.createRuleForm.reset();
-      this.showProjectSelect = false;
-      this.showTeamSelect = false;
     }
   }
 }

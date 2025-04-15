@@ -31,7 +31,8 @@ public interface SuppressRuleRepository extends CrudRepository<SuppressRule, Lon
             SELECT
                 f.vulnerability_id,
                 f.coderepo_id,
-                cr.team_id
+                cr.team_id,
+                f.file_path
             FROM
                 finding f
             JOIN coderepo cr ON
@@ -51,10 +52,10 @@ public interface SuppressRuleRepository extends CrudRepository<SuppressRule, Lon
                     OR (sr.scope = 'TEAM' AND sr.team_id = fd.team_id)
                     OR (sr.scope = 'PROJECT' AND sr.coderepo_id = fd.coderepo_id)
                 )
+                AND (sr.path_regex IS NULL OR sr.path_regex = '' OR fd.file_path REGEXP sr.path_regex)
         )
         """, nativeQuery = true)
     boolean existsSuppressRuleForFinding(@Param("findingId") Long findingId);
-
 
     @Query("""
     SELECT new io.mixeway.mixewayflowapi.api.threatintel.dto.SuppressRuleResponseDTO(
@@ -66,6 +67,7 @@ public interface SuppressRuleRepository extends CrudRepository<SuppressRule, Lon
             WHEN sr.scope = 'PROJECT' THEN cr.name
             ELSE ''
         END,
+        sr.pathRegex,
         ui.username,
         sr.createdDate
     )
@@ -88,5 +90,24 @@ public interface SuppressRuleRepository extends CrudRepository<SuppressRule, Lon
     """)
     List<SuppressRuleResponseDTO> findAllAccessibleSuppressRules(@Param("isAdmin") boolean isAdmin, @Param("userTeams") Set<Team> userTeams);
 
+    @Query("SELECT sr FROM SuppressRule sr " +
+            "WHERE sr.scope = :scope " +
+            "AND sr.vulnerability = :vulnerability " +
+            "AND (:teamId IS NULL OR sr.team.id = :teamId) " +
+            "AND (:codeRepoId IS NULL OR sr.codeRepo.id = :codeRepoId) " +
+            "AND ((:pathRegex IS NULL AND sr.pathRegex IS NULL) OR (:pathRegex IS NOT NULL AND sr.pathRegex = :pathRegex))")
+    Optional<SuppressRule> findByScopeAndVulnerabilityAndTeamAndCodeRepoAndPathRegex(
+            @Param("scope") SuppressRule.Scope scope,
+            @Param("vulnerability") Vulnerability vulnerability,
+            @Param("teamId") Long teamId,
+            @Param("codeRepoId") Long codeRepoId,
+            @Param("pathRegex") String pathRegex);
 
+    @Query("SELECT sr FROM SuppressRule sr " +
+            "JOIN Finding f ON " +
+            "   (sr.scope = 'GLOBAL' AND f.vulnerability = sr.vulnerability) OR " +
+            "   (sr.scope = 'TEAM' AND f.vulnerability = sr.vulnerability AND f.codeRepo.team = sr.team) OR " +
+            "   (sr.scope = 'PROJECT' AND f.vulnerability = sr.vulnerability AND f.codeRepo = sr.codeRepo) " +
+            "WHERE f.id = :findingId")
+    List<SuppressRule> findApplicableSuppressRules(@Param("findingId") Long findingId);
 }

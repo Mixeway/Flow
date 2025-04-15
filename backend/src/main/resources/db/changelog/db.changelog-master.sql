@@ -665,3 +665,6 @@ DROP CONSTRAINT cloud_subscription_finding_stats_cloud_subscription_id_fkey;
 ALTER TABLE cloud_subscription_finding_stats
     ADD CONSTRAINT cloud_subscription_finding_stats_cloud_subscription_id_fkey
         FOREIGN KEY (cloud_subscription_id) REFERENCES cloud_subscription(id);
+
+--changeset siewer:add_suppress_rule_path
+ALTER TABLE suppress_rule ADD COLUMN path_regex VARCHAR(255);

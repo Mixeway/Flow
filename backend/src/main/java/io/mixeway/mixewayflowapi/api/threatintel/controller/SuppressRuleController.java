@@ -10,6 +10,7 @@ import io.mixeway.mixewayflowapi.domain.suppressrule.FindSuppressRuleService;
 import io.mixeway.mixewayflowapi.domain.user.FindUserService;
 import io.mixeway.mixewayflowapi.utils.StatusDTO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,6 +22,7 @@ import java.util.Set;
 
 @RestController
 @RequiredArgsConstructor
+@Log4j2
 public class SuppressRuleController {
     private final FindSuppressRuleService findSuppressRuleService;
     private final FindUserService findUserService;
@@ -53,7 +55,7 @@ public class SuppressRuleController {
             suppressRuleService.createRule(suppressRuleDTO, principal);
             return new ResponseEntity<>(new StatusDTO(""), HttpStatus.CREATED);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("[SuppressRule] Error creating rule {}", e.getLocalizedMessage());
             return new ResponseEntity<>(new StatusDTO(""), HttpStatus.BAD_REQUEST);
         }
     }
