@@ -37,18 +37,23 @@ public class SuppressRule {
     @JoinColumn(name = "coderepo_id")
     private CodeRepo codeRepo;
 
+    @Column(name = "path_regex")
+    private String pathRegex;
+
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
     // Constructor for new SuppressRule
-    public SuppressRule(UserInfo owner, Scope scope, Vulnerability vulnerability, Team team, CodeRepo codeRepo) {
+    public SuppressRule(UserInfo owner, Scope scope, Vulnerability vulnerability, Team team, CodeRepo codeRepo, String pathRegex) {
         this.owner = owner;
         this.scope = scope;
         this.vulnerability = vulnerability;
         this.team = team;
         this.codeRepo = codeRepo;
+        this.pathRegex = pathRegex;
         this.createdDate = LocalDateTime.now();
     }
+
 
     // Default constructor for JPA
     protected SuppressRule() {

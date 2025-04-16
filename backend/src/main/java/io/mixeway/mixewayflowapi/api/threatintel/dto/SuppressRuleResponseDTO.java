@@ -11,17 +11,19 @@ public class SuppressRuleResponseDTO {
     private String vulnerabilityName;
     private SuppressRule.Scope scope;
     private String scopeDetail;
+    private String pathRegex;
     private String insertedBy;
     private LocalDateTime insertedDate;
 
     // Constructor
-    public SuppressRuleResponseDTO(Long id, String vulnerabilityName, SuppressRule.Scope scope, String scopeDetail, String insertedBy, LocalDateTime insertedDate) {
+    public SuppressRuleResponseDTO(Long id, String vulnerabilityName, SuppressRule.Scope scope, String scopeDetail,
+                                   String pathRegex, String insertedBy, LocalDateTime insertedDate) {
         this.id = id;
         this.vulnerabilityName = vulnerabilityName;
         this.scope = scope;
         this.scopeDetail = scopeDetail;
+        this.pathRegex = pathRegex;
         this.insertedBy = insertedBy;
         this.insertedDate = insertedDate;
     }
-
 }

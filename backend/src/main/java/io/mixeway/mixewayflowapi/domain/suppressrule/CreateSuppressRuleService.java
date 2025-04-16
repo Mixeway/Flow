@@ -17,6 +17,8 @@ import java.security.Principal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
@@ -64,23 +66,37 @@ public class CreateSuppressRuleService {
                 break;
         }
 
-        // Check for existing rule
-        Optional<SuppressRule> existingRule = suppressRuleRepository.findByScopeAndVulnerabilityAndTeamAndCodeRepo(
+        // Validate path regex if provided
+        String pathRegex = suppressRuleDTO.getPathRegex();
+        if (pathRegex != null && !pathRegex.isEmpty()) {
+            try {
+                Pattern.compile(pathRegex);
+                log.info("[SuppressRule] Using path regex: {}", pathRegex);
+            } catch (Exception e) {
+                throw new IllegalArgumentException("[SuppressRule] Invalid regex pattern: " + e.getMessage());
+            }
+        }
+
+        // Check for existing rule with same scope, vulnerability, team/codeRepo, and pathRegex
+        Optional<SuppressRule> existingRule = suppressRuleRepository.findByScopeAndVulnerabilityAndTeamAndCodeRepoAndPathRegex(
                 SuppressRule.Scope.valueOf(suppressRuleDTO.getScope()),
                 vulnerability,
                 team != null ? team.getId() : null,
-                codeRepo != null ? codeRepo.getId() : null
+                codeRepo != null ? codeRepo.getId() : null,
+                pathRegex
         );
         if (existingRule.isPresent()) {
             throw new IllegalArgumentException("SuppressRule already exists for the given parameters.");
         }
+
         // Create new SuppressRule
         SuppressRule suppressRule = new SuppressRule(
                 owner,
                 SuppressRule.Scope.valueOf(suppressRuleDTO.getScope()),
                 vulnerability,
                 team,
-                codeRepo
+                codeRepo,
+                pathRegex
         );
         suppressRule = suppressRuleRepository.save(suppressRule);
         this.applySuppressRule(suppressRule);
@@ -88,18 +104,28 @@ public class CreateSuppressRuleService {
     }
 
     private void applySuppressRule(SuppressRule suppressRule) {
-        List<Finding> findingsToSuppress = new ArrayList<>();
-        switch (suppressRule.getScope()) {
-            case GLOBAL:
-                findingsToSuppress = findFindingService.findByVulnerability(suppressRule.getVulnerability());
-                break;
-            case TEAM:
-                findingsToSuppress = findFindingService.findByVulnerabilityAndTeam(suppressRule.getTeam(), suppressRule.getVulnerability());
-                break;
-            case PROJECT:
-                findingsToSuppress = findFindingService.findbyVulnerabilityAndCodeRepo(suppressRule.getCodeRepo(), suppressRule.getVulnerability());
-                break;
+        List<Finding> findingsToSuppress = switch (suppressRule.getScope()) {
+            case GLOBAL -> findFindingService.findByVulnerability(suppressRule.getVulnerability());
+            case TEAM ->
+                    findFindingService.findByVulnerabilityAndTeam(suppressRule.getTeam(), suppressRule.getVulnerability());
+            case PROJECT ->
+                    findFindingService.findbyVulnerabilityAndCodeRepo(suppressRule.getCodeRepo(), suppressRule.getVulnerability());
+        };
+
+        // Get findings based on scope
+
+        // Filter findings by path regex if specified
+        if (suppressRule.getPathRegex() != null && !suppressRule.getPathRegex().isEmpty()) {
+            Pattern pattern = Pattern.compile(suppressRule.getPathRegex());
+            findingsToSuppress = findingsToSuppress.stream()
+                    .filter(finding -> {
+                        String filePath = finding.getLocation(); // Assuming Finding has a getFilePath method
+                        return filePath != null && pattern.matcher(filePath).matches();
+                    })
+                    .collect(Collectors.toList());
         }
+
+        // Suppress matching findings
         for (Finding finding : findingsToSuppress) {
             updateFindingService.suppressFinding(finding, Finding.SuppressedReason.WONT_FIX.toString());
             log.info("[SuppressRule] Suppressed finding {} in project {}", finding.getVulnerability().getName(), finding.getCodeRepo().getName());
