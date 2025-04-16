@@ -22,6 +22,7 @@ public class TeamFindingAndVulnsMapper {
             dto.setDescription(finding.getVulnerability().getDescription());
             dto.setExplanation(finding.getExplanation());
             dto.setRecommendation(finding.getVulnerability().getRecommendation());
+            dto.setEpss(finding.getVulnerability().getEpss());
 
 
             if (finding.getCodeRepo() != null) {
