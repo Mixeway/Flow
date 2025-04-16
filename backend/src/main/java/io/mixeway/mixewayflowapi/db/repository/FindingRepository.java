@@ -13,7 +13,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @Repository
 public interface FindingRepository extends JpaRepository<Finding, Long> {
@@ -80,11 +82,23 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
     @Query(value = "SELECT * FROM combined_items_view", nativeQuery = true)
     List<ItemProjection> findCombinedItemsForAdmin();
 
-    @Query("SELECT f FROM Finding f WHERE f.codeRepo IN :codeRepos")
-    Page<Finding> findByCodeReposPageable(@Param("codeRepos") List<CodeRepo> codeRepos, Pageable pageable);
+    @Query("SELECT f FROM Finding f " +
+           "JOIN f.vulnerability v " +
+           "WHERE f.codeRepo IN :codeRepos " +
+           "AND (COALESCE(:severity, f.severity) = f.severity) " +
+           "AND (COALESCE(:source, f.source) = f.source) " +
+           "AND (COALESCE(:status, f.status) = f.status) " +
+           "AND (:epss IS NULL OR v.epss >= :epss)")
+    Page<Finding> findByCodeReposPageable(@Param("codeRepos") List<CodeRepo> codeRepos, Pageable pageable,  @Param("severity") String severity, @Param("source") String source, @Param("status") String status, @Param("epss") BigDecimal epss);
 
-    @Query("SELECT f FROM Finding f WHERE f.cloudSubscription IN :cloudSubscriptions")
-    Page<Finding> findByCloudSubscriptionsPageable(@Param("cloudSubscriptions") List<CloudSubscription> cloudSubscriptions, Pageable pageable);
+    @Query("SELECT f FROM Finding f " +
+           "JOIN f.vulnerability v " +
+           "WHERE f.cloudSubscription IN :cloudSubscriptions " +
+           "AND (COALESCE(:severity, f.severity) = f.severity) " +
+           "AND (COALESCE(:source, f.source) = f.source) " +
+           "AND (COALESCE(:status, f.status) = f.status) " +
+           "AND (:epss IS NULL OR v.epss >= :epss)")
+    Page<Finding> findByCloudSubscriptionsPageable(@Param("cloudSubscriptions") List<CloudSubscription> cloudSubscriptions, Pageable pageable, @Param("severity") String severity, @Param("source") String source, @Param("status") String status, @Param("epss") BigDecimal epss);
 
 }
 

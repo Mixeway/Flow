@@ -17,6 +17,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @Validated
@@ -38,12 +39,12 @@ public class FindingsByTeamController {
 
     @PreAuthorize("hasAuthority('ADMIN')")
     @GetMapping(value = "/api/v1/teamfindings/{remoteIdentifier}")
-    public ResponseEntity<Page<TeamFindingsAndVulnsResponseDto>> getTeamFindings(@RequestHeader("X-API-KEY") String apiKey, @PathVariable("remoteIdentifier") String remoteIdentifier, Principal principal, Pageable pageable) {
+    public ResponseEntity<Page<TeamFindingsAndVulnsResponseDto>> getTeamFindings(@RequestHeader("X-API-KEY") String apiKey, @PathVariable("remoteIdentifier") String remoteIdentifier, @RequestParam Map<String, String> filters, Principal principal, Pageable pageable) {
         try {
             if (!findingsByTeamService.isValidApiKey(apiKey)) {
                 return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
             }
-            return new ResponseEntity<>(findingsByTeamService.getCloudAndRepoFindingsAndVulns(remoteIdentifier, principal, pageable), HttpStatus.OK);
+            return new ResponseEntity<>(findingsByTeamService.getCloudAndRepoFindingsAndVulns(remoteIdentifier, principal, pageable, filters), HttpStatus.OK);
         } catch (Exception e){
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }

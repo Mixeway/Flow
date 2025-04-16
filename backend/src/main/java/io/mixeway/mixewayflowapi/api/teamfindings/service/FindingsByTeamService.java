@@ -25,8 +25,10 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -103,7 +105,7 @@ public class FindingsByTeamService {
         }
     }
 
-    public Page<TeamFindingsAndVulnsResponseDto> getCloudAndRepoFindingsAndVulns(String remoteIdentifier, Principal principal, Pageable pageable) {
+    public Page<TeamFindingsAndVulnsResponseDto> getCloudAndRepoFindingsAndVulns(String remoteIdentifier, Principal principal, Pageable pageable, Map<String, String> filters) {
         List<Team> teams = findTeamService.findByRemoteId(remoteIdentifier);
 
         if (teams.isEmpty()) {
@@ -118,8 +120,14 @@ public class FindingsByTeamService {
                 .flatMap(team -> findCloudSubscriptionService.getByTeam(team.getId(), principal).stream())
                 .collect(Collectors.toList());
 
-        Page<Finding> codeRepoFindingsPage = findingRepository.findByCodeReposPageable(codeRepos, pageable);
-        Page<Finding> cloudSubscriptionFindingsPage = findingRepository.findByCloudSubscriptionsPageable(cloudSubscriptions, pageable);
+        String severity = filters.getOrDefault("severity", null);
+        String source = filters.getOrDefault("source", null);
+        String status = filters.getOrDefault("status", null);
+        String epssString = filters.getOrDefault("epss", null);
+        BigDecimal epss = (epssString != null) ? new BigDecimal(epssString) : null;
+
+        Page<Finding> codeRepoFindingsPage = findingRepository.findByCodeReposPageable(codeRepos, pageable, severity, source, status, epss);
+        Page<Finding> cloudSubscriptionFindingsPage = findingRepository.findByCloudSubscriptionsPageable(cloudSubscriptions, pageable, severity, source, status, epss);
 
         List<Finding> combinedFindings = Stream.concat(
                 codeRepoFindingsPage.getContent().stream(),

@@ -3,6 +3,8 @@ package io.mixeway.mixewayflowapi.api.teamfindings.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
+import java.math.BigDecimal;
+
 @Data
 public class TeamFindingsAndVulnsResponseDto {
     Long id;
@@ -18,7 +20,8 @@ public class TeamFindingsAndVulnsResponseDto {
     String inserted;
     @JsonProperty("last_seen")
     String lastSeen;
-    String Description;
-    String Explanation;
-    String Recommendation;
+    String description;
+    String explanation;
+    String recommendation;
+    BigDecimal epss;
 }
