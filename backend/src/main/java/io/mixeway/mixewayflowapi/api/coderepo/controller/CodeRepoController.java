@@ -30,7 +30,7 @@ public class CodeRepoController {
     private final CreateCodeRepoService createCodeRepoService;
     private final CodeRepoApiService codeRepoApiService;
 
-    @PreAuthorize("hasAuthority('TEAM_MANAGER')")
+    @PreAuthorize("hasAuthority('USER')")
     @PostMapping(value= "/api/v1/coderepo/create/gitlab")
     public ResponseEntity<StatusDTO> createCodeRepoGitlab(@Valid @RequestBody CreateCodeRepoRequestDto createCodeRepoRequestDto, Principal principal){
         try {
@@ -42,7 +42,7 @@ public class CodeRepoController {
             return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
         }
     }
-    @PreAuthorize("hasAuthority('TEAM_MANAGER')")
+    @PreAuthorize("hasAuthority('USER')")
     @PostMapping(value= "/api/v1/coderepo/create/github")
     public ResponseEntity<StatusDTO> createCodeRepoGitHub(@Valid @RequestBody CreateCodeRepoRequestDto createCodeRepoRequestDto, Principal principal){
         try {
@@ -85,7 +85,7 @@ public class CodeRepoController {
         }
     }
 
-    @PreAuthorize("hasAuthority('TEAM_MANAGER')")
+    @PreAuthorize("hasAuthority('USER')")
     @GetMapping(value= "/api/v1/coderepo/{id}/run")
     public ResponseEntity<StatusDTO> runScan(@PathVariable("id") Long id, Principal principal){
         try {

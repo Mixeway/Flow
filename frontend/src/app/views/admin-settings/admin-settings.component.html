@@ -1,9 +1,9 @@
 <c-row xmlns="http://www.w3.org/1999/html">
     <c-col class="xs-12">
-        <c-card>
+        <c-card class="admin-card">
             <c-card-body>
                 <c-tabs [activeItemKey]="0">
-                    <c-tabs-list variant="underline-border">
+                    <c-tabs-list variant="underline-border" class="border-bottom">
                         <button cTab [itemKey]="0" class="d-flex align-items-center">
                             <svg cIcon name="cil-bug" class="me-2"></svg> Scanner Configurations
                         </button>
@@ -13,14 +13,17 @@
                         <button cTab [itemKey]="2" class="d-flex align-items-center">
                             <svg cIcon name="cil-contact" class="me-2"></svg> Authentication
                         </button>
+                        <button cTab [itemKey]="3" class="d-flex align-items-center">
+                            <svg cIcon name="cil-building" class="me-2"></svg> Organizations
+                        </button>
                     </c-tabs-list>
                     <c-tabs-content>
                         <c-tab-panel class="p-4" [itemKey]="0">
                             <!-- Scanner Configuration -->
                             <div class="scanner-sections">
                                 <!-- Section 1: Software Component Analysis -->
-                                <div class="config-section p-4 mb-4 bg-light rounded shadow-sm">
-                                    <h4 class="mb-3 text-primary">Software Component Analysis</h4>
+                                <div class="config-section p-4 mb-4 rounded shadow-sm">
+                                    <h4 class="mb-3 section-title">Software Component Analysis</h4>
                                     <form [gutter]="3" [formGroup]="scaConfigForm" novalidate cForm cRow class="needs-validation">
                                         <div class="sca-options mb-4">
                                             <c-form-check [switch]="true" class="mb-3">
@@ -47,7 +50,7 @@
                                                 <label cFormCheckLabel for="external" class="ms-2">External Dependency Track</label>
                                             </c-form-check>
 
-                                            <div *ngIf="isExternalDTChecked" class="external-dt-config p-3 border rounded bg-white">
+                                            <div *ngIf="isExternalDTChecked" class="external-dt-config p-3 border rounded config-input-section">
                                                 <div class="mb-3">
                                                     <label cLabel for="inputExternalDTUrl">Dependency Track URL</label>
                                                     <input formControlName="scaApiUrl" cFormControl id="inputExternalDTUrl" type="url" class="form-control">
@@ -78,8 +81,8 @@
                                 </div>
 
                                 <!-- Section 2: SAST -->
-                                <div class="config-section p-4 mb-4 bg-light rounded shadow-sm">
-                                    <h4 class="mb-3 text-primary">Static Application Security Testing (SAST)</h4>
+                                <div class="config-section p-4 mb-4 rounded shadow-sm">
+                                    <h4 class="mb-3 section-title">Static Application Security Testing (SAST)</h4>
                                     <div class="sast-options">
                                         <c-form-check [switch]="true" class="mb-3">
                                             <input cFormCheckInput id="bearer" name="sast" type="checkbox" [(ngModel)]="sast" [checked]="sast === 'bearer'" (change)="onSastChange('bearer')" disabled />
@@ -96,8 +99,8 @@
                                 </div>
 
                                 <!-- Section 3: IAC -->
-                                <div class="config-section p-4 mb-4 bg-light rounded shadow-sm">
-                                    <h4 class="mb-3 text-primary">Infrastructure as Code (IAC)</h4>
+                                <div class="config-section p-4 mb-4 rounded shadow-sm">
+                                    <h4 class="mb-3 section-title">Infrastructure as Code (IAC)</h4>
                                     <div class="iac-options">
                                         <c-form-check [switch]="true" class="mb-3">
                                             <input cFormCheckInput id="kics" name="iac" type="checkbox" [(ngModel)]="iac" [checked]="iac === 'kics'" (change)="onIacChange('kics')" disabled/>
@@ -114,8 +117,8 @@
                                 </div>
 
                                 <!-- Section 4: Secrets Leakage -->
-                                <div class="config-section p-4 mb-4 bg-light rounded shadow-sm">
-                                    <h4 class="mb-3 text-primary">Secrets Leakage Detection</h4>
+                                <div class="config-section p-4 mb-4 rounded shadow-sm">
+                                    <h4 class="mb-3 section-title">Secrets Leakage Detection</h4>
                                     <div class="secrets-options">
                                         <c-form-check [switch]="true" class="mb-3">
                                             <input cFormCheckInput id="gitleaks" name="secretsLeakage" type="checkbox" [(ngModel)]="secretsLeakage" [checked]="secretsLeakage === 'gitleaks'" (change)="onSecretsLeakageChange('gitleaks')" disabled/>
@@ -132,8 +135,8 @@
                                 </div>
                             </div>
                             <!-- Section 5: Wiz Scanner -->
-                            <div class="config-section p-4 mb-4 bg-light rounded shadow-sm">
-                                <h4 class="mb-3 text-primary">Wiz Scanner Configuration</h4>
+                            <div class="config-section p-4 mb-4 rounded shadow-sm">
+                                <h4 class="mb-3 section-title">Wiz Scanner Configuration</h4>
                                 <form [gutter]="3" [formGroup]="wizConfigForm" novalidate cForm cRow class="needs-validation">
                                     <div class="wiz-options mb-4">
                                         <c-form-check [switch]="true" class="mb-3">
@@ -148,7 +151,7 @@
                                             <label cFormCheckLabel for="wizEnabled" class="ms-2">Enable Wiz Scanner</label>
                                         </c-form-check>
 
-                                        <div *ngIf="isWizEnabled" class="wiz-config p-3 border rounded bg-white">
+                                        <div *ngIf="isWizEnabled" class="wiz-config p-3 border rounded config-input-section">
                                             <div class="mb-3">
                                                 <label cLabel for="wizClientId">Client ID</label>
                                                 <input formControlName="clientId" cFormControl id="wizClientId" type="text" class="form-control">
@@ -172,15 +175,15 @@
                             <!-- SMTP and Notifications -->
                             <div class="notification-sections">
                                 <!-- Section 1: SMTP -->
-                                <div class="config-section p-4 mb-4 bg-light rounded shadow-sm">
-                                    <h4 class="mb-3 text-primary">SMTP Configuration</h4>
+                                <div class="config-section p-4 mb-4 rounded shadow-sm">
+                                    <h4 class="mb-3 section-title">SMTP Configuration</h4>
                                     <form [gutter]="3" novalidate cForm [formGroup]="smtpConfigForm" cRow class="needs-validation">
                                         <c-form-check [switch]="true" class="mb-4">
                                             <input formControlName="enabled" cFormCheckInput id="smtpToggle" type="checkbox" (change)="onSmtpToggleChange()" />
                                             <label cFormCheckLabel for="smtpToggle" class="ms-2">Enable SMTP</label>
                                         </c-form-check>
 
-                                        <div *ngIf="smtpEnabled" class="smtp-config p-3 border rounded bg-white">
+                                        <div *ngIf="smtpEnabled" class="smtp-config p-3 border rounded config-input-section">
                                             <div class="row">
                                                 <div class="col-md-6 mb-3">
                                                     <label cLabel for="smtpHost">SMTP Host</label>
@@ -227,8 +230,8 @@
                                 </div>
 
                                 <!-- Section 2: Other Notification Services -->
-                                <div class="config-section p-4 bg-light rounded shadow-sm">
-                                    <h4 class="mb-3 text-primary">Additional Notification Services</h4>
+                                <div class="config-section p-4 rounded shadow-sm">
+                                    <h4 class="mb-3 section-title">Additional Notification Services</h4>
                                     <div class="notification-options">
                                         <c-form-check [switch]="true" class="mb-3">
                                             <input cFormCheckInput disabled type="checkbox" />
@@ -251,8 +254,8 @@
 
                         <c-tab-panel class="p-4" [itemKey]="2">
                             <!-- Authentication -->
-                            <div class="config-section p-4 bg-light rounded shadow-sm">
-                                <h4 class="mb-3 text-primary">Authentication Settings</h4>
+                            <div class="config-section p-4 rounded shadow-sm">
+                                <h4 class="mb-3 section-title">Authentication Settings</h4>
                                 <div class="col-md-6">
                                     <label cLabel for="authType" class="mb-2">Authentication Type</label>
                                     <select cSelect id="authType" [(ngModel)]="authType" required class="form-select">
@@ -261,6 +264,115 @@
                                     </select>
                                     <c-form-feedback [valid]="false">Please select an authentication type.</c-form-feedback>
                                 </div>
+                            </div>
+                        </c-tab-panel>
+
+                        <c-tab-panel class="p-4" [itemKey]="3">
+                            <!-- Organizations Management -->
+                            <div class="config-section p-4 mb-4 rounded shadow-sm">
+                                <div class="d-flex justify-content-between mb-4 flex-wrap">
+                                    <h4 class="mb-3 mb-sm-0 section-title">Organizations Management</h4>
+                                    <button cButton color="primary" (click)="openNewOrgModal()">
+                                        <svg cIcon name="cil-plus" class="me-2"></svg>Add Organization
+                                    </button>
+                                </div>
+
+                                <!-- Organizations Table -->
+                                <div class="table-responsive table-container">
+                                    <table cTable class="align-middle table-striped">
+                                        <thead class="table-header">
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Plan</th>
+                                            <th>Created</th>
+                                            <th>Teams</th>
+                                            <th>Repositories</th>
+                                            <th>Users</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr *ngFor="let org of organizations">
+                                            <td>{{ org.name }}</td>
+                                            <td>
+                                                <c-badge [color]="getPlanBadgeColor(org.planType)">
+                                                    {{ org.planType }}
+                                                </c-badge>
+                                            </td>
+                                            <td>{{ org.createdDate | date:'medium' }}</td>
+                                            <td>{{ org.teamCount }} / {{ getPlanTeamLimit(org.planType) }}</td>
+                                            <td>{{ org.repoCount }}</td>
+                                            <td>{{ org.userCount }}</td>
+                                            <td>
+                                                <c-badge [color]="org.active ? 'success' : 'danger'">
+                                                    {{ org.active ? 'Active' : 'Inactive' }}
+                                                </c-badge>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group">
+                                                    <button cButton color="primary" size="sm" (click)="editOrganization(org)" class="action-btn" title="Edit">
+                                                        <svg cIcon name="cil-pencil"></svg>
+                                                    </button>
+                                                    <button cButton color="danger" size="sm" (click)="confirmDeleteOrganization(org)" class="action-btn" title="Delete">
+                                                        <svg cIcon name="cil-trash"></svg>
+                                                    </button>
+                                                    <button cButton color="info" size="sm" (click)="viewOrganizationDetails(org)" class="action-btn" title="View Details">
+                                                        <svg cIcon name="cil-list"></svg>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr *ngIf="!organizations || organizations.length === 0">
+                                            <td colspan="8" class="text-center py-4">No organizations found</td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Application Run Mode Section -->
+                            <div class="config-section p-4 mb-4 rounded shadow-sm">
+                                <h4 class="mb-3 section-title">Application Run Mode</h4>
+                                <div class="mb-4">
+                                    <p>Current Mode:
+                                        <c-badge [color]="appRunMode === 'SAAS' ? 'success' : 'info'">
+                                            {{ appRunMode }}
+                                        </c-badge>
+                                    </p>
+                                    <p class="text-muted">Select how the application should operate:</p>
+                                </div>
+                                <div class="d-flex flex-column flex-md-row">
+                                    <c-form-check class="me-0 me-md-4 mb-3 mb-md-0">
+                                        <input
+                                                cFormCheckInput
+                                                id="standaloneMode"
+                                                type="radio"
+                                                name="runMode"
+                                                [checked]="appRunMode === 'STANDALONE'"
+                                                (change)="changeRunMode('STANDALONE')"
+                                        />
+                                        <label cFormCheckLabel for="standaloneMode">
+                                            <strong>Standalone Mode</strong>
+                                            <div class="text-muted small">Single instance deployment with no subscription limits</div>
+                                        </label>
+                                    </c-form-check>
+                                    <c-form-check>
+                                        <input
+                                                cFormCheckInput
+                                                id="saasMode"
+                                                type="radio"
+                                                name="runMode"
+                                                [checked]="appRunMode === 'SAAS'"
+                                                (change)="changeRunMode('SAAS')"
+                                        />
+                                        <label cFormCheckLabel for="saasMode">
+                                            <strong>SaaS Mode</strong>
+                                            <div class="text-muted small">Multi-tenant deployment with subscription plans</div>
+                                        </label>
+                                    </c-form-check>
+                                </div>
+                                <button cButton color="primary" class="mt-3" (click)="saveRunMode()">Save Run Mode</button>
                             </div>
                         </c-tab-panel>
                     </c-tabs-content>
@@ -284,3 +396,188 @@
     </c-toast>
 </c-toaster>
 
+<!-- Organization Modal -->
+<c-modal [visible]="orgModalVisible" (visibleChange)="orgModalVisible = $event">
+    <c-modal-header>
+        <h5 cModalTitle>{{ editMode ? 'Edit Organization' : 'Create Organization' }}</h5>
+        <button (click)="orgModalVisible = false" cButtonClose></button>
+    </c-modal-header>
+    <c-modal-body>
+        <form [formGroup]="organizationForm" cForm>
+            <div class="mb-3">
+                <label cLabel for="orgName">Organization Name</label>
+                <input cFormControl id="orgName" formControlName="name" type="text" placeholder="Enter organization name">
+                <div *ngIf="organizationForm.get('name')?.invalid && organizationForm.get('name')?.touched" class="text-danger">
+                    Organization name is required
+                </div>
+            </div>
+            <div class="mb-3">
+                <label cLabel for="planType">Subscription Plan</label>
+                <select cSelect id="planType" formControlName="planType">
+                    <option value="FREE">Free Plan</option>
+                    <option value="SMALL_COMPANY">Small Company</option>
+                    <option value="ENTERPRISE">Enterprise</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label cLabel for="adminUser">Assign Admin User</label>
+                <select cSelect id="adminUser" formControlName="adminUserId">
+                    <option value="">Select a user</option>
+                    <option *ngFor="let user of availableUsers" [value]="user.id">{{ user.username }}</option>
+                </select>
+                <div *ngIf="organizationForm.get('adminUserId')?.invalid && organizationForm.get('adminUserId')?.touched" class="text-danger">
+                    Admin user is required
+                </div>
+            </div>
+            <div class="mb-3 form-check">
+                <input cFormCheckInput id="activeStatus" formControlName="active" type="checkbox">
+                <label cFormCheckLabel for="activeStatus">Active</label>
+            </div>
+        </form>
+    </c-modal-body>
+    <c-modal-footer>
+        <button cButton color="secondary" (click)="orgModalVisible = false">
+            Cancel
+        </button>
+        <button cButton color="primary" (click)="saveOrganization()" [disabled]="organizationForm.invalid">
+            {{ editMode ? 'Update' : 'Create' }}
+        </button>
+    </c-modal-footer>
+</c-modal>
+
+<!-- Delete Confirmation Modal -->
+<c-modal [visible]="deleteModalVisible" (visibleChange)="deleteModalVisible = $event">
+    <c-modal-header>
+        <h5 cModalTitle>Confirm Delete</h5>
+        <button (click)="deleteModalVisible = false" cButtonClose></button>
+    </c-modal-header>
+    <c-modal-body>
+        <p>Are you sure you want to delete organization <strong>{{ selectedOrg?.name }}</strong>?</p>
+        <p class="text-danger">This action cannot be undone and will remove all associated data.</p>
+    </c-modal-body>
+    <c-modal-footer>
+        <button cButton color="secondary" (click)="deleteModalVisible = false">
+            Cancel
+        </button>
+        <button cButton color="danger" (click)="deleteOrganization()">
+            Delete
+        </button>
+    </c-modal-footer>
+</c-modal>
+
+<!-- Organization Details Modal -->
+<c-modal [visible]="detailsModalVisible" (visibleChange)="detailsModalVisible = $event" size="lg">
+    <c-modal-header>
+        <h5 cModalTitle>{{ selectedOrg?.name }} Details</h5>
+        <button (click)="detailsModalVisible = false" cButtonClose></button>
+    </c-modal-header>
+    <c-modal-body *ngIf="selectedOrg">
+        <div class="row">
+            <div class="col-md-6">
+                <h6 class="details-section-title">General Information</h6>
+                <div class="table-responsive">
+                    <table cTable small striped>
+                        <tbody>
+                        <tr>
+                            <th>Organization ID</th>
+                            <td>{{ selectedOrg.id }}</td>
+                        </tr>
+                        <tr>
+                            <th>Name</th>
+                            <td>{{ selectedOrg.name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Created</th>
+                            <td>{{ selectedOrg.createdDate | date:'medium' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Status</th>
+                            <td>
+                                <c-badge [color]="selectedOrg.active ? 'success' : 'danger'">
+                                    {{ selectedOrg.active ? 'Active' : 'Inactive' }}
+                                </c-badge>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h6 class="details-section-title">Subscription Details</h6>
+                <div class="table-responsive">
+                    <table cTable small striped>
+                        <tbody>
+                        <tr>
+                            <th>Plan</th>
+                            <td>
+                                <c-badge [color]="getPlanBadgeColor(selectedOrg.planType)">
+                                    {{ selectedOrg.planType }}
+                                </c-badge>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Team Limit</th>
+                            <td>{{ selectedOrg.teamCount }} / {{ getPlanTeamLimit(selectedOrg.planType) }}</td>
+                        </tr>
+                        <tr>
+                            <th>Repository Limit</th>
+                            <td>{{ selectedOrg.repoCount }} / {{ getPlanRepoLimit(selectedOrg.planType) * getPlanTeamLimit(selectedOrg.planType) }}</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Teams -->
+        <h6 class="mt-4 details-section-title">Teams</h6>
+        <div class="table-responsive">
+            <table cTable small striped>
+                <thead class="table-header">
+                <tr>
+                    <th>Name</th>
+                    <th>Repositories</th>
+                    <th>Users</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr *ngFor="let team of selectedOrgTeams">
+                    <td>{{ team.name }}</td>
+                    <td>{{ team.repoCount }} / {{ getPlanRepoLimit(selectedOrg.planType) }}</td>
+                    <td>{{ team.userCount }}</td>
+                </tr>
+                <tr *ngIf="!selectedOrgTeams || selectedOrgTeams.length === 0">
+                    <td colspan="3" class="text-center">No teams found</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Users -->
+        <h6 class="mt-4 details-section-title">Users</h6>
+        <div class="table-responsive">
+            <table cTable small striped>
+                <thead class="table-header">
+                <tr>
+                    <th>Username</th>
+                    <th>Role</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr *ngFor="let user of selectedOrgUsers">
+                    <td>{{ user.username }}</td>
+                    <td>{{ user.highestRole }}</td>
+                </tr>
+                <tr *ngIf="!selectedOrgUsers || selectedOrgUsers.length === 0">
+                    <td colspan="2" class="text-center">No users found</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </c-modal-body>
+    <c-modal-footer>
+        <button cButton color="secondary" (click)="detailsModalVisible = false">
+            Close
+        </button>
+    </c-modal-footer>
+</c-modal>

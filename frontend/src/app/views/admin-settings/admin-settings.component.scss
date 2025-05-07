@@ -1,27 +1,118 @@
-label {font-size: 16px; font-weight: bold}
+// Theme variables
+:root {
+  --card-bg: var(--cui-card-bg, #fff);
+  --card-text: var(--cui-card-color, #4f5d73);
+  --card-border: var(--cui-card-border-color, rgba(0,0,21,.125));
+  --config-section-bg: var(--cui-card-cap-bg, rgba(0,0,21,.03));
+  --config-section-hover: rgba(0,0,21,.05);
+  --config-section-shadow: 0 0.125rem 0.25rem rgba(0,0,21,.075);
+  --config-section-shadow-hover: 0 0.5rem 1rem rgba(0,0,21,.15);
+  --input-section-bg: var(--cui-input-bg, #fff);
+  --input-section-border: var(--cui-input-border-color, #b1b7c1);
+  --table-header-bg: var(--cui-table-active-bg, rgba(0,0,21,.1));
+  --table-header-color: var(--cui-table-active-color, #4f5d73);
+  --table-border-color: var(--cui-table-border-color, #d8dbe0);
+  --table-striped-bg: var(--cui-table-striped-bg, rgba(0,0,0,.02));
+  --primary-color: #321fdb;
+}
+
+// Main component styling
+.admin-card {
+  margin-bottom: 1.5rem;
+}
+
+// Section styling
 .config-section {
+  background-color: var(--config-section-bg);
+  border: 1px solid var(--card-border);
   transition: all 0.3s ease;
+  box-shadow: var(--config-section-shadow);
+
+  &:hover {
+    box-shadow: var(--config-section-shadow-hover);
+  }
 }
 
-.config-section:hover {
-  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+// Section titles
+.section-title, .details-section-title {
+  color: var(--primary-color);
+  font-weight: 600;
 }
 
-.external-dt-config,
-.smtp-config {
-  transition: all 0.3s ease;
-  background-color: #ffffff;
+// Input areas
+.config-input-section {
+  background-color: var(--input-section-bg);
+  border-color: var(--input-section-border);
 }
 
-.badge {
-  font-size: 0.75em;
+// Table styling
+.table-container {
+  border: 1px solid var(--table-border-color);
+  border-radius: 0.25rem;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+table {
+  margin-bottom: 0 !important;
+
+  &.table-striped > tbody > tr:nth-of-type(odd) {
+    background-color: var(--table-striped-bg);
+  }
+
+  &.align-middle td, &.align-middle th {
+    vertical-align: middle;
+  }
+}
+
+.table-header {
+  background-color: var(--table-header-bg);
+  color: var(--table-header-color);
+  font-weight: 600;
+}
+
+// Form elements
+label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
 }
 
 .form-control:focus {
-  border-color: #80bdff;
-  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  border-color: rgba(50, 31, 219, 0.5);
+  box-shadow: 0 0 0 0.2rem rgba(50, 31, 219, 0.25);
 }
 
-.text-primary {
-  color: #321fdb !important;
+// Action buttons
+.action-btn {
+  padding: 0.25rem 0.5rem;
+  line-height: 1;
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+// Modal adjustments
+.modal-body {
+  padding: 1.5rem;
+}
+
+// Badge styling adjustments
+.badge {
+  font-size: 0.75em;
+  font-weight: 500;
+  padding: 0.35em 0.65em;
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .config-section {
+    padding: 1rem !important;
+  }
+
+  .table-responsive {
+    border: 0;
+  }
 }

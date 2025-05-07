@@ -4,7 +4,7 @@ import {
     AccordionComponent,
     AccordionItemComponent,
     AlertComponent,
-    BadgeComponent,
+    BadgeComponent, ButtonCloseDirective,
     ButtonDirective,
     CardBodyComponent,
     CardComponent,
@@ -24,18 +24,24 @@ import {
     InputGroupTextDirective,
     ListGroupDirective,
     ListGroupItemDirective,
+    ModalBodyComponent,
+    ModalComponent,
+    ModalFooterComponent,
+    ModalHeaderComponent,
+    ModalTitleDirective,
     ProgressComponent,
     RowComponent,
     RowDirective,
     SpinnerComponent,
-    TabDirective,
+    TabDirective, TableDirective,
     TabPanelComponent,
     TabsComponent,
     TabsContentComponent,
     TabsListComponent,
     TemplateIdDirective,
     ToastBodyComponent,
-    ToastComponent, ToasterComponent,
+    ToastComponent,
+    ToasterComponent,
     ToastHeaderComponent,
     TooltipDirective,
     WidgetStatCComponent
@@ -44,26 +50,23 @@ import {ChartjsComponent} from "@coreui/angular-chartjs";
 import {DatePipe, NgForOf, NgIf} from "@angular/common";
 import {IconComponent, IconDirective} from "@coreui/icons-angular";
 import {NgxDatatableModule} from "@swimlane/ngx-datatable";
-import {FormBuilder, FormsModule, ReactiveFormsModule, Validators} from "@angular/forms";
+import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from "@angular/forms";
 import {map, startWith} from "rxjs/operators";
 import {of} from "rxjs";
 import {AuthService} from "../../service/AuthService";
 import {SettingsService} from "../../service/SettingsService";
 import {Router} from "@angular/router";
+import {UserService} from "../../service/UserService";
+import {AppConfigService} from "../../service/AppConfigService";
+import {OrganizationService} from "../../service/OrganizationService";
 
 @Component({
   selector: 'app-admin-settings',
   standalone: true,
     imports: [
-        AccordionButtonDirective,
-        AccordionComponent,
-        AccordionItemComponent,
-        AlertComponent,
         BadgeComponent,
         CardBodyComponent,
         CardComponent,
-        CardHeaderComponent,
-        ChartjsComponent,
         ColComponent,
         DatePipe,
         FormCheckComponent,
@@ -71,39 +74,35 @@ import {Router} from "@angular/router";
         FormCheckLabelDirective,
         FormLabelDirective,
         FormSelectDirective,
-        IconComponent,
         IconDirective,
-        InputGroupComponent,
-        InputGroupTextDirective,
-        ListGroupDirective,
-        ListGroupItemDirective,
         NgForOf,
         NgIf,
         NgxDatatableModule,
-        ProgressComponent,
         ReactiveFormsModule,
         RowComponent,
-        SpinnerComponent,
         TabDirective,
         TabPanelComponent,
         TabsComponent,
         TabsContentComponent,
         TabsListComponent,
-        TemplateIdDirective,
-        WidgetStatCComponent,
         FormFeedbackComponent,
         FormControlDirective,
         GutterDirective,
         FormDirective,
         RowDirective,
         FormsModule,
-        TooltipDirective,
-        FormTextDirective,
         ButtonDirective,
         ToastBodyComponent,
         ToastComponent,
         ToastHeaderComponent,
-        ToasterComponent
+        ToasterComponent,
+        ModalComponent,
+        ModalHeaderComponent,
+        ModalBodyComponent,
+        ModalFooterComponent,
+        ModalTitleDirective,
+        ButtonCloseDirective,
+        TableDirective
     ],
   templateUrl: './admin-settings.component.html',
   styleUrl: './admin-settings.component.scss'
@@ -136,6 +135,20 @@ export class AdminSettingsComponent implements OnInit{
     // For Wiz Configuration
     isWizEnabled: boolean = false;
     wizConfigForm: any;
+    // Organization management
+    organizations: any[] = [];
+    availableUsers: any[] = [];
+    selectedOrg: any = null;
+    selectedOrgTeams: any[] = [];
+    selectedOrgUsers: any[] = [];
+    orgModalVisible = false;
+    deleteModalVisible = false;
+    detailsModalVisible = false;
+    editMode = false;
+    organizationForm: FormGroup;
+
+    // Application run mode
+    appRunMode: string = 'SAAS';
 
 
     settings: any;
@@ -144,7 +157,10 @@ export class AdminSettingsComponent implements OnInit{
     authType: string = 'userPass';
 
     constructor(private fb: FormBuilder, private authService: AuthService, private settingsService: SettingsService,
-                private router: Router) {
+                private router: Router,
+                private organizationService: OrganizationService,
+                private appConfigService: AppConfigService,
+                private userService: UserService) {
         this.scaConfigForm = this.fb.group({
             scaTypeEmbedded: [true],
             scaTypeExternal: [false],
@@ -165,6 +181,13 @@ export class AdminSettingsComponent implements OnInit{
             clientId: [''],
             secret: ['']
         });
+        this.organizationForm = this.fb.group({
+            id: [null],
+            name: ['', Validators.required],
+            planType: ['FREE'],
+            adminUserId: ['', Validators.required],
+            active: [true]
+        });
     }
 
     ngOnInit() {
@@ -178,6 +201,9 @@ export class AdminSettingsComponent implements OnInit{
             }
         });
         this.loadSettings();
+        this.loadOrganizations();
+        this.loadAvailableUsers();
+        this.loadAppRunMode();
     }
     onWizToggleChange() {
         this.isWizEnabled = !this.isWizEnabled;
@@ -318,4 +344,208 @@ export class AdminSettingsComponent implements OnInit{
         this.percentage = !this.visible ? 0 : this.percentage;
     }
 
+    // Organizations Management Methods
+    loadOrganizations() {
+        this.organizationService.getAllOrganizations().subscribe({
+            next: (data) => {
+                this.organizations = data;
+            },
+            error: (error) => {
+                this.toastStatus = "danger";
+                this.toastMessage = "Failed to load organizations";
+                this.toggleToast();
+            }
+        });
+    }
+
+    loadAvailableUsers() {
+        this.userService.get().subscribe({
+            next: (data) => {
+                this.availableUsers = data;
+            },
+            error: (error) => {
+                console.error("Failed to load users:", error);
+            }
+        });
+    }
+
+    loadAppRunMode() {
+        this.appConfigService.getRunMode().subscribe({
+            next: (data) => {
+                this.appRunMode = data;
+            },
+            error: (error) => {
+                console.error("Failed to load run mode:", error);
+            }
+        });
+    }
+
+    openNewOrgModal() {
+        this.editMode = false;
+        this.organizationForm.reset({
+            planType: 'FREE',
+            active: true
+        });
+        this.orgModalVisible = true;
+    }
+
+
+    editOrganization(org: any) {
+        this.editMode = true;
+        this.selectedOrg = org;
+
+        // Get the admin user
+        this.organizationService.getOrganizationAdmin(org.id).subscribe({
+            next: (user) => {
+                this.organizationForm.patchValue({
+                    id: org.id,
+                    name: org.name,
+                    planType: org.planType,
+                    adminUserId: user ? user.id : '',
+                    active: org.active
+                });
+                this.orgModalVisible = true;
+            },
+            error: (error) => {
+                this.toastStatus = "danger";
+                this.toastMessage = "Failed to load organization admin";
+                this.toggleToast();
+            }
+        });
+    }
+
+    saveOrganization() {
+        if (this.organizationForm.valid) {
+            const orgData = this.organizationForm.value;
+
+            if (this.editMode) {
+                this.organizationService.updateOrganization(orgData).subscribe({
+                    next: () => {
+                        this.orgModalVisible = false;
+                        this.loadOrganizations();
+                        this.toastStatus = "success";
+                        this.toastMessage = "Organization updated successfully";
+                        this.toggleToast();
+                    },
+                    error: (error) => {
+                        this.toastStatus = "danger";
+                        this.toastMessage = "Failed to update organization";
+                        this.toggleToast();
+                    }
+                });
+            } else {
+                this.organizationService.createOrganization(orgData).subscribe({
+                    next: () => {
+                        this.orgModalVisible = false;
+                        this.loadOrganizations();
+                        this.toastStatus = "success";
+                        this.toastMessage = "Organization created successfully";
+                        this.toggleToast();
+                    },
+                    error: (error) => {
+                        this.toastStatus = "danger";
+                        this.toastMessage = "Failed to create organization";
+                        this.toggleToast();
+                    }
+                });
+            }
+        }
+    }
+
+    confirmDeleteOrganization(org: any) {
+        this.selectedOrg = org;
+        this.deleteModalVisible = true;
+    }
+
+    deleteOrganization() {
+        if (this.selectedOrg) {
+            this.organizationService.deleteOrganization(this.selectedOrg.id).subscribe({
+                next: () => {
+                    this.deleteModalVisible = false;
+                    this.loadOrganizations();
+                    this.toastStatus = "success";
+                    this.toastMessage = "Organization deleted successfully";
+                    this.toggleToast();
+                },
+                error: (error) => {
+                    this.toastStatus = "danger";
+                    this.toastMessage = "Failed to delete organization";
+                    this.toggleToast();
+                }
+            });
+        }
+    }
+
+    viewOrganizationDetails(org: any) {
+        this.selectedOrg = org;
+
+        // Load teams and users for the selected organization
+        this.organizationService.getOrganizationTeams(org.id).subscribe({
+            next: (teams) => {
+                this.selectedOrgTeams = teams;
+            },
+            error: (error) => {
+                console.error("Failed to load teams:", error);
+            }
+        });
+
+        this.organizationService.getOrganizationUsers(org.id).subscribe({
+            next: (users) => {
+                this.selectedOrgUsers = users;
+            },
+            error: (error) => {
+                console.error("Failed to load users:", error);
+            }
+        });
+
+        this.detailsModalVisible = true;
+    }
+
+    // Helper methods for organization display
+    getPlanBadgeColor(planType: string): string {
+        switch (planType) {
+            case 'FREE': return 'secondary';
+            case 'SMALL_COMPANY': return 'primary';
+            case 'ENTERPRISE': return 'success';
+            default: return 'info';
+        }
+    }
+
+    getPlanTeamLimit(planType: string): number {
+        switch (planType) {
+            case 'FREE': return 1;
+            case 'SMALL_COMPANY': return 5;
+            case 'ENTERPRISE': return 999999;
+            default: return 0;
+        }
+    }
+
+    getPlanRepoLimit(planType: string): number {
+        switch (planType) {
+            case 'FREE': return 5;
+            case 'SMALL_COMPANY': return 10;
+            case 'ENTERPRISE': return 999999;
+            default: return 0;
+        }
+    }
+
+    // Run Mode management
+    changeRunMode(mode: string) {
+        this.appRunMode = mode;
+    }
+
+    saveRunMode() {
+        this.appConfigService.setRunMode(this.appRunMode).subscribe({
+            next: () => {
+                this.toastStatus = "success";
+                this.toastMessage = "Application run mode updated successfully";
+                this.toggleToast();
+            },
+            error: (error) => {
+                this.toastStatus = "danger";
+                this.toastMessage = "Failed to update run mode";
+                this.toggleToast();
+            }
+        });
+    }
 }

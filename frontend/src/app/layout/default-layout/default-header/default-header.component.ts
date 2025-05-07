@@ -15,26 +15,31 @@ import {
   HeaderNavComponent,
   HeaderTogglerDirective,
   NavItemComponent,
-  NavLinkDirective,
+  NavLinkDirective, ProgressBarComponent,
   ProgressBarDirective,
   ProgressComponent,
   SidebarToggleDirective,
   TextColorDirective,
   ThemeDirective
 } from '@coreui/angular';
-import { NgStyle, NgTemplateOutlet } from '@angular/common';
+import {NgIf, NgStyle, NgTemplateOutlet} from '@angular/common';
 import { ActivatedRoute, RouterLink, RouterLinkActive } from '@angular/router';
 import { IconDirective } from '@coreui/icons-angular';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { delay, filter, map, tap } from 'rxjs/operators';
+import {AppConfigService} from "../../../service/AppConfigService";
 
 @Component({
   selector: 'app-default-header',
   templateUrl: './default-header.component.html',
   standalone: true,
-  imports: [ContainerComponent, HeaderTogglerDirective, SidebarToggleDirective, IconDirective, HeaderNavComponent, NavItemComponent, NavLinkDirective, RouterLink, RouterLinkActive, NgTemplateOutlet, BreadcrumbRouterComponent, ThemeDirective, DropdownComponent, DropdownToggleDirective, TextColorDirective, AvatarComponent, DropdownMenuDirective, DropdownHeaderDirective, DropdownItemDirective, BadgeComponent, DropdownDividerDirective, ProgressBarDirective, ProgressComponent, NgStyle]
+  imports: [ContainerComponent, HeaderTogglerDirective, SidebarToggleDirective, IconDirective, HeaderNavComponent, NavItemComponent, NavLinkDirective, RouterLink, RouterLinkActive, NgTemplateOutlet, BreadcrumbRouterComponent, ThemeDirective, DropdownComponent, DropdownToggleDirective, TextColorDirective, AvatarComponent, DropdownMenuDirective, DropdownHeaderDirective, DropdownItemDirective, BadgeComponent, DropdownDividerDirective, ProgressBarDirective, ProgressComponent, NgStyle, ProgressBarComponent, NgIf]
 })
 export class DefaultHeaderComponent extends HeaderComponent {
+
+  appInfo: any = null;
+  loading = true;
+
 
   readonly #activatedRoute: ActivatedRoute = inject(ActivatedRoute);
   readonly #colorModeService = inject(ColorModeService);
@@ -52,7 +57,7 @@ export class DefaultHeaderComponent extends HeaderComponent {
     return this.colorModes.find(mode=> mode.name === currentMode)?.icon ?? 'cilSun';
   });
 
-  constructor() {
+  constructor(private appInfoService: AppConfigService) {
     super();
     this.#colorModeService.localStorageItemName.set('coreui-free-angular-admin-template-theme-default');
     this.#colorModeService.eventName.set('ColorSchemeChange');
@@ -68,6 +73,31 @@ export class DefaultHeaderComponent extends HeaderComponent {
         takeUntilDestroyed(this.#destroyRef)
       )
       .subscribe();
+    this.loadAppInfo();
+  }
+
+  // Add this method
+  loadAppInfo(): void {
+    this.loading = true;
+    this.appInfoService.getAppModeInfo().subscribe({
+      next: (data) => {
+        this.appInfo = data;
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error('Failed to load app info:', err);
+        this.loading = false;
+      }
+    });
+  }
+
+  getPlanBadgeColor(planType: string): string {
+    switch (planType) {
+      case 'FREE': return 'secondary';
+      case 'SMALL_COMPANY': return 'primary';
+      case 'ENTERPRISE': return 'success';
+      default: return 'info';
+    }
   }
 
   @Input() sidebarId: string = 'sidebar1';

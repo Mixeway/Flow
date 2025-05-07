@@ -17,7 +17,7 @@
                         <span *ngIf="scanRunning" class="scan-text ms-2">Scanning</span>
                     </div>
                 </div>
-                <div class="repo-actions" *ngIf="userRole === 'ADMIN' || userRole === 'TEAM_MANAGER'">
+                <div class="repo-actions" >
                     <button
                             *ngIf="!scanRunning"
                             cButton
@@ -30,7 +30,7 @@
                         <svg cIcon name="cil-media-play" class="me-1"></svg>
                         Scan
                     </button>
-                    <button
+                    <button *ngIf="userRole === 'ADMIN' || userRole === 'TEAM_MANAGER'"
                             cButton
                             color="primary"
                             variant="ghost"

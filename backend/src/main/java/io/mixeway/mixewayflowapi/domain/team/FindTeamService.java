@@ -87,4 +87,8 @@ public class FindTeamService {
     public List<Team> findByRemoteId(String remoteId) {
         return teamRepository.findByRemoteIdentifier(remoteId);
     }
+    // Add this method to your FindTeamService class
+    public List<Team> findByOrganizationId(Long organizationId) {
+        return teamRepository.findByOrganizationId(organizationId);
+    }
 }

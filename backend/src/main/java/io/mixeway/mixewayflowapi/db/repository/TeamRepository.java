@@ -30,4 +30,16 @@ public interface TeamRepository extends CrudRepository<Team, Long>  {
     @Query(value = "DELETE FROM users_teams WHERE team_id = :teamId", nativeQuery = true)
     void removeAllUserAssociations(@Param("teamId") Long teamId);
 
+
+    // Add to TeamRepository.java
+    long countByOrganizationId(Long organizationId);
+
+    @Query("SELECT COUNT(cr) FROM CodeRepo cr WHERE cr.team.id = :teamId")
+    long countRepositoriesByTeamId(@Param("teamId") Long teamId);
+
+    @Query("SELECT t FROM Team t WHERE t.organization.id = :organizationId")
+    List<Team> findByOrganizationId(@Param("organizationId") Long organizationId);
+
+
+
 }

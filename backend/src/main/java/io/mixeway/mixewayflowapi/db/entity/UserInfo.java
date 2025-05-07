@@ -53,6 +53,14 @@ public class UserInfo {
     @Column(name = "active", nullable = false)
     private boolean active;
 
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "users_organizations",
+            joinColumns = @JoinColumn(name = "user_info_id"),
+            inverseJoinColumns = @JoinColumn(name = "organization_id")
+    )
+    private final Set<Organization> organizations = new HashSet<>();
+
     // Private constructor for JPA
     public UserInfo() {
         this.id = 0;
@@ -130,5 +138,23 @@ public class UserInfo {
             return "USER";
         }
         return null; // or throw an exception if no role is found
+    }
+
+    // Add method to get organizations
+    public Set<Organization> getOrganizations() {
+        return this.organizations;
+    }
+
+    // Add method to assign organization
+    public void assignToOrganization(Organization organization) {
+        // Check if already assigned to this organization
+        if (!this.organizations.contains(organization)) {
+            this.organizations.add(organization);
+
+            // Update the other side of the relationship without calling back
+            if (!organization.getUsers().contains(this)) {
+                organization.getUsers().add(this);
+            }
+        }
     }
 }

@@ -1,10 +1,12 @@
 package io.mixeway.mixewayflowapi.domain.user;
 
 import io.mixeway.mixewayflowapi.api.user.dto.CreateUserRequestDto;
+import io.mixeway.mixewayflowapi.config.AppConfigService;
 import io.mixeway.mixewayflowapi.db.entity.Team;
 import io.mixeway.mixewayflowapi.db.entity.UserInfo;
 import io.mixeway.mixewayflowapi.db.entity.UserRole;
 import io.mixeway.mixewayflowapi.db.repository.UserRepository;
+import io.mixeway.mixewayflowapi.domain.onboarding.OnboardingService;
 import io.mixeway.mixewayflowapi.domain.roles.FindRoleService;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import io.mixeway.mixewayflowapi.exceptions.RoleNotExistingException;
@@ -26,6 +28,9 @@ public class CreateUserService {
     private final FindUserService findUserService;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final FindTeamService findTeamService;
+    private final OnboardingService onboardingService;
+    private final AppConfigService appConfigService;
+
 
     public UserInfo createUser(CreateUserRequestDto createUserRequestDto) {
         UserInfo existingUser = findUserService.findUser(createUserRequestDto.getUsername());
@@ -34,6 +39,9 @@ public class CreateUserService {
         }
 
         UserInfo newUser = initializeUser(createUserRequestDto.getUsername(), createUserRequestDto.getPassword(), createUserRequestDto.getRole());
+        if (appConfigService.isSaasMode()) {
+            onboardingService.onboardFreePlanUser(newUser);
+        }
         assignTeamsToUser(newUser, createUserRequestDto.getTeams());
 
         log.info("[UserService] User {} created by Admin", newUser.getUsername());
