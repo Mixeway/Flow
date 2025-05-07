@@ -18,5 +18,11 @@ public interface UserRepository extends CrudRepository<UserInfo, Long> {
     List<UserInfo> getUsersByTeamId(@Param("teamId") Long teamId);
 
     Optional<UserInfo> findByApiKey(String apiKey);
+    // Add this method to your UserRepository interface
+    @Query("SELECT COUNT(u) FROM UserInfo u JOIN u.teams t WHERE t.id = :teamId")
+    int countUsersByTeamId(@Param("teamId") Long teamId);
+
+    @Query("SELECT COUNT(u) FROM UserInfo u JOIN u.organizations o WHERE o.id = :organizationId")
+    int countUsersByOrganizationId(@Param("organizationId") Long organizationId);
 
 }

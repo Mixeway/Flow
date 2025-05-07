@@ -12,6 +12,69 @@
       <svg cIcon name="cilMenu" size="lg"></svg>
     </button>
 
+      <!-- Keep this empty or add other left-aligned elements -->
+      <c-header-nav class="d-none d-md-flex ms-auto">
+      </c-header-nav>
+
+      <c-header-nav class="ms-auto ms-md-0">
+          <ng-container *ngIf="!loading && appInfo">
+              <div class="d-flex ms-auto">
+
+                  <ng-container *ngIf="appInfo.mode === 'SAAS' && appInfo.quotaInfo">
+                      <span class="ms-2 me-2">Plan:</span>
+                      <c-badge [color]="getPlanBadgeColor(appInfo.quotaInfo.planType)" class="me-3">
+                          {{ appInfo.quotaInfo.planType }}
+                      </c-badge>
+
+                      <!-- Add quota summary dropdown -->
+                      <c-dropdown [popperOptions]="{ placement: 'bottom-start' }" variant="nav-item">
+                          <button cDropdownToggle class="btn btn-link text-decoration-none p-0">
+                              <svg cIcon name="cilChartPie" class="me-1"></svg>
+                              Quota Info
+                          </button>
+                          <div cDropdownMenu class="p-3" style="width: 280px">
+                              <h6 class="dropdown-header">Resource Usage</h6>
+
+                              <div class="mb-2">
+                                  <div class="d-flex justify-content-between mb-1">
+                                      <small>Teams</small>
+                                      <small>{{ appInfo.quotaInfo.usage.teamsCount }} / {{ appInfo.quotaInfo.limits.maxTeams }}</small>
+                                  </div>
+                                  <c-progress thin class="mb-3">
+                                      <c-progress-bar
+                                              [value]="appInfo.quotaInfo.usage.teamUsagePercentage"
+                                              [color]="appInfo.quotaInfo.usage.teamUsagePercentage > 90 ? 'danger' : 'primary'"
+                                      ></c-progress-bar>
+                                  </c-progress>
+                              </div>
+
+                              <div class="mb-2">
+                                  <div class="d-flex justify-content-between mb-1">
+                                      <small>Repositories</small>
+                                      <small>{{ appInfo.quotaInfo.usage.totalReposCount }} / {{ appInfo.quotaInfo.limits.maxTotalRepos }}</small>
+                                  </div>
+                                  <c-progress thin class="mb-2">
+                                      <c-progress-bar
+                                              [value]="appInfo.quotaInfo.usage.repoUsagePercentage"
+                                              [color]="appInfo.quotaInfo.usage.repoUsagePercentage > 90 ? 'danger' : 'primary'"
+                                      ></c-progress-bar>
+                                  </c-progress>
+                              </div>
+
+                              <div class="text-center mt-3">
+                                  <small class="text-muted">{{ appInfo.quotaInfo.organizationName }}</small>
+                              </div>
+                          </div>
+                      </c-dropdown>
+                  </ng-container>
+              </div>
+          </ng-container>
+
+          <div *ngIf="loading" class="spinner-border spinner-border-sm text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+          </div>
+      </c-header-nav>
+
     <c-header-nav class="d-none d-md-flex ms-auto ">
 
     </c-header-nav>

@@ -668,3 +668,50 @@ ALTER TABLE cloud_subscription_finding_stats
 
 --changeset siewer:add_suppress_rule_path
 ALTER TABLE suppress_rule ADD COLUMN path_regex VARCHAR(255);
+
+--changeset siewer:add_saas_support
+-- Create organization entity
+CREATE TABLE organization (
+                              id SERIAL PRIMARY KEY,
+                              name TEXT NOT NULL,
+                              created_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                              plan_type VARCHAR(20) NOT NULL CHECK (plan_type IN ('FREE', 'SMALL_COMPANY', 'ENTERPRISE')),
+                              active BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+-- Create organization_user join table
+CREATE TABLE users_organizations (
+                                     user_info_id INT REFERENCES users(id),
+                                     organization_id INT REFERENCES organization(id),
+                                     PRIMARY KEY (user_info_id, organization_id)
+);
+
+-- Modify team table to add optional organization reference
+ALTER TABLE team ADD COLUMN organization_id INT REFERENCES organization(id);
+
+-- Create table for plan limitations
+CREATE TABLE plan_limits (
+                             id SERIAL PRIMARY KEY,
+                             plan_type VARCHAR(20) NOT NULL UNIQUE,
+                             max_teams INT NOT NULL,
+                             max_repos_per_team INT NOT NULL,
+                             max_users_per_team INT NOT NULL
+);
+
+-- Insert plan limits
+INSERT INTO plan_limits (plan_type, max_teams, max_repos_per_team, max_users_per_team)
+VALUES
+    ('FREE', 1, 5, 10),
+    ('SMALL_COMPANY', 5, 10, 20),
+    ('ENTERPRISE', 999999, 999999, 999999);
+
+-- Application configuration for run mode
+CREATE TABLE app_config (
+                            id SERIAL PRIMARY KEY,
+                            config_key VARCHAR(100) NOT NULL UNIQUE,
+                            config_value VARCHAR(100) NOT NULL
+);
+
+-- Set default run mode to STANDALONE
+INSERT INTO app_config (config_key, config_value)
+VALUES ('RUN_MODE', 'STANDALONE');

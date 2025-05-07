@@ -49,6 +49,7 @@ import {GitHubService} from "../../service/GitHubService";
 import {CloudService} from "../../service/CloudService";
 import {StatsService} from "../../service/StatsService";
 import {VulnerabilitySummary, VulnerabilityTrendDataPoint} from "../../model/stats.models";
+import {AppConfigService} from "../../service/AppConfigService";
 
 interface RepoRow {
     id: number;
@@ -135,6 +136,7 @@ export class DashboardComponent implements OnInit {
     canManage: boolean = false;
     @Output() userRoleSet: EventEmitter<string> = new EventEmitter<string>();
     trendDataLoaded: boolean = false;
+    appInfo: any;
 
 
     // Security overview section properties
@@ -285,7 +287,8 @@ export class DashboardComponent implements OnInit {
         private teamService: TeamService,
         private gitHubService: GitHubService,
         private cloudService: CloudService,
-        private statsService: StatsService
+        private statsService: StatsService,
+        private appInfoService: AppConfigService
     ) {
         // iconSet singleton
         iconSet.icons = {...freeSet, ...iconSet, ...brandSet};
@@ -339,6 +342,7 @@ export class DashboardComponent implements OnInit {
         this.initCharts();
         this.updateChartOnColorModeChange();
         this.loadWidgetStats();
+        this.loadAppInfo();
     }
 
     // Load security data for the overview section
@@ -366,7 +370,16 @@ export class DashboardComponent implements OnInit {
             }
         });
     }
-
+    loadAppInfo(): void {
+        this.appInfoService.getAppModeInfo().subscribe({
+            next: (data) => {
+                this.appInfo = data;
+            },
+            error: (err) => {
+                console.error('Failed to load app info:', err);
+            }
+        });
+    }
     // Toggle security overview section visibility
     toggleSecurityOverview(): void {
         this.showSecurityOverview = !this.showSecurityOverview;

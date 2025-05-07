@@ -219,7 +219,7 @@
                     <svg cIcon class="me-2" name="cil-clone"></svg>
                     Single Repository Import
                 </button>
-                <button color="info" cButton (click)="createNewTeamModal()">
+                <button color="info" cButton (click)="createNewTeamModal()" *ngIf="appInfo.quotaInfo.planType != 'FREE'">
                     <svg cIcon class="me-2" name="cil-people"></svg>
                     Add New Team
                 </button>

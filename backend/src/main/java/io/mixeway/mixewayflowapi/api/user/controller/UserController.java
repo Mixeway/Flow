@@ -1,6 +1,7 @@
 package io.mixeway.mixewayflowapi.api.user.controller;
 
 import io.mixeway.mixewayflowapi.api.user.dto.*;
+import io.mixeway.mixewayflowapi.api.user.service.AppModeInfoService;
 import io.mixeway.mixewayflowapi.domain.user.CreateUserService;
 import io.mixeway.mixewayflowapi.domain.user.FindUserService;
 import io.mixeway.mixewayflowapi.domain.user.UpdateUserService;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,6 +25,8 @@ public class UserController {
     private final FindUserService findUserService;
     private final CreateUserService createUserService;
     private final UpdateUserService updateUserService;
+    private final AppModeInfoService appModeInfoService;
+
 
     @PreAuthorize("hasAuthority('TEAM_MANAGER')")
     @GetMapping(value= "/api/v1/users")
@@ -96,6 +100,18 @@ public class UserController {
             return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.CREATED);
         } catch (Exception e){
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('USER')")
+    @GetMapping(value= "/api/v1/user/app-info")
+    public ResponseEntity<AppModeInfoDto> getAppModeInfo(Principal principal){
+        try {
+            AppModeInfoDto appModeInfo = appModeInfoService.getAppModeInfo(principal);
+            return ResponseEntity.ok(appModeInfo);
+        } catch (Exception e) {
+            log.error("[AppInfoController] Error getting app mode info: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
         }
     }
 }

@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.3] - 2025-05-07
+
+### Introduced
+- Multitenancy
+
 ## [1.2.2] - 2025-04-15
 
 ### Introduced

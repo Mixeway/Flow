@@ -2,15 +2,20 @@ package io.mixeway.mixewayflowapi.domain.coderepo;
 
 import ch.qos.logback.core.spi.ScanException;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.CreateCodeRepoRequestDto;
+import io.mixeway.mixewayflowapi.config.AppConfigService;
 import io.mixeway.mixewayflowapi.config.TestConfig;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
+import io.mixeway.mixewayflowapi.db.entity.Organization;
 import io.mixeway.mixewayflowapi.db.entity.Team;
+import io.mixeway.mixewayflowapi.db.repository.OrganizationRepository;
 import io.mixeway.mixewayflowapi.db.repository.TeamRepository;
+import io.mixeway.mixewayflowapi.domain.organization.OrganizationService;
 import io.mixeway.mixewayflowapi.domain.team.CreateTeamService;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
 import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoResponseDto;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GetCodeRepoInfoService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -54,14 +59,36 @@ class CreateCodeRepoServiceTest {
     @Autowired
     private TeamRepository teamRepository;
 
+    @Autowired
+    private AppConfigService appConfigService;
+
+    @Autowired
+    private OrganizationService organizationService;
+
+    @Autowired
+    private OrganizationRepository organizationRepository;
+
     @Mock
     private Principal principal;
 
     private Team team;
+    private Organization testOrganization;
     private CreateCodeRepoRequestDto dto;
+    private AppConfigService.RunMode originalRunMode;
 
     @BeforeEach
     void setUp() throws IOException, InterruptedException {
+        // Save original run mode to restore after test
+        originalRunMode = appConfigService.getRunMode();
+
+        // Set application to STANDALONE mode for tests
+        appConfigService.setRunMode(AppConfigService.RunMode.STANDALONE);
+
+        // For tests that need SaaS mode, uncomment these lines and comment the STANDALONE line above
+        // appConfigService.setRunMode(AppConfigService.RunMode.SAAS);
+        // Create test organization with ENTERPRISE plan (no limits)
+        // testOrganization = organizationService.createOrganization("Test Organization", Organization.PlanType.ENTERPRISE);
+
         // Mock external services
         ImportCodeRepoResponseDto importCodeRepoResponseDto = new ImportCodeRepoResponseDto();
         importCodeRepoResponseDto.setId(1);
@@ -76,9 +103,6 @@ class CreateCodeRepoServiceTest {
 
         Mockito.when(principal.getName()).thenReturn("admin");
 
-        // Clean up any existing team with the same name to ensure test isolation
-        //teamRepository.deleteAll();
-
         // Create Team for testing
         createTeamService.createTeam("createCodeRepoTest", "createCodeRepoTest", new ArrayList<>(), principal);
 
@@ -87,6 +111,12 @@ class CreateCodeRepoServiceTest {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Team not found in setup"));
 
+        // If we're using SaaS mode, associate the team with the organization
+        // if (appConfigService.isSaasMode() && testOrganization != null) {
+        //     team.setOrganization(testOrganization);
+        //     teamRepository.save(team);
+        // }
+
         // Prepare DTO based on parameters
         String name = "test-repo";
         String repoUrl = "https://createCodeRepo.com";
@@ -94,6 +124,17 @@ class CreateCodeRepoServiceTest {
         Long remoteId = 1L;
 
         dto = CreateCodeRepoRequestDto.of(name, repoUrl, accessToken, remoteId, team.getId());
+    }
+
+    @AfterEach
+    void tearDown() {
+        // Restore original run mode after test
+        appConfigService.setRunMode(originalRunMode);
+
+        // Clean up test organization if created
+        if (testOrganization != null) {
+            organizationRepository.delete(testOrganization);
+        }
     }
 
     /**
@@ -169,6 +210,32 @@ class CreateCodeRepoServiceTest {
         assertThrows(TeamNotFoundException.class, () -> {
             createCodeRepoService.createCodeRepo(dto, CodeRepo.RepoType.GITLAB);
         });
-
     }
+
+
+//    @Test
+//    void testCreateCodeRepoInSaasMode() throws IOException, InterruptedException, ScanException {
+//        // Switch to SAAS mode for this test
+//        appConfigService.setRunMode(AppConfigService.RunMode.SAAS);
+//
+//        // Create a test organization with FREE plan (limited to 5 repos)
+//        Organization freeOrg = organizationService.createOrganization("Free Test Org", Organization.PlanType.FREE);
+//
+//        // Associate team with this organization
+//        team.setOrganization(freeOrg);
+//        teamRepository.save(team);
+//
+//        // Create first repo (should succeed)
+//        createCodeRepoService.createCodeRepo(dto, CodeRepo.RepoType.GITLAB);
+//
+//        // Verify it was created
+//        Optional<CodeRepo> codeRepo = findCodeRepoService.findCodeRepoByUrl("https://example.com/repo");
+//        assertTrue(codeRepo.isPresent(), "Code repository should be created successfully");
+//
+//        // Reset to STANDALONE mode after this test
+//        appConfigService.setRunMode(AppConfigService.RunMode.STANDALONE);
+//
+//        // Clean up
+//        organizationRepository.delete(freeOrg);
+//    }
 }

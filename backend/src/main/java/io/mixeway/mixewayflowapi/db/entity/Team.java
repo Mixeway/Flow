@@ -23,12 +23,25 @@ public class Team {
     @Column(name = "remoteIdentifier")
     private final String remoteIdentifier;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "organization_id")
+    private Organization organization;
+
     public Team(String name, String remoteIdentifier) {
         validateName(name);
         this.id = 0;
         this.name = name;
         this.remoteIdentifier = remoteIdentifier;
     }
+
+    public Team(String name, String remoteIdentifier, Organization organization) {
+        validateName(name);
+        this.id = 0;
+        this.name = name;
+        this.remoteIdentifier = remoteIdentifier;
+        this.organization = organization;
+    }
+
 
     // Private constructor for JPA
     protected Team() {
@@ -54,5 +67,12 @@ public class Team {
     @Override
     public int hashCode() {
         return Objects.hash(name);
+    }
+
+    public void clearOrganization() {
+        this.organization = null;
+    }
+    public void setOrganization(Organization organization) {
+        this.organization =organization;
     }
 }

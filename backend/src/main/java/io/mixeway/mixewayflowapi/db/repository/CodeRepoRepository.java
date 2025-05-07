@@ -33,4 +33,6 @@ public interface CodeRepoRepository extends CrudRepository<CodeRepo, Long> {
     List<CodeRepo> findByTeamIn(@Param("teams") List<Team> teams);
 
     List<CodeRepo> findByTeam(Team team);
+
+    int countByTeam(Team team);
 }
