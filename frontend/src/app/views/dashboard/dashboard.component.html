@@ -210,16 +210,16 @@
             <c-card-header>
                 <strong>Administrative Actions</strong>
             </c-card-header>
-            <c-card-body class="d-flex gap-3">
-                <button color="primary" cButton (click)="importRepoModal()">
+            <c-card-body class="d-flex flex-wrap gap-3">
+                <button color="primary" cButton (click)="importRepoModal()" cTooltip="Import multiple repositories from a Git provider">
                     <svg cIcon class="me-2" name="cil-code"></svg>
                     Bulk Repository Import
                 </button>
-                <button color="light" cButton (click)="importSingleRepoModal()">
+                <button color="light" cButton (click)="importSingleRepoModal()" cTooltip="Import a single specific repository">
                     <svg cIcon class="me-2" name="cil-clone"></svg>
                     Single Repository Import
                 </button>
-                <button color="info" cButton (click)="createNewTeamModal()" *ngIf="appInfo.quotaInfo.planType != 'FREE'">
+                <button color="info" cButton (click)="createNewTeamModal()" *ngIf="appInfo?.quotaInfo?.planType != 'FREE'" cTooltip="Create a new team">
                     <svg cIcon class="me-2" name="cil-people"></svg>
                     Add New Team
                 </button>
@@ -735,115 +735,6 @@
         </c-card>
     </c-col>
 </c-row>
-<!-- Modal Dialogs (Same as original) -->
-<!-- Import Repository Modal -->
-<!-- Repository List Modal -->
-<!-- Single Repository Import Modal -->
-<!-- Add New Team Modal -->
-<!-- Notification Toast -->
-<!-- Import Repository Modal -->
-<c-modal id="importRepoModal" alignment="center" [visible]="visible" (visibleChange)="handleImportRepoChange($event)">
-    <c-modal-header>
-        <h5 cModalTitle>Import Repositories</h5>
-    </c-modal-header>
-    <c-modal-body>
-        <!-- Repository Type Selection -->
-        <div class="repo-type-selector mb-4">
-            <h6 class="mb-3">Select Repository Type</h6>
-            <div class="d-flex justify-content-center gap-4">
-                <button
-                        cButton
-                        type="button"
-                        class="repo-type-btn"
-                        [class.active]="selectedRepo === 'GitLab'"
-                        (click)="selectRepoType('GitLab')"
-                        cTooltip="Import from GitLab"
-                        cTooltipPlacement="top"
-                >
-                    <svg cIcon name="cib-gitlab" size="3xl"></svg>
-                    <span class="repo-type-label">GitLab</span>
-                </button>
-                <button
-                        cButton
-                        type="button"
-                        class="repo-type-btn"
-                        [class.active]="selectedRepo === 'GitHub'"
-                        (click)="selectRepoType('GitHub')"
-                        cTooltip="Import from GitHub"
-                        cTooltipPlacement="top"
-                >
-                    <svg cIcon name="cib-github" size="3xl"></svg>
-                    <span class="repo-type-label">GitHub</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- Import Repository Form -->
-        <form [formGroup]="importRepoForm" cForm>
-            <div class="mb-3">
-                <label for="repoUrl" class="form-label">Repository URL</label>
-                <c-input-group class="has-validation">
-          <span cInputGroupText>
-            <svg cIcon name="cil-link"></svg>
-          </span>
-                    <input
-                            cFormControl
-                            type="url"
-                            id="repoUrl"
-                            formControlName="repoUrl"
-                            placeholder="https://gitlab.com/your-group"
-                            required
-                    />
-                    <div class="invalid-feedback" *ngIf="importRepoForm.get('repoUrl')?.invalid && importRepoForm.get('repoUrl')?.touched">
-                        Please enter a valid URL
-                    </div>
-                </c-input-group>
-            </div>
-
-            <div class="mb-3">
-                <label for="accessToken" class="form-label">Access Token</label>
-                <c-input-group class="has-validation">
-          <span cInputGroupText>
-            <svg cIcon name="cil-lock-locked"></svg>
-          </span>
-                    <input
-                            cFormControl
-                            type="password"
-                            id="accessToken"
-                            formControlName="accessToken"
-                            placeholder="Your access token"
-                            required
-                    />
-                    <div class="invalid-feedback" *ngIf="importRepoForm.get('accessToken')?.invalid && importRepoForm.get('accessToken')?.touched">
-                        Access token is required
-                    </div>
-                </c-input-group>
-            </div>
-
-            <div class="mb-3">
-                <label for="inputGroupSelect01" class="form-label">Team</label>
-                <c-input-group class="has-validation">
-          <span cInputGroupText>
-            <svg cIcon name="cil-people"></svg>
-          </span>
-                    <select cSelect id="inputGroupSelect01" formControlName="team" required>
-                        <option value="" disabled selected>Select Team...</option>
-                        <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
-                    </select>
-                    <div class="invalid-feedback" *ngIf="importRepoForm.get('team')?.invalid && importRepoForm.get('team')?.touched">
-                        Please select a team
-                    </div>
-                </c-input-group>
-            </div>
-        </form>
-    </c-modal-body>
-    <c-modal-footer>
-        <button (click)="closeModal()" cButton color="secondary">Cancel</button>
-        <button (click)="onSubmit()" cButton color="primary" [disabled]="importRepoForm.invalid">
-            <svg cIcon name="cil-cloud-download" class="me-1"></svg> Browse Repositories
-        </button>
-    </c-modal-footer>
-</c-modal>
 
 <!-- Repository List Modal -->
 <c-modal size="xl" id="repoListModal" alignment="center" [visible]="visibleList" (visibleChange)="handleListRepoChange($event)">
@@ -903,15 +794,158 @@
     </c-modal-footer>
 </c-modal>
 
+<!-- Import Repository Modal (BULK IMPORT) -->
+<c-modal id="importRepoModal" alignment="center" [visible]="visible" (visibleChange)="handleImportRepoChange($event)">
+    <c-modal-header>
+        <h5 cModalTitle>Bulk Import Repositories</h5>
+    </c-modal-header>
+    <c-modal-body>
+        <!-- Introduction -->
+        <div class="alert alert-info mb-3">
+            <svg cIcon name="cil-info" class="me-2"></svg>
+            <strong>Bulk Import:</strong> This option allows you to browse and select multiple repositories from a Git provider.
+        </div>
+
+        <!-- Repository Type Selection -->
+        <div class="repo-type-selector mb-4">
+            <h6 class="mb-3">Select Git Provider</h6>
+            <div class="d-flex justify-content-center gap-4">
+                <button
+                        cButton
+                        type="button"
+                        class="repo-type-btn"
+                        [class.active]="selectedRepo === 'GitLab'"
+                        (click)="selectRepoType('GitLab')"
+                        cTooltip="Import from GitLab"
+                        cTooltipPlacement="top"
+                >
+                    <svg cIcon name="cib-gitlab" size="3xl"></svg>
+                    <span class="repo-type-label">GitLab</span>
+                </button>
+                <button
+                        cButton
+                        type="button"
+                        class="repo-type-btn"
+                        [class.active]="selectedRepo === 'GitHub'"
+                        (click)="selectRepoType('GitHub')"
+                        cTooltip="Import from GitHub"
+                        cTooltipPlacement="top"
+                >
+                    <svg cIcon name="cib-github" size="3xl"></svg>
+                    <span class="repo-type-label">GitHub</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Import Repository Form -->
+        <form [formGroup]="importRepoForm" cForm>
+            <div class="mb-3">
+                <label for="repoUrl" class="form-label">
+                    Git Provider URL
+                    <span cTooltip="The base URL of your Git provider, not a specific repository" cTooltipPlacement="top" class="text-info ms-1">
+                        <svg cIcon name="cil-info-circle"></svg>
+                    </span>
+                </label>
+                <c-input-group class="has-validation">
+                    <span cInputGroupText>
+                        <svg cIcon name="cil-link"></svg>
+                    </span>
+                    <input
+                            cFormControl
+                            type="url"
+                            id="repoUrl"
+                            formControlName="repoUrl"
+                            [placeholder]="selectedRepo === 'GitLab' ? 'https://gitlab.com' : 'https://github.com'"
+                            required
+                    />
+                    <div class="invalid-feedback" *ngIf="importRepoForm.get('repoUrl')?.invalid && importRepoForm.get('repoUrl')?.touched">
+                        Please enter a valid URL
+                    </div>
+                </c-input-group>
+                <small class="text-muted d-block mt-1">
+                    <svg cIcon name="cil-check-circle" class="me-1 text-success" size="sm"></svg>
+                    Example: <code>{{ selectedRepo === 'GitLab' ? 'https://gitlab.com' : 'https://github.com' }}</code>
+                </small>
+                <small class="text-muted d-block mt-1">
+                    <svg cIcon name="cil-x-circle" class="me-1 text-danger" size="sm"></svg>
+                    Not: <code>{{ selectedRepo === 'GitLab' ? 'https://gitlab.com/namespace/project' : 'https://github.com/username/repo' }}</code>
+                </small>
+            </div>
+
+            <div class="mb-3">
+                <label for="accessToken" class="form-label">
+                    Access Token
+                    <span cTooltip="Personal access token with repository read permissions" cTooltipPlacement="top" class="text-info ms-1">
+                        <svg cIcon name="cil-info-circle"></svg>
+                    </span>
+                </label>
+                <c-input-group class="has-validation">
+                    <span cInputGroupText>
+                        <svg cIcon name="cil-lock-locked"></svg>
+                    </span>
+                    <input
+                            cFormControl
+                            type="password"
+                            id="accessToken"
+                            formControlName="accessToken"
+                            placeholder="Your access token"
+                            required
+                    />
+                    <div class="invalid-feedback" *ngIf="importRepoForm.get('accessToken')?.invalid && importRepoForm.get('accessToken')?.touched">
+                        Access token is required
+                    </div>
+                </c-input-group>
+                <small class="text-muted d-flex align-items-center mt-1">
+                    <svg cIcon name="cil-info" class="me-1" size="sm"></svg>
+                    {{ selectedRepo === 'GitLab' ? 'Create token at GitLab > Settings > Access Tokens' : 'Create token at GitHub > Settings > Developer settings > Personal access tokens' }}
+                </small>
+            </div>
+
+            <div class="mb-3">
+                <label for="inputGroupSelect01" class="form-label">
+                    Team
+                    <span cTooltip="Team that will own the imported repositories" cTooltipPlacement="top" class="text-info ms-1">
+                        <svg cIcon name="cil-info-circle"></svg>
+                    </span>
+                </label>
+                <c-input-group class="has-validation">
+                    <span cInputGroupText>
+                        <svg cIcon name="cil-people"></svg>
+                    </span>
+                    <select cSelect id="inputGroupSelect01" formControlName="team" required>
+                        <option value="" disabled selected>Select Team...</option>
+                        <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
+                    </select>
+                    <div class="invalid-feedback" *ngIf="importRepoForm.get('team')?.invalid && importRepoForm.get('team')?.touched">
+                        Please select a team
+                    </div>
+                </c-input-group>
+            </div>
+        </form>
+    </c-modal-body>
+    <c-modal-footer>
+        <button (click)="closeModal()" cButton color="secondary">Cancel</button>
+        <button (click)="onSubmit()" cButton color="primary" [disabled]="importRepoForm.invalid">
+            <svg cIcon name="cil-cloud-download" class="me-1"></svg> Browse Repositories
+        </button>
+    </c-modal-footer>
+</c-modal>
+
 <!-- Single Repository Import Modal -->
 <c-modal id="importSingleRepoModal" alignment="center" [visible]="visibleSingleRepoModal" (visibleChange)="handleImportSingleRepoChange($event)">
     <c-modal-header>
         <h5 cModalTitle>Import Single Repository</h5>
     </c-modal-header>
     <c-modal-body>
+        <!-- Introduction -->
+        <div class="alert alert-info mb-3">
+            <svg cIcon name="cil-info" class="me-2"></svg>
+            <strong>Single Import:</strong> This option allows you to import a specific repository by providing its direct URL.
+        </div>
+
         <!-- Repository Type Selection -->
         <div class="repo-type-selector mb-4">
-            <h6 class="mb-3">Select Repository Type</h6>
+            <h6 class="mb-3">Select Git Provider</h6>
             <div class="d-flex justify-content-center gap-4">
                 <button
                         cButton
@@ -943,32 +977,49 @@
         <!-- Import Single Repository Form -->
         <form [formGroup]="importSingleRepoForm" cForm>
             <div class="mb-3">
-                <label for="repoUrl2" class="form-label">Repository URL</label>
+                <label for="repoUrl2" class="form-label">
+                    Repository URL
+                    <span cTooltip="The full URL to a specific repository" cTooltipPlacement="top" class="text-info ms-1">
+                        <svg cIcon name="cil-info-circle"></svg>
+                    </span>
+                </label>
                 <c-input-group class="has-validation">
-          <span cInputGroupText>
-            <svg cIcon name="cil-link"></svg>
-          </span>
+                    <span cInputGroupText>
+                        <svg cIcon name="cil-link"></svg>
+                    </span>
                     <input
                             cFormControl
                             type="url"
                             id="repoUrl2"
                             formControlName="repoUrl"
-                            placeholder="https://gitlab.com/org/project"
+                            [placeholder]="selectedRepo === 'GitLab' ? 'https://gitlab.com/namespace/project' : 'https://github.com/username/repo'"
                             required
                     />
                     <div class="invalid-feedback" *ngIf="importSingleRepoForm.get('repoUrl')?.invalid && importSingleRepoForm.get('repoUrl')?.touched">
                         Please enter a valid repository URL
                     </div>
                 </c-input-group>
-                <small class="text-muted">Enter the direct URL to your repository</small>
+                <small class="text-muted d-block mt-1">
+                    <svg cIcon name="cil-check-circle" class="me-1 text-success" size="sm"></svg>
+                    Example: <code>{{ selectedRepo === 'GitLab' ? 'https://gitlab.com/namespace/project' : 'https://github.com/username/repo' }}</code>
+                </small>
+                <small class="text-muted d-block mt-1">
+                    <svg cIcon name="cil-x-circle" class="me-1 text-danger" size="sm"></svg>
+                    Not: <code>{{ selectedRepo === 'GitLab' ? 'https://gitlab.com' : 'https://github.com' }}</code> (base URL only)
+                </small>
             </div>
 
             <div class="mb-3">
-                <label for="accessToken2" class="form-label">Access Token</label>
+                <label for="accessToken2" class="form-label">
+                    Access Token
+                    <span cTooltip="Personal access token with repository read permissions" cTooltipPlacement="top" class="text-info ms-1">
+                        <svg cIcon name="cil-info-circle"></svg>
+                    </span>
+                </label>
                 <c-input-group class="has-validation">
-          <span cInputGroupText>
-            <svg cIcon name="cil-lock-locked"></svg>
-          </span>
+                    <span cInputGroupText>
+                        <svg cIcon name="cil-lock-locked"></svg>
+                    </span>
                     <input
                             cFormControl
                             type="password"
@@ -981,14 +1032,23 @@
                         Access token is required
                     </div>
                 </c-input-group>
+                <small class="text-muted d-flex align-items-center mt-1">
+                    <svg cIcon name="cil-info" class="me-1" size="sm"></svg>
+                    {{ selectedRepo === 'GitLab' ? 'Create token at GitLab > Settings > Access Tokens' : 'Create token at GitHub > Settings > Developer settings > Personal access tokens' }}
+                </small>
             </div>
 
             <div class="mb-3">
-                <label for="inputGroupSelect02" class="form-label">Team</label>
+                <label for="inputGroupSelect02" class="form-label">
+                    Team
+                    <span cTooltip="Team that will own this repository" cTooltipPlacement="top" class="text-info ms-1">
+                        <svg cIcon name="cil-info-circle"></svg>
+                    </span>
+                </label>
                 <c-input-group class="has-validation">
-          <span cInputGroupText>
-            <svg cIcon name="cil-people"></svg>
-          </span>
+                    <span cInputGroupText>
+                        <svg cIcon name="cil-people"></svg>
+                    </span>
                     <select cSelect id="inputGroupSelect02" formControlName="team" required>
                         <option value="" disabled selected>Select Team...</option>
                         <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
@@ -1007,7 +1067,6 @@
         </button>
     </c-modal-footer>
 </c-modal>
-
 <!-- Add New Team Modal -->
 <c-modal id="newTeamModal" alignment="center" [visible]="visibleNewTeam" (visibleChange)="handleNewTeam($event)">
     <c-modal-header>

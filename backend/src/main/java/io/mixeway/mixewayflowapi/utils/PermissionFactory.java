@@ -34,21 +34,7 @@ public class PermissionFactory {
         // In SaaS mode, admins only see teams from their organizations
         if (appConfigService.isSaasMode()) {
             if (userInfo.getRoles().contains(adminRole)) {
-                // Get all organizations for this admin
-                List<Organization> userOrgs = organizationService.getUserOrganizations(userInfo.getId());
-
-                if (!userOrgs.isEmpty()) {
-                    List<Team> orgTeams = new ArrayList<>();
-
-                    for (Organization org : userOrgs) {
-                        orgTeams.addAll(teamRepository.findByOrganizationId(org.getId()));
-                    }
-
-                    return orgTeams;
-                } else {
-                    // No organizations, no teams
-                    return List.of();
-                }
+                return teamRepository.findAll();
             } else {
                 // Regular users only see teams they belong to
                 return userInfo.getTeams().stream().toList();

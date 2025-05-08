@@ -20,7 +20,7 @@
           <ng-container *ngIf="!loading && appInfo">
               <div class="d-flex ms-auto">
 
-                  <ng-container *ngIf="appInfo.mode === 'SAAS' && appInfo.quotaInfo">
+                  <ng-container *ngIf="appInfo && appInfo.mode === 'SAAS' && appInfo.quotaInfo">
                       <span class="ms-2 me-2">Plan:</span>
                       <c-badge [color]="getPlanBadgeColor(appInfo.quotaInfo.planType)" class="me-3">
                           {{ appInfo.quotaInfo.planType }}
