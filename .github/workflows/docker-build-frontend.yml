@@ -23,10 +23,21 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push frontend image
-        run: |
-          cd frontend
-          docker build -t mixeway/flow:latest .
-          docker build -t mixeway/flow:latest-beta .
-          docker push mixeway/flow:latest
-          docker push mixeway/flow:latest-beta
+      - name: Build and push amd64 images
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend
+          push: true
+          platforms: linux/amd64
+          tags: |
+            mixeway/flow:latest
+            mixeway/flow:latest-beta
+      - name: Build and push arm64 images
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend
+          push: true
+          platforms: linux/arm64
+          tags: |
+            mixeway/flow:latest-arm
+            mixeway/flow:latest-beta-arm
