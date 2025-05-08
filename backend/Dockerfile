@@ -2,8 +2,8 @@ FROM maven:3.9.8-amazoncorretto-17 as maven_build
 
 WORKDIR /app
 
-# Install architecture detection utilities
-RUN apt-get update && apt-get install -y file
+# Install architecture detection utilities - using yum for Amazon Linux
+RUN yum update -y && yum install -y which file && yum clean all
 
 # Set up Java 22 based on architecture
 RUN ARCH=$(uname -m) && \
