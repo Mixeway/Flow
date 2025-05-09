@@ -1,12 +1,13 @@
 package io.mixeway.mixewayflowapi.api.auth.controller;
 
+import io.mixeway.mixewayflowapi.api.auth.dto.ServiceStatusDTO;
 import io.mixeway.mixewayflowapi.api.auth.service.AuthService;
 import io.mixeway.mixewayflowapi.api.auth.dto.AuthRequestDTO;
 import io.mixeway.mixewayflowapi.api.auth.dto.JwtResponseDTO;
 import io.mixeway.mixewayflowapi.api.auth.dto.PassRequestDTO;
 import io.mixeway.mixewayflowapi.auth.jwt.JwtService;
+import io.mixeway.mixewayflowapi.config.AppConfigService;
 import io.mixeway.mixewayflowapi.db.entity.UserInfo;
-import io.mixeway.mixewayflowapi.domain.coderepo.CreateCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.user.FindUserService;
 import io.mixeway.mixewayflowapi.utils.StatusDTO;
 import jakarta.servlet.http.Cookie;
@@ -15,7 +16,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -26,7 +26,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -46,6 +45,7 @@ public class AuthController {
     private final AuthService authService;
     private final FindUserService findUserService;
     private final Environment environment;
+    private final AppConfigService appConfigService;
 
     @PostMapping("/api/v1/login")
     public ResponseEntity<?> login(@Valid @RequestBody AuthRequestDTO authRequestDTO, HttpServletRequest request, HttpServletResponse response) {
@@ -109,14 +109,14 @@ public class AuthController {
     }
 
     @GetMapping("/api/v1/status")
-    public ResponseEntity<StatusDTO> status() {
+    public ResponseEntity<ServiceStatusDTO> status() {
         String[] activeProfiles = environment.getActiveProfiles();
         String profile = "";
         if (activeProfiles.length > 0) {
             profile = activeProfiles[0];
         }
         try {
-            return new ResponseEntity<>(new StatusDTO(profile), HttpStatus.OK);
+            return new ResponseEntity<>(new ServiceStatusDTO(profile, appConfigService.isSaasMode() ? "SAAS":"SANDALONE"), HttpStatus.OK);
         } catch (Exception e){
             throw new RuntimeException(e);
         }

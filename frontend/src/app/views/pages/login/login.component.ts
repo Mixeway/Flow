@@ -17,9 +17,10 @@ import {
     RowComponent,
     AlertComponent
 } from "@coreui/angular";
-import { IconDirective } from "@coreui/icons-angular";
+import {IconComponent, IconDirective, IconSetService} from "@coreui/icons-angular";
 import { getNavItems, navItems } from "../../../layout/default-layout/_nav";
 import { finalize } from 'rxjs/operators';
+import {brandSet, freeSet} from "@coreui/icons";
 
 @Component({
     selector: 'app-login',
@@ -38,7 +39,8 @@ import { finalize } from 'rxjs/operators';
         InputGroupTextDirective,
         IconDirective,
         ButtonDirective,
-        AlertComponent
+        AlertComponent,
+        IconComponent
     ],
     templateUrl: './login.component.html',
     styleUrls: ['./login.component.scss']
@@ -47,18 +49,19 @@ export class LoginComponent implements OnInit {
     loginForm: FormGroup;
     password: boolean = true;
     sso: boolean = false;
+    mode: string = "STANDALONE";
     isLoading: boolean = false;
     loginError: string | null = null;
     showPassword: boolean = false;
     darkMode: boolean = false;
 
-    constructor(private fb: FormBuilder, private authService: AuthService, private router: Router) {
+    constructor(private fb: FormBuilder, private authService: AuthService, private router: Router,public iconSet: IconSetService) {
         this.loginForm = this.fb.group({
             username: ['', Validators.required],
             password: ['', Validators.required],
             rememberMe: [false]
         });
-
+        iconSet.icons = {...freeSet, ...iconSet, ...brandSet};
         // Check for system dark mode preference
         this.darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
@@ -88,9 +91,11 @@ export class LoginComponent implements OnInit {
     getStatus() {
         this.authService.status().subscribe({
             next: (response) => {
+                this.mode = response.mode;
                 if (response.status === 'prodsso' || response.status === 'devsso') {
                     this.password = false;
                     this.sso = true;
+
                 }
             },
             error: () => {

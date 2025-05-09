@@ -18,7 +18,7 @@
 
     <c-card-group class="login-card-group fade-in-up">
         <!-- Password Login Card -->
-        <c-card class="auth-card" [ngClass]="{'dark-mode': darkMode}" *ngIf="password">
+        <c-card class="auth-card" [ngClass]="{'dark-mode': darkMode}" *ngIf="!password">
             <c-card-body>
                 <h1 class="card-title" [ngClass]="{'dark-mode': darkMode}">Welcome back</h1>
                 <p class="card-subtitle" [ngClass]="{'dark-mode': darkMode}">Sign in to your account</p>
@@ -95,23 +95,28 @@
         </c-card>
 
         <!-- SSO Login Card -->
-        <c-card class="auth-card" [ngClass]="{'dark-mode': darkMode}" *ngIf="sso">
+        <c-card class="auth-card" [ngClass]="{'dark-mode': darkMode}" *ngIf="sso || mode ==='SAAS'">
             <c-card-body class="d-flex flex-column align-items-center justify-content-center">
-                <h1 class="card-title text-center mb-2" [ngClass]="{'dark-mode': darkMode}">Single Sign-On</h1>
-                <p class="card-subtitle text-center" [ngClass]="{'dark-mode': darkMode}">Sign in with your organization credentials</p>
+                <h1 class="card-title text-center mb-2" [ngClass]="{'dark-mode': darkMode}">
+                    {{ mode === 'SAAS' ? 'Login to Mixeway FLow' : 'Single Sign-On' }}
+                </h1>
+                <p class="card-subtitle text-center" [ngClass]="{'dark-mode': darkMode}">
+                    {{ mode === 'SAAS' ? 'Select Your SSO provider' : 'Sign in with your organization credentials' }}
+                </p>
 
                 <button (click)="redirectToSSO()" class="btn-sso mt-4" [ngClass]="{'dark-mode': darkMode}" [class.loading]="isLoading">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- Show GitHub icon when in SAAS mode, otherwise show the original icon -->
+                    <svg *ngIf="mode === 'SAAS'" cIcon name="cib-github" size="3xl"></svg>
+                    <svg *ngIf="mode !== 'SAAS'" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M11 12H3"></path>
                         <path d="m15 16 4-4-4-4"></path>
                         <path d="M4 4v16"></path>
                         <path d="M19 12h2"></path>
                     </svg>
-                    Continue with SSO
+                    {{ mode === 'SAAS' ? 'Login with GitHub' : 'Continue with SSO' }}
                 </button>
             </c-card-body>
         </c-card>
-
         <!-- Brand Card -->
         <c-card class="brand-card">
             <c-card-body>
