@@ -30,7 +30,7 @@ import java.util.Arrays;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@Profile("!prodsso & !devsso")
+@Profile("!prodsso & !devsso & !saas")
 @RequiredArgsConstructor
 public class SecurityConfig {
 
