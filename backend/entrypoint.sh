@@ -1,12 +1,20 @@
 #!/bin/bash
 
-# Ensure required environment variables are set when SSO is enabled
 # Debugging statements
 echo "SSO variable is: '$SSO'"
 echo "SSO lowercased is: '${SSO,,}'"
+echo "SAAS variable is: '$SAAS'"
+echo "SAAS lowercased is: '${SAAS,,}'"
 
-# Ensure required environment variables are set when SSO is enabled
-if [ "${SSO,,}" = "true" ]; then
+# Determine the Spring profile based on SSO and SAAS settings
+if [ "${SAAS,,}" = "true" ]; then
+    # When SAAS is true, use the saas profile
+    SPRING_PROFILE="saas"
+
+    # Ensure required environment variables are set when SAAS is enabled
+    # Add any SAAS-specific environment variable checks here if needed
+elif [ "${SSO,,}" = "true" ]; then
+    # When SSO is true (and SAAS is not), ensure required SSO variables are set
     : "${SSO_CLIENT_ID:?SSO_CLIENT_ID is required when SSO is true}"
     : "${SSO_CLIENT_SECRET:?SSO_CLIENT_SECRET is required when SSO is true}"
     : "${SSO_REDIRECT_URI:?SSO_REDIRECT_URI is required when SSO is true}"
@@ -128,8 +136,8 @@ if [ "$(echo $SSL | tr '[:upper:]' '[:lower:]')" = "true" ]; then
 else
     echo "SSL is not enabled. Running the application without SSL..."
     if [ -n "$PROXY_HOST" ] && [ -n "$PROXY_PORT" ]; then
-        java -Dspring.profiles.active=dev -Dproxy.host=$PROXY_HOST -Dproxy.port=$PROXY_PORT -jar /app/flowapi.jar
+        java -Dspring.profiles.active=$SPRING_PROFILE -Dproxy.host=$PROXY_HOST -Dproxy.port=$PROXY_PORT -jar /app/flowapi.jar
     else
-        java -Dspring.profiles.active=dev -jar /app/flowapi.jar
+        java -Dspring.profiles.active=$SPRING_PROFILE -jar /app/flowapi.jar
     fi
 fi
