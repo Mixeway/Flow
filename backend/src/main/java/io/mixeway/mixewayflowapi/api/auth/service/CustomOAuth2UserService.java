@@ -20,7 +20,7 @@ import java.util.Map;
 @Service
 
 @Log4j2
-@Profile("!devsso")
+@Profile("!saas")
 public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequest, OAuth2User> {
 
     @Override
