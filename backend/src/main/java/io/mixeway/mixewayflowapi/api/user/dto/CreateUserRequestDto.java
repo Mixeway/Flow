@@ -16,7 +16,7 @@ import java.util.List;
 public final class CreateUserRequestDto implements DTO {
 
     @NotBlank(message = "Username must not be blank")
-    @Pattern(regexp = "^[a-zA-Z0-9]{1,20}$", message = "Username must be alphanumeric and up to 20 characters long")
+    @Pattern(regexp = "^(?=.{1,39}$)[a-zA-Z0-9]([a-zA-Z0-9]|-(?!-))*[a-zA-Z0-9]$", message = "Username must be alphanumeric and up to 20 characters long")
     private final String username;
 
     @NotNull(message = "Role must not be null")
