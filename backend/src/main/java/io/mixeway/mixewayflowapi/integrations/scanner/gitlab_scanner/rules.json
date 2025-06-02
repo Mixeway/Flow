@@ -1,0 +1,23 @@
+[
+  {
+    "name": "Default branch is not protected",
+    "description": "Default branch should be protected to ensure that only Maintainers have the permission to merge changes into it",
+    "recommendation": "Select Settings > Repository > Protected branches > Add protected branch",
+    "severity": "CRITICAL",
+    "location": "Settings/Repository/Protected branches"
+  },
+  {
+    "name": "",
+    "description": "",
+    "recommendation": "",
+    "severity": "",
+    "location": ""
+  },
+  {
+    "name": "",
+    "description": "",
+    "recommendation": "",
+    "severity": "",
+    "location": ""
+  }
+]

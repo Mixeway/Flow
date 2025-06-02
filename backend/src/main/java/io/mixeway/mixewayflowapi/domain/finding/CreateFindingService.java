@@ -161,6 +161,31 @@ public class CreateFindingService {
                 .collect(Collectors.toList());
     }
 
+    public Finding mapGitLabScannerReportToFindings(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String name, String severity, String location, String description, String remediation) {
+        Vulnerability vulnerability = getOrCreateVulnerabilityService.getOrCreate(
+                name,
+                description,
+                null,
+                remediation,
+                mapSeverity(severity),
+                null,
+                null,
+                null
+        );
+
+        return new Finding(
+                vulnerability,
+                null,
+                codeRepoBranch,
+                codeRepo,
+                null,
+                "Incorrect configuration of " + location,
+                location,
+                mapSeverity(severity),
+                Finding.Source.GITLAB_SCANNER
+        );
+    }
+
     private Finding.Severity mapSeverity(String severity) {
         return switch (severity.toUpperCase()) {
             case "CRITICAL" -> Finding.Severity.CRITICAL;
