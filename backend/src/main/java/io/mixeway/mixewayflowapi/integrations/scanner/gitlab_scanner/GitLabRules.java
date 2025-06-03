@@ -6,12 +6,12 @@ import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.Finding;
 import io.mixeway.mixewayflowapi.domain.finding.CreateFindingService;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.URLDecoder;
+import java.io.*;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -22,6 +22,7 @@ public class GitLabRules {
     private final WebClient webClient;
     private final CreateFindingService createFindingService;
 
+    @Autowired
     public GitLabRules(WebClient webClient, CreateFindingService createFindingService) {
         this.webClient = webClient;
         this.createFindingService = createFindingService;
@@ -37,6 +38,7 @@ public class GitLabRules {
             if (path.endsWith("/")) {
                 path = path.substring(0, path.length() - 1);
             }
+            log.info(path);
             return path;
          } catch (Exception e) {
             log.info("[GitLabScannerService] Couldn't fetch path for repository: {}", codeRepo.getRepourl());
@@ -56,7 +58,8 @@ public class GitLabRules {
 
     public JsonNode findRule(String ruleName) throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
-        JsonNode rulesArray = objectMapper.readTree(new File("rules.json"));
+        File file = new File("backend/src/main/java/io/mixeway/mixewayflowapi/integrations/scanner/gitlab_scanner/rules.json");
+        JsonNode rulesArray = objectMapper.readTree(file);
         for (JsonNode rule : rulesArray) {
             String name = rule.path("name").asText();
             if (name.equals(ruleName)) {
@@ -68,14 +71,16 @@ public class GitLabRules {
 
     public void checkDefaultBranchProtection(CodeRepo codeRepo) {
         String token = codeRepo.getAccessToken();
-        String encodedRepositoryName = getRepositoryName(codeRepo);
+        String repo = getRepositoryName(codeRepo);
         String domain = getGitLabDomain(codeRepo);
 
-        String uri = "https://" + domain + "/api/v4/projects/" + encodedRepositoryName + "/repository/branches?private_token=" + token;
         try {
+            String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
+            URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/repository/branches");
+
             String response = webClient.get()
                     .uri(uri)
-                    .header("Content-Type", "application/json")
+                    .header("PRIVATE-TOKEN", token)
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();
