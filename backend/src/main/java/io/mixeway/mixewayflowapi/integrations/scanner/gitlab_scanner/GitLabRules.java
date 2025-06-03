@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.Finding;
+import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.finding.CreateFindingService;
+import io.mixeway.mixewayflowapi.domain.finding.UpdateFindingService;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -21,11 +23,13 @@ import java.util.List;
 public class GitLabRules {
     private final WebClient webClient;
     private final CreateFindingService createFindingService;
+    private final UpdateFindingService updateFindingService;
 
     @Autowired
-    public GitLabRules(WebClient webClient, CreateFindingService createFindingService) {
+    public GitLabRules(WebClient webClient, CreateFindingService createFindingService, UpdateCodeRepoService updateCodeRepoService, UpdateFindingService updateFindingService) {
         this.webClient = webClient;
         this.createFindingService = createFindingService;
+        this.updateFindingService = updateFindingService;
     }
 
     public String getRepositoryName(CodeRepo codeRepo) {
@@ -38,7 +42,6 @@ public class GitLabRules {
             if (path.endsWith("/")) {
                 path = path.substring(0, path.length() - 1);
             }
-            log.info(path);
             return path;
          } catch (Exception e) {
             log.info("[GitLabScannerService] Couldn't fetch path for repository: {}", codeRepo.getRepourl());
@@ -91,12 +94,14 @@ public class GitLabRules {
             for (JsonNode branch : branches) {
                 boolean isProtected = branch.get("protected").asBoolean();
                 boolean isDefault = branch.get("default").asBoolean();
-
+                JsonNode rule = findRule("Default branch is not protected");
                 if (!isProtected && isDefault) {
-                    JsonNode rule = findRule("Default branch is not protected");
                     Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
                     log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
                     createFindingService.saveFindings(List.of(finding), codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
+                }
+                else {
+                    updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch());
                 }
             }
         }  catch (Exception e) {
