@@ -7,11 +7,11 @@
     "location": "Settings/Repository/Protected branches"
   },
   {
-    "name": "",
-    "description": "",
-    "recommendation": "",
-    "severity": "",
-    "location": ""
+    "name": "Too many members with high privileges",
+    "description": "Members should only be assigned the roles \"Maintainer\" or \"Owner\" when necessary. In all other cases, the \"Developer\" role or lower should be assigned.",
+    "recommendation": "Change members' roles in Manage > Members",
+    "severity": "CRITICAL",
+    "location": "Manage/Members"
   },
   {
     "name": "",
