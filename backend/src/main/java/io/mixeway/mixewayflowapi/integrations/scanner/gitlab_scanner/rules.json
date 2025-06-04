@@ -21,15 +21,71 @@
     "location": "Settings/CI/CD/Runners/Assigned project runners/Edit/Tags"
   },
   {
-    "name": "Runner allowing untagged jobs",
-    "description": "The runner is configured to allow untagged jobs, which may result in unauthorized changes or actions being executed.",
+    "name": "Runner allows untagged jobs",
+    "description": "The runner is configured to allow untagged jobs which may result in unauthorized changes or actions being executed.",
     "recommendation": "Uncheck Settings > CI/CD > Runners > Assigned project runners > Edit > Tags > Run untagged jobs box",
     "severity": "HIGH",
     "location": "Settings/CI/CD/Runners/Assigned project runners/Edit/Tags/Run untagged jobs"
   },
   {
+    "name": "Runner allows unprotected jobs",
+    "description": "The runner is configured to allow unprotected jobs, which may result in unauthorized changes or actions being executed.",
+    "recommendation": "Check Settings > CI/CD > Runners > Assigned project runners > Edit > Configuration > Protected box",
+    "severity": "CRITICAL",
+    "location": "Settings/CI/CD/Runners/Assigned project runners/Edit/Configuration/Protected"
+  },
+  {
+    "name": "Runner uses insecure executor type",
+    "description": "The runner is configured to use insecure executor type which does not support proper isolation.",
+    "recommendation": "Configure a new runner which uses docker or kubernetes executor",
+    "severity": "CRITICAL",
+    "location": "Settings/CI/CD/Runners/Assigned project runners"
+  },
+  {
+    "name": "Access token with api scope",
+    "description": "The access token has the 'api' scope enabled which grants read/write access to the GitLab API. This scope provides extensive permissions that could be exploited if the token is compromised.",
+    "recommendation": "Generate new token with lower privileges in Settings > Access tokens > Project access tokens > Add new token",
+    "severity": "HIGH",
+    "location": "Settings/Access tokens/Project access tokens"
+  },
+  {
     "name": "",
-    "description": "The runner is configured to allow untagged jobs, which may result in unauthorized changes or actions being executed.",
+    "description": "",
+    "recommendation": "",
+    "severity": "",
+    "location": ""
+  },
+  {
+    "name": "",
+    "description": "",
+    "recommendation": "",
+    "severity": "",
+    "location": ""
+  },
+  {
+    "name": "",
+    "description": "",
+    "recommendation": "",
+    "severity": "",
+    "location": ""
+  },
+  {
+    "name": "",
+    "description": "",
+    "recommendation": "",
+    "severity": "",
+    "location": ""
+  },
+  {
+    "name": "",
+    "description": "",
+    "recommendation": "",
+    "severity": "",
+    "location": ""
+  },
+  {
+    "name": "",
+    "description": "",
     "recommendation": "",
     "severity": "",
     "location": ""
