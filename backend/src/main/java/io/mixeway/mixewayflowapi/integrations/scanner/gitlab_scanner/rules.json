@@ -2,16 +2,44 @@
   {
     "name": "Default branch is not protected",
     "description": "Default branch should be protected to ensure that only Maintainers have the permission to merge changes into it.",
-    "recommendation": "Select Settings > Repository > Protected branches > Add protected branch",
+    "recommendation": "Select Settings > Repository > Protected branches > Add protected branch.",
     "severity": "CRITICAL",
     "location": "Settings/Repository/Protected branches"
   },
   {
     "name": "Too many members with high privileges",
     "description": "Members should only be assigned the roles \"Maintainer\" or \"Owner\" when necessary. In all other cases, the \"Developer\" role or lower should be assigned.",
-    "recommendation": "Change members' roles in Manage > Members",
+    "recommendation": "Change members' roles in Manage > Members.",
     "severity": "CRITICAL",
     "location": "Manage/Members"
+  },
+  {
+    "name": "Untagged runner",
+    "description": "The project is using an untagged runner, which may lead to unintended job execution.",
+    "recommendation": "Add a runner tag in Settings > CI/CD > Runners > Assigned project runners > Edit > Tags.",
+    "severity": "HIGH",
+    "location": "Settings/CI/CD/Runners/Assigned project runners/Edit/Tags"
+  },
+  {
+    "name": "Runner allowing untagged jobs",
+    "description": "The runner is configured to allow untagged jobs, which may result in unauthorized changes or actions being executed.",
+    "recommendation": "Uncheck Settings > CI/CD > Runners > Assigned project runners > Edit > Tags > Run untagged jobs box",
+    "severity": "HIGH",
+    "location": "Settings/CI/CD/Runners/Assigned project runners/Edit/Tags/Run untagged jobs"
+  },
+  {
+    "name": "",
+    "description": "The runner is configured to allow untagged jobs, which may result in unauthorized changes or actions being executed.",
+    "recommendation": "",
+    "severity": "",
+    "location": ""
+  },
+  {
+    "name": "",
+    "description": "",
+    "recommendation": "",
+    "severity": "",
+    "location": ""
   },
   {
     "name": "",

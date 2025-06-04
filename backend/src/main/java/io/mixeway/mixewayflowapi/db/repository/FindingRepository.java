@@ -76,11 +76,12 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
 
     List<Finding> findByCodeRepoAndVulnerability(CodeRepo codeRepo, Vulnerability vulnerability);
 
-    @Query("SELECT f FROM Finding f WHERE f.codeRepo = :codeRepo AND f.vulnerability.name = :vulnerabilityName AND f.codeRepoBranch = :codeRepoBranch")
-    List<Finding> findByCodeRepoAndVulnerabilityNameAndBranch(
+    @Query("SELECT f FROM Finding f WHERE f.codeRepo = :codeRepo AND f.vulnerability.name = :vulnerabilityName AND f.codeRepoBranch = :codeRepoBranch AND f.location = :location")
+    List<Finding> findByCodeRepoAndVulnerabilityNameAndBranchAndLocation(
             @Param("codeRepo") CodeRepo codeRepo,
             @Param("vulnerabilityName") String vulnerabilityName,
-            @Param("codeRepoBranch") CodeRepoBranch codeRepoBranch
+            @Param("codeRepoBranch") CodeRepoBranch codeRepoBranch,
+            @Param("location") String location
     );
 
     @Query(value = "SELECT * FROM combined_items_view WHERE coderepo_id IN (:coderepoIds)", nativeQuery = true)

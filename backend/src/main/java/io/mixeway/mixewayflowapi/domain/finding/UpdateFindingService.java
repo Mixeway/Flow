@@ -31,8 +31,8 @@ public class UpdateFindingService {
     }
 
     @Transactional
-    public void verifyGitLabFinding(String rule, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
-        List<Finding> findings = findingRepository.findByCodeRepoAndVulnerabilityNameAndBranch(codeRepo, rule, codeRepoBranch);
+    public void verifyGitLabFinding(String rule, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String location) {
+        List<Finding> findings = findingRepository.findByCodeRepoAndVulnerabilityNameAndBranchAndLocation(codeRepo, rule, codeRepoBranch, location);
         if (findings.isEmpty()) {
             log.info("No findings found for rule: {}", rule);
             return;
