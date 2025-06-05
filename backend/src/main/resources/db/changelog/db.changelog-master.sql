@@ -715,3 +715,14 @@ CREATE TABLE app_config (
 -- Set default run mode to STANDALONE
 INSERT INTO app_config (config_key, config_value)
 VALUES ('RUN_MODE', 'STANDALONE');
+
+--changeset berejmaj:add_repository_allowlist
+CREATE TABLE repository_allowlist (
+                                      id SERIAL PRIMARY KEY,
+                                      repository_domain VARCHAR(255) NOT NULL UNIQUE,
+                                      description VARCHAR(255),
+                                      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                      updated_at TIMESTAMP
+);
+
+

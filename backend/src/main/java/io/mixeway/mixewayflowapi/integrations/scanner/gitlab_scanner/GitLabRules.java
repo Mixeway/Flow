@@ -4,12 +4,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.Finding;
-import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
+import io.mixeway.mixewayflowapi.db.entity.RepositoryAllowlist;
+import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
 import io.mixeway.mixewayflowapi.domain.finding.CreateFindingService;
 import io.mixeway.mixewayflowapi.domain.finding.UpdateFindingService;
+import io.mixeway.mixewayflowapi.domain.repositoryallowlist.FindRepositoryAllowlistService;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -26,12 +27,14 @@ public class GitLabRules {
     private final WebClient webClient;
     private final CreateFindingService createFindingService;
     private final UpdateFindingService updateFindingService;
+    private final FindRepositoryAllowlistService findRepositoryAllowlistService;
 
     @Autowired
-    public GitLabRules(WebClient webClient, CreateFindingService createFindingService, UpdateFindingService updateFindingService) {
+    public GitLabRules(WebClient webClient, CreateFindingService createFindingService, UpdateFindingService updateFindingService, FindRepositoryAllowlistService findRepositoryAllowlistService) {
         this.webClient = webClient;
         this.createFindingService = createFindingService;
         this.updateFindingService = updateFindingService;
+        this.findRepositoryAllowlistService = findRepositoryAllowlistService;
     }
 
     public String getRepositoryName(CodeRepo codeRepo) {
@@ -395,6 +398,280 @@ public class GitLabRules {
                         }
                     }
                 }
+        } catch (Exception e) {
+            log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+        }
+    }
+
+    public void checkDescription(CodeRepo codeRepo) {
+        String token = codeRepo.getAccessToken();
+        String repo = getRepositoryName(codeRepo);
+        String domain = getGitLabDomain(codeRepo);
+
+        try {
+            String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
+            URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath);
+
+            String response = webClient.get()
+                    .uri(uri)
+                    .header("PRIVATE-TOKEN", token)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode description = objectMapper.readTree(response);
+
+            JsonNode rule = findRule("Lack of repository description");
+            if (description.get("description").asText().equals("")) {
+                Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
+                log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
+            } else {
+                updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
+            }
+        } catch (Exception e) {
+            log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+        }
+    }
+
+    public void checkReadmeFile(CodeRepo codeRepo) {
+        String token = codeRepo.getAccessToken();
+        String repo = getRepositoryName(codeRepo);
+        String domain = getGitLabDomain(codeRepo);
+
+        try {
+            String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
+            URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/repository/tree");
+
+            String response = webClient.get()
+                    .uri(uri)
+                    .header("PRIVATE-TOKEN", token)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode files = objectMapper.readTree(response);
+
+            JsonNode rule = findRule("Lack of README file");
+
+            boolean readmeExists = false;
+            boolean reamdeIsEmpty = false;
+            String ReadmePath = "";
+
+            for (JsonNode file : files) {
+                String path = file.get("path").asText();
+                if (path.toLowerCase().contains("readme.md")) {
+                    readmeExists = true;
+                    ReadmePath = path;
+                    break;
+                }
+            }
+
+            if (readmeExists) {
+                URI readmeUri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/repository/files/" + URLEncoder.encode(ReadmePath, StandardCharsets.UTF_8.toString()) + "/raw");
+
+                String readmeContent = webClient.get()
+                        .uri(readmeUri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+                if (readmeContent == null || readmeContent.trim().isEmpty()) {
+                    reamdeIsEmpty = true;
+                }
+            }
+
+            if (!readmeExists || reamdeIsEmpty) {
+                Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
+                log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
+            } else {
+                updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
+            }
+        } catch (Exception e) {
+            log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+        }
+    }
+
+    public void checkContributingFile(CodeRepo codeRepo) {
+        String token = codeRepo.getAccessToken();
+        String repo = getRepositoryName(codeRepo);
+        String domain = getGitLabDomain(codeRepo);
+
+        try {
+            String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
+            URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/repository/tree");
+
+            String response = webClient.get()
+                    .uri(uri)
+                    .header("PRIVATE-TOKEN", token)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode files = objectMapper.readTree(response);
+
+            JsonNode rule = findRule("Lack of CONTRIBUTING file");
+
+            boolean contributingExists = false;
+            boolean contributingIsEmpty = false;
+            String contributingPath = "";
+
+            for (JsonNode file : files) {
+                String path = file.get("path").asText();
+                if (path.toLowerCase().contains("contributing.md")) {
+                    contributingExists = true;
+                    contributingPath = path;
+                    break;
+                }
+            }
+
+            if (contributingExists) {
+                URI contributingUri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/repository/files/" + URLEncoder.encode(contributingPath, StandardCharsets.UTF_8.toString()) + "/raw");
+
+                String contributingContent = webClient.get()
+                        .uri(contributingUri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+                if (contributingContent == null || contributingContent.trim().isEmpty()) {
+                    contributingIsEmpty = true;
+                }
+            }
+
+            if (!contributingExists || contributingIsEmpty) {
+                Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
+                log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
+            } else {
+                updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
+            }
+        } catch (Exception e) {
+            log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+        }
+    }
+
+    public void checkSecurityFile(CodeRepo codeRepo) {
+        String token = codeRepo.getAccessToken();
+        String repo = getRepositoryName(codeRepo);
+        String domain = getGitLabDomain(codeRepo);
+
+        try {
+            String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
+            URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/repository/tree");
+
+            String response = webClient.get()
+                    .uri(uri)
+                    .header("PRIVATE-TOKEN", token)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode files = objectMapper.readTree(response);
+
+            JsonNode rule = findRule("Lack of SECURITY file");
+
+            boolean securityExists = false;
+            boolean securityIsEmpty = false;
+            String securityPath = "";
+
+            for (JsonNode file : files) {
+                String path = file.get("path").asText();
+                if (path.toLowerCase().contains("contributing")) {
+                    securityExists = true;
+                    securityPath = path;
+                    break;
+                }
+            }
+
+            if (securityExists) {
+                URI securityUri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/repository/files/" + URLEncoder.encode(securityPath, StandardCharsets.UTF_8.toString()) + "/raw");
+
+                String readmeContent = webClient.get()
+                        .uri(securityUri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+                if (readmeContent == null || readmeContent.trim().isEmpty()) {
+                    securityIsEmpty = true;
+                }
+            }
+
+            if (!securityExists || securityIsEmpty) {
+                Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
+                log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
+            } else {
+                updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
+            }
+        } catch (Exception e) {
+            log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+        }
+    }
+
+    public void checkExternalRepositories(CodeRepo codeRepo) {
+        String token = codeRepo.getAccessToken();
+        String repo = getRepositoryName(codeRepo);
+        String domain = getGitLabDomain(codeRepo);
+
+        try {
+            String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
+            URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/repository/tree");
+
+            String response = webClient.get()
+                    .uri(uri)
+                    .header("PRIVATE-TOKEN", token)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode files = objectMapper.readTree(response);
+
+            JsonNode rule = findRule("Usage of external repository");
+
+            String[] repositoryAllowlist = StreamSupport.stream(findRepositoryAllowlistService.findAll().spliterator(), false).map(RepositoryAllowlist::getRepositoryDomain).toArray(String[]::new);
+
+            for (JsonNode file : files) {
+                String path = file.get("path").asText();
+                if (path.toLowerCase().contains("dockerfile") || path.toLowerCase().contains("docker-compose")) {
+                    URI fileUri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/repository/files/" + URLEncoder.encode(path, StandardCharsets.UTF_8.toString()) + "/raw");
+
+                    String fileContent = webClient.get()
+                            .uri(fileUri)
+                            .header("PRIVATE-TOKEN", token)
+                            .retrieve()
+                            .bodyToMono(String.class)
+                            .block();
+
+                    String[] lines = fileContent.split("\n");
+                    for (String line : lines) {
+                        line = line.trim();
+                        if (line.startsWith("FROM") || line.startsWith("image:")) {
+                            boolean matchesAllowlist = false;
+                            for (String allowedRepo : repositoryAllowlist) {
+                                if (line.contains(allowedRepo)) {
+                                    matchesAllowlist = true;
+                                }
+                            }
+                            if (!matchesAllowlist) {
+                                Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText() + " (" + path + "/" + line + ")", rule.get("description").asText(), rule.get("recommendation").asText());
+                                log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl() );
+                                createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
+                            } else {
+                                updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + path + "/" + line + ")");
+                            }
+                        }
+                    }
+                }
+            }
+
         } catch (Exception e) {
             log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
         }

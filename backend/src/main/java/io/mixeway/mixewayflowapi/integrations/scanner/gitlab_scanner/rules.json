@@ -49,25 +49,39 @@
     "location": "Settings/Access tokens/Project access tokens"
   },
   {
-    "name": "",
-    "description": "",
-    "recommendation": "",
-    "severity": "",
-    "location": ""
+    "name": "Lack of repository description",
+    "description": "The repository does not have a description which can make it harder for users to understand its purpose.",
+    "recommendation": "Add project description in Settings > General > Naming, description, topics > Project description",
+    "severity": "LOW",
+    "location": "Settings/General/Naming, description, topics/Project description"
   },
   {
-    "name": "",
-    "description": "",
-    "recommendation": "",
-    "severity": "",
-    "location": ""
+    "name": "Lack of README file",
+    "description": "The repository does not contain a README file which is essential for providing an overview and guidance on the project.",
+    "recommendation": "Add a README file in Code > Repository",
+    "severity": "LOW",
+    "location": "Code/Repository"
   },
   {
-    "name": "",
-    "description": "",
-    "recommendation": "",
-    "severity": "",
-    "location": ""
+    "name": "Lack of CONTRIBUTING file",
+    "description": "The repository does not contain a CONTRIBUTING file which is essential for providing guidelines on how contributors can effectively participate in the project.",
+    "recommendation": "Add a CONTRIBUTING file in Code > Repository",
+    "severity": "LOW",
+    "location": "Code/Repository"
+  },
+  {
+    "name": "Lack of SECURITY file",
+    "description": "The repository does not contain a SECURITY file, which is essential for providing guidelines on how to report vulnerabilities and ensure the project's security practices are followed.",
+    "recommendation": "Add a SECURITY file in Code > Repository",
+    "severity": "LOW",
+    "location": "Code/Repository"
+  },
+  {
+    "name": "Usage of external repository",
+    "description": "The project relies on an external repository, which may pose security, reliability, or compliance risks.",
+    "recommendation": "Update your application to use repositories from an approved allowlist",
+    "severity": "HIGH",
+    "location": "Code/Repository"
   },
   {
     "name": "",
