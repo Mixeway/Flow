@@ -84,18 +84,18 @@
     "location": "Code/Repository"
   },
   {
-    "name": "",
-    "description": "",
-    "recommendation": "",
-    "severity": "",
-    "location": ""
+    "name": "Protected branch with insufficient access level",
+    "description": "Protected branches with insufficient access restrictions may allow unauthorized users to modify critical code. When merge and push permissions are set below the 'Maintainer' level, it increases the risk of unauthorized code changes, potentially introducing security vulnerabilities or unstable code into production branches.",
+    "recommendation": " Set Settings > Repository > Protected branches > Allowed to merge/Allowed to push and merge to 'Maintainers' ",
+    "severity": "CRITICAL",
+    "location": "Settings/Repository/Protected branches/Allowed to merge/Allowed to push and merge"
   },
   {
-    "name": "",
-    "description": "",
-    "recommendation": "",
-    "severity": "",
-    "location": ""
+    "name": "Secret stored in GitLab CI/CD variables",
+    "description": "Storing sensitive information like passwords, API keys, or tokens in GitLab CI/CD variables poses a security risk. These variables are accessible to anyone with access to the project settings and can be exposed through logs or debugging output. Additionally, they are not encrypted at rest and may be visible in plain text to project maintainers.",
+    "recommendation": "Move secret from Settings > CI/CD > Variables to a secret manager",
+    "severity": "CRITICAL",
+    "location": "Settings/CI/CD/Variables"
   },
   {
     "name": "",
