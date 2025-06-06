@@ -16,6 +16,7 @@ public class GetCodeReposResponseDto {
     String iac;
     String sca;
     String secrets;
+    String gitlab;
     List<ScanInfo> scanInfos;
 
     public GetCodeReposResponseDto(CodeRepo codeRepo){
@@ -27,9 +28,10 @@ public class GetCodeReposResponseDto {
         this.iac = codeRepo.getIacScan().name();
         this.secrets = codeRepo.getSecretsScan().name();
         this.sca = codeRepo.getScaScan().name();
+        this.gitlab = codeRepo.getGitlabScan().name();
         this.scanInfos = codeRepo.getScanInfos();
     }
-    public GetCodeReposResponseDto(Long id, String target, String repoUrl, String team, CodeRepo.ScanStatus sast, CodeRepo.ScanStatus iac, CodeRepo.ScanStatus secrets, CodeRepo.ScanStatus sca) {
+    public GetCodeReposResponseDto(Long id, String target, String repoUrl, String team, CodeRepo.ScanStatus sast, CodeRepo.ScanStatus iac, CodeRepo.ScanStatus secrets, CodeRepo.ScanStatus sca, CodeRepo.ScanStatus gitlab) {
         this.id = id;
         this.target = target;
         this.repo_url = repoUrl;
@@ -38,5 +40,6 @@ public class GetCodeReposResponseDto {
         this.iac = iac.toString();
         this.secrets = secrets.toString();
         this.sca = sca.toString();
+        this.gitlab = gitlab.toString();
     }
 }

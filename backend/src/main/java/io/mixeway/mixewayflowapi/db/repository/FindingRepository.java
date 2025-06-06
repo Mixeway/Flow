@@ -29,7 +29,8 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
             + "SUM(CASE WHEN f.source = 'SAST' AND (f.status = 'NEW' OR f.status = 'EXISTING') THEN 1 ELSE 0 END), "
             + "SUM(CASE WHEN f.source = 'IAC' AND (f.status = 'NEW' OR f.status = 'EXISTING') THEN 1 ELSE 0 END), "
             + "SUM(CASE WHEN f.source = 'SCA' AND (f.status = 'NEW' OR f.status = 'EXISTING') THEN 1 ELSE 0 END), "
-            + "SUM(CASE WHEN f.source = 'SECRETS' AND (f.status = 'NEW' OR f.status = 'EXISTING') THEN 1 ELSE 0 END)) "
+            + "SUM(CASE WHEN f.source = 'SECRETS' AND (f.status = 'NEW' OR f.status = 'EXISTING') THEN 1 ELSE 0 END), "
+            + "SUM(CASE WHEN f.source = 'GITLAB_SCANNER' AND (f.status = 'NEW' OR f.status = 'EXISTING') THEN 1 ELSE 0 END)) "
             + "FROM Finding f WHERE f.codeRepo.id = :codeRepo")
     VulnStatsResponseDto countFindingsBySource(@Param("codeRepo") Long codeRepo);
 

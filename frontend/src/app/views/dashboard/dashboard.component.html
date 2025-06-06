@@ -456,6 +456,31 @@
                                         </div>
                                     </ng-template>
                                 </ngx-datatable-column>
+                                <!-- GitLab Column -->
+                                <ngx-datatable-column name="GitLab" [width]="100">
+                                    <ng-template ngx-datatable-header-template>
+                                        <span class="scan-type-header" cTooltip="GitLab Configuration Security">GitLab</span>
+                                    </ng-template>
+                                    <ng-template ngx-datatable-cell-template let-row="row">
+                                        <div class="scan-status-cell">
+                                            <div
+                                                    class="scan-status-indicator"
+                                                    [ngClass]="{
+                                                    'danger': row.gitlab === 'DANGER',
+                                                    'success': row.gitlab === 'SUCCESS',
+                                                    'warning': row.gitlab === 'WARNING',
+                                                    'neutral': row.gitlab === 'NOT_PERFORMED'
+                                                  }"
+                                            >
+                                                <svg *ngIf="row.gitlab === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.gitlab === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
+                                                <svg *ngIf="row.gitlab === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.gitlab === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
+                                                <c-spinner *ngIf="row.gitlab === 'RUNNING'" size="sm"></c-spinner>
+                                            </div>
+                                        </div>
+                                    </ng-template>
+                                </ngx-datatable-column>
                             </ngx-datatable>
                         </c-tab-panel>
                     </c-tabs-content>

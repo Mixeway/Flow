@@ -96,6 +96,11 @@ public class StatsController {
             updateCount(dailyData, "secretsMedium", stat.getSecretsMedium());
             updateCount(dailyData, "secretsRest", stat.getSecretsRest());
 
+            updateCount(dailyData, "gitlabCritical", stat.getGitlabCritical());
+            updateCount(dailyData, "gitlabHigh", stat.getGitlabHigh());
+            updateCount(dailyData, "gitlabMedium", stat.getGitlabMedium());
+            updateCount(dailyData, "gitlabRest", stat.getGitlabRest());
+
             // Track overall statuses
             updateCount(dailyData, "openFindings", stat.getOpenedFindings());
             updateCount(dailyData, "removedFindings", stat.getRemovedFindings());
@@ -158,6 +163,7 @@ public class StatsController {
         int scaTotal = 0;
         int iacTotal = 0;
         int secretsTotal = 0;
+        int gitlabTotal = 0;
         int openTotal = 0;
         int removedTotal = 0;
         int reviewedTotal = 0;
@@ -167,16 +173,16 @@ public class StatsController {
         for (CodeRepoFindingStats stat : latestStats) {
             // Count by severity
             criticalTotal += stat.getSastCritical() + stat.getScaCritical() +
-                    stat.getIacCritical() + stat.getSecretsCritical();
+                    stat.getIacCritical() + stat.getSecretsCritical() + stat.getGitlabCritical();
 
             highTotal += stat.getSastHigh() + stat.getScaHigh() +
-                    stat.getIacHigh() + stat.getSecretsHigh();
+                    stat.getIacHigh() + stat.getSecretsHigh() + stat.getGitlabHigh();
 
             mediumTotal += stat.getSastMedium() + stat.getScaMedium() +
-                    stat.getIacMedium() + stat.getSecretsMedium();
+                    stat.getIacMedium() + stat.getSecretsMedium() + stat.getGitlabMedium();
 
             lowTotal += stat.getSastRest() + stat.getScaRest() +
-                    stat.getIacRest() + stat.getSecretsRest();
+                    stat.getIacRest() + stat.getSecretsRest() + stat.getGitlabRest();
 
             // Count by source
             sastTotal += stat.getSastCritical() + stat.getSastHigh() +
@@ -190,6 +196,9 @@ public class StatsController {
 
             secretsTotal += stat.getSecretsCritical() + stat.getSecretsHigh() +
                     stat.getSecretsMedium() + stat.getSecretsRest();
+
+            gitlabTotal += stat.getGitlabCritical() + stat.getGitlabHigh() +
+                    stat.getGitlabMedium() + stat.getGitlabRest();
 
             // Count by status
             openTotal += stat.getOpenedFindings();
@@ -212,6 +221,7 @@ public class StatsController {
         summary.put("scaTotal", scaTotal);
         summary.put("iacTotal", iacTotal);
         summary.put("secretsTotal", secretsTotal);
+        summary.put("gitlabTotal", gitlabTotal);
 
         summary.put("openTotal", openTotal);
         summary.put("removedTotal", removedTotal);
@@ -267,10 +277,10 @@ public class StatsController {
                 repoData.put("teamName", repo.getTeam().getName());
 
                 int criticalCount = stat.getSastCritical() + stat.getScaCritical() +
-                        stat.getIacCritical() + stat.getSecretsCritical();
+                        stat.getIacCritical() + stat.getSecretsCritical() + stat.getGitlabCritical();
 
                 int highCount = stat.getSastHigh() + stat.getScaHigh() +
-                        stat.getIacHigh() + stat.getSecretsHigh();
+                        stat.getIacHigh() + stat.getSecretsHigh() + stat.getGitlabHigh();
 
                 int totalVulns = stat.getOpenedFindings();
 
@@ -328,10 +338,10 @@ public class StatsController {
                     CodeRepoFindingStats stat = latestStat.get();
 
                     criticalTotal += stat.getSastCritical() + stat.getScaCritical() +
-                            stat.getIacCritical() + stat.getSecretsCritical();
+                            stat.getIacCritical() + stat.getSecretsCritical() + stat.getGitlabCritical();
 
                     highTotal += stat.getSastHigh() + stat.getScaHigh() +
-                            stat.getIacHigh() + stat.getSecretsHigh();
+                            stat.getIacHigh() + stat.getSecretsHigh() + stat.getGitlabHigh();
 
                     totalVulns += stat.getOpenedFindings();
                     fixedVulns += stat.getRemovedFindings();

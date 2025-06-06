@@ -8,11 +8,13 @@ public class VulnStatsResponseDto {
     Long iac;
     Long sca;
     Long secrets;
-    public VulnStatsResponseDto(Long sast, Long iac, Long sca, Long secrets) {
+    Long gitlab;
+    public VulnStatsResponseDto(Long sast, Long iac, Long sca, Long secrets,Long gitlab) {
         this.sast = sast;
         this.iac = iac;
         this.sca = sca;
         this.secrets = secrets;
+        this.gitlab = gitlab;
     }
 
     public VulnStatsResponseDto(){};

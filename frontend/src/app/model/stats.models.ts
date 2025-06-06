@@ -13,6 +13,7 @@ export interface VulnerabilitySummary {
     scaTotal: number;
     iacTotal: number;
     secretsTotal: number;
+    gitlabTotal: number;
     openTotal: number;
     removedTotal: number;
     reviewedTotal: number;
@@ -40,6 +41,10 @@ export interface VulnerabilityTrendDataPoint {
     secretsHigh?: number;
     secretsMedium?: number;
     secretsRest?: number;
+    gitlabCritical?: number;
+    gitlabHigh?: number;
+    gitlabMedium?: number;
+    gitlabRest?: number;
     openFindings?: number;
     removedFindings?: number;
     reviewedFindings?: number;
