@@ -51,6 +51,7 @@ class FindCodeRepoFindingStatsServiceTest {
                         codeRepo,1,2,3,4,1,
                         2,3,4,5,1,2,
                         3,4,1,2,3,
+                        4,1,2,3,
                         4,1,2,3));
         AggregatedRepoStatsDTO aggregatedRepoStatsDTO = findCodeRepoFindingStatsService.getAggregatedStatsForLastSevenDays(principal);
         assertFalse(aggregatedRepoStatsDTO.getActiveFindings().isEmpty());

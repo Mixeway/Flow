@@ -35,8 +35,8 @@ class CreateScanInfoServiceTest {
         createScanInfoService
                 .createOrUpdateScanInfo(codeRepo,codeRepo.getDefaultBranch(),"321",
                         CodeRepo.ScanStatus.SUCCESS, CodeRepo.ScanStatus.SUCCESS, CodeRepo.ScanStatus.SUCCESS,
-                        CodeRepo.ScanStatus.SUCCESS, CodeRepo.ScanStatus.SUCCESS, 1,2,3,4,5,
-                        6,7,8);
+                        CodeRepo.ScanStatus.SUCCESS, CodeRepo.ScanStatus.SUCCESS,1,2,3,4,5,
+                        6,7,8, 9, 10);
         Optional<ScanInfo> scanInfo = scanInfoRepository.findByCodeRepoAndCodeRepoBranchAndCommitId(codeRepo,codeRepo.getDefaultBranch(),"321");
 
         assertTrue(scanInfo.isPresent());
@@ -44,7 +44,7 @@ class CreateScanInfoServiceTest {
                 .createOrUpdateScanInfo(codeRepo,codeRepo.getDefaultBranch(),"321",
                         CodeRepo.ScanStatus.SUCCESS, CodeRepo.ScanStatus.SUCCESS, CodeRepo.ScanStatus.SUCCESS,
                         CodeRepo.ScanStatus.SUCCESS, CodeRepo.ScanStatus.SUCCESS, 100,2,3,4,5,
-                        6,7,8);
+                        6,7,8, 9 ,10);
         scanInfo = scanInfoRepository.findByCodeRepoAndCodeRepoBranchAndCommitId(codeRepo,codeRepo.getDefaultBranch(),"321");
         assertTrue(scanInfo.isPresent());
         assertEquals(100, scanInfo.get().getScaHigh());
