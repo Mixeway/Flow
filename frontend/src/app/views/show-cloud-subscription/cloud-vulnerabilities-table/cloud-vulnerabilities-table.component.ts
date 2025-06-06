@@ -1,17 +1,17 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import {
-  BadgeComponent,
-  ButtonDirective,
-  CardBodyComponent,
-  CardComponent,
-  CardHeaderComponent,
-  ColComponent,
-  FormSelectDirective,
-  InputGroupComponent,
-  InputGroupTextDirective,
-  RowComponent,
-  SpinnerComponent,
-  TooltipDirective
+    BadgeComponent,
+    ButtonDirective,
+    CardBodyComponent,
+    CardComponent,
+    CardHeaderComponent,
+    ColComponent, FormCheckComponent, FormCheckInputDirective, FormCheckLabelDirective, FormLabelDirective,
+    FormSelectDirective,
+    InputGroupComponent,
+    InputGroupTextDirective,
+    RowComponent,
+    SpinnerComponent,
+    TooltipDirective
 } from '@coreui/angular';
 import { IconDirective } from '@coreui/icons-angular';
 import { NgxDatatableModule } from '@swimlane/ngx-datatable';
@@ -32,27 +32,31 @@ interface Vulnerability {
 @Component({
   selector: 'app-cloud-vulnerabilities-table',
   standalone: true,
-  imports: [
-    CardComponent,
-    CardHeaderComponent,
-    CardBodyComponent,
-    RowComponent,
-    ColComponent,
-    FormSelectDirective,
-    InputGroupComponent,
-    InputGroupTextDirective,
-    ButtonDirective,
-    SpinnerComponent,
-    NgxDatatableModule,
-    IconDirective,
-    BadgeComponent,
-    DatePipe,
-    NgIf,
-    NgFor,
-    NgClass,
-    FormsModule,
-    TooltipDirective
-  ],
+    imports: [
+        CardComponent,
+        CardHeaderComponent,
+        CardBodyComponent,
+        RowComponent,
+        ColComponent,
+        FormSelectDirective,
+        InputGroupComponent,
+        InputGroupTextDirective,
+        ButtonDirective,
+        SpinnerComponent,
+        NgxDatatableModule,
+        IconDirective,
+        BadgeComponent,
+        DatePipe,
+        NgIf,
+        NgFor,
+        NgClass,
+        FormsModule,
+        TooltipDirective,
+        FormCheckComponent,
+        FormCheckInputDirective,
+        FormCheckLabelDirective,
+        FormLabelDirective
+    ],
   templateUrl: './cloud-vulnerabilities-table.component.html',
   styleUrls: ['./cloud-vulnerabilities-table.component.scss']
 })
