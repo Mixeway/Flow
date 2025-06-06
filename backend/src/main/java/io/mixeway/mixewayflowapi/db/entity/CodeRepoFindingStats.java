@@ -77,6 +77,18 @@ public class CodeRepoFindingStats {
     @Column(name = "secrets_rest", nullable = false)
     private  int secretsRest;
 
+    @Column(name = "gitlab_critical", nullable = false)
+    private  int gitlabCritical;
+
+    @Column(name = "gitlab_high", nullable = false)
+    private  int gitlabHigh;
+
+    @Column(name = "gitlab_medium", nullable = false)
+    private  int gitlabMedium;
+
+    @Column(name = "gitlab_rest", nullable = false)
+    private  int gitlabRest;
+
     @Column(name = "opened_findings", nullable = false)
     private  int openedFindings;
 
@@ -93,6 +105,7 @@ public class CodeRepoFindingStats {
                                 int scaCritical, int scaHigh, int scaMedium, int scaRest,
                                 int iacCritical, int iacHigh, int iacMedium, int iacRest,
                                 int secretsCritical, int secretsHigh, int secretsMedium, int secretsRest,
+                                int gitlabCritical, int gitlabHigh, int gitlabMedium, int gitlabRest,
                                 int openedFindings, int removedFindings, int reviewedFindings, int averageFixTime) {
         this.id = null; // will be set by the database
         this.codeRepo = codeRepo;
@@ -113,6 +126,10 @@ public class CodeRepoFindingStats {
         this.secretsHigh = secretsHigh;
         this.secretsMedium = secretsMedium;
         this.secretsRest = secretsRest;
+        this.gitlabCritical = secretsCritical;
+        this.gitlabHigh = secretsHigh;
+        this.gitlabMedium = secretsMedium;
+        this.gitlabRest = secretsRest;
         this.openedFindings = openedFindings;
         this.removedFindings = removedFindings;
         this.reviewedFindings = reviewedFindings;
@@ -139,6 +156,10 @@ public class CodeRepoFindingStats {
         this.secretsHigh = 0;
         this.secretsMedium = 0;
         this.secretsRest = 0;
+        this.gitlabCritical = 0;
+        this.gitlabHigh = 0;
+        this.gitlabMedium = 0;
+        this.gitlabRest = 0;
         this.openedFindings = 0;
         this.removedFindings = 0;
         this.reviewedFindings = 0;

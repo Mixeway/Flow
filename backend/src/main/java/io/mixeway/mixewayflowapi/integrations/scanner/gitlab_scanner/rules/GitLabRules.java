@@ -1,4 +1,4 @@
-package io.mixeway.mixewayflowapi.integrations.scanner.gitlab_scanner;
+package io.mixeway.mixewayflowapi.integrations.scanner.gitlab_scanner.rules;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -65,7 +65,7 @@ public class GitLabRules {
 
     public JsonNode findRule(String ruleName) throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
-        File file = new File("backend/src/main/java/io/mixeway/mixewayflowapi/integrations/scanner/gitlab_scanner/rules.json");
+        File file = new File("backend/src/main/java/io/mixeway/mixewayflowapi/integrations/scanner/gitlab_scanner/rules/rules.json");
         JsonNode rulesArray = objectMapper.readTree(file);
         for (JsonNode rule : rulesArray) {
             String name = rule.path("name").asText();
@@ -388,11 +388,11 @@ public class GitLabRules {
                     boolean hasApiScope = StreamSupport.stream(tokenInfo.get("scopes").spliterator(), false).anyMatch(scope -> "api".equals(scope.asText()));
                     JsonNode rule = findRule("Access token with api scope");
                     if (hasApiScope) {
-                        Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText() + " (" + tokenInfo.get("id").asInt() + ")", rule.get("description").asText(), rule.get("recommendation").asText());
+                        Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText() + " (" + tokenInfo.get("name").asText() + ")", rule.get("description").asText(), rule.get("recommendation").asText());
                         log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
                         createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
                     } else {
-                        updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + tokenInfo.get("id").asInt() + ")");
+                        updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + tokenInfo.get("name").asText() + ")");
                     }
                 }
             }

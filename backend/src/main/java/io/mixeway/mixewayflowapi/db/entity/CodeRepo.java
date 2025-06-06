@@ -83,6 +83,10 @@ public final class CodeRepo {
     @Column(name = "secrets_scan", nullable = false)
     private ScanStatus secretsScan;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "gitlab_scan", nullable = false)
+    private ScanStatus gitlabScan;
+
     @ManyToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JoinTable(
             name = "coderepo_component",
@@ -121,6 +125,7 @@ public final class CodeRepo {
         this.scaScan = ScanStatus.NOT_PERFORMED;
         this.iacScan = ScanStatus.NOT_PERFORMED;
         this.secretsScan = ScanStatus.NOT_PERFORMED;
+        this.gitlabScan = ScanStatus.NOT_PERFORMED;
         this.type = RepoType.GITLAB;
         this.scaUUID = null;
         this.appDataTypes = new ArrayList<>();
@@ -140,6 +145,7 @@ public final class CodeRepo {
         this.scaScan = ScanStatus.NOT_PERFORMED;
         this.iacScan = ScanStatus.NOT_PERFORMED;
         this.secretsScan = ScanStatus.NOT_PERFORMED;
+        this.gitlabScan = ScanStatus.NOT_PERFORMED;
         this.scaUUID = null;
         this.appDataTypes = new ArrayList<>();
         this.type = repoType;
@@ -173,11 +179,17 @@ public final class CodeRepo {
         this.secretsScan = status;
     }
 
+    public void updateGitLabScanStatus(ScanStatus status) {
+        this.gitlabScan = status;
+    }
+
     public void startScan(){
         this.secretsScan = ScanStatus.RUNNING;
         this.iacScan = ScanStatus.RUNNING;
         this.scaScan = ScanStatus.RUNNING;
         this.sastScan = ScanStatus.RUNNING;
+        this.gitlabScan = ScanStatus.RUNNING;
+
     }
 
     public String getGitHostUrl() throws MalformedURLException {
@@ -202,14 +214,16 @@ public final class CodeRepo {
         return this.sastScan.equals(ScanStatus.RUNNING) &&
                 this.iacScan.equals(ScanStatus.RUNNING) &&
                 this.secretsScan.equals(ScanStatus.RUNNING) &&
-                this.scaScan.equals(ScanStatus.RUNNING);
+                this.scaScan.equals(ScanStatus.RUNNING) &&
+                this.gitlabScan.equals(ScanStatus.RUNNING);
     }
 
     public boolean isScanNotRunning(){
         return !this.sastScan.equals(ScanStatus.RUNNING) &&
                 !this.iacScan.equals(ScanStatus.RUNNING) &&
                 !this.secretsScan.equals(ScanStatus.RUNNING) &&
-                !this.scaScan.equals(ScanStatus.RUNNING);
+                !this.scaScan.equals(ScanStatus.RUNNING) &&
+                !this.gitlabScan.equals(ScanStatus.RUNNING);
     }
 
 

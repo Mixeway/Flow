@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import org.aspectj.apache.bcel.classfile.Code;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -49,6 +50,10 @@ public final class ScanInfo {
     @Column(name = "secrets_scan_status", nullable = false)
     private CodeRepo.ScanStatus secretsScanStatus;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "gitlab_scan_status", nullable = false)
+    private CodeRepo.ScanStatus gitlabScanStatus;
+
     @Column(name = "sca_high", nullable = false)
     private int scaHigh;
 
@@ -73,6 +78,12 @@ public final class ScanInfo {
     @Column(name = "secrets_critical", nullable = false)
     private int secretsCritical;
 
+    @Column(name = "gitlab_critical", nullable = false)
+    private  int gitlabCritical;
+
+    @Column(name = "gitlab_high", nullable = false)
+    private  int gitlabHigh;
+
     // Private constructor for JPA
     protected ScanInfo() {
         this.id = 0;
@@ -84,6 +95,7 @@ public final class ScanInfo {
         this.sastScanStatus = CodeRepo.ScanStatus.NOT_PERFORMED;
         this.iacScanStatus = CodeRepo.ScanStatus.NOT_PERFORMED;
         this.secretsScanStatus = CodeRepo.ScanStatus.NOT_PERFORMED;
+        this.gitlabScanStatus = CodeRepo.ScanStatus.NOT_PERFORMED;
         this.scaHigh = 0;
         this.scaCritical = 0;
         this.sastHigh = 0;
@@ -92,13 +104,15 @@ public final class ScanInfo {
         this.iacCritical = 0;
         this.secretsHigh = 0;
         this.secretsCritical = 0;
+        this.gitlabHigh = 0;
+        this.gitlabCritical = 0;
     }
 
     // Public constructor for creating new instances
     public ScanInfo(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId,
                     CodeRepo.ScanStatus scaScanStatus, CodeRepo.ScanStatus sastScanStatus, CodeRepo.ScanStatus iacScanStatus,
-                    CodeRepo.ScanStatus secretsScanStatus, int scaHigh, int scaCritical, int sastHigh, int sastCritical,
-                    int iacHigh, int iacCritical, int secretsHigh, int secretsCritical) {
+                    CodeRepo.ScanStatus secretsScanStatus, CodeRepo.ScanStatus gitlabScanStatus, int scaHigh, int scaCritical, int sastHigh, int sastCritical,
+                    int iacHigh, int iacCritical, int secretsHigh, int secretsCritical, int gitlabHigh, int gitlabCritical) {
         this.id = 0;
         this.codeRepo = codeRepo;
         this.codeRepoBranch = codeRepoBranch;
@@ -107,6 +121,7 @@ public final class ScanInfo {
         this.sastScanStatus = sastScanStatus;
         this.iacScanStatus = iacScanStatus;
         this.secretsScanStatus = secretsScanStatus;
+        this.gitlabScanStatus = gitlabScanStatus;
         this.scaHigh = scaHigh;
         this.scaCritical = scaCritical;
         this.sastHigh = sastHigh;
@@ -115,6 +130,8 @@ public final class ScanInfo {
         this.iacCritical = iacCritical;
         this.secretsHigh = secretsHigh;
         this.secretsCritical = secretsCritical;
+        this.gitlabHigh = gitlabHigh;
+        this.gitlabCritical = gitlabCritical;
         this.insertedDate = LocalDateTime.now();
 
     }
@@ -137,12 +154,13 @@ public final class ScanInfo {
 
     // Method to update existing ScanInfo fields
     public void updateScanInfo(CodeRepo.ScanStatus scaScanStatus, CodeRepo.ScanStatus sastScanStatus, CodeRepo.ScanStatus iacScanStatus,
-                               CodeRepo.ScanStatus secretsScanStatus, int scaHigh, int scaCritical, int sastHigh, int sastCritical,
-                               int iacHigh, int iacCritical, int secretsHigh, int secretsCritical) {
+                               CodeRepo.ScanStatus secretsScanStatus, CodeRepo.ScanStatus gitlabScanStatus, int scaHigh, int scaCritical, int sastHigh, int sastCritical,
+                               int iacHigh, int iacCritical, int secretsHigh, int secretsCritical, int gitlabHigh, int gitlabCritical) {
         this.scaScanStatus = scaScanStatus;
         this.sastScanStatus = sastScanStatus;
         this.iacScanStatus = iacScanStatus;
         this.secretsScanStatus = secretsScanStatus;
+        this.gitlabScanStatus = gitlabScanStatus;
         this.scaHigh = scaHigh;
         this.scaCritical = scaCritical;
         this.sastHigh = sastHigh;
@@ -151,5 +169,7 @@ public final class ScanInfo {
         this.iacCritical = iacCritical;
         this.secretsHigh = secretsHigh;
         this.secretsCritical = secretsCritical;
+        this.gitlabHigh = gitlabHigh;
+        this.gitlabCritical = gitlabCritical;
     }
 }

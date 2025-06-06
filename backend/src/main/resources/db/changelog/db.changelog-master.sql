@@ -716,7 +716,7 @@ CREATE TABLE app_config (
 INSERT INTO app_config (config_key, config_value)
 VALUES ('RUN_MODE', 'STANDALONE');
 
---changeset berejmaj:add_repository_allowlist
+-- changeset majaberej:add_repository_allowlist
 CREATE TABLE repository_allowlist (
                                       id SERIAL PRIMARY KEY,
                                       repository_domain VARCHAR(255) NOT NULL UNIQUE,
@@ -725,4 +725,19 @@ CREATE TABLE repository_allowlist (
                                       updated_at TIMESTAMP
 );
 
+-- changeset majaberej:update_code_repo_finding_stats
+ALTER TABLE code_repo_finding_stats
+    ADD COLUMN gitlab_critical INT NOT NULL,
+    ADD COLUMN gitlab_high INT NOT NULL,
+    ADD COLUMN gitlab_medium INT NOT NULL,
+    ADD COLUMN gitlab_rest INT NOT NULL;
 
+-- changeset majaberej:update_scan_info
+ALTER TABLE scan_info
+    ADD COLUMN gitlab_scan_status VARCHAR(20) NOT NULL,
+    ADD COLUMN gitlab_critical INT NOT NULL,
+    ADD COLUMN gitlab_high INT NOT NULL;
+
+-- changeset majaberej:update_coderepo
+ALTER TABLE coderepo
+    ADD COLUMN gitlab_scan VARCHAR(20) NOT NULL DEFAULT 'NOT_PERFORMED';
