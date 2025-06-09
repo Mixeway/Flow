@@ -616,11 +616,9 @@ export class DashboardComponent implements OnInit {
     loadTeams() {
         this.teamService.get().subscribe({
             next: (response: Team[]) => {
-                console.log(response)
                 this.teams = response.map((team: Team) => {
                     const teamRepos = this.rows.filter((repo: CodeRepo) => repo.team?.toLowerCase() === team.name?.toLowerCase());
                     const {sast, sca, iac, secrets, gitlab} = this.getRepoScanStatus(teamRepos);
-                    console.log(this.getRepoScanStatus(teamRepos))
 
                     const teamCloudSubscriptions = this.cloudRows.filter((cloudSubscription: CloudSubscription) => cloudSubscription.team.toLowerCase() === team.name.toLowerCase());
                     const { cloudScan } = this.getCloudScanStatus(teamCloudSubscriptions);
