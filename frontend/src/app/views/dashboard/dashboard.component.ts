@@ -335,7 +335,6 @@ export class DashboardComponent implements OnInit {
 
         this.loadCodeRepos();
         this.loadCloudSubscriptions();
-        this.loadTeams();
         this.loadSecurityData();
         this.initColumns();
         this.initCloudColumns();
@@ -553,6 +552,7 @@ export class DashboardComponent implements OnInit {
             next: (response) => {
                 this.rows = response;
                 this.temp = [...this.rows]; // Keep a backup of the original rows for filtering
+                this.loadTeams();
             },
             error: (error) => {
                 // Handle error
@@ -616,14 +616,16 @@ export class DashboardComponent implements OnInit {
     loadTeams() {
         this.teamService.get().subscribe({
             next: (response: Team[]) => {
+                console.log(response)
                 this.teams = response.map((team: Team) => {
-                    const teamRepos = this.rows.filter((repo: CodeRepo) => repo.team.toLowerCase() === team.name.toLowerCase());
-                    const {sast, sca, iac, secrets} = this.getRepoScanStatus(teamRepos);
+                    const teamRepos = this.rows.filter((repo: CodeRepo) => repo.team?.toLowerCase() === team.name?.toLowerCase());
+                    const {sast, sca, iac, secrets, gitlab} = this.getRepoScanStatus(teamRepos);
+                    console.log(this.getRepoScanStatus(teamRepos))
 
                     const teamCloudSubscriptions = this.cloudRows.filter((cloudSubscription: CloudSubscription) => cloudSubscription.team.toLowerCase() === team.name.toLowerCase());
                     const { cloudScan } = this.getCloudScanStatus(teamCloudSubscriptions);
 
-                    return {...team, sastStatus: sast, scaStatus: sca, iacStatus: iac, secretsStatus: secrets, cloudScanStatus: cloudScan};
+                    return {...team, sastStatus: sast, scaStatus: sca, iacStatus: iac, secretsStatus: secrets, gitlabStatus:gitlab, cloudScanStatus: cloudScan};
                 });
                 this.teamsTemp = [...this.teams];
             },

@@ -132,6 +132,10 @@ export interface TeamFindingStats {
     secretsHigh?: number;
     secretsMedium?: number;
     secretsRest?: number;
+    gitlabCritical?: number;
+    gitlabHigh?: number;
+    gitlabMedium?: number;
+    gitlabRest?: number;
     criticalFindings?: number;// Cloud findings
     highFindings?: number; // Cloud findings
     openedFindings: number;
@@ -322,6 +326,14 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
                 pointBorderColor: '#bd7777',
                 data: [],
             },
+            {
+                label: 'GitLab',
+                backgroundColor: 'rgba(151, 187, 205, 0.2)',
+                borderColor: 'rgba(255,127,52,0.68)',
+                pointBackgroundColor: 'rgba(255,118,151,0.68)',
+                pointBorderColor: '#bd7777',
+                data: [],
+            },
         ],
     };
 
@@ -456,7 +468,8 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
             repo.sast === 'RUNNING' ||
             repo.sca === 'RUNNING' ||
             repo.secrets === 'RUNNING' ||
-            repo.iac === 'RUNNING'
+            repo.iac === 'RUNNING' ||
+            repo.gitlab === 'RUNNING'
         );
 
         const cloudRunning = Array.isArray(this.cloudSubscriptionsData) &&
@@ -506,6 +519,10 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
                             secretsHigh: stat.secretsHigh ?? 0,
                             secretsMedium: stat.secretsMedium ?? 0,
                             secretsRest: stat.secretsRest ?? 0,
+                            gitlabCritical: stat.gitlabCritical ?? 0,
+                            gitlabHigh: stat.gitlabHigh ?? 0,
+                            gitlabMedium: stat.gitlabMedium ?? 0,
+                            gitlabRest: stat.gitlabRest ?? 0,
                             criticalFindings: 0, // No cloud data in codeReposStats
                             highFindings: 0, // No cloud data in codeReposStats
                             openedFindings: stat.openedFindings ?? 0,
@@ -531,6 +548,10 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
                             secretsHigh: 0,
                             secretsMedium: 0,
                             secretsRest: 0,
+                            gitlabCritical: 0, // No Secrets data in cloudSubscriptionsStats
+                            gitlabHigh: 0,
+                            gitlabMedium: 0,
+                            gitlabRest: 0,
                             criticalFindings: stat.criticalFindings ?? 0,
                             highFindings: stat.highFindings ?? 0,
                             openedFindings: 0, // No openedFindings in cloudSubscriptionsStats
@@ -567,6 +588,7 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
                     scaCritical: 0, scaHigh: 0, scaMedium: 0, scaRest: 0,
                     iacCritical: 0, iacHigh: 0, iacMedium: 0, iacRest: 0,
                     secretsCritical: 0, secretsHigh: 0, secretsMedium: 0, secretsRest: 0,
+                    gitlabCritical: 0, gitlabHigh: 0, gitlabMedium: 0, gitlabRest: 0,
                     criticalFindings: 0, highFindings: 0,
                     openedFindings: 0, removedFindings: 0, reviewedFindings: 0,
                     totalFixTime: 0, // Track total fix time
@@ -594,6 +616,11 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
             combinedMap[date].secretsHigh += stat.secretsHigh ?? 0;
             combinedMap[date].secretsMedium += stat.secretsMedium ?? 0;
             combinedMap[date].secretsRest += stat.secretsRest ?? 0;
+
+            combinedMap[date].gitlabCritical += stat.gitlabCritical ?? 0;
+            combinedMap[date].gitlabHigh += stat.gitlabHigh ?? 0;
+            combinedMap[date].gitlabMedium += stat.gitlabMedium ?? 0;
+            combinedMap[date].gitlabRest += stat.gitlabRest ?? 0;
 
             combinedMap[date].criticalFindings += stat.criticalFindings ?? 0;
             combinedMap[date].highFindings += stat.highFindings ?? 0;
@@ -626,7 +653,7 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
             next: (response) => {
                 this.sourceStats = response;
                 this.chartPieData = {
-                    labels: ['SAST', 'SCA', 'Secrets', 'IaC', 'Cloud'],
+                    labels: ['SAST', 'SCA', 'Secrets', 'IaC', 'GitLab', 'Cloud'],
                     datasets: [
                         {
                             data: [
@@ -634,6 +661,7 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
                                 this.sourceStats.sca,
                                 this.sourceStats.secrets,
                                 this.sourceStats.iac,
+                                this.sourceStats.gitlab,
                                 this.sourceStats.cloud
                             ],
                             backgroundColor: [
@@ -933,6 +961,20 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
                 ),
                 backgroundColor: 'rgba(54, 162, 235, 0.2)',
                 borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true
+            },
+            {
+                label: 'GitLab',
+                data: sortedStats.map(stat =>
+                    (stat.gitlabCritical || 0) +
+                    (stat.gitlabHigh || 0) +
+                    (stat.gitlabMedium || 0) +
+                    (stat.gitlabRest || 0)
+                ),
+                backgroundColor: 'rgba(255,60,68,0.76)',
+                borderColor: 'rgb(237,104,60)',
                 borderWidth: 2,
                 tension: 0.4,
                 fill: true

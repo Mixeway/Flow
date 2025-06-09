@@ -12,6 +12,7 @@ import io.mixeway.mixewayflowapi.domain.cloudsubscriptionfindingstats.FindCloudS
 import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.coderepofindingstats.FindCodeRepoFindingStatsService;
 import io.mixeway.mixewayflowapi.domain.finding.FindFindingService;
+import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GitLabApiClientService;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -36,9 +37,10 @@ public class TeamStatisticService {
     private final FindFindingService findFindingService;
     private final CodeRepoFindingStatsRepository codeRepoFindingStatsRepository;
     private final CloudSubscriptionFindingStatsRepository cloudSubscriptionFindingStatsRepository;
+    private GitLabApiClientService gitLabApiClientService;
 
     @Autowired
-    public TeamStatisticService(FindCloudSubscriptionService findCloudSubscriptionService, FindCloudSubscriptionFindingStatsService findCloudSubscriptionFindingStatsService, FindCodeRepoService findCodeRepoService, FindCodeRepoFindingStatsService findCodeRepoFindingStatsService, FindFindingService findFindingService, CodeRepoFindingStatsRepository codeRepoFindingStatsRepository, CloudSubscriptionFindingStatsRepository cloudSubscriptionFindingStatsRepository) {
+    public TeamStatisticService(FindCloudSubscriptionService findCloudSubscriptionService, FindCloudSubscriptionFindingStatsService findCloudSubscriptionFindingStatsService, FindCodeRepoService findCodeRepoService, FindCodeRepoFindingStatsService findCodeRepoFindingStatsService, FindFindingService findFindingService, CodeRepoFindingStatsRepository codeRepoFindingStatsRepository, CloudSubscriptionFindingStatsRepository cloudSubscriptionFindingStatsRepository, GitLabApiClientService gitLabApiClientService) {
         this.findCodeRepoService = findCodeRepoService;
         this.findCodeRepoFindingStatsService = findCodeRepoFindingStatsService;
         this.findCloudSubscriptionService = findCloudSubscriptionService;
@@ -46,6 +48,7 @@ public class TeamStatisticService {
         this.findFindingService = findFindingService;
         this.codeRepoFindingStatsRepository = codeRepoFindingStatsRepository;
         this.cloudSubscriptionFindingStatsRepository = cloudSubscriptionFindingStatsRepository;
+        this.gitLabApiClientService = gitLabApiClientService;
     }
 
     public CombinedDailyStatsDto getTeamFindingStats(Long id, Principal principal) {
@@ -97,6 +100,10 @@ public class TeamStatisticService {
                     int secretsHigh = dailyStats.stream().mapToInt(CodeRepoFindingStats::getSecretsHigh).sum();
                     int secretsMedium = dailyStats.stream().mapToInt(CodeRepoFindingStats::getSecretsMedium).sum();
                     int secretsRest = dailyStats.stream().mapToInt(CodeRepoFindingStats::getSecretsRest).sum();
+                    int gitlabCritical = dailyStats.stream().mapToInt(CodeRepoFindingStats::getGitlabCritical).sum();
+                    int gitlabHigh = dailyStats.stream().mapToInt(CodeRepoFindingStats::getGitlabHigh).sum();
+                    int gitlabMedium = dailyStats.stream().mapToInt(CodeRepoFindingStats::getGitlabMedium).sum();
+                    int gitlabRest = dailyStats.stream().mapToInt(CodeRepoFindingStats::getGitlabRest).sum();
                     int openedFindings = dailyStats.stream().mapToInt(CodeRepoFindingStats::getOpenedFindings).sum();
                     int removedFindings = dailyStats.stream().mapToInt(CodeRepoFindingStats::getRemovedFindings).sum();
                     int reviewedFindings = dailyStats.stream().mapToInt(CodeRepoFindingStats::getReviewedFindings).sum();
@@ -114,6 +121,7 @@ public class TeamStatisticService {
                             scaCritical, scaHigh, scaMedium, scaRest,
                             iacCritical, iacHigh, iacMedium, iacRest,
                             secretsCritical, secretsHigh, secretsMedium, secretsRest,
+                            gitlabCritical, gitlabHigh, gitlabMedium, gitlabRest,
                             openedFindings, removedFindings, reviewedFindings,
                             averageFixTime
                     );

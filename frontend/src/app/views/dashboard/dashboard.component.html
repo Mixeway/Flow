@@ -67,7 +67,9 @@
                             </div>
                             <div class="summary-data">
                                 <div class="summary-title text-muted">Avg. Fix Time</div>
-                                <div class="summary-value fs-4 fw-bold">{{ securityStats?.averageFixTime || '0' }} days</div>
+                                <div class="summary-value fs-4 fw-bold">{{ securityStats?.averageFixTime || '0' }}
+                                    days
+                                </div>
                                 <div class="summary-trend d-flex align-items-center">
                                     <span class="text-muted">Current statistics</span>
                                 </div>
@@ -86,7 +88,8 @@
                                 <div class="summary-value fs-4 fw-bold">{{ securityStats?.totalRepos || '0' }}</div>
                                 <div class="summary-trend d-flex align-items-center">
                                     <a [routerLink]="['/security-dashboard']" class="text-decoration-none">
-                                        View details <svg cIcon name="cil-arrow-right" size="sm"></svg>
+                                        View details
+                                        <svg cIcon name="cil-arrow-right" size="sm"></svg>
                                     </a>
                                 </div>
                             </div>
@@ -155,7 +158,8 @@
                                 <div class="summary-value fs-4 fw-bold">{{ calculateSecurityScore() }}</div>
                                 <div class="summary-trend d-flex align-items-center">
                                     <a [routerLink]="['/stats']" class="text-decoration-none">
-                                        View details <svg cIcon name="cil-arrow-right" size="sm"></svg>
+                                        View details
+                                        <svg cIcon name="cil-arrow-right" size="sm"></svg>
                                     </a>
                                 </div>
                             </div>
@@ -172,8 +176,10 @@
                                     <svg cIcon name="cil-chart-line" class="me-2 text-primary" width="16"></svg>
                                     Vulnerability Trend (Last 30 Days)
                                 </h6>
-                                <a [routerLink]="['/security-dashboard']" class="btn btn-sm btn-link text-decoration-none">
-                                    Details <svg cIcon name="cil-arrow-right" size="sm"></svg>
+                                <a [routerLink]="['/security-dashboard']"
+                                   class="btn btn-sm btn-link text-decoration-none">
+                                    Details
+                                    <svg cIcon name="cil-arrow-right" size="sm"></svg>
                                 </a>
                             </div>
                             <div style="height: 240px; padding-bottom: 20px; position: relative; overflow: hidden;">
@@ -184,13 +190,16 @@
                                          style="max-height: 100%; width: 100%;">
                                 </c-chart>
                                 <!-- Loading state -->
-                                <div *ngIf="!vulnerabilityTrendData && !trendDataLoaded" class="d-flex justify-content-center align-items-center h-100">
+                                <div *ngIf="!vulnerabilityTrendData && !trendDataLoaded"
+                                     class="d-flex justify-content-center align-items-center h-100">
                                     <c-spinner color="primary" size="sm" class="me-2"></c-spinner>
                                     <span>Loading chart data...</span>
                                 </div>
                                 <!-- Empty data state -->
-                                <div *ngIf="!vulnerabilityTrendData && trendDataLoaded" class="d-flex justify-content-center align-items-center h-100 flex-column">
-                                    <svg cIcon name="cil-chart-line" class="text-muted mb-2" width="24" height="24"></svg>
+                                <div *ngIf="!vulnerabilityTrendData && trendDataLoaded"
+                                     class="d-flex justify-content-center align-items-center h-100 flex-column">
+                                    <svg cIcon name="cil-chart-line" class="text-muted mb-2" width="24"
+                                         height="24"></svg>
                                     <span class="text-muted">No trend data available</span>
                                     <small class="text-muted mt-1">Run security scans to generate trend data</small>
                                 </div>
@@ -211,15 +220,18 @@
                 <strong>Administrative Actions</strong>
             </c-card-header>
             <c-card-body class="d-flex flex-wrap gap-3">
-                <button color="primary" cButton (click)="importRepoModal()" cTooltip="Import multiple repositories from a Git provider">
+                <button color="primary" cButton (click)="importRepoModal()"
+                        cTooltip="Import multiple repositories from a Git provider">
                     <svg cIcon class="me-2" name="cil-code"></svg>
                     Bulk Repository Import
                 </button>
-                <button color="light" cButton (click)="importSingleRepoModal()" cTooltip="Import a single specific repository">
+                <button color="light" cButton (click)="importSingleRepoModal()"
+                        cTooltip="Import a single specific repository">
                     <svg cIcon class="me-2" name="cil-clone"></svg>
                     Single Repository Import
                 </button>
-                <button color="info" cButton (click)="createNewTeamModal()" *ngIf="appInfo?.quotaInfo?.planType != 'FREE'" cTooltip="Create a new team">
+                <button color="info" cButton (click)="createNewTeamModal()"
+                        *ngIf="appInfo?.quotaInfo?.planType != 'FREE'" cTooltip="Create a new team">
                     <svg cIcon class="me-2" name="cil-people"></svg>
                     Add New Team
                 </button>
@@ -287,7 +299,8 @@
                                     </button>
 
                                     <!-- Collapsible Status Legend -->
-                                    <div class="status-legend d-flex gap-4 align-items-center flex-wrap" *ngIf="showStatusLegend">
+                                    <div class="status-legend d-flex gap-4 align-items-center flex-wrap"
+                                         *ngIf="showStatusLegend">
                                         <div class="legend-item d-flex align-items-center">
                                             <span class="status-indicator danger"></span>
                                             <small>Critical Issues</small>
@@ -324,7 +337,8 @@
                                     [limit]="10"
                             >
                                 <!-- Action Column -->
-                                <ngx-datatable-column name="" prop="name2" [width]="60" [sortable]="false" [resizeable]="false">
+                                <ngx-datatable-column name="" prop="name2" [width]="60" [sortable]="false"
+                                                      [resizeable]="false">
                                     <ng-template ngx-datatable-cell-template let-row="row">
                                         <button type="button" class="btn btn-sm btn-primary" (click)="click(row)">
                                             <svg cIcon name="cil-magnifying-glass"></svg>
@@ -339,7 +353,8 @@
                                             <span class="fw-bold">{{ row.target }}</span>
                                             <small class="text-muted">
                                                 <a href="{{ row.repo_url }}" target="_blank" class="repo-link">
-                                                    <svg cIcon name="cil-external-link" size="sm" class="me-1"></svg>{{ row.repo_url }}
+                                                    <svg cIcon name="cil-external-link" size="sm" class="me-1"></svg>
+                                                    {{ row.repo_url }}
                                                 </a>
                                             </small>
                                         </div>
@@ -369,10 +384,14 @@
                                                     'neutral': row.sast === 'NOT_PERFORMED'
                                                   }"
                                             >
-                                                <svg *ngIf="row.sast === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
-                                                <svg *ngIf="row.sast === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
-                                                <svg *ngIf="row.sast === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
-                                                <svg *ngIf="row.sast === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
+                                                <svg *ngIf="row.sast === 'DANGER'" cIcon name="cil-warning"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.sast === 'SUCCESS'" cIcon name="cil-check"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.sast === 'WARNING'" cIcon name="cil-warning"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.sast === 'NOT_PERFORMED'" cIcon name="cil-ban"
+                                                     size="md"></svg>
                                                 <c-spinner *ngIf="row.sast === 'RUNNING'" size="sm"></c-spinner>
                                             </div>
                                         </div>
@@ -382,7 +401,8 @@
                                 <!-- SCA Column -->
                                 <ngx-datatable-column name="SCA" [width]="100">
                                     <ng-template ngx-datatable-header-template>
-                                        <span class="scan-type-header" cTooltip="Software Composition Analysis">SCA</span>
+                                        <span class="scan-type-header"
+                                              cTooltip="Software Composition Analysis">SCA</span>
                                     </ng-template>
                                     <ng-template ngx-datatable-cell-template let-row="row">
                                         <div class="scan-status-cell">
@@ -395,10 +415,14 @@
                                                     'neutral': row.sca === 'NOT_PERFORMED'
                                                   }"
                                             >
-                                                <svg *ngIf="row.sca === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
-                                                <svg *ngIf="row.sca === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
-                                                <svg *ngIf="row.sca === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
-                                                <svg *ngIf="row.sca === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
+                                                <svg *ngIf="row.sca === 'DANGER'" cIcon name="cil-warning"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.sca === 'SUCCESS'" cIcon name="cil-check"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.sca === 'WARNING'" cIcon name="cil-warning"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.sca === 'NOT_PERFORMED'" cIcon name="cil-ban"
+                                                     size="md"></svg>
                                                 <c-spinner *ngIf="row.sca === 'RUNNING'" size="sm"></c-spinner>
                                             </div>
                                         </div>
@@ -421,10 +445,14 @@
                                                     'neutral': row.secrets === 'NOT_PERFORMED'
                                                   }"
                                             >
-                                                <svg *ngIf="row.secrets === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
-                                                <svg *ngIf="row.secrets === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
-                                                <svg *ngIf="row.secrets === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
-                                                <svg *ngIf="row.secrets === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
+                                                <svg *ngIf="row.secrets === 'DANGER'" cIcon name="cil-warning"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.secrets === 'SUCCESS'" cIcon name="cil-check"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.secrets === 'WARNING'" cIcon name="cil-warning"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.secrets === 'NOT_PERFORMED'" cIcon name="cil-ban"
+                                                     size="md"></svg>
                                                 <c-spinner *ngIf="row.secrets === 'RUNNING'" size="sm"></c-spinner>
                                             </div>
                                         </div>
@@ -447,10 +475,14 @@
                                                     'neutral': row.iac === 'NOT_PERFORMED'
                                                   }"
                                             >
-                                                <svg *ngIf="row.iac === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
-                                                <svg *ngIf="row.iac === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
-                                                <svg *ngIf="row.iac === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
-                                                <svg *ngIf="row.iac === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
+                                                <svg *ngIf="row.iac === 'DANGER'" cIcon name="cil-warning"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.iac === 'SUCCESS'" cIcon name="cil-check"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.iac === 'WARNING'" cIcon name="cil-warning"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.iac === 'NOT_PERFORMED'" cIcon name="cil-ban"
+                                                     size="md"></svg>
                                                 <c-spinner *ngIf="row.iac === 'RUNNING'" size="sm"></c-spinner>
                                             </div>
                                         </div>
@@ -459,7 +491,8 @@
                                 <!-- GitLab Column -->
                                 <ngx-datatable-column name="GitLab" [width]="100">
                                     <ng-template ngx-datatable-header-template>
-                                        <span class="scan-type-header" cTooltip="GitLab Configuration Security">GitLab</span>
+                                        <span class="scan-type-header"
+                                              cTooltip="GitLab Configuration Security">GitLab</span>
                                     </ng-template>
                                     <ng-template ngx-datatable-cell-template let-row="row">
                                         <div class="scan-status-cell">
@@ -472,10 +505,14 @@
                                                     'neutral': row.gitlab === 'NOT_PERFORMED'
                                                   }"
                                             >
-                                                <svg *ngIf="row.gitlab === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
-                                                <svg *ngIf="row.gitlab === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
-                                                <svg *ngIf="row.gitlab === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
-                                                <svg *ngIf="row.gitlab === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
+                                                <svg *ngIf="row.gitlab === 'DANGER'" cIcon name="cil-warning"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.gitlab === 'SUCCESS'" cIcon name="cil-check"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.gitlab === 'WARNING'" cIcon name="cil-warning"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.gitlab === 'NOT_PERFORMED'" cIcon name="cil-ban"
+                                                     size="md"></svg>
                                                 <c-spinner *ngIf="row.gitlab === 'RUNNING'" size="sm"></c-spinner>
                                             </div>
                                         </div>
@@ -518,7 +555,8 @@
                                     [limit]="10"
                             >
                                 <!-- Action Column -->
-                                <ngx-datatable-column name="" prop="name2" [width]="60" [sortable]="false" [resizeable]="false">
+                                <ngx-datatable-column name="" prop="name2" [width]="60" [sortable]="false"
+                                                      [resizeable]="false">
                                     <ng-template ngx-datatable-cell-template let-row="row">
                                         <button type="button" class="btn btn-sm btn-primary" (click)="cloudClick(row)">
                                             <svg cIcon name="cil-magnifying-glass"></svg>
@@ -559,10 +597,14 @@
                                 'neutral': row.scanStatus === 'NOT_PERFORMED'
                               }"
                                             >
-                                                <svg *ngIf="row.scanStatus === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
-                                                <svg *ngIf="row.scanStatus === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
-                                                <svg *ngIf="row.scanStatus === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
-                                                <svg *ngIf="row.scanStatus === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
+                                                <svg *ngIf="row.scanStatus === 'DANGER'" cIcon name="cil-warning"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.scanStatus === 'SUCCESS'" cIcon name="cil-check"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.scanStatus === 'WARNING'" cIcon name="cil-warning"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.scanStatus === 'NOT_PERFORMED'" cIcon name="cil-ban"
+                                                     size="md"></svg>
                                                 <c-spinner *ngIf="row.scanStatus === 'RUNNING'" size="sm"></c-spinner>
                                             </div>
                                         </div>
@@ -605,7 +647,8 @@
                                     [limit]="10"
                             >
                                 <!-- Action Column -->
-                                <ngx-datatable-column name="" prop="name2" [width]="60" [sortable]="false" [resizeable]="false">
+                                <ngx-datatable-column name="" prop="name2" [width]="60" [sortable]="false"
+                                                      [resizeable]="false">
                                     <ng-template ngx-datatable-cell-template let-row="row">
                                         <button type="button" class="btn btn-sm btn-primary" (click)="teamClick(row)">
                                             <svg cIcon name="cil-magnifying-glass"></svg>
@@ -639,10 +682,14 @@
                                 'neutral': row.sastStatus === 'NOT_PERFORMED'
                               }"
                                             >
-                                                <svg *ngIf="row.sastStatus === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
-                                                <svg *ngIf="row.sastStatus === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
-                                                <svg *ngIf="row.sastStatus === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
-                                                <svg *ngIf="row.sastStatus === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
+                                                <svg *ngIf="row.sastStatus === 'DANGER'" cIcon name="cil-warning"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.sastStatus === 'SUCCESS'" cIcon name="cil-check"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.sastStatus === 'WARNING'" cIcon name="cil-warning"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.sastStatus === 'NOT_PERFORMED'" cIcon name="cil-ban"
+                                                     size="md"></svg>
                                                 <c-spinner *ngIf="row.sastStatus === 'RUNNING'" size="sm"></c-spinner>
                                             </div>
                                         </div>
@@ -652,7 +699,8 @@
                                 <!-- SCA Column -->
                                 <ngx-datatable-column name="SCA" [width]="100">
                                     <ng-template ngx-datatable-header-template>
-                                        <span class="scan-type-header" cTooltip="Software Composition Analysis">SCA</span>
+                                        <span class="scan-type-header"
+                                              cTooltip="Software Composition Analysis">SCA</span>
                                     </ng-template>
                                     <ng-template ngx-datatable-cell-template let-row="row">
                                         <div class="scan-status-cell">
@@ -665,10 +713,14 @@
                                 'neutral': row.scaStatus === 'NOT_PERFORMED'
                               }"
                                             >
-                                                <svg *ngIf="row.scaStatus === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
-                                                <svg *ngIf="row.scaStatus === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
-                                                <svg *ngIf="row.scaStatus === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
-                                                <svg *ngIf="row.scaStatus === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
+                                                <svg *ngIf="row.scaStatus === 'DANGER'" cIcon name="cil-warning"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.scaStatus === 'SUCCESS'" cIcon name="cil-check"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.scaStatus === 'WARNING'" cIcon name="cil-warning"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.scaStatus === 'NOT_PERFORMED'" cIcon name="cil-ban"
+                                                     size="md"></svg>
                                                 <c-spinner *ngIf="row.scaStatus === 'RUNNING'" size="sm"></c-spinner>
                                             </div>
                                         </div>
@@ -691,11 +743,16 @@
                                 'neutral': row.secretsStatus === 'NOT_PERFORMED'
                               }"
                                             >
-                                                <svg *ngIf="row.secretsStatus === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
-                                                <svg *ngIf="row.secretsStatus === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
-                                                <svg *ngIf="row.secretsStatus === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
-                                                <svg *ngIf="row.secretsStatus === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
-                                                <c-spinner *ngIf="row.secretsStatus === 'RUNNING'" size="sm"></c-spinner>
+                                                <svg *ngIf="row.secretsStatus === 'DANGER'" cIcon name="cil-warning"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.secretsStatus === 'SUCCESS'" cIcon name="cil-check"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.secretsStatus === 'WARNING'" cIcon name="cil-warning"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.secretsStatus === 'NOT_PERFORMED'" cIcon name="cil-ban"
+                                                     size="md"></svg>
+                                                <c-spinner *ngIf="row.secretsStatus === 'RUNNING'"
+                                                           size="sm"></c-spinner>
                                             </div>
                                         </div>
                                     </ng-template>
@@ -717,11 +774,39 @@
                                 'neutral': row.iacStatus === 'NOT_PERFORMED'
                               }"
                                             >
-                                                <svg *ngIf="row.iacStatus === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
-                                                <svg *ngIf="row.iacStatus === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
-                                                <svg *ngIf="row.iacStatus === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
-                                                <svg *ngIf="row.iacStatus === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
+                                                <svg *ngIf="row.iacStatus === 'DANGER'" cIcon name="cil-warning"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.iacStatus === 'SUCCESS'" cIcon name="cil-check"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.iacStatus === 'WARNING'" cIcon name="cil-warning"
+                                                     size="md"></svg>
+                                                <svg *ngIf="row.iacStatus === 'NOT_PERFORMED'" cIcon name="cil-ban"
+                                                     size="md"></svg>
                                                 <c-spinner *ngIf="row.iacStatus === 'RUNNING'" size="sm"></c-spinner>
+                                            </div>
+                                        </div>
+                                    </ng-template>
+                                </ngx-datatable-column>
+
+                                <!-- GitLab Scan Column -->
+                                <ngx-datatable-column name="Cloud Scan" [width]="100">
+                                    <ng-template ngx-datatable-header-template>
+                                        <span class="scan-type-header" cTooltip="GitLab Scan">GitLab Scan</span>
+                                    </ng-template>
+                                    <ng-template ngx-datatable-cell-template let-row="row">
+                                        <div class="scan-status-cell">
+                                            <div class="scan-status-indicator"
+                                                 [ngClass]="{
+             'danger': row.gitlabStatus === 'DANGER',
+             'success': row.gitlabStatus === 'SUCCESS',
+             'warning': row.gitlabStatus === 'WARNING',
+             'neutral': row.gitlabStatus === 'NOT_PERFORMED'
+           }">
+                                                <svg *ngIf="row.gitlabStatus === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.gitlabStatus === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
+                                                <svg *ngIf="row.gitlabStatus === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
+                                                <svg *ngIf="row.gitlabStatus === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
+                                                <c-spinner *ngIf="row.gitlabStatus === 'RUNNING'" size="sm"></c-spinner>
                                             </div>
                                         </div>
                                     </ng-template>
@@ -734,15 +819,13 @@
                                     </ng-template>
                                     <ng-template ngx-datatable-cell-template let-row="row">
                                         <div class="scan-status-cell">
-                                            <div
-                                                    class="scan-status-indicator"
-                                                    [ngClass]="{
-                                'danger': row.cloudScanStatus === 'DANGER',
-                                'success': row.cloudScanStatus === 'SUCCESS',
-                                'warning': row.cloudScanStatus === 'WARNING',
-                                'neutral': row.cloudScanStatus === 'NOT_PERFORMED'
-                              }"
-                                            >
+                                            <div class="scan-status-indicator"
+                                                 [ngClass]="{
+             'danger': row.cloudScanStatus === 'DANGER',
+             'success': row.cloudScanStatus === 'SUCCESS',
+             'warning': row.cloudScanStatus === 'WARNING',
+             'neutral': row.cloudScanStatus === 'NOT_PERFORMED'
+           }">
                                                 <svg *ngIf="row.cloudScanStatus === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
                                                 <svg *ngIf="row.cloudScanStatus === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
                                                 <svg *ngIf="row.cloudScanStatus === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
@@ -752,6 +835,8 @@
                                         </div>
                                     </ng-template>
                                 </ngx-datatable-column>
+
+
                             </ngx-datatable>
                         </c-tab-panel>
                     </c-tabs-content>
@@ -762,7 +847,8 @@
 </c-row>
 
 <!-- Repository List Modal -->
-<c-modal size="xl" id="repoListModal" alignment="center" [visible]="visibleList" (visibleChange)="handleListRepoChange($event)">
+<c-modal size="xl" id="repoListModal" alignment="center" [visible]="visibleList"
+         (visibleChange)="handleListRepoChange($event)">
     <c-modal-header>
         <h5 cModalTitle>Available Repositories</h5>
     </c-modal-header>
@@ -828,7 +914,8 @@
         <!-- Introduction -->
         <div class="alert alert-info mb-3">
             <svg cIcon name="cil-info" class="me-2"></svg>
-            <strong>Bulk Import:</strong> This option allows you to browse and select multiple repositories from a Git provider.
+            <strong>Bulk Import:</strong> This option allows you to browse and select multiple repositories from a Git
+            provider.
         </div>
 
         <!-- Repository Type Selection -->
@@ -867,7 +954,8 @@
             <div class="mb-3">
                 <label for="repoUrl" class="form-label">
                     Git Provider URL
-                    <span cTooltip="The base URL of your Git provider, not a specific repository" cTooltipPlacement="top" class="text-info ms-1">
+                    <span cTooltip="The base URL of your Git provider, not a specific repository"
+                          cTooltipPlacement="top" class="text-info ms-1">
                         <svg cIcon name="cil-info-circle"></svg>
                     </span>
                 </label>
@@ -883,7 +971,8 @@
                             [placeholder]="selectedRepo === 'GitLab' ? 'https://gitlab.com' : 'https://github.com'"
                             required
                     />
-                    <div class="invalid-feedback" *ngIf="importRepoForm.get('repoUrl')?.invalid && importRepoForm.get('repoUrl')?.touched">
+                    <div class="invalid-feedback"
+                         *ngIf="importRepoForm.get('repoUrl')?.invalid && importRepoForm.get('repoUrl')?.touched">
                         Please enter a valid URL
                     </div>
                 </c-input-group>
@@ -893,14 +982,16 @@
                 </small>
                 <small class="text-muted d-block mt-1">
                     <svg cIcon name="cil-x-circle" class="me-1 text-danger" size="sm"></svg>
-                    Not: <code>{{ selectedRepo === 'GitLab' ? 'https://gitlab.com/namespace/project' : 'https://github.com/username/repo' }}</code>
+                    Not:
+                    <code>{{ selectedRepo === 'GitLab' ? 'https://gitlab.com/namespace/project' : 'https://github.com/username/repo' }}</code>
                 </small>
             </div>
 
             <div class="mb-3">
                 <label for="accessToken" class="form-label">
                     Access Token
-                    <span cTooltip="Personal access token with repository read permissions" cTooltipPlacement="top" class="text-info ms-1">
+                    <span cTooltip="Personal access token with repository read permissions" cTooltipPlacement="top"
+                          class="text-info ms-1">
                         <svg cIcon name="cil-info-circle"></svg>
                     </span>
                 </label>
@@ -916,7 +1007,8 @@
                             placeholder="Your access token"
                             required
                     />
-                    <div class="invalid-feedback" *ngIf="importRepoForm.get('accessToken')?.invalid && importRepoForm.get('accessToken')?.touched">
+                    <div class="invalid-feedback"
+                         *ngIf="importRepoForm.get('accessToken')?.invalid && importRepoForm.get('accessToken')?.touched">
                         Access token is required
                     </div>
                 </c-input-group>
@@ -929,7 +1021,8 @@
             <div class="mb-3">
                 <label for="inputGroupSelect01" class="form-label">
                     Team
-                    <span cTooltip="Team that will own the imported repositories" cTooltipPlacement="top" class="text-info ms-1">
+                    <span cTooltip="Team that will own the imported repositories" cTooltipPlacement="top"
+                          class="text-info ms-1">
                         <svg cIcon name="cil-info-circle"></svg>
                     </span>
                 </label>
@@ -941,7 +1034,8 @@
                         <option value="" disabled selected>Select Team...</option>
                         <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
                     </select>
-                    <div class="invalid-feedback" *ngIf="importRepoForm.get('team')?.invalid && importRepoForm.get('team')?.touched">
+                    <div class="invalid-feedback"
+                         *ngIf="importRepoForm.get('team')?.invalid && importRepoForm.get('team')?.touched">
                         Please select a team
                     </div>
                 </c-input-group>
@@ -951,13 +1045,15 @@
     <c-modal-footer>
         <button (click)="closeModal()" cButton color="secondary">Cancel</button>
         <button (click)="onSubmit()" cButton color="primary" [disabled]="importRepoForm.invalid">
-            <svg cIcon name="cil-cloud-download" class="me-1"></svg> Browse Repositories
+            <svg cIcon name="cil-cloud-download" class="me-1"></svg>
+            Browse Repositories
         </button>
     </c-modal-footer>
 </c-modal>
 
 <!-- Single Repository Import Modal -->
-<c-modal id="importSingleRepoModal" alignment="center" [visible]="visibleSingleRepoModal" (visibleChange)="handleImportSingleRepoChange($event)">
+<c-modal id="importSingleRepoModal" alignment="center" [visible]="visibleSingleRepoModal"
+         (visibleChange)="handleImportSingleRepoChange($event)">
     <c-modal-header>
         <h5 cModalTitle>Import Single Repository</h5>
     </c-modal-header>
@@ -965,7 +1061,8 @@
         <!-- Introduction -->
         <div class="alert alert-info mb-3">
             <svg cIcon name="cil-info" class="me-2"></svg>
-            <strong>Single Import:</strong> This option allows you to import a specific repository by providing its direct URL.
+            <strong>Single Import:</strong> This option allows you to import a specific repository by providing its
+            direct URL.
         </div>
 
         <!-- Repository Type Selection -->
@@ -1004,7 +1101,8 @@
             <div class="mb-3">
                 <label for="repoUrl2" class="form-label">
                     Repository URL
-                    <span cTooltip="The full URL to a specific repository" cTooltipPlacement="top" class="text-info ms-1">
+                    <span cTooltip="The full URL to a specific repository" cTooltipPlacement="top"
+                          class="text-info ms-1">
                         <svg cIcon name="cil-info-circle"></svg>
                     </span>
                 </label>
@@ -1020,24 +1118,28 @@
                             [placeholder]="selectedRepo === 'GitLab' ? 'https://gitlab.com/namespace/project' : 'https://github.com/username/repo'"
                             required
                     />
-                    <div class="invalid-feedback" *ngIf="importSingleRepoForm.get('repoUrl')?.invalid && importSingleRepoForm.get('repoUrl')?.touched">
+                    <div class="invalid-feedback"
+                         *ngIf="importSingleRepoForm.get('repoUrl')?.invalid && importSingleRepoForm.get('repoUrl')?.touched">
                         Please enter a valid repository URL
                     </div>
                 </c-input-group>
                 <small class="text-muted d-block mt-1">
                     <svg cIcon name="cil-check-circle" class="me-1 text-success" size="sm"></svg>
-                    Example: <code>{{ selectedRepo === 'GitLab' ? 'https://gitlab.com/namespace/project' : 'https://github.com/username/repo' }}</code>
+                    Example:
+                    <code>{{ selectedRepo === 'GitLab' ? 'https://gitlab.com/namespace/project' : 'https://github.com/username/repo' }}</code>
                 </small>
                 <small class="text-muted d-block mt-1">
                     <svg cIcon name="cil-x-circle" class="me-1 text-danger" size="sm"></svg>
-                    Not: <code>{{ selectedRepo === 'GitLab' ? 'https://gitlab.com' : 'https://github.com' }}</code> (base URL only)
+                    Not: <code>{{ selectedRepo === 'GitLab' ? 'https://gitlab.com' : 'https://github.com' }}</code>
+                    (base URL only)
                 </small>
             </div>
 
             <div class="mb-3">
                 <label for="accessToken2" class="form-label">
                     Access Token
-                    <span cTooltip="Personal access token with repository read permissions" cTooltipPlacement="top" class="text-info ms-1">
+                    <span cTooltip="Personal access token with repository read permissions" cTooltipPlacement="top"
+                          class="text-info ms-1">
                         <svg cIcon name="cil-info-circle"></svg>
                     </span>
                 </label>
@@ -1053,7 +1155,8 @@
                             placeholder="Your access token"
                             required
                     />
-                    <div class="invalid-feedback" *ngIf="importSingleRepoForm.get('accessToken')?.invalid && importSingleRepoForm.get('accessToken')?.touched">
+                    <div class="invalid-feedback"
+                         *ngIf="importSingleRepoForm.get('accessToken')?.invalid && importSingleRepoForm.get('accessToken')?.touched">
                         Access token is required
                     </div>
                 </c-input-group>
@@ -1078,7 +1181,8 @@
                         <option value="" disabled selected>Select Team...</option>
                         <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
                     </select>
-                    <div class="invalid-feedback" *ngIf="importSingleRepoForm.get('team')?.invalid && importSingleRepoForm.get('team')?.touched">
+                    <div class="invalid-feedback"
+                         *ngIf="importSingleRepoForm.get('team')?.invalid && importSingleRepoForm.get('team')?.touched">
                         Please select a team
                     </div>
                 </c-input-group>
@@ -1088,7 +1192,8 @@
     <c-modal-footer>
         <button (click)="closeModal()" cButton color="secondary">Cancel</button>
         <button (click)="onSubmitSingleRepo()" cButton color="primary" [disabled]="importSingleRepoForm.invalid">
-            <svg cIcon name="cil-cloud-download" class="me-1"></svg> Import Repository
+            <svg cIcon name="cil-cloud-download" class="me-1"></svg>
+            Import Repository
         </button>
     </c-modal-footer>
 </c-modal>
@@ -1113,7 +1218,8 @@
                             placeholder="Enter team name"
                             required
                     />
-                    <div class="invalid-feedback" *ngIf="newTeamForm.get('name')?.invalid && newTeamForm.get('name')?.touched">
+                    <div class="invalid-feedback"
+                         *ngIf="newTeamForm.get('name')?.invalid && newTeamForm.get('name')?.touched">
                         Team name is required
                     </div>
                 </c-input-group>
@@ -1140,7 +1246,8 @@
     <c-modal-footer>
         <button (click)="closeNewTeamModal()" cButton color="secondary">Cancel</button>
         <button (click)="onSubmitNewTeam()" cButton color="primary" [disabled]="newTeamForm.invalid">
-            <svg cIcon name="cil-plus" class="me-1"></svg> Create Team
+            <svg cIcon name="cil-plus" class="me-1"></svg>
+            Create Team
         </button>
     </c-modal-footer>
 </c-modal>
