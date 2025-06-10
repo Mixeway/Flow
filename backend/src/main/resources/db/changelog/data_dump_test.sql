@@ -257,6 +257,10 @@ INSERT INTO public.app_data_type_location VALUES (25, '"voicemail"', 'Java/sprin
 --
 -- Data for Name: code_repo_finding_stats; Type: TABLE DATA; Schema: public; Owner: flow_user
 --
+ALTER TABLE code_repo_finding_stats ALTER COLUMN gitlab_rest SET DEFAULT 1;
+ALTER TABLE code_repo_finding_stats ALTER COLUMN gitlab_medium SET DEFAULT 2;
+ALTER TABLE code_repo_finding_stats ALTER COLUMN gitlab_high SET DEFAULT 4;
+ALTER TABLE code_repo_finding_stats ALTER COLUMN gitlab_critical SET DEFAULT 3;
 
 INSERT INTO public.code_repo_finding_stats VALUES (8, 1, '2024-08-01 10:10:10', 19, 14, 19, 17, 18, 6, 11, 12, 4, 13, 17, 11, 11, 5, 16, 8, 8, 8, 6, 15);
 INSERT INTO public.code_repo_finding_stats VALUES (9, 1, '2024-08-02 10:10:10', 11, 12, 15, 11, 17, 7, 4, 8, 10, 14, 3, 7, 14, 2, 9, 9, 18, 9, 12, 8);
@@ -659,12 +663,12 @@ INSERT INTO public.finding VALUES (48, 15, NULL, 2, 'Code where problem is found
 -- Data for Name: scan_info; Type: TABLE DATA; Schema: public; Owner: flow_user
 --
 
-INSERT INTO public.scan_info VALUES (1, 1, 1, '96345a45d7fec29be66d5725dbaa651a7aa46dc5', '2024-08-22 21:30:52.861856', 'SUCCESS', 'SUCCESS', 'WARNING', 'SUCCESS', 0, 0, 0, 0, 1, 0, 0, 0);
-INSERT INTO public.scan_info VALUES (2, 3, 3, '6da4ce6e2a5ff3d7ce2913e37a878ea22d8b17bc', '2024-08-22 21:32:34.77271', 'NOT_PERFORMED', 'SUCCESS', 'SUCCESS', 'SUCCESS', 0, 0, 0, 0, 0, 0, 0, 0);
-INSERT INTO public.scan_info VALUES (3, 5, 5, 'c9b352f969ca79db0d4c804f815f3469d15f9e26', '2024-08-22 21:33:21.091533', 'NOT_PERFORMED', 'SUCCESS', 'SUCCESS', 'SUCCESS', 0, 0, 0, 0, 0, 0, 0, 0);
-INSERT INTO public.scan_info VALUES (4, 4, 4, 'a4d6ecff5732c96f061b16d1c4c442106fd0940a', '2024-08-22 21:34:31.742132', 'NOT_PERFORMED', 'SUCCESS', 'WARNING', 'WARNING', 0, 0, 0, 0, 4, 0, 1, 1);
-INSERT INTO public.scan_info VALUES (5, 2, 2, 'a8cc09f9452e47fd6b2071d853529d568eb1f9a1', '2024-08-22 21:34:42.347865', 'NOT_PERFORMED', 'DANGER', 'WARNING', 'DANGER', 0, 0, 3, 2, 1, 0, 2, 2);
-INSERT INTO public.scan_info VALUES (6, 6, 6, '4fb9f47dfa66947b20d7b83c0666b27d1e233539', '2024-08-22 21:46:33.469057', 'NOT_PERFORMED', 'SUCCESS', 'WARNING', 'SUCCESS', 0, 0, 0, 0, 2, 0, 0, 0);
+INSERT INTO public.scan_info VALUES (1, 1, 1, '96345a45d7fec29be66d5725dbaa651a7aa46dc5', '2024-08-22 21:30:52.861856', 'SUCCESS', 'SUCCESS', 'WARNING', 'SUCCESS', 0, 0, 0, 0, 1, 0, 0, 0, 'SUCCESS', 0, 0);
+INSERT INTO public.scan_info VALUES (2, 3, 3, '6da4ce6e2a5ff3d7ce2913e37a878ea22d8b17bc', '2024-08-22 21:32:34.77271', 'NOT_PERFORMED', 'SUCCESS', 'SUCCESS', 'SUCCESS', 0, 0, 0, 0, 0, 0, 0, 0, 'SUCCESS', 0, 0);
+INSERT INTO public.scan_info VALUES (3, 5, 5, 'c9b352f969ca79db0d4c804f815f3469d15f9e26', '2024-08-22 21:33:21.091533', 'NOT_PERFORMED', 'SUCCESS', 'SUCCESS', 'SUCCESS', 0, 0, 0, 0, 0, 0, 0, 0, 'SUCCESS', 0, 0);
+INSERT INTO public.scan_info VALUES (4, 4, 4, 'a4d6ecff5732c96f061b16d1c4c442106fd0940a', '2024-08-22 21:34:31.742132', 'NOT_PERFORMED', 'SUCCESS', 'WARNING', 'WARNING', 0, 0, 0, 0, 4, 0, 1, 1, 'SUCCESS', 0, 0);
+INSERT INTO public.scan_info VALUES (5, 2, 2, 'a8cc09f9452e47fd6b2071d853529d568eb1f9a1', '2024-08-22 21:34:42.347865', 'NOT_PERFORMED', 'DANGER', 'WARNING', 'DANGER', 0, 0, 3, 2, 1, 0, 2, 2, 'SUCCESS', 0, 0);
+INSERT INTO public.scan_info VALUES (6, 6, 6, '4fb9f47dfa66947b20d7b83c0666b27d1e233539', '2024-08-22 21:46:33.469057', 'NOT_PERFORMED', 'SUCCESS', 'WARNING', 'SUCCESS', 0, 0, 0, 0, 2, 0, 0, 0, 'SUCCESS', 0, 0);
 
 
 
