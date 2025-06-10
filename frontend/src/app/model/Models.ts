@@ -43,6 +43,7 @@ export interface Repo {
     scaScan: string;
     secretsScan: string;
     iacScan: string;
+    gitlabScan: string;
 }
 
 export interface Branch {
@@ -93,6 +94,10 @@ export interface CodeRepoFindingStats {
     secretsHigh: number;
     secretsMedium: number;
     secretsRest: number;
+    gitlabCritical: number;
+    gitlabHigh: number;
+    gitlabMedium: number;
+    gitlabRest: number;
     openedFindings: number;
     removedFindings: number;
     reviewedFindings: number;
@@ -135,6 +140,10 @@ export interface ScanInfo {
     secretsHigh: number;
     secretsMedium: number;
     secretsRest: number;
+    gitlabCritical: number;
+    gitlabHigh: number;
+    gitlabMedium: number;
+    gitlabRest: number;
 }
 
 // models/chart.model.ts

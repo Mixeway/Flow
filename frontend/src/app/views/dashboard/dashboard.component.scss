@@ -237,13 +237,51 @@
   border-radius: 4px;
   overflow: hidden;
 
+  .datatable-header-cell {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0, 0, 21, 0.125);
+    height: auto;
+    min-height: 50px;
+
+    // Sort arrows container
+    .datatable-header-cell-wrapper {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      justify-content: center;
+    }
+
+    // Sort arrows
+    .datatable-header-cell-label {
+      margin-right: 0.5rem;
+    }
+  }
+
+  // Scan type header specific styling
+  .scan-type-header {
+    display: inline-block;
+    text-align: center;
+    font-weight: 600;
+    color: #3c4b64;
+    white-space: nowrap;
+    width: 100%;
+  }
+
+  // Status cell styling
   .scan-status-cell {
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100%;
+    padding: 0.5rem;
   }
 
+  // Status indicator styling
   .scan-status-indicator {
     display: flex;
     justify-content: center;
@@ -251,7 +289,12 @@
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 50%;
-    color: white;
+    margin: 0 auto;
+
+    svg {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
 
     &.danger {
       background-color: rgba(229, 83, 83, 0.15);
@@ -274,9 +317,13 @@
     }
   }
 
-  .scan-type-header {
-    font-weight: 600;
-    color: #3c4b64;
+  .datatable-body-cell {
+    text-align: center;
+    vertical-align: middle;
+  }
+  .datatable-header-cell {
+    text-align: center;
+    vertical-align: middle;
   }
 }
 

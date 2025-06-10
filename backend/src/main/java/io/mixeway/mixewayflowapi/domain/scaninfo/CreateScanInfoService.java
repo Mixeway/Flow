@@ -44,12 +44,14 @@ public class CreateScanInfoService {
      * @param iacCritical       The count of critical severity issues found during the IaC scan.
      * @param secretsHigh       The count of high severity issues found during the Secrets scan.
      * @param secretsCritical   The count of critical severity issues found during the Secrets scan.
+     * @param gitlabHigh       The count of high severity issues found during the GitLab scan.
+     * @param gitlabCritical   The count of critical severity issues found during the GitLab scan.
      * @return The saved {@link ScanInfo} entity.
      */
     public ScanInfo createOrUpdateScanInfo(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId,
                                            CodeRepo.ScanStatus scaScanStatus, CodeRepo.ScanStatus sastScanStatus, CodeRepo.ScanStatus iacScanStatus,
-                                           CodeRepo.ScanStatus secretsScanStatus, int scaHigh, int scaCritical, int sastHigh, int sastCritical,
-                                           int iacHigh, int iacCritical, int secretsHigh, int secretsCritical) {
+                                           CodeRepo.ScanStatus secretsScanStatus, CodeRepo.ScanStatus gitlabScanStatus, int scaHigh, int scaCritical, int sastHigh, int sastCritical,
+                                           int iacHigh, int iacCritical, int secretsHigh, int secretsCritical, int gitlabHigh, int gitlabCritical) {
 
         Optional<ScanInfo> existingScanInfoOpt = scanInfoRepository.findByCodeRepoAndCodeRepoBranchAndCommitId(codeRepo, codeRepoBranch, commitId);
 
@@ -57,11 +59,11 @@ public class CreateScanInfoService {
 
         if (existingScanInfoOpt.isPresent()) {
             scanInfo = existingScanInfoOpt.get();
-            scanInfo.updateScanInfo(scaScanStatus, sastScanStatus, iacScanStatus, secretsScanStatus, scaHigh, scaCritical,
-                    sastHigh, sastCritical, iacHigh, iacCritical, secretsHigh, secretsCritical);
+            scanInfo.updateScanInfo(scaScanStatus, sastScanStatus, iacScanStatus, secretsScanStatus, gitlabScanStatus, scaHigh, scaCritical,
+                    sastHigh, sastCritical, iacHigh, iacCritical, secretsHigh, secretsCritical, gitlabHigh, gitlabCritical);
         } else {
             scanInfo = new ScanInfo(codeRepo, codeRepoBranch, commitId, scaScanStatus, sastScanStatus, iacScanStatus,
-                    secretsScanStatus, scaHigh, scaCritical, sastHigh, sastCritical, iacHigh, iacCritical, secretsHigh, secretsCritical);
+                    secretsScanStatus, gitlabScanStatus, scaHigh, scaCritical, sastHigh, sastCritical, iacHigh, iacCritical, secretsHigh, secretsCritical, gitlabHigh, gitlabCritical);
         }
 
         return scanInfoRepository.save(scanInfo);

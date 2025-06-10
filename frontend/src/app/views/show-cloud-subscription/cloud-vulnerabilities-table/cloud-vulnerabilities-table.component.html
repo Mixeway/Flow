@@ -1,65 +1,83 @@
-<c-card>
-    <c-card-header>
-        <div class="table-actions d-flex justify-content-between align-items-center">
-            <!-- Show Removed Toggle -->
-            <div class="form-check form-switch d-flex align-items-center">
-                <input class="form-check-input" type="checkbox" id="showRemoved" (change)="toggleShowRemoved($event)">
-                <label class="form-check-label ms-2" for="showRemoved">Show Removed</label>
+<c-card class="cloud-vuln-table-card">
+    <!-- Header Section -->
+    <c-card-header class="cloud-vuln-table-header">
+        <div class="filter-controls">
+            <!-- Toggle Controls -->
+            <div class="toggle-controls">
+                <div class="toggle-group">
+                    <c-form-check class="toggle-check" switch>
+                        <input
+                                cFormCheckInput
+                                id="showRemoved"
+                                type="checkbox"
+                                (change)="toggleShowRemoved($event)"
+                        />
+                        <label cFormCheckLabel for="showRemoved">Show Removed</label>
+                    </c-form-check>
+                </div>
             </div>
 
-            <!-- Show Dropdown -->
-            <div class="d-flex align-items-center">
-                <label class="me-2 mb-0">Show</label>
-                <select class="form-select w-auto" [(ngModel)]="vulnerabilitiesLimit" (ngModelChange)="onLimitChange($event)">
-                    <option [value]="10">10</option>
-                    <option [value]="20">20</option>
-                    <option [value]="50">50</option>
-                    <option [value]="100">100</option>
-                    <option [value]="200">200</option>
-                </select>
+            <!-- Action Controls -->
+            <div class="action-controls">
+                <div class="page-size-control">
+                    <label class="form-label">Page Size</label>
+                    <select class="form-select" [(ngModel)]="vulnerabilitiesLimit">
+                        <option [value]="10">10</option>
+                        <option [value]="20">20</option>
+                        <option [value]="50">50</option>
+                        <option [value]="100">100</option>
+                        <option [value]="200">200</option>
+                    </select>
+                </div>
             </div>
         </div>
     </c-card-header>
-    <c-card-body>
+
+
+    <!-- Table Body -->
+    <c-card-body class="vuln-table-body">
         <!-- Loading State -->
         <div
                 *ngIf="vulnerabilitiesLoading"
-                class="d-flex justify-content-center align-items-center"
-                style="height: 200px;"
+                class="loading-container"
         >
             <c-spinner color="primary"></c-spinner>
+            <span class="loading-text">Loading vulnerabilities...</span>
         </div>
 
-        <!-- Content displays when data is loaded -->
-        <div *ngIf="!vulnerabilitiesLoading">
+        <!-- Table Content -->
+        <div *ngIf="!vulnerabilitiesLoading" class="table-container">
             <ngx-datatable
-                    class="bootstrap"
+                    class="bootstrap vuln-datatable"
                     [rows]="filteredVulns"
                     [columnMode]="'force'"
                     [footerHeight]="50"
-                    [headerHeight]="80"
+                    [headerHeight]="50"
                     [rowHeight]="'auto'"
                     [limit]="vulnerabilitiesLimit"
             >
                 <!-- Actions Column -->
                 <ngx-datatable-column
                         name="Actions"
-                        [width]="50"
+                        [width]="60"
                         [sortable]="false"
+                        [resizeable]="false"
+                        [draggable]="false"
+                        [canAutoResize]="false"
                         [ngClass]="{ 'datatable-column': true, 'centered-column': true }"
                 >
                     <ng-template
                             ngx-datatable-cell-template
                             let-row="row"
                     >
-                        <div class="d-flex align-items-center justify-content-center">
+                        <div class="details-action-container">
                             <button
                                     cButton
                                     color="primary"
                                     variant="ghost"
                                     size="sm"
-                                    class="btn-icon"
-                                    [cTooltip]="'View details'"
+                                    class="details-btn"
+                                    [cTooltip]="'View vulnerability details'"
                                     (click)="click(row)"
                             >
                                 <svg cIcon name="cil-magnifying-glass"></svg>
@@ -74,22 +92,23 @@
                         prop="severity"
                         [width]="100"
                         [sortable]="true"
+                        [canAutoResize]="false"
                         [ngClass]="{ 'datatable-column': true, 'centered-column': true }"
                 >
                     <ng-template ngx-datatable-header-template>
-                        <c-input-group class="mb-3">
-              <span cInputGroupText id="filterTableSeverity">
-                <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
-              </span>
-                            <select class="form-control" (change)="updateFilterSeverity($event)">
-                                <option value="">All</option>
-                                <option value="Critical">Critical</option>
-                                <option value="High">High</option>
-                                <option value="Medium">Medium</option>
-                                <option value="Low">Low</option>
-                                <option value="Info">Info</option>
-                            </select>
-                        </c-input-group>
+                        <div class="column-header header-centered">
+                            <span>Severity</span>
+                            <div class="filter-container">
+                                <select class="form-select form-select-sm" (change)="updateFilterSeverity($event)">
+                                    <option value="">All</option>
+                                    <option value="Critical">Critical</option>
+                                    <option value="High">High</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="Low">Low</option>
+                                    <option value="Info">Info</option>
+                                </select>
+                            </div>
+                        </div>
                     </ng-template>
                     <ng-template
                             ngx-datatable-cell-template
@@ -104,24 +123,35 @@
                     </ng-template>
                 </ngx-datatable-column>
 
-
-                <!-- Vulnerability Name Column -->
-                <ngx-datatable-column name="Vulnerability" prop="name" [sortable]="true">
+                <!-- Name Column -->
+                <ngx-datatable-column name="Name" prop="name" [width]="80" [sortable]="true">
                     <ng-template ngx-datatable-header-template>
-                        <input
-                                type="text"
-                                class="form-control filter-input"
-                                placeholder="Search vulnerability..."
-                                (input)="updateFilterName($event)">
-                        <select class="form-select form-select-sm mt-1" (change)="updateFilterStatus($event)">
-                            <option value="">All Statuses</option>
-                            <option value="New">New</option>
-                            <option value="Existing">Existing</option>
-                            <option value="Removed">Removed</option>
-                        </select>
+                        <div class="column-header">
+                            <span>Name</span>
+                            <div class="multi-filter-container">
+                                <div class="search-input">
+                                    <input
+                                            type="text"
+                                            class="form-control form-control-sm"
+                                            placeholder="Search name"
+                                            (input)="updateFilterName($event)"
+                                    />
+                                    <svg cIcon name="cil-magnifying-glass" class="search-icon"></svg>
+                                </div>
+                                <!-- Include status filter -->
+                                <select class="form-select form-select-sm mt-1" (change)="updateFilterStatus($event)">
+                                    <option value="">All Statuses</option>
+                                    <option value="New">New</option>
+                                    <option value="Existing">Existing</option>
+                                    <option value="Removed">Removed</option>
+                                    <option value="Supressed">Suppressed</option>
+                                </select>
+                            </div>
+                        </div>
                     </ng-template>
                     <ng-template
                             ngx-datatable-cell-template
+                            let-value="value"
                             let-row="row"
                     >
                         <div class="vuln-info">
@@ -136,7 +166,7 @@
                         row?.status === 'EXISTING' ? 'cil-graph' :
                         row?.status === 'REMOVED' ? 'cil-trash' : 'cil-volume-off'
                       "
-                                                class="meta-icon me-1"
+                                                class="meta-icon"
                                         ></svg>
                                         <span [ngClass]="'status-text status-' + row?.status?.toLowerCase()">{{ row?.status }}</span>
                                     </div>
@@ -151,45 +181,65 @@
 
                 <!-- Source Column -->
                 <ngx-datatable-column
-                        name="Scan Type"
+                        name="Source"
                         prop="source"
-                        [width]="120"
-                        [sortable]="false"
+                        [width]="180"
+                        [sortable]="true"
+                        [canAutoResize]="false"
                         [ngClass]="{ 'datatable-column': true, 'centered-column': true }"
-                        headerClass="text-center"
                 >
+                    <ng-template ngx-datatable-header-template>
+                        <div class="column-header header-centered">
+                            <span>Source</span>
+                        </div>
+                    </ng-template>
                     <ng-template
                             ngx-datatable-cell-template
+                            let-value="value"
                             let-row="row"
                     >
-                        <div class="d-flex align-items-center justify-content-center">
-                            <c-badge *ngIf="row?.source === 'CLOUD_SCANNER'" color="secondary">
-                                <svg cIcon name="cil-cloud" class="me-1" size="sm"></svg>
-                                Cloud Scanner
-                            </c-badge>
+                        <div class="source-cell">
+                            <div [ngClass]="'source-badge source-' + row?.source?.toLowerCase()">
+                                {{ row?.source }}
+                            </div>
                         </div>
                     </ng-template>
                 </ngx-datatable-column>
 
-                <!-- VM Instance Column -->
-                <ngx-datatable-column name="Location" prop="location" [width]="200" [sortable]="true">
+                <!-- Status filter in Name column header only -->
+                <ng-template #statusFilter>
+                    <div class="filter-container">
+                        <select class="form-select form-select-sm" (change)="updateFilterStatus($event)">
+                            <option value="">All Statuses</option>
+                            <option value="New">New</option>
+                            <option value="Existing">Existing</option>
+                            <option value="Removed">Removed</option>
+                            <option value="Supressed">Suppressed</option>
+                        </select>
+                    </div>
+                </ng-template>
+
+                <!-- Location Column -->
+                <ngx-datatable-column name="Location" prop="location" [width]="100" [sortable]="true">
                     <ng-template ngx-datatable-header-template>
-                        <c-input-group class="mb-3">
-              <span cInputGroupText id="filterTableLocation">
-                <svg cIcon name="cil-magnifying-glass" class="icon"></svg>
-              </span>
-                            <input
-                                    aria-describedby="addon-wrapping"
-                                    aria-label="Filter VM Instance"
-                                    type="text"
-                                    class="form-control"
-                                    placeholder="Filter Location"
-                                    (input)="updateFilterLocation($event)"
-                            />
-                        </c-input-group>
+                        <div class="column-header">
+                            <span>Location</span>
+                            <div class="filter-container">
+                                <div class="search-input">
+                                    <input
+                                            type="text"
+                                            class="form-control form-control-sm"
+                                            placeholder="Search"
+                                            (input)="updateFilterLocation($event)"
+                                    />
+                                    <svg cIcon name="cil-magnifying-glass" class="search-icon"></svg>
+                                </div>
+                            </div>
+                        </div>
                     </ng-template>
                     <ng-template
                             ngx-datatable-cell-template
+                            let-value="value"
                             let-row="row"
                     >
                         <div class="location-cell">
@@ -198,13 +248,16 @@
                         </div>
                     </ng-template>
                 </ngx-datatable-column>
+
+                <!-- Dates column removed -->
             </ngx-datatable>
 
-            <!-- Empty state for no results -->
+            <!-- Empty state message -->
             <div *ngIf="filteredVulns.length === 0" class="empty-state">
                 <svg cIcon name="cil-check-circle" width="48" height="48"></svg>
-                <h5>No vulnerabilities found</h5>
+                <h4>No vulnerabilities found</h4>
                 <p>No vulnerabilities match your current filter criteria.</p>
+                <button cButton color="primary" (click)="clearFilters()">Clear filters</button>
             </div>
         </div>
     </c-card-body>

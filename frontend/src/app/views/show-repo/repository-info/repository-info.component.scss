@@ -128,15 +128,21 @@
 }
 
 .chart-legend {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.1rem;
   margin-top: 1.5rem;
 
   .legend-item {
     display: flex;
     align-items: center;
     font-size: 0.8rem;
+    margin-right: 1rem;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 
     .legend-color {
       width: 12px;
@@ -150,6 +156,7 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      max-width: calc(100% - 20px);
     }
   }
 }

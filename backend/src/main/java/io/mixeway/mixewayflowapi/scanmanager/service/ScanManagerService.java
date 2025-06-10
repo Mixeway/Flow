@@ -17,6 +17,7 @@ import io.mixeway.mixewayflowapi.integrations.repo.service.GitCommentService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GitService;
 import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.dto.CloudScannerReport;
 import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.service.CloudScannerService;
+import io.mixeway.mixewayflowapi.integrations.scanner.gitlab_scanner.service.GitLabScannerService;
 import io.mixeway.mixewayflowapi.integrations.scanner.iac.service.IaCService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.service.SASTService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.apiclient.KEVApiClient;
@@ -86,13 +87,14 @@ public class ScanManagerService {
     private final AtomicInteger scaScansRunning = new AtomicInteger(0);
     private final AtomicInteger iacScansRunning = new AtomicInteger(0);
     private final AtomicInteger secretScansRunning = new AtomicInteger(0);
+    private final AtomicInteger gitlabScansRunning = new AtomicInteger(0);
     private final FindVulnerabilityService findVulnerabilityService;
 
     // Throttling cache: Repositories being scanned or scanned within the last 30 minutes
     private final Cache<Long, Boolean> scanThrottler = Caffeine.newBuilder()
             .expireAfterWrite(30, TimeUnit.MINUTES)
             .build();
-
+    private final GitLabScannerService gitLabScannerService;
 
 
     /**
@@ -147,8 +149,9 @@ public class ScanManagerService {
                     Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo, codeRepoBranch, scaScanPerformed);
                     Future<Void> sastScanFuture = runSASTScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> iacScanFuture = runIACScan(repoDir, codeRepo, codeRepoBranch);
+                    Future<Void> gitlabScanFuture = runGitLabScan(codeRepo);
 
-                    List<Future<Void>> scanFutures = Arrays.asList(secretScanFuture, scaScanFuture, sastScanFuture, iacScanFuture);
+                    List<Future<Void>> scanFutures = Arrays.asList(secretScanFuture, scaScanFuture, sastScanFuture, iacScanFuture, gitlabScanFuture);
 
                     // Schedule a timeout task to cancel scans
                     ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
@@ -303,6 +306,30 @@ public class ScanManagerService {
             } finally {
                 int remainingIacScans = iacScansRunning.decrementAndGet();
                 log.debug("[ScanManagerService] IAC scan completed, parallel IAC scans running {}", remainingIacScans);
+            }
+            return null;
+        };
+        return scanExecutorService.submit(task);
+    }
+
+    private Future<Void> runGitLabScan(CodeRepo codeRepo) {
+        Callable<Void> task = () -> {
+            int currentGitLabScans = gitlabScansRunning.incrementAndGet();
+            log.info("[ScanManagerService] Starting new GitLab scan, parallel GitLab scans running {}", currentGitLabScans);
+
+            try {
+                log.info("[ScanManagerService] Starting GitLab scan... [for: {}]", codeRepo.getName());
+                gitLabScannerService.runGitLabScan(codeRepo);
+            } catch (Exception e) {
+                if (Thread.currentThread().isInterrupted()) {
+                    log.warn("[ScanManagerService] GitLab scan interrupted for {}.", codeRepo.getRepourl());
+                    Thread.currentThread().interrupt();
+                } else {
+                    log.error("[ScanManagerService] An error occurred during GitLab scan for {}.", codeRepo.getRepourl());
+                }
+            } finally {
+                int remainingGitLabScans = gitlabScansRunning.decrementAndGet();
+                log.debug("[ScanManagerService] GitLab scan completed, parallel GitLab scans running {}", remainingGitLabScans);
             }
             return null;
         };

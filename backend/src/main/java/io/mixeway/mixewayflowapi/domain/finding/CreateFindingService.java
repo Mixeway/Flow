@@ -80,6 +80,42 @@ public class CreateFindingService {
 
     }
 
+    @Transactional
+    public void saveFinding(Finding newFinding, CodeRepoBranch repoWhereFindingWasFound, CodeRepo repoInWhichFindingWasFound, Finding.Source source) {
+        List<Finding> existingFindings;
+        if (source == Finding.Source.CLOUD_SCANNER) {
+            CloudSubscription subscription = newFinding.getCloudSubscription();
+            existingFindings = findingRepository.findBySourceAndCloudSubscription(source, subscription);
+        } else {
+            existingFindings = findingRepository.findBySourceAndCodeRepoBranchAndCodeRepo(source, repoWhereFindingWasFound, repoInWhichFindingWasFound);
+        }
+
+        var existingFindingsMap = existingFindings.stream()
+                .collect(Collectors.toMap(this::findingKey, finding -> finding));
+
+        String key = findingKey(newFinding);
+
+        if (existingFindingsMap.containsKey(key)) {
+            Finding existingFinding = existingFindingsMap.get(key);
+            if (existingFinding.getStatus() == Finding.Status.REMOVED) {
+                existingFinding.updateStatus(Finding.Status.EXISTING, existingFinding.getSuppressedReason());
+            } else if (existingFinding.getStatus() != Finding.Status.SUPRESSED) {
+                existingFinding.updateStatus(Finding.Status.EXISTING, existingFinding.getSuppressedReason());
+            }
+            existingFinding.noteFindingDetected();  // Zaktualizuj datę wykrycia
+            findingRepository.save(existingFinding);
+        } else {
+            newFinding.updateStatus(Finding.Status.NEW, null);
+            checkSuppressRuleService.validate(findingRepository.save(newFinding));
+        }
+
+        if (repoInWhichFindingWasFound != null) {
+            log.info("[Finding Service] Processed finding for {}. Source: {}", repoInWhichFindingWasFound.getName(), source.toString());
+        } else {
+            log.info("[Finding Service] Processed finding. Source: {}", source.toString());
+        }
+    }
+
     private String findingKey(Finding finding) {
         return finding.getVulnerability().getName() + "|" + finding.getSeverity() + "|" + finding.getLocation();
     }
@@ -159,6 +195,31 @@ public class CreateFindingService {
                     );
                 })
                 .collect(Collectors.toList());
+    }
+
+    public Finding mapGitLabScannerReportToFindings(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String name, String severity, String explanation, String location, String description, String remediation) {
+        Vulnerability vulnerability = getOrCreateVulnerabilityService.getOrCreate(
+                name,
+                description,
+                null,
+                remediation,
+                mapSeverity(severity),
+                null,
+                null,
+                null
+        );
+
+        return new Finding(
+                vulnerability,
+                null,
+                codeRepoBranch,
+                codeRepo,
+                null,
+                explanation == null ? "Incorrect configuration of " + location : explanation,
+                location,
+                mapSeverity(severity),
+                Finding.Source.GITLAB_SCANNER
+        );
     }
 
     private Finding.Severity mapSeverity(String severity) {

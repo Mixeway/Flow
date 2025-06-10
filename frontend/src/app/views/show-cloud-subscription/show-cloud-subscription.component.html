@@ -1,9 +1,9 @@
 <div class="cloud-subscription-container">
     <!-- Header Section with Info and Summary -->
-    <div class="header-section mb-4">
+    <div class="header-section">
         <c-row>
             <!-- Cloud Subscription Info Component -->
-            <c-col [lg]="8" [md]="8">
+            <c-col [lg]="12" [md]="12">
                 <app-cloud-subscription-info
                         [cloudSubscriptionData]="cloudSubscriptionData"
                         [scanRunning]="scanRunning"
@@ -13,8 +13,10 @@
                 ></app-cloud-subscription-info>
             </c-col>
 
+        </c-row>
+        <c-row>
             <!-- Cloud Vulnerability Summary Component -->
-            <c-col [lg]="4" [md]="4">
+            <c-col [lg]="12" [md]="12">
                 <app-cloud-vulnerability-summary
                         [counts]="counts"
                 ></app-cloud-vulnerability-summary>

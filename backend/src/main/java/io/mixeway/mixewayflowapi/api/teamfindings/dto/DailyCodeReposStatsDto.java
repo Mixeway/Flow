@@ -13,6 +13,8 @@ public class DailyCodeReposStatsDto {
     private int scaCritical, scaHigh, scaMedium, scaRest;
     private int iacCritical, iacHigh, iacMedium, iacRest;
     private int secretsCritical, secretsHigh, secretsMedium, secretsRest;
+    private int gitlabCritical, gitlabHigh, gitlabMedium, gitlabRest;
+
     private int openedFindings, removedFindings, reviewedFindings;
     private double averageFixTime;
 
@@ -20,6 +22,7 @@ public class DailyCodeReposStatsDto {
                          int scaCritical, int scaHigh, int scaMedium, int scaRest,
                          int iacCritical, int iacHigh, int iacMedium, int iacRest,
                          int secretsCritical, int secretsHigh, int secretsMedium, int secretsRest,
+                         int gitlabCritical, int gitlabHigh, int gitlabMedium, int gitlabRest,
                          int openedFindings, int removedFindings, int reviewedFindings,
                          double averageFixTime) {
         this.date = date;
@@ -39,6 +42,10 @@ public class DailyCodeReposStatsDto {
         this.secretsHigh = secretsHigh;
         this.secretsMedium = secretsMedium;
         this.secretsRest = secretsRest;
+        this.gitlabCritical = gitlabCritical;
+        this.gitlabHigh = gitlabHigh;
+        this.gitlabMedium = gitlabMedium;
+        this.gitlabRest = gitlabRest;
         this.openedFindings = openedFindings;
         this.removedFindings = removedFindings;
         this.reviewedFindings = reviewedFindings;
