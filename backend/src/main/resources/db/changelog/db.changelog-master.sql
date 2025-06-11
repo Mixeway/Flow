@@ -741,28 +741,3 @@ ALTER TABLE scan_info
 -- changeset majaberej:update_coderepo
 ALTER TABLE coderepo
     ADD COLUMN gitlab_scan VARCHAR(20) NOT NULL DEFAULT 'NOT_PERFORMED';
-
--- changeset majaberej:update_existing_columns_in_code_repo_finding_stats_1
-ALTER TABLE code_repo_finding_stats
-    ALTER COLUMN gitlab_critical SET DEFAULT 0,
-ALTER COLUMN gitlab_high SET DEFAULT 0,
-    ALTER COLUMN gitlab_medium SET DEFAULT 0,
-    ALTER COLUMN gitlab_rest SET DEFAULT 0;
-
--- changeset majaberej:update_existing_columns_in_code_repo_finding_stats_2
-UPDATE code_repo_finding_stats
-SET gitlab_critical = 0,
-    gitlab_high = 0,
-    gitlab_medium = 0,
-    gitlab_rest = 0
-WHERE gitlab_critical IS NULL
-   OR gitlab_high IS NULL
-   OR gitlab_medium IS NULL
-   OR gitlab_rest IS NULL;
-
--- changeset majaberej:update_existing_columns_in_code_repo_finding_stats_3
-ALTER TABLE code_repo_finding_stats
-    ALTER COLUMN gitlab_critical SET NOT NULL,
-    ALTER COLUMN gitlab_high SET NOT NULL,
-    ALTER COLUMN gitlab_medium SET NOT NULL,
-    ALTER COLUMN gitlab_rest SET NOT NULL;
