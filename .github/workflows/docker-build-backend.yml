@@ -40,13 +40,13 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # - name: Build and push amd64 image
-      #   uses: docker/build-push-action@v4
-      #   with:
-      #     context: ./backend
-      #     push: true
-      #     platforms: linux/amd64
-      #     tags: mixeway/flow-api:latest
+      - name: Build and push amd64 image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./backend
+          push: true
+          platforms: linux/amd64
+          tags: mixeway/flow-api:latest
       - name: Build and push arm64 image
         uses: docker/build-push-action@v4
         with:
