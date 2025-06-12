@@ -126,10 +126,10 @@ public class CodeRepoFindingStats {
         this.secretsHigh = secretsHigh;
         this.secretsMedium = secretsMedium;
         this.secretsRest = secretsRest;
-        this.gitlabCritical = secretsCritical;
-        this.gitlabHigh = secretsHigh;
-        this.gitlabMedium = secretsMedium;
-        this.gitlabRest = secretsRest;
+        this.gitlabCritical = gitlabCritical;
+        this.gitlabHigh = gitlabHigh;
+        this.gitlabMedium = gitlabMedium;
+        this.gitlabRest = gitlabRest;
         this.openedFindings = openedFindings;
         this.removedFindings = removedFindings;
         this.reviewedFindings = reviewedFindings;
