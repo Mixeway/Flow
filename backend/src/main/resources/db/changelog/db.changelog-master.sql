@@ -727,16 +727,16 @@ CREATE TABLE repository_allowlist (
 
 -- changeset majaberej:update_code_repo_finding_stats
 ALTER TABLE code_repo_finding_stats
-    ADD COLUMN gitlab_critical INT NOT NULL,
-    ADD COLUMN gitlab_high INT NOT NULL,
-    ADD COLUMN gitlab_medium INT NOT NULL,
-    ADD COLUMN gitlab_rest INT NOT NULL;
+    ADD COLUMN gitlab_critical INT NOT NULL DEFAULT 0,
+    ADD COLUMN gitlab_high INT NOT NULL DEFAULT 0,
+    ADD COLUMN gitlab_medium INT NOT NULL DEFAULT 0,
+    ADD COLUMN gitlab_rest INT NOT NULL DEFAULT 0;
 
 -- changeset majaberej:update_scan_info
 ALTER TABLE scan_info
-    ADD COLUMN gitlab_scan_status VARCHAR(20) NOT NULL,
-    ADD COLUMN gitlab_critical INT NOT NULL,
-    ADD COLUMN gitlab_high INT NOT NULL;
+    ADD COLUMN gitlab_scan_status VARCHAR(20) NOT NULL DEFAULT 'NOT_PERFORMED',
+    ADD COLUMN gitlab_critical INT NOT NULL DEFAULT 0,
+    ADD COLUMN gitlab_high INT NOT NULL DEFAULT 0;
 
 -- changeset majaberej:update_coderepo
 ALTER TABLE coderepo
