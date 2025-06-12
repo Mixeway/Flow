@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.4] - 2025-06-12
+
+### Introduced
+- Gitlab security posture management
+  
 ## [1.2.3] - 2025-05-07
 
 ### Introduced
