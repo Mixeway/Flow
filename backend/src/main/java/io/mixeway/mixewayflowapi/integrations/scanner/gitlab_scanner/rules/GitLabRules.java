@@ -65,8 +65,11 @@ public class GitLabRules {
 
     public JsonNode findRule(String ruleName) throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
-        File file = new File("backend/src/main/java/io/mixeway/mixewayflowapi/integrations/scanner/gitlab_scanner/rules/rules.json");
-        JsonNode rulesArray = objectMapper.readTree(file);
+        InputStream inputStream = getClass().getClassLoader().getResourceAsStream("gitlab_rules/rules.json");
+        if (inputStream == null) {
+            throw new FileNotFoundException("Rules file not found in classpath");
+        }
+        JsonNode rulesArray = objectMapper.readTree(inputStream);
         for (JsonNode rule : rulesArray) {
             String name = rule.path("name").asText();
             if (name.equals(ruleName)) {
