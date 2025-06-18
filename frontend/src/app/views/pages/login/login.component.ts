@@ -96,6 +96,10 @@ export class LoginComponent implements OnInit {
                     this.password = false;
                     this.sso = true;
 
+                } else{
+                    // Status check failed, default to password login
+                    this.password = true;
+                    this.sso = false;
                 }
             },
             error: () => {

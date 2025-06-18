@@ -18,7 +18,7 @@
 
     <c-card-group class="login-card-group fade-in-up">
         <!-- Password Login Card -->
-        <c-card class="auth-card" [ngClass]="{'dark-mode': darkMode}" *ngIf="!password">
+        <c-card class="auth-card" [ngClass]="{'dark-mode': darkMode}" *ngIf="password">
             <c-card-body>
                 <h1 class="card-title" [ngClass]="{'dark-mode': darkMode}">Welcome back</h1>
                 <p class="card-subtitle" [ngClass]="{'dark-mode': darkMode}">Sign in to your account</p>
