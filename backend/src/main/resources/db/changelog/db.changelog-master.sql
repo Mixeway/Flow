@@ -745,3 +745,9 @@ ALTER TABLE coderepo
 -- changeset siewer:update_coderepo_dast
 ALTER TABLE coderepo
     ADD COLUMN dast_scan VARCHAR(20) NOT NULL DEFAULT 'NOT_PERFORMED';
+
+-- changeset siewer:update_scan_info_dast
+ALTER TABLE scan_info
+    ADD COLUMN dast_scan_status VARCHAR(20) NOT NULL DEFAULT 'NOT_PERFORMED',
+    ADD COLUMN dast_critical INT NOT NULL DEFAULT 0,
+    ADD COLUMN dast_high INT NOT NULL DEFAULT 0;
