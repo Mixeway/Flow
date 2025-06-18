@@ -636,7 +636,7 @@ export class DashboardComponent implements OnInit {
         });
     }
 
-    getRepoScanStatus(repos: CodeRepo[]): { sast: string, sca: string, iac: string, secrets: string, dast: string } {
+    getRepoScanStatus(repos: CodeRepo[]): { sast: string, sca: string, iac: string, secrets: string, dast: string, gitlab:string } {
         const getStatus = (scanType: 'sast' | 'iac' | 'secrets' | 'sca' | 'dast' | 'gitlab'): string => {
             const statuses = repos.map(repo => repo[scanType]);
             if (statuses.includes('DANGER')) {

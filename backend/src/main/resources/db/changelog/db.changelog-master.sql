@@ -741,3 +741,7 @@ ALTER TABLE scan_info
 -- changeset majaberej:update_coderepo
 ALTER TABLE coderepo
     ADD COLUMN gitlab_scan VARCHAR(20) NOT NULL DEFAULT 'NOT_PERFORMED';
+
+-- changeset siewer:update_coderepo_dast
+ALTER TABLE coderepo
+    ADD COLUMN dast_scan VARCHAR(20) NOT NULL DEFAULT 'NOT_PERFORMED';

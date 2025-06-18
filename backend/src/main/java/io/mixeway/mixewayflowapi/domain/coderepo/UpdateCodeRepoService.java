@@ -179,6 +179,7 @@ public class UpdateCodeRepoService {
             case IAC -> codeRepo.updateIacScanStatus(scanStatus);
             case SCA -> codeRepo.updateScaScanStatus(scanStatus);
             case GITLAB_SCANNER -> codeRepo.updateGitLabScanStatus(scanStatus);
+            case DAST -> codeRepo.updateDASTScanStatus(scanStatus);
         }
         codeRepoRepository.save(codeRepo);
     }

@@ -87,6 +87,10 @@ public final class CodeRepo {
     @Column(name = "gitlab_scan", nullable = false)
     private ScanStatus gitlabScan;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "dast_scan", nullable = false)
+    private ScanStatus dastScan;
+
     @ManyToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JoinTable(
             name = "coderepo_component",
@@ -126,6 +130,7 @@ public final class CodeRepo {
         this.iacScan = ScanStatus.NOT_PERFORMED;
         this.secretsScan = ScanStatus.NOT_PERFORMED;
         this.gitlabScan = ScanStatus.NOT_PERFORMED;
+        this.dastScan = ScanStatus.NOT_PERFORMED;
         this.type = RepoType.GITLAB;
         this.scaUUID = null;
         this.appDataTypes = new ArrayList<>();
@@ -146,6 +151,7 @@ public final class CodeRepo {
         this.iacScan = ScanStatus.NOT_PERFORMED;
         this.secretsScan = ScanStatus.NOT_PERFORMED;
         this.gitlabScan = ScanStatus.NOT_PERFORMED;
+        this.dastScan = ScanStatus.NOT_PERFORMED;
         this.scaUUID = null;
         this.appDataTypes = new ArrayList<>();
         this.type = repoType;
@@ -182,6 +188,9 @@ public final class CodeRepo {
     public void updateGitLabScanStatus(ScanStatus status) {
         this.gitlabScan = status;
     }
+    public void updateDASTScanStatus(ScanStatus status) {
+        this.dastScan = status;
+    }
 
     public void startScan(){
         this.secretsScan = ScanStatus.RUNNING;
@@ -189,6 +198,7 @@ public final class CodeRepo {
         this.scaScan = ScanStatus.RUNNING;
         this.sastScan = ScanStatus.RUNNING;
         this.gitlabScan = ScanStatus.RUNNING;
+        this.dastScan = ScanStatus.RUNNING;
 
     }
 
@@ -215,7 +225,8 @@ public final class CodeRepo {
                 this.iacScan.equals(ScanStatus.RUNNING) &&
                 this.secretsScan.equals(ScanStatus.RUNNING) &&
                 this.scaScan.equals(ScanStatus.RUNNING) &&
-                this.gitlabScan.equals(ScanStatus.RUNNING);
+                this.gitlabScan.equals(ScanStatus.RUNNING) &&
+                this.dastScan.equals(ScanStatus.RUNNING);
     }
 
     public boolean isScanNotRunning(){
@@ -223,7 +234,8 @@ public final class CodeRepo {
                 !this.iacScan.equals(ScanStatus.RUNNING) &&
                 !this.secretsScan.equals(ScanStatus.RUNNING) &&
                 !this.scaScan.equals(ScanStatus.RUNNING) &&
-                !this.gitlabScan.equals(ScanStatus.RUNNING);
+                !this.gitlabScan.equals(ScanStatus.RUNNING) &&
+                !this.dastScan.equals(ScanStatus.RUNNING);
     }
 
 
