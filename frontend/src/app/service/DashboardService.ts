@@ -12,6 +12,7 @@ interface CodeRepo {
     iac: string;
     secrets: string;
     sca: string;
+    dast: string;
 }
 
 interface CreateRepo {

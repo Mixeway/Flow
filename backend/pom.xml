@@ -153,6 +153,15 @@
             <artifactId>keycloak-spring-boot-starter</artifactId>
             <version>24.0.3</version>
         </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-yaml</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.zaproxy</groupId>
+            <artifactId>zap-clientapi</artifactId>
+            <version>1.16.0</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -191,5 +200,6 @@
             </releases>
         </pluginRepository>
     </pluginRepositories>
+
 
 </project>

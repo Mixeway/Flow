@@ -169,6 +169,24 @@
                                     </button>
                                 </form>
                             </div>
+
+                            <!-- Section 6: DAST -->
+                            <div class="config-section p-4 mb-4 rounded shadow-sm">
+                                <h4 class="mb-3 section-title">Dynamic Application Security Testing (DAST)</h4>
+                                <div class="dast-options">
+                                    <c-form-check [switch]="true" class="mb-3">
+                                        <input cFormCheckInput id="dast" name="dast" type="checkbox" [(ngModel)]="dast" [checked]="dast === 'bearer'" (change)="onDastChange('bearer')" disabled />
+                                        <label cFormCheckLabel for="dast" class="ms-2">Dast</label>
+                                    </c-form-check>
+                                    <c-form-check [switch]="true">
+                                        <input cFormCheckInput id="dastOtherTool" name="dast" type="checkbox" disabled />
+                                        <label cFormCheckLabel for="dastOtherTool" class="ms-2 text-muted">
+                                            Other External Tool
+                                            <span class="badge bg-secondary ms-2">Coming Soon</span>
+                                        </label>
+                                    </c-form-check>
+                                </div>
+                            </div>
                         </c-tab-panel>
 
                         <c-tab-panel class="p-4" [itemKey]="1">

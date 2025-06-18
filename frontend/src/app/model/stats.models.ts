@@ -17,6 +17,7 @@ export interface VulnerabilitySummary {
     removedTotal: number;
     reviewedTotal: number;
     averageFixTime: number;
+    dastTotal: number;
 }
 
 /**
@@ -43,6 +44,10 @@ export interface VulnerabilityTrendDataPoint {
     openFindings?: number;
     removedFindings?: number;
     reviewedFindings?: number;
+    dastCritical?: number;
+    dastHigh?: number;
+    dastMedium?: number;
+    dastRest?: number;
 }
 
 /**

@@ -130,7 +130,7 @@ public final class CodeRepo {
     public CodeRepo(String name, String repourl, String accessToken, Team team, int remoteId, RepoType repoType) {
         this.id = 0;
         this.remoteId = remoteId;
-        this.name = name;
+        this.name = name.replace(" ","");
         this.repourl = repourl;
         this.accessToken = accessToken;
         this.team = team;

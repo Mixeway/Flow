@@ -68,6 +68,7 @@ interface CodeRepo {
     iac: string;
     secrets: string;
     sca: string;
+    dast: string;
 }
 
 interface CreateRepo {
@@ -403,12 +404,12 @@ export class DashboardComponent implements OnInit {
         // Create datasets for critical and high vulnerabilities (simplified for dashboard)
         const criticalData = this.securityTrendData.map(item =>
             (item.sastCritical || 0) + (item.scaCritical || 0) +
-            (item.iacCritical || 0) + (item.secretsCritical || 0)
+            (item.iacCritical || 0) + (item.secretsCritical || 0) + (item.dastCritical || 0)
         );
 
         const highData = this.securityTrendData.map(item =>
             (item.sastHigh || 0) + (item.scaHigh || 0) +
-            (item.iacHigh || 0) + (item.secretsHigh || 0)
+            (item.iacHigh || 0) + (item.secretsHigh || 0) + (item.dastHigh || 0)
         );
 
         // Create background gradient for chart
@@ -502,16 +503,16 @@ export class DashboardComponent implements OnInit {
 
         if (type === 'critical') {
             latest = (latestDataPoint.sastCritical || 0) + (latestDataPoint.scaCritical || 0) +
-                (latestDataPoint.iacCritical || 0) + (latestDataPoint.secretsCritical || 0);
+                (latestDataPoint.iacCritical || 0) + (latestDataPoint.secretsCritical || 0) + (latestDataPoint.dastCritical || 0);
 
             previous = (previousDataPoint.sastCritical || 0) + (previousDataPoint.scaCritical || 0) +
-                (previousDataPoint.iacCritical || 0) + (previousDataPoint.secretsCritical || 0);
+                (previousDataPoint.iacCritical || 0) + (previousDataPoint.secretsCritical || 0) + (previousDataPoint.dastCritical || 0);
         } else if (type === 'high') {
             latest = (latestDataPoint.sastHigh || 0) + (latestDataPoint.scaHigh || 0) +
-                (latestDataPoint.iacHigh || 0) + (latestDataPoint.secretsHigh || 0);
+                (latestDataPoint.iacHigh || 0) + (latestDataPoint.secretsHigh || 0) + (latestDataPoint.dastHigh || 0);
 
             previous = (previousDataPoint.sastHigh || 0) + (previousDataPoint.scaHigh || 0) +
-                (previousDataPoint.iacHigh || 0) + (previousDataPoint.secretsHigh || 0);
+                (previousDataPoint.iacHigh || 0) + (previousDataPoint.secretsHigh || 0) + (previousDataPoint.dastHigh || 0);
         } else if (type === 'total') {
             latest = latestDataPoint.openFindings || 0;
             previous = previousDataPoint.openFindings || 0;
@@ -617,7 +618,7 @@ export class DashboardComponent implements OnInit {
             next: (response: Team[]) => {
                 this.teams = response.map((team: Team) => {
                     const teamRepos = this.rows.filter((repo: CodeRepo) => repo.team.toLowerCase() === team.name.toLowerCase());
-                    const {sast, sca, iac, secrets} = this.getRepoScanStatus(teamRepos);
+                    const {sast, sca, iac, secrets, dast :string} = this.getRepoScanStatus(teamRepos);
 
                     const teamCloudSubscriptions = this.cloudRows.filter((cloudSubscription: CloudSubscription) => cloudSubscription.team.toLowerCase() === team.name.toLowerCase());
                     const { cloudScan } = this.getCloudScanStatus(teamCloudSubscriptions);
@@ -632,8 +633,8 @@ export class DashboardComponent implements OnInit {
         });
     }
 
-    getRepoScanStatus(repos: CodeRepo[]): { sast: string, sca: string, iac: string, secrets: string } {
-        const getStatus = (scanType: 'sast' | 'iac' | 'secrets' | 'sca'): string => {
+    getRepoScanStatus(repos: CodeRepo[]): { sast: string, sca: string, iac: string, secrets: string, dast: string } {
+        const getStatus = (scanType: 'sast' | 'iac' | 'secrets' | 'sca' | 'dast'): string => {
             const statuses = repos.map(repo => repo[scanType]);
             if (statuses.includes('DANGER')) {
                 return 'DANGER';
@@ -651,7 +652,8 @@ export class DashboardComponent implements OnInit {
             sast: getStatus('sast'),
             sca: getStatus('sca'),
             iac: getStatus('iac'),
-            secrets: getStatus('secrets')
+            secrets: getStatus('secrets'),
+            dast: getStatus('dast'),
         };
     }
 

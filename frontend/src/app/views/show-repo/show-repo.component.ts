@@ -115,6 +115,10 @@ export interface CodeRepoFindingStats {
     sastHigh: number;
     sastMedium: number;
     sastRest: number;
+    dastCritical: number;
+    dastHigh: number;
+    dastMedium: number;
+    dastRest: number;
     scaCritical: number;
     scaHigh: number;
     scaMedium: number;
@@ -306,6 +310,14 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                 pointBorderColor: '#bd7777',
                 data: [],
             },
+            {
+                label: 'DAST',
+                backgroundColor: 'rgba(255, 159, 64, 0.2)', // Example color, adjust as needed
+                borderColor: 'rgb(255, 159, 64)',
+                pointBackgroundColor: 'rgb(255, 159, 64)',
+                pointBorderColor: '#fff',
+                data: [],
+            },
         ],
     };
 
@@ -454,7 +466,8 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                     response.sastScan === 'RUNNING' ||
                     response.scaScan === 'RUNNING' ||
                     response.secretsScan === 'RUNNING' ||
-                    response.iacScan === 'RUNNING'
+                    response.iacScan === 'RUNNING' ||
+                    response.dastScan === 'RUNNING'
                 ) {
                     this.scanRunning = true;
                 }
@@ -497,7 +510,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
             next: (response) => {
                 this.sourceStats = response;
                 this.chartPieData = {
-                    labels: ['SAST', 'SCA', 'Secrets', 'IaC'],
+                    labels: ['SAST', 'SCA', 'Secrets', 'IaC', 'DAST'],
                     datasets: [
                         {
                             data: [
@@ -505,6 +518,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                                 this.sourceStats.sca,
                                 this.sourceStats.secrets,
                                 this.sourceStats.iac,
+                                this.sourceStats.dast,
                             ],
                             backgroundColor: [
                                 '#FF6384',
@@ -746,6 +760,9 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         );
         const sastData = this.codeRepoFindingStats.map(
             (stat) => stat.sastCritical + stat.sastHigh + stat.sastMedium + stat.sastRest
+        );
+        const dastData = this.codeRepoFindingStats.map(
+            (stat) => stat.dastCritical + stat.dastHigh + stat.dastMedium + stat.dastRest
         );
         const iacData = this.codeRepoFindingStats.map(
             (stat) => stat.iacCritical + stat.iacHigh + stat.iacMedium + stat.iacRest

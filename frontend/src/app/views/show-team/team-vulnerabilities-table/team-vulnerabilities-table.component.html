@@ -161,6 +161,7 @@
                         <select class="form-select filter-select" (change)="updateFilterSource($event)">
                             <option value="">All Sources</option>
                             <option value="SAST">SAST</option>
+                            <option value="DAST">DAST</option>
                             <option value="IaC">IaC</option>
                             <option value="Secrets">Secrets</option>
                             <option value="SCA">SCA</option>
@@ -170,14 +171,16 @@
                     <ng-template ngx-datatable-cell-template let-row="row">
                         <div class="source-badge"
                              [ngClass]="{'badge-primary': row?.source === 'SAST',
-                            'badge-info': row?.source === 'IAC',
+                            'badge-info': row?.source === 'IAC'|| row?.source === 'DAST',
                             'badge-danger': row?.source === 'SECRETS',
                             'badge-warning': row?.source === 'SCA',
+
                             'badge-secondary': row?.source === 'CLOUD_SCANNER'}">
                             <svg cIcon name="cilCode" *ngIf="row?.source === 'SAST'" size="sm"></svg>
                             <svg cIcon name="cilSettings" *ngIf="row?.source === 'IAC'" size="sm"></svg>
                             <svg cIcon name="cilLockLocked" *ngIf="row?.source === 'SECRETS'" size="sm"></svg>
                             <svg cIcon name="cilLibrary" *ngIf="row?.source === 'SCA'" size="sm"></svg>
+                            <svg cIcon name="cilCode" *ngIf="row?.source === 'DAST'" size="sm"></svg>
                             <svg cIcon name="cilCloud" *ngIf="row?.source === 'CLOUD_SCANNER'" size="sm"></svg>
                             {{ row?.source }}
                         </div>

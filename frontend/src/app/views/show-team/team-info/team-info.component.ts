@@ -135,11 +135,12 @@ export class TeamInfoComponent implements OnInit, AfterViewInit {
 
   initializeDefaultChartData(): void {
     this.chartPieData = {
-      labels: ['SAST', 'DAST', 'SCA', 'Cloud', 'Container'],
+      labels: ['SAST', 'DAST', 'SCA', 'DAST', 'Cloud', 'Container'],
       datasets: [{
-        data: [14, 10, 8, 8, 2],
+        data: [14, 14, 10, 8, 8, 2],
         backgroundColor: [
           '#FF6384',
+          '#8B4513',
           '#36A2EB',
           '#FFCE56',
           '#4BC0C0',

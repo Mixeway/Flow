@@ -110,4 +110,5 @@ public class IaCService {
         log.info("[KicsService] KICS scan completed for repository: {} branch: {}. Report saved at: {}", codeRepo.getName(), codeRepoBranch.getName(), reportFile.getAbsolutePath());
     }
 
+
 }

@@ -324,6 +324,10 @@
         background-color: rgba(var(--cui-primary-rgb), 0.15);
         color: var(--cui-primary);
       }
+      &.source-dast {
+        background-color: rgba(var(--cui-primary-rgb), 0.15);
+        color: var(--cui-primary);
+      }
 
       &.source-iac {
         background-color: rgba(var(--cui-info-rgb), 0.15);
