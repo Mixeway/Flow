@@ -93,10 +93,16 @@ public class StatsScheduler {
             int secretsMedium = countFindings(findings, Finding.Source.SECRETS, Finding.Severity.MEDIUM, Finding.Status.EXISTING, Finding.Status.NEW);
             int secretsRest = countRestFindings(findings, Finding.Source.SECRETS, Finding.Status.EXISTING, Finding.Status.NEW);
 
+            int gitlabCritical = countFindings(findings, Finding.Source.GITLAB_SCANNER, Finding.Severity.CRITICAL, Finding.Status.EXISTING, Finding.Status.NEW);
+            int gitlabHigh = countFindings(findings, Finding.Source.GITLAB_SCANNER, Finding.Severity.HIGH, Finding.Status.EXISTING, Finding.Status.NEW);
+            int gitlabMedium = countFindings(findings, Finding.Source.GITLAB_SCANNER, Finding.Severity.MEDIUM, Finding.Status.EXISTING, Finding.Status.NEW);
+            int gitlabRest = countRestFindings(findings, Finding.Source.GITLAB_SCANNER, Finding.Status.EXISTING, Finding.Status.NEW);
+
             int openedFindings = sastCritical + sastHigh + sastMedium + sastRest +
                     scaCritical + scaHigh + scaMedium + scaRest +
                     iacCritical + iacHigh + iacMedium + iacRest +
-                    secretsCritical + secretsHigh + secretsMedium + secretsRest;
+                    secretsCritical + secretsHigh + secretsMedium + secretsRest +
+                    gitlabCritical + gitlabHigh + gitlabMedium + gitlabRest;
 
             int removedFindings = countFindings(findings, null, null, Finding.Status.REMOVED);
             int reviewedFindings = countFindings(findings, null, null, Finding.Status.SUPRESSED);
@@ -108,6 +114,7 @@ public class StatsScheduler {
                     scaCritical, scaHigh, scaMedium, scaRest,
                     iacCritical, iacHigh, iacMedium, iacRest,
                     secretsCritical, secretsHigh, secretsMedium, secretsRest,
+                    gitlabCritical, gitlabHigh, gitlabMedium, gitlabRest,
                     openedFindings, removedFindings, reviewedFindings, averageFixTime
             );
 

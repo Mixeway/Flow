@@ -102,87 +102,133 @@
                 </ngx-datatable-column>
 
                 <!-- Severity Column -->
-                <ngx-datatable-column name="Severity" prop="severity" [width]="120" [sortable]="true">
+                <ngx-datatable-column
+                        name="Severity"
+                        prop="severity"
+                        [width]="100"
+                        [sortable]="true"
+                        [canAutoResize]="false"
+                        [ngClass]="{ 'datatable-column': true, 'centered-column': true }"
+                >
                     <ng-template ngx-datatable-header-template>
-                        <select class="form-select filter-select" (change)="updateFilterSeverity($event)">
-                            <option value="">All Severity</option>
-                            <option value="Critical">Critical</option>
-                            <option value="High">High</option>
-                            <option value="Medium">Medium</option>
-                            <option value="Low">Low</option>
-                            <option value="Info">Info</option>
-                        </select>
+                        <div class="column-header header-centered">
+                            <span>Severity</span>
+                            <div class="filter-container">
+                                <select class="form-select form-select-sm" (change)="updateFilterSeverity($event)">
+                                    <option value="">All</option>
+                                    <option value="Critical">Critical</option>
+                                    <option value="High">High</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="Low">Low</option>
+                                    <option value="Info">Info</option>
+                                </select>
+                            </div>
+                        </div>
                     </ng-template>
-                    <ng-template ngx-datatable-cell-template let-row="row">
-                        <div class="severity-indicator" [ngClass]="row?.severity?.toLowerCase()">
-                            <div class="pulse" *ngIf="row?.severity === 'CRITICAL'"></div>
-                            <div class="dot" *ngIf="row?.severity !== 'CRITICAL'"></div>
-                            <span>{{ row?.severity }}</span>
+                    <ng-template
+                            ngx-datatable-cell-template
+                            let-value="value"
+                            let-row="row"
+                    >
+                        <div class="severity-cell">
+                            <div [ngClass]="'severity-badge severity-' + row?.severity?.toLowerCase()">
+                                {{ row?.severity }}
+                            </div>
                         </div>
                     </ng-template>
                 </ngx-datatable-column>
 
                 <!-- Vulnerability Details Column -->
-                <ngx-datatable-column name="Vulnerability" [minWidth]="200">
+                <ngx-datatable-column name="Name" prop="name" [sortable]="true">
                     <ng-template ngx-datatable-header-template>
-                        <input
-                                type="text"
-                                class="form-control filter-input"
-                                placeholder="Search vulnerability..."
-                                (input)="updateFilterName($event)">
-                        <select class="form-select form-select-sm mt-1" (change)="updateFilterStatus($event)">
-                            <option value="">All Statuses</option>
-                            <option value="New">New</option>
-                            <option value="Existing">Existing</option>
-                            <option value="Removed">Removed</option>
-                            <option value="Supressed">Suppressed</option>
-                        </select>
-                    </ng-template>
-                    <ng-template ngx-datatable-cell-template let-row="row">
-                        <div class="vuln-content">
-                            <div class="vuln-name">{{ row?.name }}</div>
-                            <div class="vuln-meta">
-                                <div class="status" [ngClass]="row?.status?.toLowerCase()">
-                                    <svg cIcon name="cilBurn" *ngIf="row?.status === 'NEW'" size="sm"></svg>
-                                    <svg cIcon name="cilGraph" *ngIf="row?.status === 'EXISTING'" size="sm"></svg>
-                                    <svg cIcon name="cilTrash" *ngIf="row?.status === 'REMOVED'" size="sm"></svg>
-                                    <svg cIcon name="cilVolumeOff" *ngIf="row?.status === 'SUPRESSED'" size="sm"></svg>
-                                    {{ row?.status }}
+                        <div class="column-header">
+                            <span>Name</span>
+                            <div class="multi-filter-container">
+                                <div class="search-input">
+                                    <input
+                                            type="text"
+                                            class="form-control form-control-sm"
+                                            placeholder="Search name"
+                                            (input)="updateFilterName($event)"
+                                    />
+                                    <svg cIcon name="cil-magnifying-glass" class="search-icon"></svg>
                                 </div>
-                                <div class="date">{{ row?.last_seen | date:'mediumDate' }}</div>
+                                <!-- Include status filter -->
+                                <select class="form-select form-select-sm mt-1" (change)="updateFilterStatus($event)">
+                                    <option value="">All Statuses</option>
+                                    <option value="New">New</option>
+                                    <option value="Existing">Existing</option>
+                                    <option value="Removed">Removed</option>
+                                    <option value="Supressed">Suppressed</option>
+                                </select>
+                            </div>
+                        </div>
+                    </ng-template>
+                    <ng-template
+                            ngx-datatable-cell-template
+                            let-value="value"
+                            let-row="row"
+                    >
+                        <div class="vuln-info">
+                            <div class="vuln-name">{{ row?.name }}</div>
+                            <div class="vuln-metadata">
+                                <div class="meta-row">
+                                    <div class="meta-item status-info">
+                                        <svg
+                                                cIcon
+                                                [name]="
+                        row?.status === 'NEW' ? 'cil-burn' :
+                        row?.status === 'EXISTING' ? 'cil-graph' :
+                        row?.status === 'REMOVED' ? 'cil-trash' : 'cil-volume-off'
+                      "
+                                                class="meta-icon"
+                                        ></svg>
+                                        <span [ngClass]="'status-text status-' + row?.status?.toLowerCase()">{{ row?.status }}</span>
+                                    </div>
+                                    <div class="meta-item date-info">
+                                        <span class="date-value">Last seen: {{ row?.last_seen | date:'short' }}</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </ng-template>
                 </ngx-datatable-column>
 
                 <!-- Source Column -->
-                <ngx-datatable-column name="Source" prop="source" [width]="130" [sortable]="true">
+                <ngx-datatable-column
+                        name="Source"
+                        prop="source"
+                        [width]="150"
+                        [sortable]="true"
+                        [canAutoResize]="false"
+                        [ngClass]="{ 'datatable-column': true, 'centered-column': true }"
+                >
                     <ng-template ngx-datatable-header-template>
-                        <select class="form-select filter-select" (change)="updateFilterSource($event)">
-                            <option value="">All Sources</option>
-                            <option value="SAST">SAST</option>
-                            <option value="DAST">DAST</option>
-                            <option value="IaC">IaC</option>
-                            <option value="Secrets">Secrets</option>
-                            <option value="SCA">SCA</option>
-                            <option value="CLOUD_SCANNER">Cloud scanner</option>
-                        </select>
+                        <div class="column-header header-centered">
+                            <span>Source</span>
+                            <div class="filter-container">
+                                <select class="form-select form-select-sm" (change)="updateFilterSource($event)">
+                                    <option value="">All</option>
+                                    <option value="SAST">SAST</option>
+                                    <option value="DAST">DAST</option>
+                                    <option value="IaC">IaC</option>
+                                    <option value="Secrets">Secrets</option>
+                                    <option value="SCA">SCA</option>
+                                    <option value="GITLAB_SCANNER">GitLab</option>
+                                    <option value="CLOUD_SCANNER">Cloud Scanner</option>
+                                </select>
+                            </div>
+                        </div>
                     </ng-template>
-                    <ng-template ngx-datatable-cell-template let-row="row">
-                        <div class="source-badge"
-                             [ngClass]="{'badge-primary': row?.source === 'SAST',
-                            'badge-info': row?.source === 'IAC'|| row?.source === 'DAST',
-                            'badge-danger': row?.source === 'SECRETS',
-                            'badge-warning': row?.source === 'SCA',
-
-                            'badge-secondary': row?.source === 'CLOUD_SCANNER'}">
-                            <svg cIcon name="cilCode" *ngIf="row?.source === 'SAST'" size="sm"></svg>
-                            <svg cIcon name="cilSettings" *ngIf="row?.source === 'IAC'" size="sm"></svg>
-                            <svg cIcon name="cilLockLocked" *ngIf="row?.source === 'SECRETS'" size="sm"></svg>
-                            <svg cIcon name="cilLibrary" *ngIf="row?.source === 'SCA'" size="sm"></svg>
-                            <svg cIcon name="cilCode" *ngIf="row?.source === 'DAST'" size="sm"></svg>
-                            <svg cIcon name="cilCloud" *ngIf="row?.source === 'CLOUD_SCANNER'" size="sm"></svg>
-                            {{ row?.source }}
+                    <ng-template
+                            ngx-datatable-cell-template
+                            let-value="value"
+                            let-row="row"
+                    >
+                        <div class="source-cell">
+                            <div [ngClass]="'source-badge source-' + row?.source?.toLowerCase()">
+                                {{ row?.source }}
+                            </div>
                         </div>
                     </ng-template>
                 </ngx-datatable-column>

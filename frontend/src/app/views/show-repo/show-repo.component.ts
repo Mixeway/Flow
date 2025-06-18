@@ -131,6 +131,10 @@ export interface CodeRepoFindingStats {
     secretsHigh: number;
     secretsMedium: number;
     secretsRest: number;
+    gitlabCritical: number;
+    gitlabHigh: number;
+    gitlabMedium: number;
+    gitlabRest: number;
     openedFindings: number;
     removedFindings: number;
     reviewedFindings: number;
@@ -510,7 +514,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
             next: (response) => {
                 this.sourceStats = response;
                 this.chartPieData = {
-                    labels: ['SAST', 'SCA', 'Secrets', 'IaC', 'DAST'],
+                    labels: ['SAST', 'SCA', 'Secrets', 'IaC', 'DAST', 'GitLab'],
                     datasets: [
                         {
                             data: [
@@ -519,18 +523,21 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                                 this.sourceStats.secrets,
                                 this.sourceStats.iac,
                                 this.sourceStats.dast,
+                                this.sourceStats.gitlab
                             ],
                             backgroundColor: [
                                 '#FF6384',
                                 '#36A2EB',
                                 '#3eabb7',
                                 '#FFCE12',
+                                '#FF8929D8',
                             ],
                             hoverBackgroundColor: [
                                 '#FF6384',
                                 '#36A2EB',
                                 '#449a77',
                                 '#FFCE12',
+                                '#FF8929D8',
                             ],
                         },
                     ],
@@ -774,6 +781,9 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         const scaData = this.codeRepoFindingStats.map(
             (stat) => stat.scaCritical + stat.scaHigh + stat.scaMedium + stat.scaRest
         );
+        const gitlabData = this.codeRepoFindingStats.map(
+            (stat) => stat.gitlabCritical + stat.gitlabHigh + stat.gitlabMedium + stat.gitlabRest
+        );
 
         this.chartLineData = {
             labels: labels,
@@ -809,6 +819,14 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                     pointBackgroundColor: 'rgb(128, 101, 56)',
                     pointBorderColor: '#bd7777',
                     data: scaData,
+                },
+                {
+                    label: 'GitLab',
+                    backgroundColor: 'rgba(255, 165, 0, 0.2)',
+                    borderColor: 'rgb(255, 140, 0)',
+                    pointBackgroundColor: 'rgb(255, 165, 0)',
+                    pointBorderColor: '#ffa500',
+                    data: gitlabData,
                 },
             ],
         };

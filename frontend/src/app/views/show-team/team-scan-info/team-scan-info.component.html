@@ -90,6 +90,14 @@
                                     </div>
 
                                     <div class="result-category d-flex align-items-center">
+                                        <span class="category-label me-4">GitLab Scan</span>
+                                        <div class="category-badges">
+                                            <c-badge color="danger" class="result-badge" *ngIf="row.gitlabCritical > 0">{{ row.gitlabCritical }}</c-badge>
+                                            <c-badge color="warning" class="result-badge" *ngIf="row.gitlabHigh > 0">{{ row.gitlabHigh }}</c-badge>
+                                        </div>
+                                    </div>
+
+                                    <div class="result-category d-flex align-items-center">
                                         <span class="category-label me-4">Cloud Scan</span>
                                         <div class="category-badges">
                                             <c-badge color="danger" class="result-badge" *ngIf="row.criticalFindings > 0">{{ row.criticalFindings }}</c-badge>

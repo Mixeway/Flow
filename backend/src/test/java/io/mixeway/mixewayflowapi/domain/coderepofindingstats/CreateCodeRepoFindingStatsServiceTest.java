@@ -43,6 +43,7 @@ class CreateCodeRepoFindingStatsServiceTest {
                         codeRepo,1,2,3,4,1,
                         2,3,4,5,1,2,
                         3,4,1,2,3,
+                        4,1,2,3,
                         4,1,2,3));
         codeRepoFindingStats = codeRepoFindingStatsRepository.findByCodeRepo(codeRepo);
         int after = codeRepoFindingStats.size();

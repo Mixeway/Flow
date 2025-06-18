@@ -29,7 +29,8 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
             + "SUM(CASE WHEN f.source = 'SAST' AND (f.status = 'NEW' OR f.status = 'EXISTING') THEN 1 ELSE 0 END), "
             + "SUM(CASE WHEN f.source = 'IAC' AND (f.status = 'NEW' OR f.status = 'EXISTING') THEN 1 ELSE 0 END), "
             + "SUM(CASE WHEN f.source = 'SCA' AND (f.status = 'NEW' OR f.status = 'EXISTING') THEN 1 ELSE 0 END), "
-            + "SUM(CASE WHEN f.source = 'SECRETS' AND (f.status = 'NEW' OR f.status = 'EXISTING') THEN 1 ELSE 0 END)) "
+            + "SUM(CASE WHEN f.source = 'SECRETS' AND (f.status = 'NEW' OR f.status = 'EXISTING') THEN 1 ELSE 0 END), "
+            + "SUM(CASE WHEN f.source = 'GITLAB_SCANNER' AND (f.status = 'NEW' OR f.status = 'EXISTING') THEN 1 ELSE 0 END)) "
             + "FROM Finding f WHERE f.codeRepo.id = :codeRepo")
     VulnStatsResponseDto countFindingsBySource(@Param("codeRepo") Long codeRepo);
 
@@ -38,6 +39,7 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
             + "SUM(CASE WHEN f.source = 'IAC' AND (f.status = 'NEW' OR f.status = 'EXISTING') THEN 1 ELSE 0 END), "
             + "SUM(CASE WHEN f.source = 'SCA' AND (f.status = 'NEW' OR f.status = 'EXISTING') THEN 1 ELSE 0 END), "
             + "SUM(CASE WHEN f.source = 'SECRETS' AND (f.status = 'NEW' OR f.status = 'EXISTING') THEN 1 ELSE 0 END), "
+            + "SUM(CASE WHEN f.source = 'GITLAB_SCANNER' AND (f.status = 'NEW' OR f.status = 'EXISTING') THEN 1 ELSE 0 END), "
             + "SUM(CASE WHEN f.source = 'CLOUD_SCANNER' AND (f.status = 'NEW' OR f.status = 'EXISTING') THEN 1 ELSE 0 END)) "
             + "FROM Finding f WHERE f.codeRepo.id IN :codeRepoIds OR f.cloudSubscription.id IN :cloudSubscriptionIds")
     TeamVulnStatsResponseDto countFindingsByTeam(@Param("codeRepoIds") List<Long> codeRepoIds, @Param("cloudSubscriptionIds") List<Long> cloudSubscriptionIds);
@@ -75,6 +77,14 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
     List<Finding> findByVulnerabilityAndCodeRepoIn(Vulnerability vulnerability, List<CodeRepo> byTeam);
 
     List<Finding> findByCodeRepoAndVulnerability(CodeRepo codeRepo, Vulnerability vulnerability);
+
+    @Query("SELECT f FROM Finding f WHERE f.codeRepo = :codeRepo AND f.vulnerability.name = :vulnerabilityName AND f.codeRepoBranch = :codeRepoBranch AND f.location = :location")
+    List<Finding> findByCodeRepoAndVulnerabilityNameAndBranchAndLocation(
+            @Param("codeRepo") CodeRepo codeRepo,
+            @Param("vulnerabilityName") String vulnerabilityName,
+            @Param("codeRepoBranch") CodeRepoBranch codeRepoBranch,
+            @Param("location") String location
+    );
 
     @Query(value = "SELECT * FROM combined_items_view WHERE coderepo_id IN (:coderepoIds)", nativeQuery = true)
     List<ItemProjection> findCombinedItems(@Param("coderepoIds") List<Long> coderepoIds);

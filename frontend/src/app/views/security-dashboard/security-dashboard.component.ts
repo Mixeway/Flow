@@ -196,22 +196,22 @@ export class SecurityDashboardComponent implements OnInit {
     // Create datasets for critical, high, medium, low vulnerabilities
     const criticalData = this.trendData.map(item =>
         (item.sastCritical || 0) + (item.scaCritical || 0) +
-        (item.iacCritical || 0) + (item.secretsCritical || 0) +  (item.dastCritical || 0)
+        (item.iacCritical || 0) + (item.secretsCritical || 0) +  (item.dastCritical || 0) + (item.gitlabCritical || 0)
     );
 
     const highData = this.trendData.map(item =>
         (item.sastHigh || 0) + (item.scaHigh || 0) +
-        (item.iacHigh || 0) + (item.secretsHigh || 0) +  (item.dastHigh || 0)
+        (item.iacHigh || 0) + (item.secretsHigh || 0) +  (item.dastHigh || 0) + (item.gitlabHigh || 0)
     );
 
     const mediumData = this.trendData.map(item =>
         (item.sastMedium || 0) + (item.scaMedium || 0) +
-        (item.iacMedium || 0) + (item.secretsMedium || 0) + (item.dastMedium || 0)
+        (item.iacMedium || 0) + (item.secretsMedium || 0) + (item.dastMedium || 0) + (item.gitlabMedium || 0)
     );
 
     const lowData = this.trendData.map(item =>
         (item.sastRest || 0) + (item.scaRest || 0) +
-        (item.iacRest || 0) + (item.secretsRest || 0) +  (item.dastRest || 0)
+        (item.iacRest || 0) + (item.secretsRest || 0) +  (item.dastRest || 0) + (item.gitlabRest || 0)
     );
 
     this.vulnerabilityTrendChartData = {
@@ -453,16 +453,16 @@ export class SecurityDashboardComponent implements OnInit {
 
     if (severityType === 'critical') {
       latest = (latestDataPoint.sastCritical || 0) + (latestDataPoint.scaCritical || 0) +
-          (latestDataPoint.iacCritical || 0) + (latestDataPoint.secretsCritical || 0);
+          (latestDataPoint.iacCritical || 0) + (latestDataPoint.secretsCritical || 0) + (latestDataPoint.gitlabCritical || 0);
 
       previous = (previousDataPoint.sastCritical || 0) + (previousDataPoint.scaCritical || 0) +
-          (previousDataPoint.iacCritical || 0) + (previousDataPoint.secretsCritical || 0);
+          (previousDataPoint.iacCritical || 0) + (previousDataPoint.secretsCritical || 0)  + (previousDataPoint.gitlabCritical || 0);
     } else if (severityType === 'high') {
       latest = (latestDataPoint.sastHigh || 0) + (latestDataPoint.scaHigh || 0) +
-          (latestDataPoint.iacHigh || 0) + (latestDataPoint.secretsHigh || 0);
+          (latestDataPoint.iacHigh || 0) + (latestDataPoint.secretsHigh || 0)  + (latestDataPoint.gitlabHigh || 0);
 
       previous = (previousDataPoint.sastHigh || 0) + (previousDataPoint.scaHigh || 0) +
-          (previousDataPoint.iacHigh || 0) + (previousDataPoint.secretsHigh || 0);
+          (previousDataPoint.iacHigh || 0) + (previousDataPoint.secretsHigh || 0)  + (previousDataPoint.gitlabHigh || 0);
     }
 
     if (latest === previous) return 'stable';

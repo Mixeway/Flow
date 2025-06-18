@@ -13,6 +13,7 @@ interface CodeRepo {
     secrets: string;
     sca: string;
     dast: string;
+    gitlab: string;
 }
 
 interface CreateRepo {

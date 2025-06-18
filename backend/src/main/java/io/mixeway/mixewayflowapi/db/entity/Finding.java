@@ -32,7 +32,7 @@ public final class Finding {
     }
 
     public enum Source {
-        IAC, SECRETS, SAST, SCA, CLOUD_SCANNER, DAST
+        IAC, SECRETS, SAST, SCA, CLOUD_SCANNER, DAST,GITLAB_SCANNER
     }
 
     @Id

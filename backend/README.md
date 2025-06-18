@@ -7,7 +7,7 @@
 * have postgress db avaliable: eg. `docker run --name my-postgres-container -e POSTGRES_DB=flow -e POSTGRES_USER=flow_user -e POSTGRES_PASSWORD=flow_pass -p 5432:5432 -d postgres:latest`
 
 ## application.properties
- change to your needs
+ change to your need
 
 ## First login
 `admin:admin` - then forced change

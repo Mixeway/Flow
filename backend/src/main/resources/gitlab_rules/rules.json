@@ -1,0 +1,121 @@
+[
+  {
+    "name": "Default branch is not protected",
+    "description": "Default branch should be protected to ensure that only Maintainers have the permission to merge changes into it.",
+    "recommendation": "Select Settings > Repository > Protected branches > Add protected branch.",
+    "severity": "CRITICAL",
+    "location": "Settings/Repository/Protected branches"
+  },
+  {
+    "name": "Too many members with high privileges",
+    "description": "Members should only be assigned the roles \"Maintainer\" or \"Owner\" when necessary. In all other cases, the \"Developer\" role or lower should be assigned.",
+    "recommendation": "Change members' roles in Manage > Members.",
+    "severity": "CRITICAL",
+    "location": "Manage/Members"
+  },
+  {
+    "name": "Untagged runner",
+    "description": "The project is using an untagged runner, which may lead to unintended job execution.",
+    "recommendation": "Add a runner tag in Settings > CI/CD > Runners > Assigned project runners > Edit > Tags.",
+    "severity": "HIGH",
+    "location": "Settings/CI/CD/Runners/Assigned project runners/Edit/Tags"
+  },
+  {
+    "name": "Runner allows untagged jobs",
+    "description": "The runner is configured to allow untagged jobs which may result in unauthorized changes or actions being executed.",
+    "recommendation": "Uncheck Settings > CI/CD > Runners > Assigned project runners > Edit > Tags > Run untagged jobs box",
+    "severity": "HIGH",
+    "location": "Settings/CI/CD/Runners/Assigned project runners/Edit/Tags/Run untagged jobs"
+  },
+  {
+    "name": "Runner allows unprotected jobs",
+    "description": "The runner is configured to allow unprotected jobs, which may result in unauthorized changes or actions being executed.",
+    "recommendation": "Check Settings > CI/CD > Runners > Assigned project runners > Edit > Configuration > Protected box",
+    "severity": "CRITICAL",
+    "location": "Settings/CI/CD/Runners/Assigned project runners/Edit/Configuration/Protected"
+  },
+  {
+    "name": "Runner uses insecure executor type",
+    "description": "The runner is configured to use insecure executor type which does not support proper isolation.",
+    "recommendation": "Configure a new runner which uses docker or kubernetes executor",
+    "severity": "CRITICAL",
+    "location": "Settings/CI/CD/Runners/Assigned project runners"
+  },
+  {
+    "name": "Access token with api scope",
+    "description": "The access token has the 'api' scope enabled which grants read/write access to the GitLab API. This scope provides extensive permissions that could be exploited if the token is compromised.",
+    "recommendation": "Generate new token with lower privileges in Settings > Access tokens > Project access tokens > Add new token",
+    "severity": "HIGH",
+    "location": "Settings/Access tokens/Project access tokens"
+  },
+  {
+    "name": "Lack of repository description",
+    "description": "The repository does not have a description which can make it harder for users to understand its purpose.",
+    "recommendation": "Add project description in Settings > General > Naming, description, topics > Project description",
+    "severity": "LOW",
+    "location": "Settings/General/Naming, description, topics/Project description"
+  },
+  {
+    "name": "Lack of README file",
+    "description": "The repository does not contain a README file which is essential for providing an overview and guidance on the project.",
+    "recommendation": "Add a README file in Code > Repository",
+    "severity": "LOW",
+    "location": "Code/Repository"
+  },
+  {
+    "name": "Lack of CONTRIBUTING file",
+    "description": "The repository does not contain a CONTRIBUTING file which is essential for providing guidelines on how contributors can effectively participate in the project.",
+    "recommendation": "Add a CONTRIBUTING file in Code > Repository",
+    "severity": "LOW",
+    "location": "Code/Repository"
+  },
+  {
+    "name": "Lack of SECURITY file",
+    "description": "The repository does not contain a SECURITY file, which is essential for providing guidelines on how to report vulnerabilities and ensure the project's security practices are followed.",
+    "recommendation": "Add a SECURITY file in Code > Repository",
+    "severity": "LOW",
+    "location": "Code/Repository"
+  },
+  {
+    "name": "Usage of external repository",
+    "description": "The project relies on an external repository, which may pose security, reliability, or compliance risks.",
+    "recommendation": "Update your application to use repositories from an approved allowlist",
+    "severity": "HIGH",
+    "location": "Code/Repository"
+  },
+  {
+    "name": "Protected branch with insufficient access level",
+    "description": "Protected branches with insufficient access restrictions may allow unauthorized users to modify critical code. When merge and push permissions are set below the 'Maintainer' level, it increases the risk of unauthorized code changes, potentially introducing security vulnerabilities or unstable code into production branches.",
+    "recommendation": " Set Settings > Repository > Protected branches > Allowed to merge/Allowed to push and merge to 'Maintainers' ",
+    "severity": "CRITICAL",
+    "location": "Settings/Repository/Protected branches/Allowed to merge/Allowed to push and merge"
+  },
+  {
+    "name": "Secret stored in GitLab CI/CD variables",
+    "description": "Storing sensitive information like passwords, API keys, or tokens in GitLab CI/CD variables poses a security risk. These variables are accessible to anyone with access to the project settings and can be exposed through logs or debugging output. Additionally, they are not encrypted at rest and may be visible in plain text to project maintainers.",
+    "recommendation": "Move secret from Settings > CI/CD > Variables to a secret manager",
+    "severity": "CRITICAL",
+    "location": "Settings/CI/CD/Variables"
+  },
+  {
+    "name": "",
+    "description": "",
+    "recommendation": "",
+    "severity": "",
+    "location": ""
+  },
+  {
+    "name": "",
+    "description": "",
+    "recommendation": "",
+    "severity": "",
+    "location": ""
+  },
+  {
+    "name": "",
+    "description": "",
+    "recommendation": "",
+    "severity": "",
+    "location": ""
+  }
+]

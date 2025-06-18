@@ -59,7 +59,16 @@ import {
 import {ChartjsComponent} from "@coreui/angular-chartjs";
 import {IconComponent, IconDirective, IconSetService} from "@coreui/icons-angular";
 import {MarkdownModule, provideMarkdown} from "ngx-markdown";
-import {brandSet, freeSet} from "@coreui/icons";
+import {
+    brandSet,
+    cilArrowRight,
+    cilBug,
+    cilBurn,
+    cilCenterFocus,
+    cilChartPie,
+    cilCommentSquare, cilGraph, cilMagnifyingGlass, cilTrash, cilVolumeOff,
+    freeSet
+} from "@coreui/icons";
 import {ChartData, ChartOptions} from "chart.js";
 import {CloudSubscriptionInfoComponent} from "./cloud-subscription-info/cloud-subscription-info.component";
 import {CloudVulnerabilitySummaryComponent} from "./cloud-vulnerability-summary/cloud-vulnerability-summary.component";
@@ -68,6 +77,7 @@ import {CloudVulnerabilityDetailsComponent} from "./cloud-vulnerability-details/
 import {
     TeamVulnerabilitiesTableComponent
 } from "../show-team/team-vulnerabilities-table/team-vulnerabilities-table.component";
+import {VulnerabilitySummaryComponent} from "../show-repo/vulnerability-summary/vulnerability-summary.component";
 
 interface Vulnerability {
     id: number;
@@ -162,6 +172,7 @@ export interface CloudSubscriptionFindingStats {
         CloudVulnerabilityDetailsComponent,
         NgClass,
         TeamVulnerabilitiesTableComponent,
+        VulnerabilitySummaryComponent,
     ],
     templateUrl: './show-cloud-subscription.component.html',
     styleUrls: ['./show-cloud-subscription.component.scss'],
@@ -173,7 +184,18 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
     id: string = '';
     findings: FindingDTO | undefined;
     singleVuln: SingleFindingDTO | undefined;
-
+    icons = {
+        cilChartPie,
+        cilArrowRight,
+        cilBug,
+        cilCenterFocus,
+        cilCommentSquare,
+        cilBurn,
+        cilGraph,
+        cilTrash,
+        cilVolumeOff,
+        cilMagnifyingGlass,
+    };
     counts: any;
     vulns: Vulnerability[] = [];
     filteredVulns = [...this.vulns]; // a copy of the original rows for filtering

@@ -352,6 +352,21 @@
                                                     </div>
 
                                                     <div class="result-category">
+                                                        <span class="category-label">GitLab</span>
+                                                        <div class="category-badges">
+                                                            <c-badge color="danger" class="result-badge"
+                                                                     *ngIf="row.gitlabCritical > 0">{{ row.gitlabCritical }}
+                                                            </c-badge>
+                                                            <c-badge color="warning" class="result-badge"
+                                                                     *ngIf="row.gitlabHigh > 0">{{ row.gitlabHigh }}
+                                                            </c-badge>
+                                                            <c-badge color="info" class="result-badge"
+                                                                     *ngIf="row.gitlabMedium > 0">{{ row.gitlabMedium }}
+                                                            </c-badge>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="result-category">
                                                         <span class="category-label">DAST</span>
                                                         <div class="category-badges">
                                                             <c-badge color="danger" class="result-badge"

@@ -343,6 +343,11 @@
         background-color: rgba(var(--cui-warning-rgb), 0.15);
         color: var(--cui-warning);
       }
+
+      &.source-gitlab_scanner {
+        background-color: rgba(var(--cui-success-rgb), 0.15);
+        color: var(--cui-success);
+      }
     }
   }
 

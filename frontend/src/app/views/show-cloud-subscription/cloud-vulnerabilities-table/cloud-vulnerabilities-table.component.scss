@@ -53,6 +53,35 @@
   height: 32px;
   padding: 0;
 }
+.page-size-control .form-select {
+  width: auto; /* Adjust width automatically based on content */
+  max-width: 150px; /* Optional: Set a maximum width */
+  display: inline-block; /* Ensure it doesn't stretch */
+}
+.filter-controls {
+  display: flex; /* Use flexbox for horizontal alignment */
+  align-items: center; /* Vertically center items */
+  justify-content: space-between; /* Add space between groups if needed */
+  flex-wrap: wrap; /* Allow wrapping on smaller screens */
+}
+
+.toggle-controls {
+  display: flex; /* Ensure toggle controls stay inline */
+  align-items: center;
+  margin-right: 1rem; /* Add spacing between toggle and dropdown */
+}
+
+.action-controls {
+  display: flex; /* Ensure dropdown stays inline */
+  align-items: center;
+  margin-top: 0; /* Remove unnecessary top margin */
+}
+.vuln-name, .location-cell span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
 
 // Vulnerability information
 .vuln-info {
@@ -162,6 +191,26 @@
 
     .datatable-body-cell {
       align-self: center;
+    }
+  }
+
+  .source-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+
+    .source-badge {
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+
+      &.source-cloud_scanner {
+        background-color: rgba(199, 225, 222, 0.71);
+        color: rgba(0, 89, 89, 0.78);
+      }
     }
   }
 

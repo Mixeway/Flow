@@ -73,6 +73,8 @@ public class UpdateCodeRepoService {
         // Update status for IaC
         int iacHigh = updateStatusForSource(Finding.Source.IAC, codeRepo, codeRepoBranch, false);
 
+        int gitlabHigh = updateStatusForSource(Finding.Source.GITLAB_SCANNER, codeRepo, codeRepoBranch, false);
+
         // Initialize SCA counts
         int scaHigh = 0;
         int scaCritical = 0;
@@ -95,6 +97,7 @@ public class UpdateCodeRepoService {
                 codeRepo.getSastScan(),
                 codeRepo.getIacScan(),
                 codeRepo.getSecretsScan(),
+                codeRepo.getGitlabScan(),
                 scaHigh,
                 scaCritical,
                 sastHigh,
@@ -102,7 +105,9 @@ public class UpdateCodeRepoService {
                 iacHigh,
                 countCriticalFindings(Finding.Source.IAC, codeRepo, codeRepoBranch),
                 secretsHigh,
-                countCriticalFindings(Finding.Source.SECRETS, codeRepo, null)
+                countCriticalFindings(Finding.Source.SECRETS, codeRepo, null),
+                gitlabHigh,
+                countCriticalFindings(Finding.Source.GITLAB_SCANNER, codeRepo, codeRepo.getDefaultBranch())
         );
     }
 
@@ -173,6 +178,7 @@ public class UpdateCodeRepoService {
             case SAST -> codeRepo.updateSastScanStatus(scanStatus);
             case IAC -> codeRepo.updateIacScanStatus(scanStatus);
             case SCA -> codeRepo.updateScaScanStatus(scanStatus);
+            case GITLAB_SCANNER -> codeRepo.updateGitLabScanStatus(scanStatus);
         }
         codeRepoRepository.save(codeRepo);
     }
