@@ -12,11 +12,13 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.io.*;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.stream.StreamSupport;
 
@@ -87,14 +89,27 @@ public class GitLabRules {
         try {
             String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
             URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/repository/branches");
-
-            String response = webClient.get()
-                    .uri(uri)
-                    .header("PRIVATE-TOKEN", token)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
-
+            String response;
+            try {
+                response = webClient.get()
+                        .uri(uri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScannerService] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Default branch is not protected'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Default branch is not protected'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScannerService] Unexpected error during API request for repository {}: {} for rule 'Default branch is not protected'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode branches = objectMapper.readTree(response);
 
@@ -123,13 +138,27 @@ public class GitLabRules {
         try {
             String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
             URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/members/all");
-
-            String response = webClient.get()
-                    .uri(uri)
-                    .header("PRIVATE-TOKEN", token)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+            String response;
+            try {
+                response = webClient.get()
+                        .uri(uri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScannerService] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Too many members with high privileges'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Too many members with high privileges'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScannerService] Unexpected error during API request for repository {}: {} for rule 'Too many members with high privileges'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode members = objectMapper.readTree(response);
@@ -153,7 +182,7 @@ public class GitLabRules {
                 }
             }
         } catch (Exception e) {
-            log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[v] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
         }
     }
 
@@ -166,12 +195,27 @@ public class GitLabRules {
             String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
             URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/runners");
 
-            String response = webClient.get()
-                    .uri(uri)
-                    .header("PRIVATE-TOKEN", token)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+            String response;
+            try {
+                response = webClient.get()
+                        .uri(uri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScannerService] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Untagged runner'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Untagged runner'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScannerService] Unexpected error during API request for repository {}: {} for rule 'Untagged runner'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode runners = objectMapper.readTree(response);
@@ -181,12 +225,27 @@ public class GitLabRules {
 
                 URI runnerUri = new URI("https://" + domain + "/api/v4/runners/" + runnerId);
 
-                String runnerResponse = webClient.get()
-                        .uri(runnerUri)
-                        .header("PRIVATE-TOKEN", token)
-                        .retrieve()
-                        .bodyToMono(String.class)
-                        .block();
+                String runnerResponse;
+                try {
+                    runnerResponse = webClient.get()
+                            .uri(runnerUri)
+                            .header("PRIVATE-TOKEN", token)
+                            .retrieve()
+                            .bodyToMono(String.class)
+                            .block();
+                } catch (WebClientResponseException e) {
+                    if (e.getStatusCode().value() == 403) {
+                        log.warn("[GitLabScannerService] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Untagged runner'", codeRepo.getRepourl());
+                    } else {
+                        log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Untagged runner'",
+                                codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                    }
+                    return;
+                } catch (Exception e) {
+                    log.error("[GitLabScannerService] Unexpected error during API request for repository {}: {} for rule 'Untagged runner'",
+                            codeRepo.getRepourl(), e.getMessage(), e);
+                    return;
+                }
 
                 ObjectMapper runnerObjectMapper = new ObjectMapper();
                 JsonNode runnerDetails = runnerObjectMapper.readTree(runnerResponse);
@@ -200,7 +259,7 @@ public class GitLabRules {
                 }
             }
         } catch (Exception e) {
-            log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
         }
     }
 
@@ -213,12 +272,27 @@ public class GitLabRules {
             String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
             URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/runners");
 
-            String response = webClient.get()
-                    .uri(uri)
-                    .header("PRIVATE-TOKEN", token)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+            String response;
+            try {
+                response = webClient.get()
+                        .uri(uri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScanner] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Runner allows untagged jobs'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Runner allows untagged jobs'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Runner allows untagged jobs'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode runners = objectMapper.readTree(response);
@@ -228,12 +302,27 @@ public class GitLabRules {
 
                 URI runnerUri = new URI("https://" + domain + "/api/v4/runners/" + runnerId);
 
-                String runnerResponse = webClient.get()
-                        .uri(runnerUri)
-                        .header("PRIVATE-TOKEN", token)
-                        .retrieve()
-                        .bodyToMono(String.class)
-                        .block();
+                String runnerResponse;
+                try {
+                    runnerResponse = webClient.get()
+                            .uri(runnerUri)
+                            .header("PRIVATE-TOKEN", token)
+                            .retrieve()
+                            .bodyToMono(String.class)
+                            .block();
+                } catch (WebClientResponseException e) {
+                    if (e.getStatusCode().value() == 403) {
+                        log.warn("[GitLabScanner] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Runner allows untagged jobs'", codeRepo.getRepourl());
+                    } else {
+                        log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Runner allows untagged jobs'",
+                                codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                    }
+                    return;
+                } catch (Exception e) {
+                    log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Runner allows untagged jobs'",
+                            codeRepo.getRepourl(), e.getMessage(), e);
+                    return;
+                }
 
                 ObjectMapper runnerObjectMapper = new ObjectMapper();
                 JsonNode runnerDetails = runnerObjectMapper.readTree(runnerResponse);
@@ -247,7 +336,7 @@ public class GitLabRules {
                 }
             }
         } catch (Exception e) {
-            log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
         }
     }
 
@@ -260,12 +349,27 @@ public class GitLabRules {
             String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
             URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/runners");
 
-            String response = webClient.get()
-                    .uri(uri)
-                    .header("PRIVATE-TOKEN", token)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+            String response;
+            try {
+                response = webClient.get()
+                        .uri(uri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScanner] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Runner allows unprotected jobs'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Runner allows unprotected jobs'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Runner allows unprotected jobs'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode runners = objectMapper.readTree(response);
@@ -275,12 +379,27 @@ public class GitLabRules {
 
                 URI runnerUri = new URI("https://" + domain + "/api/v4/runners/" + runnerId);
 
-                String runnerResponse = webClient.get()
-                        .uri(runnerUri)
-                        .header("PRIVATE-TOKEN", token)
-                        .retrieve()
-                        .bodyToMono(String.class)
-                        .block();
+                String runnerResponse;
+                try {
+                    runnerResponse = webClient.get()
+                            .uri(runnerUri)
+                            .header("PRIVATE-TOKEN", token)
+                            .retrieve()
+                            .bodyToMono(String.class)
+                            .block();
+                } catch (WebClientResponseException e) {
+                    if (e.getStatusCode().value() == 403) {
+                        log.warn("[GitLabScanner] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Runner allows unprotected jobs'", codeRepo.getRepourl());
+                    } else {
+                        log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Runner allows unprotected jobs'",
+                                codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                    }
+                    return;
+                } catch (Exception e) {
+                    log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Runner allows unprotected jobs'",
+                            codeRepo.getRepourl(), e.getMessage(), e);
+                    return;
+                }
 
                 ObjectMapper runnerObjectMapper = new ObjectMapper();
                 JsonNode runnerDetails = runnerObjectMapper.readTree(runnerResponse);
@@ -294,7 +413,7 @@ public class GitLabRules {
                 }
             }
         } catch (Exception e) {
-            log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
         }
     }
 
@@ -326,14 +445,28 @@ public class GitLabRules {
 
             Map<String, String> requestBody = Map.of("query", query);
 
-            String response = webClient.post()
-                    .uri("https://" + domain + "/api/graphql")
-                    .header("PRIVATE-TOKEN", token)
-                    .bodyValue(requestBody)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
-
+            String response;
+            try {
+                response = webClient.post()
+                        .uri("https://" + domain + "/api/graphql")
+                        .header("PRIVATE-TOKEN", token)
+                        .bodyValue(requestBody)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScanner] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Runner uses insecure executor type'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Runner uses insecure executor type'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Runner uses insecure executor type'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode root = objectMapper.readTree(response);
@@ -363,7 +496,7 @@ public class GitLabRules {
                 }
             }
         } catch (Exception e) {
-            log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
         }
     }
 
@@ -376,12 +509,27 @@ public class GitLabRules {
             String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
             URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/access_tokens");
 
-            String response = webClient.get()
-                    .uri(uri)
-                    .header("PRIVATE-TOKEN", token)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+            String response;
+            try {
+                response = webClient.get()
+                        .uri(uri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScanner] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Access token with api scope'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Access token with api scope'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Access token with api scope'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode tokens = objectMapper.readTree(response);
@@ -400,7 +548,7 @@ public class GitLabRules {
                 }
             }
         } catch (Exception e) {
-            log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
         }
     }
 
@@ -413,12 +561,27 @@ public class GitLabRules {
             String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
             URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath);
 
-            String response = webClient.get()
-                    .uri(uri)
-                    .header("PRIVATE-TOKEN", token)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+            String response;
+            try {
+                response = webClient.get()
+                        .uri(uri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScanner] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Lack of repository description'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Lack of repository description'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Lack of repository description'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode description = objectMapper.readTree(response);
@@ -432,7 +595,7 @@ public class GitLabRules {
                 updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
             }
         } catch (Exception e) {
-            log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
         }
     }
 
@@ -445,12 +608,27 @@ public class GitLabRules {
             String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
             URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/repository/tree");
 
-            String response = webClient.get()
-                    .uri(uri)
-                    .header("PRIVATE-TOKEN", token)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+            String response;
+            try {
+                response = webClient.get()
+                        .uri(uri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScanner] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Lack of README file'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Lack of README file'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Lack of README file'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode files = objectMapper.readTree(response);
@@ -473,12 +651,27 @@ public class GitLabRules {
             if (readmeExists) {
                 URI readmeUri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/repository/files/" + URLEncoder.encode(ReadmePath, StandardCharsets.UTF_8.toString()) + "/raw");
 
-                String readmeContent = webClient.get()
-                        .uri(readmeUri)
-                        .header("PRIVATE-TOKEN", token)
-                        .retrieve()
-                        .bodyToMono(String.class)
-                        .block();
+                String readmeContent;
+                try {
+                    readmeContent = webClient.get()
+                            .uri(readmeUri)
+                            .header("PRIVATE-TOKEN", token)
+                            .retrieve()
+                            .bodyToMono(String.class)
+                            .block();
+                } catch (WebClientResponseException e) {
+                    if (e.getStatusCode().value() == 403) {
+                        log.warn("[GitLabScanner] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Lack of README file'", codeRepo.getRepourl());
+                    } else {
+                        log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Lack of README file'",
+                                codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                    }
+                    return;
+                } catch (Exception e) {
+                    log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Lack of README file'",
+                            codeRepo.getRepourl(), e.getMessage(), e);
+                    return;
+                }
                 if (readmeContent == null || readmeContent.trim().isEmpty()) {
                     reamdeIsEmpty = true;
                 }
@@ -492,7 +685,7 @@ public class GitLabRules {
                 updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
             }
         } catch (Exception e) {
-            log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
         }
     }
 
@@ -505,12 +698,27 @@ public class GitLabRules {
             String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
             URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/repository/tree");
 
-            String response = webClient.get()
-                    .uri(uri)
-                    .header("PRIVATE-TOKEN", token)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+            String response;
+            try {
+                response = webClient.get()
+                        .uri(uri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScanner] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Lack of CONTRIBUTING file'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Lack of CONTRIBUTING file'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Lack of CONTRIBUTING file'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode files = objectMapper.readTree(response);
@@ -532,13 +740,28 @@ public class GitLabRules {
 
             if (contributingExists) {
                 URI contributingUri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/repository/files/" + URLEncoder.encode(contributingPath, StandardCharsets.UTF_8.toString()) + "/raw");
+                String contributingContent;
+                try {
+                    contributingContent = webClient.get()
+                            .uri(contributingUri)
+                            .header("PRIVATE-TOKEN", token)
+                            .retrieve()
+                            .bodyToMono(String.class)
+                            .block();
+                } catch (WebClientResponseException e) {
+                    if (e.getStatusCode().value() == 403) {
+                        log.warn("[GitLabScanner] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Lack of CONTRIBUTING file'", codeRepo.getRepourl());
+                    } else {
+                        log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Lack of CONTRIBUTING file'",
+                                codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                    }
+                    return;
+                } catch (Exception e) {
+                    log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Lack of CONTRIBUTING file'",
+                            codeRepo.getRepourl(), e.getMessage(), e);
+                    return;
+                }
 
-                String contributingContent = webClient.get()
-                        .uri(contributingUri)
-                        .header("PRIVATE-TOKEN", token)
-                        .retrieve()
-                        .bodyToMono(String.class)
-                        .block();
                 if (contributingContent == null || contributingContent.trim().isEmpty()) {
                     contributingIsEmpty = true;
                 }
@@ -552,7 +775,7 @@ public class GitLabRules {
                 updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
             }
         } catch (Exception e) {
-            log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
         }
     }
 
@@ -565,12 +788,27 @@ public class GitLabRules {
             String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
             URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/repository/tree");
 
-            String response = webClient.get()
-                    .uri(uri)
-                    .header("PRIVATE-TOKEN", token)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+            String response;
+            try {
+                response = webClient.get()
+                        .uri(uri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScanner] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Lack of SECURITY file'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Lack of SECURITY file'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Lack of SECURITY file'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode files = objectMapper.readTree(response);
@@ -592,14 +830,29 @@ public class GitLabRules {
 
             if (securityExists) {
                 URI securityUri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/repository/files/" + URLEncoder.encode(securityPath, StandardCharsets.UTF_8.toString()) + "/raw");
+                String securityContent;
+                try {
+                    securityContent = webClient.get()
+                            .uri(securityUri)
+                            .header("PRIVATE-TOKEN", token)
+                            .retrieve()
+                            .bodyToMono(String.class)
+                            .block();
+                } catch (WebClientResponseException e) {
+                    if (e.getStatusCode().value() == 403) {
+                        log.warn("[GitLabScanner] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Lack of SECURITY file'", codeRepo.getRepourl());
+                    } else {
+                        log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Lack of SECURITY file'",
+                                codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                    }
+                    return;
+                } catch (Exception e) {
+                    log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Lack of SECURITY file'",
+                            codeRepo.getRepourl(), e.getMessage(), e);
+                    return;
+                }
 
-                String readmeContent = webClient.get()
-                        .uri(securityUri)
-                        .header("PRIVATE-TOKEN", token)
-                        .retrieve()
-                        .bodyToMono(String.class)
-                        .block();
-                if (readmeContent == null || readmeContent.trim().isEmpty()) {
+                if (securityContent == null || securityContent.trim().isEmpty()) {
                     securityIsEmpty = true;
                 }
             }
@@ -612,7 +865,7 @@ public class GitLabRules {
                 updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
             }
         } catch (Exception e) {
-            log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
         }
     }
 
@@ -625,12 +878,27 @@ public class GitLabRules {
             String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
             URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/repository/tree");
 
-            String response = webClient.get()
-                    .uri(uri)
-                    .header("PRIVATE-TOKEN", token)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+            String response;
+            try {
+                response = webClient.get()
+                        .uri(uri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScanner] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Usage of external repository'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Usage of external repository'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Usage of external repository'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode files = objectMapper.readTree(response);
@@ -644,12 +912,27 @@ public class GitLabRules {
                 if (path.toLowerCase().contains("dockerfile") || path.toLowerCase().contains("docker-compose")) {
                     URI fileUri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/repository/files/" + URLEncoder.encode(path, StandardCharsets.UTF_8.toString()) + "/raw");
 
-                    String fileContent = webClient.get()
-                            .uri(fileUri)
-                            .header("PRIVATE-TOKEN", token)
-                            .retrieve()
-                            .bodyToMono(String.class)
-                            .block();
+                    String fileContent;
+                    try {
+                        fileContent = webClient.get()
+                                .uri(fileUri)
+                                .header("PRIVATE-TOKEN", token)
+                                .retrieve()
+                                .bodyToMono(String.class)
+                                .block();
+                    } catch (WebClientResponseException e) {
+                        if (e.getStatusCode().value() == 403) {
+                            log.warn("[GitLabScanner] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Usage of external repository'", codeRepo.getRepourl());
+                        } else {
+                            log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Usage of external repository'",
+                                    codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                        }
+                        return;
+                    } catch (Exception e) {
+                        log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Usage of external repository'",
+                                codeRepo.getRepourl(), e.getMessage(), e);
+                        return;
+                    }
 
                     String[] lines = fileContent.split("\n");
                     for (String line : lines) {
@@ -674,7 +957,7 @@ public class GitLabRules {
             }
 
         } catch (Exception e) {
-            log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
         }
     }
 
@@ -687,12 +970,27 @@ public class GitLabRules {
             String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
             URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/protected_branches");
 
-            String response = webClient.get()
-                    .uri(uri)
-                    .header("PRIVATE-TOKEN", token)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+            String response;
+            try {
+                response = webClient.get()
+                        .uri(uri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScanner] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Protected branch with insufficient access level'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Protected branch with insufficient access level'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Protected branch with insufficient access level'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode branches = objectMapper.readTree(response);
@@ -723,7 +1021,7 @@ public class GitLabRules {
                 }
             }
         } catch (Exception e) {
-            log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
         }
     }
 
@@ -737,12 +1035,27 @@ public class GitLabRules {
             String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
             URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/variables");
 
-            String response = webClient.get()
-                    .uri(uri)
-                    .header("PRIVATE-TOKEN", token)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+            String response;
+            try {
+                response = webClient.get()
+                        .uri(uri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScanner] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Secret stored in GitLab CI/CD variables'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Secret stored in GitLab CI/CD variables'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Secret stored in GitLab CI/CD variables'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode variables = objectMapper.readTree(response);
@@ -759,7 +1072,243 @@ public class GitLabRules {
                 }
             }
         } catch (Exception e) {
-            log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+        }
+    }
+
+    public void checkSuccessfulPipelineOnMerge(CodeRepo codeRepo) {
+        String token = codeRepo.getAccessToken();
+        String repo = getRepositoryName(codeRepo);
+        String domain = getGitLabDomain(codeRepo);
+
+        try {
+            String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
+            URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath);
+            String response;
+            try {
+                response = webClient.get()
+                        .uri(uri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScannerService] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Pipeline must succeed before merging'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Pipeline must succeed before merging'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScannerService] Unexpected error during API request for repository {}: {} for rule 'Pipeline must succeed before merging'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode settings = objectMapper.readTree(response);
+            JsonNode rule = findRule("Pipeline must succeed before merging");
+
+            if (!settings.get("only_allow_merge_if_pipeline_succeeds").asBoolean()) {
+                Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
+                log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
+            } else {
+                updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
+
+            }
+        } catch (Exception e) {
+            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+        }
+    }
+
+    public void checkSkippedPipelineOnMerge(CodeRepo codeRepo) {
+        String token = codeRepo.getAccessToken();
+        String repo = getRepositoryName(codeRepo);
+        String domain = getGitLabDomain(codeRepo);
+
+        try {
+            String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
+            URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath);
+            String response;
+            try {
+                response = webClient.get()
+                        .uri(uri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScannerService] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Merge on skipped pipelines allowed'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Merge on skipped pipelines allowed'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScannerService] Unexpected error during API request for repository {}: {} for rule 'Merge on skipped pipelines allowed'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode settings = objectMapper.readTree(response);
+            JsonNode rule = findRule("Merge on skipped pipelines allowed");
+
+            if (settings.get("allow_merge_on_skipped_pipeline").asBoolean()) {
+                Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
+                log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
+            } else {
+                updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
+
+            }
+        } catch (Exception e) {
+            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+        }
+    }
+
+    public void checkContainerRegistryAccessControl(CodeRepo codeRepo) {
+        String token = codeRepo.getAccessToken();
+        String repo = getRepositoryName(codeRepo);
+        String domain = getGitLabDomain(codeRepo);
+
+        try {
+            String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
+            URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/registry/protection/repository/rules");
+
+            String response;
+            try {
+                response = webClient.get()
+                        .uri(uri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScanner] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Access control for Container registry repository not configured'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Access control for Container registry repository not configured'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Access control for Container registry repository not configured'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode containerRegistryRules = objectMapper.readTree(response);
+
+            ArrayList<String> containerRegistryRulesArray = new ArrayList<>();
+            for (JsonNode containerRegistryRule : containerRegistryRules) {
+                containerRegistryRulesArray.add(containerRegistryRule.get("repository_path_pattern").asText());
+            }
+
+            URI registryUri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/registry/repositories");
+
+            String registryContent;
+            try {
+                registryContent = webClient.get()
+                        .uri(registryUri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScanner] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Access control for Container registry repository not configured'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Access control for Container registry repository not configured'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Access control for Container registry repository not configured'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
+
+            JsonNode registries = objectMapper.readTree(registryContent);
+
+            ArrayList<String> registryArray = new ArrayList<>();
+            for (JsonNode registry : registries) {
+                registryArray.add(registry.get("path").asText());
+            }
+
+            JsonNode rule = findRule("Access control for Container registry repository not configured");
+
+            for (String registry: registryArray) {
+                Boolean regexMatch = false;
+                for (String containerRegistryRule : containerRegistryRulesArray) {
+                    String ruleRegex = containerRegistryRule.replace("*", ".*");
+                    if (registry.matches(ruleRegex)) {
+                        regexMatch = true;
+                        break;
+                    }
+                }
+                if (!regexMatch) {
+                    Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText() + " (" + registry + ")", rule.get("description").asText(), rule.get("recommendation").asText());
+                    log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                    createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
+                } else {
+                    updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + registry + ")");
+                }
+            }
+        } catch (Exception e) {
+            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+        }
+    }
+
+    public void checkProjectVisibility(CodeRepo codeRepo) {
+        String token = codeRepo.getAccessToken();
+        String repo = getRepositoryName(codeRepo);
+        String domain = getGitLabDomain(codeRepo);
+
+        try {
+            String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
+            URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath);
+            String response;
+            try {
+                response = webClient.get()
+                        .uri(uri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScannerService] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Project is not private'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Project is not private'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScannerService] Unexpected error during API request for repository {}: {} for rule 'Project is not private'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode settings = objectMapper.readTree(response);
+            JsonNode rule = findRule("Project is not private");
+
+            if (!settings.get("visibility").asText().equals("private")) {
+                Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
+                log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
+            } else {
+                updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
+
+            }
+        } catch (Exception e) {
+            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
         }
     }
 }
+

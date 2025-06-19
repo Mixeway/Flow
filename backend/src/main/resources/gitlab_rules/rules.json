@@ -98,18 +98,32 @@
     "location": "Settings/CI/CD/Variables"
   },
   {
-    "name": "",
-    "description": "",
-    "recommendation": "",
-    "severity": "",
-    "location": ""
+    "name": "Pipeline must succeed before merging",
+    "description": "Allowing merge requests to be merged without ensuring that the CI/CD pipeline succeeds poses a risk to code quality and stability. If the pipeline fails, it indicates that the code may contain errors, fail tests, or not meet the required standards. Merging such code can introduce bugs, regressions, or broken builds into the target branch.",
+    "recommendation": "Check Settings > Merge requests > Merge checks > Pipelines must succeed box",
+    "severity": "HIGH",
+    "location": "Settings/Merge requests/Merge checks/Pipelines must succeed"
   },
   {
-    "name": "",
-    "description": "",
-    "recommendation": "",
-    "severity": "",
-    "location": ""
+    "name": "Merge on skipped pipelines allowed",
+    "description": "Allowing merge requests to be merged when the CI/CD pipeline is skipped poses a risk to code quality and stability. Skipped pipelines mean that critical tests, builds, or validations have not been executed. Merging such code can introduce undetected bugs, regressions, or security vulnerabilities into the target branch.",
+    "recommendation": "Uncheck Settings > Merge requests > Merge checks > Skipped pipelines are considered successful box",
+    "severity": "MEDIUM",
+    "location": "Settings/Merge requests/Merge checks/Skipped pipelines are considered successful"
+  },
+  {
+    "name": "Access control for Container registry repository not configured",
+    "description": "The Container registry repository does not have proper access control configured. Without appropriate access restrictions, unauthorized users may gain access to container images, which could lead to security vulnerabilities, data leaks, or unauthorized deployments.",
+    "recommendation": "Create access control rules in Settings > Packages and registries > Container registry > Protected container repositories",
+    "severity": "CRITICAL",
+    "location": "Settings/Packages and registries/Container registry/Protected container repositories"
+  },
+  {
+    "name": "Project is not private",
+    "description": "The project visibility is set to 'Public' or 'Internal', which may expose sensitive information, intellectual property, or internal processes to unauthorized users.",
+    "recommendation": "Set the project visibility to 'Private' in Settings > General > Visibility, project features, permissions > Project visibility",
+    "severity": "CRITICAL",
+    "location": "Settings/General/Visibility, project features, permissions/Project visibility"
   },
   {
     "name": "",
