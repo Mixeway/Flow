@@ -18,6 +18,7 @@ import java.io.*;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.stream.StreamSupport;
 
@@ -380,7 +381,7 @@ public class GitLabRules {
 
                 String runnerResponse;
                 try {
-                     runnerResponse = webClient.get()
+                    runnerResponse = webClient.get()
                             .uri(runnerUri)
                             .header("PRIVATE-TOKEN", token)
                             .retrieve()
@@ -446,7 +447,7 @@ public class GitLabRules {
 
             String response;
             try {
-                 response = webClient.post()
+                response = webClient.post()
                         .uri("https://" + domain + "/api/graphql")
                         .header("PRIVATE-TOKEN", token)
                         .bodyValue(requestBody)
@@ -652,7 +653,7 @@ public class GitLabRules {
 
                 String readmeContent;
                 try {
-                     readmeContent = webClient.get()
+                    readmeContent = webClient.get()
                             .uri(readmeUri)
                             .header("PRIVATE-TOKEN", token)
                             .retrieve()
@@ -741,7 +742,7 @@ public class GitLabRules {
                 URI contributingUri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/repository/files/" + URLEncoder.encode(contributingPath, StandardCharsets.UTF_8.toString()) + "/raw");
                 String contributingContent;
                 try {
-                     contributingContent = webClient.get()
+                    contributingContent = webClient.get()
                             .uri(contributingUri)
                             .header("PRIVATE-TOKEN", token)
                             .retrieve()
@@ -831,7 +832,7 @@ public class GitLabRules {
                 URI securityUri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/repository/files/" + URLEncoder.encode(securityPath, StandardCharsets.UTF_8.toString()) + "/raw");
                 String securityContent;
                 try {
-                     securityContent = webClient.get()
+                    securityContent = webClient.get()
                             .uri(securityUri)
                             .header("PRIVATE-TOKEN", token)
                             .retrieve()
@@ -1074,4 +1075,240 @@ public class GitLabRules {
             log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
         }
     }
+
+    public void checkSuccessfulPipelineOnMerge(CodeRepo codeRepo) {
+        String token = codeRepo.getAccessToken();
+        String repo = getRepositoryName(codeRepo);
+        String domain = getGitLabDomain(codeRepo);
+
+        try {
+            String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
+            URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath);
+            String response;
+            try {
+                response = webClient.get()
+                        .uri(uri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScannerService] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Pipeline must succeed before merging'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Pipeline must succeed before merging'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScannerService] Unexpected error during API request for repository {}: {} for rule 'Pipeline must succeed before merging'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode settings = objectMapper.readTree(response);
+            JsonNode rule = findRule("Pipeline must succeed before merging");
+
+            if (!settings.get("only_allow_merge_if_pipeline_succeeds").asBoolean()) {
+                Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
+                log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
+            } else {
+                updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
+
+            }
+        } catch (Exception e) {
+            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+        }
+    }
+
+    public void checkSkippedPipelineOnMerge(CodeRepo codeRepo) {
+        String token = codeRepo.getAccessToken();
+        String repo = getRepositoryName(codeRepo);
+        String domain = getGitLabDomain(codeRepo);
+
+        try {
+            String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
+            URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath);
+            String response;
+            try {
+                response = webClient.get()
+                        .uri(uri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScannerService] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Merge on skipped pipelines allowed'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Merge on skipped pipelines allowed'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScannerService] Unexpected error during API request for repository {}: {} for rule 'Merge on skipped pipelines allowed'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode settings = objectMapper.readTree(response);
+            JsonNode rule = findRule("Merge on skipped pipelines allowed");
+
+            if (settings.get("allow_merge_on_skipped_pipeline").asBoolean()) {
+                Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
+                log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
+            } else {
+                updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
+
+            }
+        } catch (Exception e) {
+            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+        }
+    }
+
+    public void checkContainerRegistryAccessControl(CodeRepo codeRepo) {
+        String token = codeRepo.getAccessToken();
+        String repo = getRepositoryName(codeRepo);
+        String domain = getGitLabDomain(codeRepo);
+
+        try {
+            String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
+            URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/registry/protection/repository/rules");
+
+            String response;
+            try {
+                response = webClient.get()
+                        .uri(uri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScanner] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Access control for Container registry repository not configured'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Access control for Container registry repository not configured'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Access control for Container registry repository not configured'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode containerRegistryRules = objectMapper.readTree(response);
+
+            ArrayList<String> containerRegistryRulesArray = new ArrayList<>();
+            for (JsonNode containerRegistryRule : containerRegistryRules) {
+                containerRegistryRulesArray.add(containerRegistryRule.get("repository_path_pattern").asText());
+            }
+
+            URI registryUri = new URI("https://" + domain + "/api/v4/projects/" + projectPath + "/registry/repositories");
+
+            String registryContent;
+            try {
+                registryContent = webClient.get()
+                        .uri(registryUri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScanner] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Access control for Container registry repository not configured'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Access control for Container registry repository not configured'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Access control for Container registry repository not configured'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
+
+            JsonNode registries = objectMapper.readTree(registryContent);
+
+            ArrayList<String> registryArray = new ArrayList<>();
+            for (JsonNode registry : registries) {
+                registryArray.add(registry.get("path").asText());
+            }
+
+            JsonNode rule = findRule("Access control for Container registry repository not configured");
+
+            for (String registry: registryArray) {
+                Boolean regexMatch = false;
+                for (String containerRegistryRule : containerRegistryRulesArray) {
+                    String ruleRegex = containerRegistryRule.replace("*", ".*");
+                    if (registry.matches(ruleRegex)) {
+                        regexMatch = true;
+                        break;
+                    }
+                }
+                if (!regexMatch) {
+                    Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText() + " (" + registry + ")", rule.get("description").asText(), rule.get("recommendation").asText());
+                    log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                    createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
+                } else {
+                    updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + registry + ")");
+                }
+            }
+        } catch (Exception e) {
+            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+        }
+    }
+
+    public void checkProjectVisibility(CodeRepo codeRepo) {
+        String token = codeRepo.getAccessToken();
+        String repo = getRepositoryName(codeRepo);
+        String domain = getGitLabDomain(codeRepo);
+
+        try {
+            String projectPath = URLEncoder.encode(repo.toString(), StandardCharsets.UTF_8.toString());
+            URI uri = new URI("https://" + domain + "/api/v4/projects/" + projectPath);
+            String response;
+            try {
+                response = webClient.get()
+                        .uri(uri)
+                        .header("PRIVATE-TOKEN", token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GitLabScannerService] API request failed for repository {}: HTTP Status 403 Forbidden - Access denied for rule 'Project is not private'", codeRepo.getRepourl());
+                } else {
+                    log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Project is not private'",
+                            codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
+                }
+                return;
+            } catch (Exception e) {
+                log.error("[GitLabScannerService] Unexpected error during API request for repository {}: {} for rule 'Project is not private'",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+                return;
+            }
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode settings = objectMapper.readTree(response);
+            JsonNode rule = findRule("Project is not private");
+
+            if (!settings.get("visibility").asText().equals("private")) {
+                Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
+                log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
+            } else {
+                updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
+
+            }
+        } catch (Exception e) {
+            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+        }
+    }
 }
+

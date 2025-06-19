@@ -28,6 +28,10 @@ public class GitLabScannerService {
         gitLabRules.checkExternalRepositories(codeRepo);
         gitLabRules.checkProtectedBranchesAccessLevel(codeRepo);
         gitLabRules.checkSecretsInVariables(codeRepo);
+        gitLabRules.checkSuccessfulPipelineOnMerge(codeRepo);
+        gitLabRules.checkSkippedPipelineOnMerge(codeRepo);
+        gitLabRules.checkContainerRegistryAccessControl(codeRepo);
+        gitLabRules.checkProjectVisibility(codeRepo);
         log.info("[GitLabScannerService] Finished GitLab scan for repository: {} ", codeRepo.getName());
 
     }
