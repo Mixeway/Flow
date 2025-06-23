@@ -178,7 +178,7 @@ public class ZAPService {
             // Create temp file with the spec content in a location accessible to ZAP
             File tempFile = new File(System.getProperty("java.io.tmpdir"), specFileName);
             Files.writeString(tempFile.toPath(), openApiSpec);
-            log.info("[ZapService] Saved OpenAPI spec to: {}", tempFile.getAbsolutePath());
+            log.debug("[ZapService] Saved OpenAPI spec to: {}", tempFile.getAbsolutePath());
 
             // Initialize the ZAP API client (connecting to localhost on port 32807)
             ClientApi zapApi = new ClientApi("localhost", 32807, "12345");
@@ -187,17 +187,17 @@ public class ZAPService {
                 // Synchronize access to ZAP API for critical operations
                 synchronized (zapLock) {
                     // Check if ZAP API is accessible
-                    log.info("[ZapService] Checking ZAP API connection...");
+                    log.debug("[ZapService] Checking ZAP API connection...");
                     ApiResponseElement version = (ApiResponseElement) zapApi.core.version();
-                    log.info("[ZapService] ZAP version: {}", version.getValue());
+                    log.debug("[ZapService] ZAP version: {}", version.getValue());
 
                     // Create a new context with the unique name
-                    log.info("[ZapService] Creating new context: {}", contextName);
+                    log.debug("[ZapService] Creating new context: {}", contextName);
                     zapApi.context.newContext(contextName);
 
                     // Add the target URL to the context with a broader pattern
                     String urlPattern = targetUrl.replaceAll("(https?://[^/]+).*", "$1.*");
-                    log.info("[ZapService] Adding URL pattern to context {}: {}", contextName, urlPattern);
+                    log.debug("[ZapService] Adding URL pattern to context {}: {}", contextName, urlPattern);
                     zapApi.context.includeInContext(contextName, urlPattern);
 
                     // Access the target URL to ensure it's in ZAP's sites tree
@@ -224,13 +224,13 @@ public class ZAPService {
 
                     if (contextId != null) {
                         importParams.put("contextId", contextId);
-                        log.info("[ZapService] Using context ID: {}", contextId);
+                        log.debug("[ZapService] Using context ID: {}", contextId);
                     } else {
                         log.warn("[ZapService] Could not determine context ID, continuing without it");
                     }
 
                     ApiResponse importResponse = zapApi.callApi("openapi", "action", "importFile", importParams);
-                    log.info("[ZapService] Import response: {}", importResponse.toString());
+                    log.debug("[ZapService] Import response: {}", importResponse.toString());
                 }
 
                 // Wait for the import to complete
@@ -286,7 +286,7 @@ public class ZAPService {
 
                 // If a scan was started, wait for it to complete
                 if (scanStarted && scanId != null) {
-                    log.info("[ZapService] Waiting for active scan to complete...");
+                    log.debug("[ZapService] Waiting for active scan to complete...");
                     int scanProgress = 0;
                     int retryCount = 0;
                     final int MAX_RETRIES = 5;
@@ -306,7 +306,7 @@ public class ZAPService {
                             }
 
                             scanProgress = Integer.parseInt(statusResponse.getValue());
-                            log.info("[ZapService] Active scan progress for context {}: {}%", contextName, scanProgress);
+                            log.debug("[ZapService] Active scan progress for context {}: {}%", contextName, scanProgress);
                             retryCount = 0; // Reset retry count on successful status check
                         } catch (Exception e) {
                             log.warn("[ZapService] Error checking scan progress: {}", e.getMessage());
@@ -346,7 +346,7 @@ public class ZAPService {
                         reportParams.put("contexts", contextName);
 
                         ApiResponse reportResponse = zapApi.callApi("reports", "action", "generate", reportParams);
-                        log.info("[ZapService] Report generation response: {}", reportResponse.toString());
+                        log.debug("[ZapService] Report generation response: {}", reportResponse.toString());
                     } catch (Exception e) {
                         log.warn("[ZapService] Context-specific report generation failed: {}", e.getMessage());
 
@@ -354,7 +354,7 @@ public class ZAPService {
                         try {
                             byte[] reportBytes = zapApi.core.jsonreport();
                             Files.write(jsonReport.toPath(), reportBytes);
-                            log.info("[ZapService] Saved generic JSON report to {}", jsonReport.getAbsolutePath());
+                            log.debug("[ZapService] Saved generic JSON report to {}", jsonReport.getAbsolutePath());
 
                             // Filter the report to only include alerts from this context
                             filterReportForContext(jsonReport, contextName);
@@ -370,15 +370,15 @@ public class ZAPService {
                     synchronized (zapLock) {
                         byte[] reportBytes = zapApi.core.jsonreport();
                         Files.write(jsonReport.toPath(), reportBytes);
-                        log.info("[ZapService] Saved generic JSON report to {}", jsonReport.getAbsolutePath());
+                        log.debug("[ZapService] Saved generic JSON report to {}", jsonReport.getAbsolutePath());
                     }
                 }
 
-                log.info("[ZapService] Saved JSON report to {}", jsonReport.getAbsolutePath());
+                log.debug("[ZapService] Saved JSON report to {}", jsonReport.getAbsolutePath());
 
                 // Clean up by removing the context
                 synchronized (zapLock) {
-                    log.info("[ZapService] Removing context: {}", contextName);
+                    log.debug("[ZapService] Removing context: {}", contextName);
                     zapApi.context.removeContext(contextName);
                 }
 
@@ -513,6 +513,7 @@ public class ZAPService {
                                 alert.getReference(),
                                 alert.getSolution(),
 
+
                                 null,
                                 null,
                                 null,
@@ -523,21 +524,47 @@ public class ZAPService {
                         String location = "";
                         if (alert.getInstances() != null && !alert.getInstances().isEmpty()) {
                             location = alert.getInstances().get(0).getUri();
+                            log.debug("Extracted URI for alert {}: {}", alert.getName(), location);
                         }
 
-                        Finding finding = new Finding(
-                                vulnerability,
-                                null,
-                                codeRepoBranch,
-                                codeRepo,
-                                null,
-                                alert.getSolution(),
-                                location,
-                                mapZapSeverity(alert.getRiskCode()),
-                                Finding.Source.DAST
-                        );
+                        // Create a finding for each instance
+                        if (alert.getInstances() != null && !alert.getInstances().isEmpty()) {
+                            for (ZapReport.Instance instance : alert.getInstances()) {
+                                 location = instance.getUri();
+                                log.debug("Creating finding for alert {} at URI: {}", alert.getName(), location);
 
-                        findings.add(finding);
+                                Finding finding = new Finding(
+                                        vulnerability,
+                                        null,
+                                        codeRepoBranch,
+                                        codeRepo,
+                                        null,
+                                        alert.getOtherInfo(),
+                                        location,
+                                        mapZapSeverity(alert.getRiskCode()),
+                                        Finding.Source.DAST
+                                );
+
+                                findings.add(finding);
+                            }
+                        } else {
+                            // If there are no instances, still create one finding with empty location
+                            log.debug("Creating finding for alert {} with no instances", alert.getName());
+                            Finding finding = new Finding(
+                                    vulnerability,
+                                    null,
+                                    codeRepoBranch,
+                                    codeRepo,
+                                    null,
+                                    alert.getOtherInfo(),
+                                    "",
+                                    mapZapSeverity(alert.getRiskCode()),
+                                    Finding.Source.DAST
+                            );
+
+                            findings.add(finding);
+                        }
+
                     }
                 }
             }
