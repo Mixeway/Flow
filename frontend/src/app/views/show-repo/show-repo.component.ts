@@ -601,7 +601,13 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
             const matchesFilters = Object.keys(this.filters).every((key) => {
                 const filterValue = this.filters[key];
                 if (!filterValue) return true;
+
                 const vulnValue = (vuln as any)[key];
+
+                if (key === 'source') {
+                    return vulnValue && vulnValue.toString() === filterValue;
+                }
+
                 return vulnValue
                     .toString()
                     .toLowerCase()
