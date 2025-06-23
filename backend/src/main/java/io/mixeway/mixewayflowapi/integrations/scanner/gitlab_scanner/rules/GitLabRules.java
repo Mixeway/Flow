@@ -50,7 +50,7 @@ public class GitLabRules {
             }
             return path;
         } catch (Exception e) {
-            log.info("[GitLabScannerService] Couldn't fetch path for repository: {}", codeRepo.getRepourl());
+            log.debug("[GitLabScannerService] Couldn't fetch path for repository: {}", codeRepo.getRepourl());
             return null;
         }
     }
@@ -60,7 +60,7 @@ public class GitLabRules {
         try {
             return new java.net.URI(url).getHost();
         } catch (Exception e) {
-            log.info("[GitLabScannerService] Couldn't fetch domain for repository: {}", codeRepo.getRepourl());
+            log.debug("[GitLabScannerService] Couldn't fetch domain for repository: {}", codeRepo.getRepourl());
             return null;
         }
     }
@@ -119,7 +119,7 @@ public class GitLabRules {
                 JsonNode rule = findRule("Default branch is not protected");
                 if (!isProtected && isDefault) {
                     Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
-                    log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                    log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
                     createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
                 } else {
                     updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
@@ -175,7 +175,7 @@ public class GitLabRules {
                 JsonNode rule = findRule("Too many members with high privileges");
                 if ((float) privilegedMembers / memberCount > 0.8) {
                     Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
-                    log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                    log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
                     createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
                 } else {
                     updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
@@ -252,7 +252,7 @@ public class GitLabRules {
                 JsonNode rule = findRule("Untagged runner");
                 if (runnerDetails.get("tag_list").isArray() && runnerDetails.get("tag_list").size() == 0) {
                     Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), "Incorrect configuration of " + rule.get("location").asText(), rule.get("location").asText() + " (" + runnerDetails.get("id").asInt() + ")", rule.get("description").asText(), rule.get("recommendation").asText());
-                    log.info("[GitLabScanner] Detected configuration \"{}\" in repository {} for runner: {}", rule.get("name").asText(), codeRepo.getRepourl(), runnerDetails.get("description").asText());
+                    log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {} for runner: {}", rule.get("name").asText(), codeRepo.getRepourl(), runnerDetails.get("description").asText());
                     createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
                 } else {
                     updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + runnerDetails.get("id").asInt() + ")");
@@ -329,7 +329,7 @@ public class GitLabRules {
                 JsonNode rule = findRule("Runner allows untagged jobs");
                 if (runnerDetails.get("run_untagged").asBoolean()) {
                     Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), "Incorrect configuration of " + rule.get("location").asText(), rule.get("location").asText() + " (" + runnerDetails.get("id").asInt() + ")", rule.get("description").asText(), rule.get("recommendation").asText());
-                    log.info("[GitLabScanner] Detected configuration \"{}\" in repository {} for runner: {}", rule.get("name").asText(), codeRepo.getRepourl(), runnerDetails.get("description").asText());
+                    log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {} for runner: {}", rule.get("name").asText(), codeRepo.getRepourl(), runnerDetails.get("description").asText());
                     createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
                 } else {
                     updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + runnerDetails.get("id").asInt() + ")");
@@ -406,7 +406,7 @@ public class GitLabRules {
                 JsonNode rule = findRule("Runner allows unprotected jobs");
                 if (!runnerDetails.get("access_level").asText().equals("ref_protected")) {
                     Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), "Incorrect configuration of " + rule.get("location").asText(), rule.get("location").asText() + " (" + runnerDetails.get("id").asInt() + ")", rule.get("description").asText(), rule.get("recommendation").asText());
-                    log.info("[GitLabScanner] Detected configuration \"{}\" in repository {} for runner: {}", rule.get("name").asText(), codeRepo.getRepourl(), runnerDetails.get("description").asText());
+                    log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {} for runner: {}", rule.get("name").asText(), codeRepo.getRepourl(), runnerDetails.get("description").asText());
                     createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
                 } else {
                     updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + runnerDetails.get("id").asInt() + ")");
@@ -485,7 +485,7 @@ public class GitLabRules {
                             JsonNode rule = findRule("Runner uses insecure executor type");
                             if (!executorName.equals("docker") && !executorName.equals("kubernetes")) {
                                 Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), "Incorrect configuration of " + rule.get("location").asText(), rule.get("location").asText() + " (" + runnerId + ")", rule.get("description").asText(), rule.get("recommendation").asText());
-                                log.info("[GitLabScanner] Detected configuration \"{}\" in repository {} for runner: {}", rule.get("name").asText(), codeRepo.getRepourl(), runnerId);
+                                log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {} for runner: {}", rule.get("name").asText(), codeRepo.getRepourl(), runnerId);
                                 createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
                             } else {
                                 updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + runnerId + ")"
@@ -540,7 +540,7 @@ public class GitLabRules {
                     JsonNode rule = findRule("Access token with api scope");
                     if (hasApiScope) {
                         Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText() + " (" + tokenInfo.get("name").asText() + ")", rule.get("description").asText(), rule.get("recommendation").asText());
-                        log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                        log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
                         createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
                     } else {
                         updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + tokenInfo.get("name").asText() + ")");
@@ -589,7 +589,7 @@ public class GitLabRules {
             JsonNode rule = findRule("Lack of repository description");
             if (description.get("description").asText().equals("")) {
                 Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
-                log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
                 createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
             } else {
                 updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
@@ -679,7 +679,7 @@ public class GitLabRules {
 
             if (!readmeExists || reamdeIsEmpty) {
                 Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
-                log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
                 createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
             } else {
                 updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
@@ -769,7 +769,7 @@ public class GitLabRules {
 
             if (!contributingExists || contributingIsEmpty) {
                 Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
-                log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
                 createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
             } else {
                 updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
@@ -859,7 +859,7 @@ public class GitLabRules {
 
             if (!securityExists || securityIsEmpty) {
                 Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
-                log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
                 createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
             } else {
                 updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
@@ -946,7 +946,7 @@ public class GitLabRules {
                             }
                             if (!matchesAllowlist) {
                                 Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText() + " (" + path + "/" + line + ")", rule.get("description").asText(), rule.get("recommendation").asText());
-                                log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                                log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
                                 createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
                             } else {
                                 updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + path + "/" + line + ")");
@@ -1013,7 +1013,7 @@ public class GitLabRules {
 
                     if (!isSecureAccess) {
                         Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText() + " (" + branch.get("name").asText() + ")", rule.get("description").asText(), rule.get("recommendation").asText());
-                        log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                        log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
                         createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
                     } else {
                         updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + branch.get("name").asText() + ")");
@@ -1065,7 +1065,7 @@ public class GitLabRules {
                 JsonNode rule = findRule("Secret stored in GitLab CI/CD variables");
                 if (variableName.toLowerCase().contains("secret") || variableName.toLowerCase().contains("key") || variableName.toLowerCase().contains("token") || variableName.toLowerCase().contains("pass")) {
                     Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText() + " (" + variableName + ")", rule.get("description").asText(), rule.get("recommendation").asText());
-                    log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                    log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
                     createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
                 } else {
                     updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + variableName + ")");
@@ -1112,7 +1112,7 @@ public class GitLabRules {
 
             if (!settings.get("only_allow_merge_if_pipeline_succeeds").asBoolean()) {
                 Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
-                log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
                 createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
             } else {
                 updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
@@ -1159,7 +1159,7 @@ public class GitLabRules {
 
             if (settings.get("allow_merge_on_skipped_pipeline").asBoolean()) {
                 Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
-                log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
                 createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
             } else {
                 updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
@@ -1253,7 +1253,7 @@ public class GitLabRules {
                 }
                 if (!regexMatch) {
                     Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText() + " (" + registry + ")", rule.get("description").asText(), rule.get("recommendation").asText());
-                    log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                    log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
                     createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
                 } else {
                     updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + registry + ")");
@@ -1300,7 +1300,7 @@ public class GitLabRules {
 
             if (!settings.get("visibility").asText().equals("private")) {
                 Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
-                log.info("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
+                log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
                 createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
             } else {
                 updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
