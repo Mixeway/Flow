@@ -478,7 +478,7 @@ public class ZAPService {
 
                     while (scanProgress < 100 && retryCount < MAX_RETRIES) {
                         try {
-                            Thread.sleep(5000); // Check every 5 seconds
+                            Thread.sleep(300000); // Check every 5 seconds
 
                             // Get scan status with retry logic
                             ApiResponseElement statusResponse = null;
@@ -491,7 +491,7 @@ public class ZAPService {
                             }
 
                             scanProgress = Integer.parseInt(statusResponse.getValue());
-                            log.debug("[ZapService] Active scan progress for context {}: {}%", contextName, scanProgress);
+                            log.info("[ZapService] Active scan progress for context {}: {}%", targetUrl, scanProgress);
                             retryCount = 0; // Reset retry count on successful status check
                         } catch (Exception e) {
                             log.warn("[ZapService] Error checking scan progress: {}", e.getMessage());

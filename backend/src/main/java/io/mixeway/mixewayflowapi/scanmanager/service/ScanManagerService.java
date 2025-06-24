@@ -565,7 +565,13 @@ public class ScanManagerService {
 
             try {
                 log.info("[ScanManagerService] Starting ZAP scan... [for: {}]", repoDir);
-                zapService.runZapScan(repoDir, codeRepo, codeRepoBranch);
+                // ZAPService.runZapScan returns a CompletableFuture for the background scan.
+                // We must wait for this future to complete before proceeding.
+                CompletableFuture<ZAPService.ScanResult> zapScanFuture = zapService.runZapScan(repoDir, codeRepo, codeRepoBranch);
+
+                // Block and wait for the entire ZAP scan to finish.
+                // This call will throw an exception if the future completes exceptionally.
+                zapScanFuture.get();
             } catch (Exception e) {
                 if (Thread.currentThread().isInterrupted()) {
                     log.warn("[ScanManagerService] ZAP scan interrupted for {}.", codeRepo.getRepourl());

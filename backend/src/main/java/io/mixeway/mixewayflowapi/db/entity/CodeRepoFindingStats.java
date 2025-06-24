@@ -89,6 +89,18 @@ public class CodeRepoFindingStats {
     @Column(name = "gitlab_rest", nullable = false)
     private  int gitlabRest;
 
+    @Column(name = "dast_critical", nullable = false)
+    private  int dastCritical;
+
+    @Column(name = "dast_high", nullable = false)
+    private  int dastHigh;
+
+    @Column(name = "dast_medium", nullable = false)
+    private  int dastMedium;
+
+    @Column(name = "dast_rest", nullable = false)
+    private  int dastRest;
+
     @Column(name = "opened_findings", nullable = false)
     private  int openedFindings;
 
@@ -106,6 +118,7 @@ public class CodeRepoFindingStats {
                                 int iacCritical, int iacHigh, int iacMedium, int iacRest,
                                 int secretsCritical, int secretsHigh, int secretsMedium, int secretsRest,
                                 int gitlabCritical, int gitlabHigh, int gitlabMedium, int gitlabRest,
+                                int dastCritical, int dastHigh, int dastMedium, int dastRest,
                                 int openedFindings, int removedFindings, int reviewedFindings, int averageFixTime) {
         this.id = null; // will be set by the database
         this.codeRepo = codeRepo;
@@ -134,6 +147,10 @@ public class CodeRepoFindingStats {
         this.removedFindings = removedFindings;
         this.reviewedFindings = reviewedFindings;
         this.averageFixTime = averageFixTime;
+        this.dastCritical = dastCritical;
+        this.dastHigh = dastHigh;
+        this.dastMedium = dastMedium;
+        this.dastRest = dastRest;
     }
 
     public CodeRepoFindingStats(){
@@ -160,6 +177,10 @@ public class CodeRepoFindingStats {
         this.gitlabHigh = 0;
         this.gitlabMedium = 0;
         this.gitlabRest = 0;
+        this.dastCritical = 0;
+        this.dastHigh = 0;
+        this.dastMedium = 0;
+        this.dastRest = 0;
         this.openedFindings = 0;
         this.removedFindings = 0;
         this.reviewedFindings = 0;

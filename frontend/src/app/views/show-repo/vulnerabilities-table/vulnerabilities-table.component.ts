@@ -238,7 +238,9 @@ export class VulnerabilitiesTableComponent {
     if (!row?.location) {
       return 'Location not available';
     }
-
+    if (row.source === 'DAST') {
+      return row.location;
+    }
     const location = row.location;
     const match = location.match(/(.*):(\d+)/);
     if (!match) return location;
