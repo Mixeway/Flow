@@ -41,6 +41,23 @@ fi
 
 sleep 30
 
+# Start ZAP daemon
+ZAP_LOG_FILE="/var/log/zap.log"
+echo "Starting ZAP daemon..."
+ZAP_CMD="/opt/zap/zap.sh -daemon -port 32807 -config api.key=12345"
+
+if [ -n "$PROXY_HOST" ] && [ -n "$PROXY_PORT" ]; then
+    ZAP_CMD="$ZAP_CMD -config proxy.proxy.host=$PROXY_HOST -config proxy.proxy.port=$PROXY_PORT"
+    if [ -n "$NO_PROXY" ]; then
+        ZAP_CMD="$ZAP_CMD -config proxy.proxy.skipdomains=$NO_PROXY"
+    fi
+fi
+
+$ZAP_CMD >> $ZAP_LOG_FILE 2>&1 &
+
+sleep 15
+
+
 # Configure Maven proxy settings if PROXY_HOST and PROXY_PORT are set
 if [ -n "$PROXY_HOST" ] && [ -n "$PROXY_PORT" ]; then
     if [ ! -f /root/.m2/settings.xml ]; then

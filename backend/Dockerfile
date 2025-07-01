@@ -37,9 +37,9 @@ WORKDIR /app
 # Copy the built JAR file from the previous stage to the container
 COPY --from=maven_build /app/target/MixewayFlowAPI-0.0.1-SNAPSHOT.jar flowapi.jar
 
-# Install dependencies, Node.js, Maven, Python, and pip
+# Install dependencies, Node.js, Maven, Python, pip, and Firefox
 RUN apt-get update && \
-    apt-get install -y curl cron && \
+    apt-get install -y curl cron firefox-esr && \
     curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
     apt-get install -y \
         wget \
@@ -85,6 +85,12 @@ RUN wget https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.
     && rm /tmp/gradle-${GRADLE_VERSION}-bin.zip
 ENV GRADLE_HOME=/opt/gradle/gradle-${GRADLE_VERSION}
 ENV PATH="$PATH:$GRADLE_HOME/bin"
+
+# Install ZAP
+RUN wget https://github.com/zaproxy/zaproxy/releases/download/v2.16.1/ZAP_2.16.1_Linux.tar.gz && \
+    tar -xvf ZAP_2.16.1_Linux.tar.gz && \
+    rm ZAP_2.16.1_Linux.tar.gz && \
+    mv ZAP_2.16.1 /opt/zap
 
 # Rest of the Dockerfile remains unchanged
 RUN mkdir /opt/kics
