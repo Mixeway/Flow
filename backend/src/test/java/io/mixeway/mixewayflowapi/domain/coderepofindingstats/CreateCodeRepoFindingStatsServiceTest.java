@@ -44,7 +44,8 @@ class CreateCodeRepoFindingStatsServiceTest {
                         2,3,4,5,1,2,
                         3,4,1,2,3,
                         4,1,2,3,
-                        4,1,2,3));
+                        4,1,2,3,
+                        4,2,1,3));
         codeRepoFindingStats = codeRepoFindingStatsRepository.findByCodeRepo(codeRepo);
         int after = codeRepoFindingStats.size();
         System.out.println("old " + before);
