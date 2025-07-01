@@ -6,12 +6,14 @@ WORKDIR /app
 # Install build dependencies
 RUN apk add --no-cache python3 make g++
 
-
 # Copy package.json and package-lock.json
-COPY package.json ./
+COPY package.json package-lock.json* ./
 
 # Install dependencies
 RUN npm install --legacy-peer-deps
+
+# Force install latest dart-sass if not installed already
+RUN npm install --save-dev sass
 
 # Copy Angular application code
 COPY . .
