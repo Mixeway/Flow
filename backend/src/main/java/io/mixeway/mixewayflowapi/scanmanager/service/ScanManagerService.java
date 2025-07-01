@@ -25,6 +25,7 @@ import io.mixeway.mixewayflowapi.integrations.scanner.sca.dto.CatalogDto;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.dto.VulnerabilityDto;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.service.SCAService;
 import io.mixeway.mixewayflowapi.integrations.scanner.secrets.service.SecretsService;
+import io.mixeway.mixewayflowapi.integrations.scanner.zap.service.ZAPService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.scheduling.annotation.Async;
@@ -59,6 +60,7 @@ public class ScanManagerService {
     private final SecretsService secretsService;
     private final IaCService iaCService;
     private final SASTService sastService;
+    private final ZAPService zapService;
     private final ConcurrentHashMap<Long, Boolean> scanningRepos = new ConcurrentHashMap<>();
     private final UpdateCodeRepoService updateCodeRepoService;
     private final SCAService scaService;
@@ -71,6 +73,8 @@ public class ScanManagerService {
     private final CloudSubscriptionRepository cloudSubscriptionRepository;
     private final FindSettingsService findSettingsService;
     private final WebClient webClient;
+
+    private final AtomicInteger zapScansRunning = new AtomicInteger(0);
 
     private final int maxConcurrentScans = 10; // Maximum number of concurrent scans
     private final Semaphore semaphore = new Semaphore(maxConcurrentScans); // Limit concurrent scans
@@ -150,8 +154,9 @@ public class ScanManagerService {
                     Future<Void> sastScanFuture = runSASTScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> iacScanFuture = runIACScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> gitlabScanFuture = runGitLabScan(codeRepo);
+                    Future<Void> zapScanFuture = runZAPScan(repoDir, codeRepo, codeRepoBranch);
 
-                    List<Future<Void>> scanFutures = Arrays.asList(secretScanFuture, scaScanFuture, sastScanFuture, iacScanFuture, gitlabScanFuture);
+                    List<Future<Void>> scanFutures = Arrays.asList(secretScanFuture, scaScanFuture, sastScanFuture, iacScanFuture, zapScanFuture,gitlabScanFuture);
 
                     // Schedule a timeout task to cancel scans
                     ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
@@ -552,5 +557,34 @@ public class ScanManagerService {
         }
         log.info("[KEV] Done processing KEV...");
 
+    }
+    private Future<Void> runZAPScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
+        Callable<Void> task = () -> {
+            int currentZapScans = zapScansRunning.incrementAndGet();
+            log.info("[ScanManagerService] Starting new ZAP scan, parallel ZAP scans running {}", currentZapScans);
+
+            try {
+                log.info("[ScanManagerService] Starting ZAP scan... [for: {}]", repoDir);
+                // ZAPService.runZapScan returns a CompletableFuture for the background scan.
+                // We must wait for this future to complete before proceeding.
+                CompletableFuture<ZAPService.ScanResult> zapScanFuture = zapService.runZapScan(repoDir, codeRepo, codeRepoBranch);
+
+                // Block and wait for the entire ZAP scan to finish.
+                // This call will throw an exception if the future completes exceptionally.
+                zapScanFuture.get();
+            } catch (Exception e) {
+                if (Thread.currentThread().isInterrupted()) {
+                    log.warn("[ScanManagerService] ZAP scan interrupted for {}.", codeRepo.getRepourl());
+                    Thread.currentThread().interrupt();
+                } else {
+                    log.error("[ScanManagerService] An error occurred during ZAP scan for {}.", codeRepo.getRepourl(), e);
+                }
+            } finally {
+                int remainingZapScans = zapScansRunning.decrementAndGet();
+                log.debug("[ScanManagerService] ZAP scan completed, parallel ZAP scans running {}", remainingZapScans);
+            }
+            return null;
+        };
+        return scanExecutorService.submit(task);
     }
 }

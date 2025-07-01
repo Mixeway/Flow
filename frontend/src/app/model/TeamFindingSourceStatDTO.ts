@@ -5,4 +5,5 @@ export class TeamFindingSourceStatDTO {
     sca: number = 0;
     gitlab: number = 0;
     cloud: number = 0;
+    dast: number = 0;
 }

@@ -741,3 +741,20 @@ ALTER TABLE scan_info
 -- changeset majaberej:update_coderepo
 ALTER TABLE coderepo
     ADD COLUMN gitlab_scan VARCHAR(20) NOT NULL DEFAULT 'NOT_PERFORMED';
+
+-- changeset siewer:update_coderepo_dast
+ALTER TABLE coderepo
+    ADD COLUMN dast_scan VARCHAR(20) NOT NULL DEFAULT 'NOT_PERFORMED';
+
+-- changeset siewer:update_scan_info_dast
+ALTER TABLE scan_info
+    ADD COLUMN dast_scan_status VARCHAR(20) NOT NULL DEFAULT 'NOT_PERFORMED',
+    ADD COLUMN dast_critical INT NOT NULL DEFAULT 0,
+    ADD COLUMN dast_high INT NOT NULL DEFAULT 0;
+
+-- changeset siewrgrz:update_dast_finding_stats
+ALTER TABLE code_repo_finding_stats
+    ADD COLUMN dast_critical INT NOT NULL DEFAULT 0,
+    ADD COLUMN dast_high INT NOT NULL DEFAULT 0,
+    ADD COLUMN dast_medium INT NOT NULL DEFAULT 0,
+    ADD COLUMN dast_rest INT NOT NULL DEFAULT 0;

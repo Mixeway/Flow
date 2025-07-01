@@ -98,11 +98,18 @@ public class StatsScheduler {
             int gitlabMedium = countFindings(findings, Finding.Source.GITLAB_SCANNER, Finding.Severity.MEDIUM, Finding.Status.EXISTING, Finding.Status.NEW);
             int gitlabRest = countRestFindings(findings, Finding.Source.GITLAB_SCANNER, Finding.Status.EXISTING, Finding.Status.NEW);
 
+            int dastCritical = countFindings(findings, Finding.Source.DAST, Finding.Severity.CRITICAL, Finding.Status.EXISTING, Finding.Status.NEW);
+            int dastHigh = countFindings(findings, Finding.Source.DAST, Finding.Severity.HIGH, Finding.Status.EXISTING, Finding.Status.NEW);
+            int dastMedium = countFindings(findings, Finding.Source.DAST, Finding.Severity.MEDIUM, Finding.Status.EXISTING, Finding.Status.NEW);
+            int dastRest = countRestFindings(findings, Finding.Source.DAST, Finding.Status.EXISTING, Finding.Status.NEW);
+
+
             int openedFindings = sastCritical + sastHigh + sastMedium + sastRest +
                     scaCritical + scaHigh + scaMedium + scaRest +
                     iacCritical + iacHigh + iacMedium + iacRest +
                     secretsCritical + secretsHigh + secretsMedium + secretsRest +
-                    gitlabCritical + gitlabHigh + gitlabMedium + gitlabRest;
+                    gitlabCritical + gitlabHigh + gitlabMedium + gitlabRest +
+                    dastHigh + dastCritical + dastMedium + dastRest;
 
             int removedFindings = countFindings(findings, null, null, Finding.Status.REMOVED);
             int reviewedFindings = countFindings(findings, null, null, Finding.Status.SUPRESSED);
@@ -115,6 +122,7 @@ public class StatsScheduler {
                     iacCritical, iacHigh, iacMedium, iacRest,
                     secretsCritical, secretsHigh, secretsMedium, secretsRest,
                     gitlabCritical, gitlabHigh, gitlabMedium, gitlabRest,
+                    dastCritical, dastHigh, dastMedium, dastRest,
                     openedFindings, removedFindings, reviewedFindings, averageFixTime
             );
 

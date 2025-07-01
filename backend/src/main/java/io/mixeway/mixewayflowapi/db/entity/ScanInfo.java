@@ -84,6 +84,12 @@ public final class ScanInfo {
     @Column(name = "gitlab_high", nullable = false)
     private  int gitlabHigh;
 
+    @Column(name = "dast_critical", nullable = false)
+    private  int dastCritical;
+
+    @Column(name = "dast_high", nullable = false)
+    private  int dastHigh;
+
     // Private constructor for JPA
     protected ScanInfo() {
         this.id = 0;
@@ -106,13 +112,16 @@ public final class ScanInfo {
         this.secretsCritical = 0;
         this.gitlabHigh = 0;
         this.gitlabCritical = 0;
+        this.dastHigh = 0;
+        this.dastCritical = 0;
     }
 
     // Public constructor for creating new instances
     public ScanInfo(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId,
                     CodeRepo.ScanStatus scaScanStatus, CodeRepo.ScanStatus sastScanStatus, CodeRepo.ScanStatus iacScanStatus,
                     CodeRepo.ScanStatus secretsScanStatus, CodeRepo.ScanStatus gitlabScanStatus, int scaHigh, int scaCritical, int sastHigh, int sastCritical,
-                    int iacHigh, int iacCritical, int secretsHigh, int secretsCritical, int gitlabHigh, int gitlabCritical) {
+                    int iacHigh, int iacCritical, int secretsHigh, int secretsCritical, int gitlabHigh, int gitlabCritical,
+                    int dastHigh, int dastCritical) {
         this.id = 0;
         this.codeRepo = codeRepo;
         this.codeRepoBranch = codeRepoBranch;
@@ -133,6 +142,8 @@ public final class ScanInfo {
         this.gitlabHigh = gitlabHigh;
         this.gitlabCritical = gitlabCritical;
         this.insertedDate = LocalDateTime.now();
+        this.dastCritical = dastCritical;
+        this.dastHigh = dastHigh;
 
     }
 

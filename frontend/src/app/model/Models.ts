@@ -43,6 +43,7 @@ export interface Repo {
     scaScan: string;
     secretsScan: string;
     iacScan: string;
+    dastScan: string;
     gitlabScan: string;
 }
 
@@ -69,6 +70,7 @@ export interface FindingSourceStatDTO {
     sca: number;
     secrets: number;
     iac: number;
+    dast: number;
 }
 
 export interface FindingDTO {
@@ -102,6 +104,10 @@ export interface CodeRepoFindingStats {
     removedFindings: number;
     reviewedFindings: number;
     averageFixTime: number;
+    dastCritical: number;
+    dastHigh: number;
+    dastMedium: number;
+    dastRest: number;
 }
 
 // models/privacy.model.ts
@@ -140,6 +146,10 @@ export interface ScanInfo {
     secretsHigh: number;
     secretsMedium: number;
     secretsRest: number;
+    dastCritical: number;
+    dastHigh: number;
+    dastMedium: number;
+    dastRest: number;
     gitlabCritical: number;
     gitlabHigh: number;
     gitlabMedium: number;

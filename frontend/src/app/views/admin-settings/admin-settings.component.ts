@@ -119,6 +119,7 @@ export class AdminSettingsComponent implements OnInit{
     sast: string = 'bearer';
     iac: string = 'kics';
     secretsLeakage: string = 'gitleaks';
+    dast: string = 'dast';
 
     // For SMTP and Notifications Tab
     smtpEnabled: boolean = false;
@@ -249,6 +250,9 @@ export class AdminSettingsComponent implements OnInit{
 
     onSastChange(component: string) {
         this.sast = component;
+    }
+    onDastChange(component: string) {
+        this.dast = component;
     }
 
     onIacChange(component: string) {

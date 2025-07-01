@@ -196,22 +196,22 @@ export class SecurityDashboardComponent implements OnInit {
     // Create datasets for critical, high, medium, low vulnerabilities
     const criticalData = this.trendData.map(item =>
         (item.sastCritical || 0) + (item.scaCritical || 0) +
-        (item.iacCritical || 0) + (item.secretsCritical || 0) + (item.gitlabCritical || 0)
+        (item.iacCritical || 0) + (item.secretsCritical || 0) +  (item.dastCritical || 0) + (item.gitlabCritical || 0)
     );
 
     const highData = this.trendData.map(item =>
         (item.sastHigh || 0) + (item.scaHigh || 0) +
-        (item.iacHigh || 0) + (item.secretsHigh || 0) + (item.gitlabHigh || 0)
+        (item.iacHigh || 0) + (item.secretsHigh || 0) +  (item.dastHigh || 0) + (item.gitlabHigh || 0)
     );
 
     const mediumData = this.trendData.map(item =>
         (item.sastMedium || 0) + (item.scaMedium || 0) +
-        (item.iacMedium || 0) + (item.secretsMedium || 0) + (item.gitlabMedium || 0)
+        (item.iacMedium || 0) + (item.secretsMedium || 0) + (item.dastMedium || 0) + (item.gitlabMedium || 0)
     );
 
     const lowData = this.trendData.map(item =>
         (item.sastRest || 0) + (item.scaRest || 0) +
-        (item.iacRest || 0) + (item.secretsRest || 0) + (item.gitlabRest || 0)
+        (item.iacRest || 0) + (item.secretsRest || 0) +  (item.dastRest || 0) + (item.gitlabRest || 0)
     );
 
     this.vulnerabilityTrendChartData = {
@@ -294,13 +294,14 @@ export class SecurityDashboardComponent implements OnInit {
    */
   prepareSourceDistributionChart(): void {
     // Create a doughnut chart showing distribution by source
-    const labels = ['SAST', 'SCA', 'IaC', 'Secrets'];
+    const labels = ['SAST', 'SCA', 'IaC', 'Secrets','DAST'];
 
     const data = [
       this.summaryData.sastTotal || 0,
       this.summaryData.scaTotal || 0,
       this.summaryData.iacTotal || 0,
-      this.summaryData.secretsTotal || 0
+      this.summaryData.secretsTotal || 0,
+      this.summaryData.dastTotal || 0
     ];
 
     this.sourceDistributionChartData = {
@@ -312,13 +313,15 @@ export class SecurityDashboardComponent implements OnInit {
             '#20c997', // Teal for SAST
             '#0dcaf0', // Cyan for SCA
             '#6610f2', // Purple for IaC
-            '#d63384'  // Pink for Secrets
+            '#d63384',  // Pink for Secrets
+            '#8B4513' // Brown for DAST
           ],
           hoverBackgroundColor: [
             '#1ba87e', // Darker teal on hover
             '#0bb2d4', // Darker cyan on hover
             '#570dcf', // Darker purple on hover
-            '#b92c72'  // Darker pink on hover
+            '#b92c72',  // Darker pink on hover
+            '#6E3B0E'  //Darker Brown on hover
           ]
         }
       ]

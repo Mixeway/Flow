@@ -120,6 +120,10 @@ export interface TeamFindingStats {
     sastHigh?: number;
     sastMedium?: number;
     sastRest?: number;
+    dastCritical?: number;
+    dastHigh?: number;
+    dastMedium?: number;
+    dastRest?: number;
     scaCritical?: number;
     scaHigh?: number;
     scaMedium?: number;
@@ -334,6 +338,14 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
                 pointBorderColor: '#bd7777',
                 data: [],
             },
+            {
+                label: 'DAST',
+                backgroundColor: 'rgba(255, 159, 64, 0.2)', // Example color, adjust as needed
+                borderColor: 'rgb(255, 159, 64)',
+                pointBackgroundColor: 'rgb(255, 159, 64)',
+                pointBorderColor: '#fff',
+                data: [],
+            },
         ],
     };
 
@@ -469,7 +481,8 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
             repo.sca === 'RUNNING' ||
             repo.secrets === 'RUNNING' ||
             repo.iac === 'RUNNING' ||
-            repo.gitlab === 'RUNNING'
+            repo.gitlab === 'RUNNING' ||
+            repo.dast === 'RUNNING'
         );
 
         const cloudRunning = Array.isArray(this.cloudSubscriptionsData) &&
@@ -507,6 +520,10 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
                             sastHigh: stat.sastHigh ?? 0,
                             sastMedium: stat.sastMedium ?? 0,
                             sastRest: stat.sastRest ?? 0,
+                            dastCritical: stat.sastCritical ?? 0,
+                            dastHigh: stat.sastHigh ?? 0,
+                            dastMedium: stat.sastMedium ?? 0,
+                            dastRest: stat.sastRest ?? 0,
                             scaCritical: stat.scaCritical ?? 0,
                             scaHigh: stat.scaHigh ?? 0,
                             scaMedium: stat.scaMedium ?? 0,

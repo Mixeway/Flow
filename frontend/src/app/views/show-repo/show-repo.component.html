@@ -365,6 +365,22 @@
                                                             </c-badge>
                                                         </div>
                                                     </div>
+
+                                                    <div class="result-category">
+                                                        <span class="category-label">DAST</span>
+                                                        <div class="category-badges">
+                                                            <c-badge color="danger" class="result-badge"
+                                                                     *ngIf="row.dastCritical > 0">{{ row.dastCritical }}
+                                                            </c-badge>
+                                                            <c-badge color="warning" class="result-badge"
+                                                                     *ngIf="row.dastHigh > 0">{{ row.dastHigh }}
+                                                            </c-badge>
+                                                            <c-badge color="info" class="result-badge"
+                                                                     *ngIf="row.dastMedium > 0">{{ row.dastMedium }}
+                                                            </c-badge>
+                                                        </div>
+                                                    </div>
+
                                                 </div>
                                             </ng-template>
                                         </ngx-datatable-column>

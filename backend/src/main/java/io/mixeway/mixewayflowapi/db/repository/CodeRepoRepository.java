@@ -26,7 +26,7 @@ public interface CodeRepoRepository extends CrudRepository<CodeRepo, Long> {
     @Query("UPDATE CodeRepo c SET c.scaScan = 'NOT_PERFORMED' WHERE c.id = :id")
     void updateScaScanToNotPerformed(@Param("id") Long id);
 
-    @Query("SELECT new io.mixeway.mixewayflowapi.api.coderepo.dto.GetCodeReposResponseDto(c.id, c.name, c.repourl, t.name, c.sastScan, c.iacScan, c.secretsScan, c.scaScan, c.gitlabScan) FROM CodeRepo c JOIN c.team t WHERE t IN :teams")
+    @Query("SELECT new io.mixeway.mixewayflowapi.api.coderepo.dto.GetCodeReposResponseDto(c.id, c.name, c.repourl, t.name, c.sastScan, c.iacScan, c.secretsScan, c.scaScan, c.gitlabScan, c.dastScan) FROM CodeRepo c JOIN c.team t WHERE t IN :teams")
     List<GetCodeReposResponseDto> findCodeRepoDtosByTeamIn(@Param("teams") List<Team> teams);
 
     @Query("SELECT c FROM CodeRepo c JOIN FETCH c.team WHERE c.team IN :teams")

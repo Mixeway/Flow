@@ -56,6 +56,14 @@
                                         </div>
                                     </div>
 
+                                    <div class="result-category d-flex align-items-center">
+                                        <span class="category-label me-4">DAST</span>
+                                        <div class="category-badges">
+                                            <c-badge color="danger" class="result-badge" *ngIf="row.dastCritical > 0">{{ row.sastCritical }}</c-badge>
+                                            <c-badge color="warning" class="result-badge" *ngIf="row.dastHigh > 0">{{ row.sastHigh }}</c-badge>
+                                        </div>
+                                    </div>
+
 
                                     <div class="result-category d-flex align-items-center">
                                         <span class="category-label me-4">SCA</span>
