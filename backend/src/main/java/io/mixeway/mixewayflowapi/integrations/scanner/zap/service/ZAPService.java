@@ -90,6 +90,17 @@ public class ZAPService {
                 // Read configuration
                 MixewayConfig config = readMixewayConfig(repoDir);
 
+
+                // Check if config is empty (file was missing)
+                if (config.getBackendUrl() == null && config.getOpenApiPath() == null && config.getWebappType() == null) {
+                    log.error("[ZapService] Cannot proceed with scan for repo: {}, branch: {} - missing configuration file",
+                            codeRepo.getName(), codeRepoBranch.getName());
+                    ScanResult result = new ScanResult();
+                    result.setScanId(UUID.randomUUID().toString());
+                    result.setStatus("failed");
+                    result.setAlerts(new ArrayList<>());
+                    return result;
+                }
                 // Determine the webapp type with proper defaults
                 String webappType = config.getWebappType();
 
@@ -131,6 +142,20 @@ public class ZAPService {
                 String openApiSpec = null;
                 if ("API".equalsIgnoreCase(webappType)) {
                     openApiSpec = readOpenApiSpec(repoDir, config.getOpenApiPath());
+
+                    // If OpenAPI spec is required but not found, return a failed scan result
+                    if (openApiSpec == null) {
+                        log.error("[ZapService] Cannot proceed with API scan for repo: {}, branch: {} - missing OpenAPI specification",
+                                codeRepo.getName(), codeRepoBranch.getName());
+                        ScanResult result = new ScanResult();
+                        result.setScanId(UUID.randomUUID().toString());
+                        result.setStatus("failed");
+                        result.setAlerts(new ArrayList<>());
+                        return result;
+                    }
+                }
+                if ("API".equalsIgnoreCase(webappType)) {
+                    openApiSpec = readOpenApiSpec(repoDir, config.getOpenApiPath());
                 }
 
                 // Generate a unique context name for this scan
@@ -147,92 +172,14 @@ public class ZAPService {
                 log.info("[ZapService] Completed {} scan for Target {}, repo: {}, branch: {}, found {} alerts",
                         webappType, config.getBackendUrl(), codeRepo.getName(), codeRepoBranch.getName(), result.getAlerts().size());
 
-                // Clean up temporary files after successful scan and DB save
-                try {
-                    log.info("[ZapService] Cleaning up temporary files and directories");
 
-                    // Delete the report file
-                    if (reportFile.exists()) {
-                        boolean reportDeleted = reportFile.delete();
-                        if (reportDeleted) {
-                            log.debug("[ZapService] Deleted report file: {}", reportFile.getAbsolutePath());
-                        } else {
-                            log.warn("[ZapService] Failed to delete report file: {}", reportFile.getAbsolutePath());
-                        }
-                    }
-
-                    // Delete the ZAP report directory
-                    if (zapReportDir.exists()) {
-                        // Delete any remaining files in the directory
-                        File[] files = zapReportDir.listFiles();
-                        if (files != null) {
-                            for (File file : files) {
-                                boolean fileDeleted = file.delete();
-                                if (fileDeleted) {
-                                    log.debug("[ZapService] Deleted file: {}", file.getAbsolutePath());
-                                } else {
-                                    log.warn("[ZapService] Failed to delete file: {}", file.getAbsolutePath());
-                                }
-                            }
-                        }
-
-                        // Delete the directory itself
-                        boolean dirDeleted = zapReportDir.delete();
-                        if (dirDeleted) {
-                            log.debug("[ZapService] Deleted ZAP report directory: {}", zapReportDir.getAbsolutePath());
-                        } else {
-                            log.warn("[ZapService] Failed to delete ZAP report directory: {}", zapReportDir.getAbsolutePath());
-                        }
-                    }
-
-                    // Clean up any temp files in the system temp directory that match our pattern
-                    File tempDir = new File(System.getProperty("java.io.tmpdir"));
-                    File[] tempFiles = tempDir.listFiles((dir, name) ->
-                            name.startsWith("openapi-spec-") && name.contains(contextName));
-
-                    if (tempFiles != null && tempFiles.length > 0) {
-                        for (File file : tempFiles) {
-                            boolean deleted = file.delete();
-                            if (deleted) {
-                                log.debug("[ZapService] Deleted temporary file: {}", file.getAbsolutePath());
-                            } else {
-                                log.warn("[ZapService] Failed to delete temporary file: {}", file.getAbsolutePath());
-                            }
-                        }
-                        log.info("[ZapService] Cleaned up {} temporary files", tempFiles.length);
-                    }
-
-                    log.info("[ZapService] Cleanup completed successfully");
-                } catch (Exception e) {
-                    // Just log cleanup errors, don't let them affect the scan result
-                    log.warn("[ZapService] Error during cleanup: {}", e.getMessage());
-                }
 
                 return result;
             } catch (Exception e) {
                 log.error("[ZapService] Scan failed for repo: {}, branch: {}",
                         codeRepo.getName(), codeRepoBranch.getName(), e);
 
-                // Try to clean up even if the scan failed
-                try {
-                    log.info("[ZapService] Attempting cleanup after scan failure");
 
-                    // Clean up the ZAP report directory if it exists
-                    File zapReportDir = new File(repoDir, "zap");
-                    if (zapReportDir.exists()) {
-                        File[] files = zapReportDir.listFiles();
-                        if (files != null) {
-                            for (File file : files) {
-                                file.delete();
-                            }
-                        }
-                        zapReportDir.delete();
-                    }
-
-                    log.info("[ZapService] Cleanup after failure completed");
-                } catch (Exception cleanupEx) {
-                    log.warn("[ZapService] Error during cleanup after failure: {}", cleanupEx.getMessage());
-                }
 
                 throw new RuntimeException("Scan failed: " + e.getMessage(), e);
             }
@@ -256,7 +203,9 @@ public class ZAPService {
     private MixewayConfig readMixewayConfig(String repoDir) throws IOException {
         File configFile = new File(repoDir, "mixeway.yml");
         if (!configFile.exists()) {
-            throw new FileNotFoundException("mixeway.yml not found in " + repoDir);
+            log.error("[ZapService] Configuration file mixeway.yml not found in {}", repoDir);
+            // Return a default configuration or null
+            return new MixewayConfig(); // Empty config with null fields
         }
         ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
         return yamlMapper.readValue(configFile, MixewayConfig.class);
@@ -273,7 +222,8 @@ public class ZAPService {
     private String readOpenApiSpec(String repoDir, String openApiPath) throws IOException {
         File specFile = new File(repoDir, openApiPath);
         if (!specFile.exists()) {
-            throw new FileNotFoundException("OpenAPI spec not found at: " + specFile.getAbsolutePath());
+            log.error("[ZapService] OpenAPI specification file not found at: {}", specFile.getAbsolutePath());
+            return null;
         }
         return Files.readString(specFile.toPath());
     }
@@ -470,6 +420,7 @@ public class ZAPService {
                 }
 
                 // If a scan was started, wait for it to complete
+                // If a scan was started, wait for it to complete
                 if (scanStarted && scanId != null) {
                     log.debug("[ZapService] Waiting for active scan to complete...");
                     int scanProgress = 0;
@@ -478,12 +429,15 @@ public class ZAPService {
 
                     while (scanProgress < 100 && retryCount < MAX_RETRIES) {
                         try {
-                            Thread.sleep(300000); // Check every 5 seconds
+                            Thread.sleep(5000); // Check every 5 seconds
 
                             // Get scan status with retry logic
                             ApiResponseElement statusResponse = null;
                             try {
-                                statusResponse = (ApiResponseElement) zapApi.ascan.status(scanId);
+                                // Only synchronize the actual API call, not the whole loop
+                                synchronized (zapLock) {
+                                    statusResponse = (ApiResponseElement) zapApi.ascan.status(scanId);
+                                }
                             } catch (Exception e) {
                                 log.warn("[ZapService] Error getting scan status, retrying: {}", e.getMessage());
                                 retryCount++;
@@ -491,7 +445,7 @@ public class ZAPService {
                             }
 
                             scanProgress = Integer.parseInt(statusResponse.getValue());
-                            log.info("[ZapService] Active scan progress for context {}: {}%", targetUrl, scanProgress);
+                            log.debug("[ZapService] Active scan progress for context {}: {}%", contextName, scanProgress);
                             retryCount = 0; // Reset retry count on successful status check
                         } catch (Exception e) {
                             log.warn("[ZapService] Error checking scan progress: {}", e.getMessage());
@@ -503,25 +457,33 @@ public class ZAPService {
                         }
                     }
 
+                    if (scanProgress >= 100) {
+                        log.info("[ZapService] Active scan completed for {} target: {}", webappType, targetUrl);
+                    }
+
                     // Remove the scan ID from tracking
                     activeScanIds.remove(contextName);
                 } else {
                     log.warn("[ZapService] Could not start an active scan");
                 }
 
-                // Create report directory
+// Create report directory
                 File reportDir = new File(repoDir, "zap");
                 reportDir.mkdirs();
 
-                // Save the JSON report
+// Save the JSON report
                 File jsonReport = new File(reportDir, "report.json");
 
-                // Get the context-specific JSON report
+// Get the context-specific JSON report
                 log.info("[ZapService] Getting JSON report for context: {}", contextName);
 
-                // Synchronize access to generate the report
-                synchronized (zapLock) {
-                    try {
+// Use a separate lock for report generation to avoid blocking other scans
+                Object reportLock = new Object();
+
+// Synchronize only the actual report generation API call
+                boolean reportGenerated = false;
+                try {
+                    synchronized (reportLock) {
                         // Use the reports API to generate a context-specific report
                         Map<String, String> reportParams = new HashMap<>();
                         reportParams.put("title", "ZAP Scan Report - " + contextName);
@@ -532,40 +494,49 @@ public class ZAPService {
 
                         ApiResponse reportResponse = zapApi.callApi("reports", "action", "generate", reportParams);
                         log.debug("[ZapService] Report generation response: {}", reportResponse.toString());
-                    } catch (Exception e) {
-                        log.warn("[ZapService] Context-specific report generation failed: {}", e.getMessage());
+                        reportGenerated = true;
+                    }
+                } catch (Exception e) {
+                    log.warn("[ZapService] Context-specific report generation failed: {}", e.getMessage());
 
-                        // Fall back to the core API with filtering
-                        try {
+                    // Fall back to the core API with filtering
+                    try {
+                        synchronized (zapLock) {
                             byte[] reportBytes = zapApi.core.jsonreport();
                             Files.write(jsonReport.toPath(), reportBytes);
                             log.debug("[ZapService] Saved generic JSON report to {}", jsonReport.getAbsolutePath());
-
-                            // Filter the report to only include alerts from this context
-                            filterReportForContext(jsonReport, contextName);
-                        } catch (Exception e2) {
-                            log.error("[ZapService] Failed to generate fallback report: {}", e2.getMessage());
                         }
+
+                        // Filter the report to only include alerts from this context
+                        filterReportForContext(jsonReport, contextName);
+                        reportGenerated = true;
+                    } catch (Exception e2) {
+                        log.error("[ZapService] Failed to generate fallback report: {}", e2.getMessage());
                     }
                 }
 
-                // If the reports API fails, fall back to the core API but filter results
-                if (!jsonReport.exists()) {
+// If the reports API fails, fall back to the core API but filter results
+                if (!reportGenerated || !jsonReport.exists()) {
                     log.warn("[ZapService] Report file not created, falling back to core API");
-                    synchronized (zapLock) {
-                        byte[] reportBytes = zapApi.core.jsonreport();
-                        Files.write(jsonReport.toPath(), reportBytes);
-                        log.debug("[ZapService] Saved generic JSON report to {}", jsonReport.getAbsolutePath());
+                    try {
+                        synchronized (zapLock) {
+                            byte[] reportBytes = zapApi.core.jsonreport();
+                            Files.write(jsonReport.toPath(), reportBytes);
+                            log.debug("[ZapService] Saved generic JSON report to {}", jsonReport.getAbsolutePath());
+                        }
+                    } catch (Exception e) {
+                        log.error("[ZapService] Failed to generate any report: {}", e.getMessage());
                     }
                 }
 
                 log.debug("[ZapService] Saved JSON report to {}", jsonReport.getAbsolutePath());
 
-                // Clean up by removing the context
+// Clean up by removing the context
                 synchronized (zapLock) {
                     log.debug("[ZapService] Removing context: {}", contextName);
                     zapApi.context.removeContext(contextName);
                 }
+
 
             } catch (ClientApiException e) {
                 log.error("[ZapService] ZAP API error: {}", e.getMessage());
