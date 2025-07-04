@@ -108,12 +108,6 @@ public class CreateFindingService {
             newFinding.updateStatus(Finding.Status.NEW, null);
             checkSuppressRuleService.validate(findingRepository.save(newFinding));
         }
-
-        if (repoInWhichFindingWasFound != null) {
-            log.info("[Finding Service] Processed finding for {}. Source: {}", repoInWhichFindingWasFound.getName(), source.toString());
-        } else {
-            log.info("[Finding Service] Processed finding. Source: {}", source.toString());
-        }
     }
 
     private String findingKey(Finding finding) {
