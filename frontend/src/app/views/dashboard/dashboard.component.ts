@@ -856,7 +856,7 @@ export class DashboardComponent implements OnInit {
     }
 
     handleListRepoChange(event: any) {
-        this.visible = false;
+        //this.visible = false;
         this.visibleList = event;
     }
 
