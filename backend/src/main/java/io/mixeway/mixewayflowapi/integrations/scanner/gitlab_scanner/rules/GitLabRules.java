@@ -106,8 +106,8 @@ public class GitLabRules {
                 }
                 return;
             } catch (Exception e) {
-                log.error("[GitLabScannerService] Unexpected error during API request for repository {}: {} for rule 'Default branch is not protected'",
-                        codeRepo.getRepourl(), e.getMessage(), e);
+                log.error("[GitLabScannerService] Unexpected error during API request for repository {} for rule 'Default branch is not protected'",
+                        codeRepo.getRepourl());
                 return;
             }
             ObjectMapper objectMapper = new ObjectMapper();
@@ -126,7 +126,7 @@ public class GitLabRules {
                 }
             }
         } catch (Exception e) {
-            log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl());
         }
     }
 
@@ -155,8 +155,8 @@ public class GitLabRules {
                 }
                 return;
             } catch (Exception e) {
-                log.error("[GitLabScannerService] Unexpected error during API request for repository {}: {} for rule 'Too many members with high privileges'",
-                        codeRepo.getRepourl(), e.getMessage(), e);
+                log.error("[GitLabScannerService] Unexpected error during API request for repository {} for rule 'Too many members with high privileges'",
+                        codeRepo.getRepourl());
                 return;
             }
 
@@ -182,7 +182,7 @@ public class GitLabRules {
                 }
             }
         } catch (Exception e) {
-            log.error("[v] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[v] Unexpected error for repository {}", codeRepo.getRepourl());
         }
     }
 
@@ -212,8 +212,8 @@ public class GitLabRules {
                 }
                 return;
             } catch (Exception e) {
-                log.error("[GitLabScannerService] Unexpected error during API request for repository {}: {} for rule 'Untagged runner'",
-                        codeRepo.getRepourl(), e.getMessage(), e);
+                log.error("[GitLabScannerService] Unexpected error during API request for repository {} for rule 'Untagged runner'",
+                        codeRepo.getRepourl());
                 return;
             }
 
@@ -242,8 +242,8 @@ public class GitLabRules {
                     }
                     return;
                 } catch (Exception e) {
-                    log.error("[GitLabScannerService] Unexpected error during API request for repository {}: {} for rule 'Untagged runner'",
-                            codeRepo.getRepourl(), e.getMessage(), e);
+                    log.error("[GitLabScannerService] Unexpected error during API request for repository {} for rule 'Untagged runner'",
+                            codeRepo.getRepourl());
                     return;
                 }
 
@@ -259,7 +259,7 @@ public class GitLabRules {
                 }
             }
         } catch (Exception e) {
-            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {} ", codeRepo.getRepourl());
         }
     }
 
@@ -289,8 +289,8 @@ public class GitLabRules {
                 }
                 return;
             } catch (Exception e) {
-                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Runner allows untagged jobs'",
-                        codeRepo.getRepourl(), e.getMessage(), e);
+                log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Runner allows untagged jobs'",
+                        codeRepo.getRepourl());
                 return;
             }
 
@@ -319,8 +319,8 @@ public class GitLabRules {
                     }
                     return;
                 } catch (Exception e) {
-                    log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Runner allows untagged jobs'",
-                            codeRepo.getRepourl(), e.getMessage(), e);
+                    log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Runner allows untagged jobs'",
+                            codeRepo.getRepourl());
                     return;
                 }
 
@@ -336,7 +336,7 @@ public class GitLabRules {
                 }
             }
         } catch (Exception e) {
-            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
         }
     }
 
@@ -366,8 +366,8 @@ public class GitLabRules {
                 }
                 return;
             } catch (Exception e) {
-                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Runner allows unprotected jobs'",
-                        codeRepo.getRepourl(), e.getMessage(), e);
+                log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Runner allows unprotected jobs'",
+                        codeRepo.getRepourl());
                 return;
             }
 
@@ -396,8 +396,8 @@ public class GitLabRules {
                     }
                     return;
                 } catch (Exception e) {
-                    log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Runner allows unprotected jobs'",
-                            codeRepo.getRepourl(), e.getMessage(), e);
+                    log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Runner allows unprotected jobs'",
+                            codeRepo.getRepourl());
                     return;
                 }
 
@@ -413,7 +413,7 @@ public class GitLabRules {
                 }
             }
         } catch (Exception e) {
-            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
         }
     }
 
@@ -463,8 +463,8 @@ public class GitLabRules {
                 }
                 return;
             } catch (Exception e) {
-                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Runner uses insecure executor type'",
-                        codeRepo.getRepourl(), e.getMessage(), e);
+                log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Runner uses insecure executor type'",
+                        codeRepo.getRepourl());
                 return;
             }
 
@@ -496,7 +496,7 @@ public class GitLabRules {
                 }
             }
         } catch (Exception e) {
-            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
         }
     }
 
@@ -526,8 +526,8 @@ public class GitLabRules {
                 }
                 return;
             } catch (Exception e) {
-                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Access token with api scope'",
-                        codeRepo.getRepourl(), e.getMessage(), e);
+                log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Access token with api scope'",
+                        codeRepo.getRepourl());
                 return;
             }
 
@@ -548,7 +548,7 @@ public class GitLabRules {
                 }
             }
         } catch (Exception e) {
-            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
         }
     }
 
@@ -578,8 +578,8 @@ public class GitLabRules {
                 }
                 return;
             } catch (Exception e) {
-                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Lack of repository description'",
-                        codeRepo.getRepourl(), e.getMessage(), e);
+                log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Lack of repository description'",
+                        codeRepo.getRepourl());
                 return;
             }
 
@@ -595,7 +595,7 @@ public class GitLabRules {
                 updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
             }
         } catch (Exception e) {
-            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
         }
     }
 
@@ -625,8 +625,8 @@ public class GitLabRules {
                 }
                 return;
             } catch (Exception e) {
-                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Lack of README file'",
-                        codeRepo.getRepourl(), e.getMessage(), e);
+                log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Lack of README file'",
+                        codeRepo.getRepourl());
                 return;
             }
 
@@ -668,8 +668,8 @@ public class GitLabRules {
                     }
                     return;
                 } catch (Exception e) {
-                    log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Lack of README file'",
-                            codeRepo.getRepourl(), e.getMessage(), e);
+                    log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Lack of README file'",
+                            codeRepo.getRepourl());
                     return;
                 }
                 if (readmeContent == null || readmeContent.trim().isEmpty()) {
@@ -685,7 +685,7 @@ public class GitLabRules {
                 updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
             }
         } catch (Exception e) {
-            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
         }
     }
 
@@ -715,8 +715,8 @@ public class GitLabRules {
                 }
                 return;
             } catch (Exception e) {
-                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Lack of CONTRIBUTING file'",
-                        codeRepo.getRepourl(), e.getMessage(), e);
+                log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Lack of CONTRIBUTING file'",
+                        codeRepo.getRepourl());
                 return;
             }
 
@@ -757,8 +757,8 @@ public class GitLabRules {
                     }
                     return;
                 } catch (Exception e) {
-                    log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Lack of CONTRIBUTING file'",
-                            codeRepo.getRepourl(), e.getMessage(), e);
+                    log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Lack of CONTRIBUTING file'",
+                            codeRepo.getRepourl());
                     return;
                 }
 
@@ -775,7 +775,7 @@ public class GitLabRules {
                 updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
             }
         } catch (Exception e) {
-            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
         }
     }
 
@@ -805,8 +805,8 @@ public class GitLabRules {
                 }
                 return;
             } catch (Exception e) {
-                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Lack of SECURITY file'",
-                        codeRepo.getRepourl(), e.getMessage(), e);
+                log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Lack of SECURITY file'",
+                        codeRepo.getRepourl());
                 return;
             }
 
@@ -847,8 +847,8 @@ public class GitLabRules {
                     }
                     return;
                 } catch (Exception e) {
-                    log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Lack of SECURITY file'",
-                            codeRepo.getRepourl(), e.getMessage(), e);
+                    log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Lack of SECURITY file'",
+                            codeRepo.getRepourl());
                     return;
                 }
 
@@ -865,7 +865,7 @@ public class GitLabRules {
                 updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
             }
         } catch (Exception e) {
-            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
         }
     }
 
@@ -895,8 +895,8 @@ public class GitLabRules {
                 }
                 return;
             } catch (Exception e) {
-                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Usage of external repository'",
-                        codeRepo.getRepourl(), e.getMessage(), e);
+                log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Usage of external repository'",
+                        codeRepo.getRepourl());
                 return;
             }
 
@@ -929,8 +929,8 @@ public class GitLabRules {
                         }
                         return;
                     } catch (Exception e) {
-                        log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Usage of external repository'",
-                                codeRepo.getRepourl(), e.getMessage(), e);
+                        log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Usage of external repository'",
+                                codeRepo.getRepourl());
                         return;
                     }
 
@@ -957,7 +957,7 @@ public class GitLabRules {
             }
 
         } catch (Exception e) {
-            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
         }
     }
 
@@ -987,8 +987,8 @@ public class GitLabRules {
                 }
                 return;
             } catch (Exception e) {
-                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Protected branch with insufficient access level'",
-                        codeRepo.getRepourl(), e.getMessage(), e);
+                log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Protected branch with insufficient access level'",
+                        codeRepo.getRepourl());
                 return;
             }
 
@@ -1021,7 +1021,7 @@ public class GitLabRules {
                 }
             }
         } catch (Exception e) {
-            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
         }
     }
 
@@ -1052,8 +1052,8 @@ public class GitLabRules {
                 }
                 return;
             } catch (Exception e) {
-                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Secret stored in GitLab CI/CD variables'",
-                        codeRepo.getRepourl(), e.getMessage(), e);
+                log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Secret stored in GitLab CI/CD variables'",
+                        codeRepo.getRepourl());
                 return;
             }
 
@@ -1072,7 +1072,7 @@ public class GitLabRules {
                 }
             }
         } catch (Exception e) {
-            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
         }
     }
 
@@ -1101,8 +1101,8 @@ public class GitLabRules {
                 }
                 return;
             } catch (Exception e) {
-                log.error("[GitLabScannerService] Unexpected error during API request for repository {}: {} for rule 'Pipeline must succeed before merging'",
-                        codeRepo.getRepourl(), e.getMessage(), e);
+                log.error("[GitLabScannerService] Unexpected error during API request for repository {} for rule 'Pipeline must succeed before merging'",
+                        codeRepo.getRepourl());
                 return;
             }
 
@@ -1119,7 +1119,7 @@ public class GitLabRules {
 
             }
         } catch (Exception e) {
-            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
         }
     }
 
@@ -1148,8 +1148,8 @@ public class GitLabRules {
                 }
                 return;
             } catch (Exception e) {
-                log.error("[GitLabScannerService] Unexpected error during API request for repository {}: {} for rule 'Merge on skipped pipelines allowed'",
-                        codeRepo.getRepourl(), e.getMessage(), e);
+                log.error("[GitLabScannerService] Unexpected error during API request for repository {} for rule 'Merge on skipped pipelines allowed'",
+                        codeRepo.getRepourl());
                 return;
             }
 
@@ -1166,7 +1166,7 @@ public class GitLabRules {
 
             }
         } catch (Exception e) {
-            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
         }
     }
 
@@ -1196,8 +1196,8 @@ public class GitLabRules {
                 }
                 return;
             } catch (Exception e) {
-                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Access control for Container registry repository not configured'",
-                        codeRepo.getRepourl(), e.getMessage(), e);
+                log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Access control for Container registry repository not configured'",
+                        codeRepo.getRepourl());
                 return;
             }
 
@@ -1228,8 +1228,8 @@ public class GitLabRules {
                 }
                 return;
             } catch (Exception e) {
-                log.error("[GitLabScanner] Unexpected error during API request for repository {}: {} for rule 'Access control for Container registry repository not configured'",
-                        codeRepo.getRepourl(), e.getMessage(), e);
+                log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Access control for Container registry repository not configured'",
+                        codeRepo.getRepourl());
                 return;
             }
 
@@ -1260,7 +1260,7 @@ public class GitLabRules {
                 }
             }
         } catch (Exception e) {
-            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
         }
     }
 
@@ -1289,8 +1289,8 @@ public class GitLabRules {
                 }
                 return;
             } catch (Exception e) {
-                log.error("[GitLabScannerService] Unexpected error during API request for repository {}: {} for rule 'Project is not private'",
-                        codeRepo.getRepourl(), e.getMessage(), e);
+                log.error("[GitLabScannerService] Unexpected error during API request for repository {} for rule 'Project is not private'",
+                        codeRepo.getRepourl());
                 return;
             }
 
@@ -1307,7 +1307,7 @@ public class GitLabRules {
 
             }
         } catch (Exception e) {
-            log.error("[GitLabScanner] Unexpected error for repository {}: {}", codeRepo.getRepourl(), e.getMessage(), e);
+            log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
         }
     }
 }
