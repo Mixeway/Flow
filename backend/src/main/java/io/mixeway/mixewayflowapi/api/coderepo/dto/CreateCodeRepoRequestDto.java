@@ -20,7 +20,7 @@ public final class CreateCodeRepoRequestDto implements DTO {
     private final String repoUrl;
 
     @NotBlank(message = "Access token must not be blank")
-    @Size(max = 50, message = "Access token must be at most 30 characters long")
+    @Size(max = 100, message = "Access token must be at most 30 characters long")
     @Pattern(regexp = "^[a-zA-Z0-9._-]+$", message = "Access token can contain alphanumeric characters, dots, and underscores")
     private final String accessToken;
 

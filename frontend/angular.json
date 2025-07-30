@@ -40,7 +40,9 @@
             "styles": [
               "src/scss/styles.scss",
               "./node_modules/@swimlane/ngx-datatable/index.css",
+              "./node_modules/@swimlane/ngx-datatable/themes/material.css",
               "./node_modules/@swimlane/ngx-datatable/themes/bootstrap.css",
+              "./node_modules/@swimlane/ngx-datatable/themes/dark.css",
               "./node_modules/@swimlane/ngx-datatable/assets/icons.css"
             ],
             "scripts": [],

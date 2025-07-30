@@ -548,3 +548,63 @@ c-toast {
     }
   }
 }
+
+/* dashboard.component.scss */
+
+/* --- Styles for Enhanced Security Posture Column --- */
+
+.security-posture-cell {
+  height: 100%;
+  min-height: 40px; // Ensures consistent row height
+}
+
+.overall-risk-indicator {
+  // Vertically aligns the icon with the scan blocks
+  display: flex;
+  align-items: center;
+}
+
+.scan-health-bar {
+  // Aligns the bar with the icon
+  display: flex;
+  align-items: center;
+}
+
+.scan-block {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.25em 0.6em;
+  border-radius: 4px;
+  color: #fff;
+  text-align: center;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+}
+
+/* Status Color Mapping for Scan Blocks */
+.status-danger {
+  background-color: #dc3545; // CoreUI Danger
+}
+.status-warning {
+  background-color: #fd7e14; // CoreUI Warning
+}
+.status-success {
+  background-color: #2eb85c; // CoreUI Success
+}
+.status-neutral {
+  background-color: #adb5bd; // CoreUI Muted/Secondary
+}
+.status-running {
+  background-color: #3399ff; // CoreUI Info
+  animation: pulse-animation 1.5s infinite;
+}
+
+@keyframes pulse-animation {
+  0% {
+    box-shadow: 0 0 0 0 rgba(51, 153, 255, 0.7);
+  }
+  100% {
+    box-shadow: 0 0 0 10px rgba(51, 153, 255, 0);
+  }
+}

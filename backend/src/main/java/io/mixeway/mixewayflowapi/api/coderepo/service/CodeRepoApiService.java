@@ -79,4 +79,16 @@ public class CodeRepoApiService {
         // Change the team
         updateCodeRepoService.changeTeam(codeRepo, newTeam);
     }
+
+    public void bulkChangeTeam(List<Long> repositoryIds, Long newTeamId, Principal principal) {
+        // For bulk actions by an admin, we trust the role.
+        // Finer-grained checks could be added here if needed.
+
+        // Find the new team
+        Team newTeam = findTeamService.findById(newTeamId)
+                .orElseThrow(() -> new TeamNotFoundException("New team not found"));
+
+        // Call the bulk update service
+        updateCodeRepoService.bulkChangeTeam(repositoryIds, newTeam);
+    }
 }

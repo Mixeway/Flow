@@ -1,11 +1,9 @@
-<!-- Enhanced Dashboard Header with Overview Stats (Only shown when security overview is hidden) -->
 <c-row *ngIf="widgetStats && !showSecurityOverview" class="mb-4">
     <c-col>
         <app-widgets-dropdown [stats]="widgetStats"/>
     </c-col>
 </c-row>
 
-<!-- Security Overview Section -->
 <c-row class="mb-4">
     <c-col>
         <c-card class="security-overview-card">
@@ -19,9 +17,7 @@
                 </button>
             </c-card-header>
             <c-card-body *ngIf="showSecurityOverview">
-                <!-- Summary Cards Row -->
                 <c-row class="g-3 mb-4">
-                    <!-- Total Findings Card -->
                     <c-col md="6" lg="3">
                         <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
                             <div class="summary-icon total-icon me-3">
@@ -40,7 +36,6 @@
                         </div>
                     </c-col>
 
-                    <!-- Critical Findings Card -->
                     <c-col md="6" lg="3">
                         <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
                             <div class="summary-icon critical-icon me-3">
@@ -59,7 +54,6 @@
                         </div>
                     </c-col>
 
-                    <!-- Average Fix Time Card -->
                     <c-col md="6" lg="3">
                         <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
                             <div class="summary-icon fix-time-icon me-3">
@@ -77,7 +71,6 @@
                         </div>
                     </c-col>
 
-                    <!-- Total Repositories Card -->
                     <c-col md="6" lg="3">
                         <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
                             <div class="summary-icon score-icon me-3">
@@ -97,9 +90,7 @@
                     </c-col>
                 </c-row>
 
-                <!-- Additional Metrics Row (from the widget stats) -->
                 <c-row class="g-3 mb-4" *ngIf="widgetStats">
-                    <!-- Monitored Teams Card -->
                     <c-col md="6" lg="3">
                         <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
                             <div class="summary-icon team-icon me-3">
@@ -115,7 +106,6 @@
                         </div>
                     </c-col>
 
-                    <!-- Total Scans Card -->
                     <c-col md="6" lg="3">
                         <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
                             <div class="summary-icon scan-icon me-3">
@@ -131,7 +121,6 @@
                         </div>
                     </c-col>
 
-                    <!-- Monthly Scans Card -->
                     <c-col md="6" lg="3">
                         <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
                             <div class="summary-icon monthly-icon me-3">
@@ -147,7 +136,6 @@
                         </div>
                     </c-col>
 
-                    <!-- Security Score Card -->
                     <c-col md="6" lg="3">
                         <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
                             <div class="summary-icon grade-icon me-3">
@@ -167,7 +155,6 @@
                     </c-col>
                 </c-row>
 
-                <!-- Vulnerability Trend Chart -->
                 <c-row>
                     <c-col>
                         <div class="chart-container p-3 rounded">
@@ -189,13 +176,11 @@
                                          [options]="chartOptions"
                                          style="max-height: 100%; width: 100%;">
                                 </c-chart>
-                                <!-- Loading state -->
                                 <div *ngIf="!vulnerabilityTrendData && !trendDataLoaded"
                                      class="d-flex justify-content-center align-items-center h-100">
                                     <c-spinner color="primary" size="sm" class="me-2"></c-spinner>
                                     <span>Loading chart data...</span>
                                 </div>
-                                <!-- Empty data state -->
                                 <div *ngIf="!vulnerabilityTrendData && trendDataLoaded"
                                      class="d-flex justify-content-center align-items-center h-100 flex-column">
                                     <svg cIcon name="cil-chart-line" class="text-muted mb-2" width="24"
@@ -212,7 +197,6 @@
     </c-col>
 </c-row>
 
-<!-- Admin Actions Bar - Conditionally shown -->
 <c-row *ngIf="canManage" class="mb-4">
     <c-col>
         <c-card class="dashboard-actions-card">
@@ -235,18 +219,25 @@
                     <svg cIcon class="me-2" name="cil-people"></svg>
                     Add New Team
                 </button>
+                <button color="success" cButton (click)="connectProviderModal()"
+                        *ngIf="role=='ADMIN'" cTooltip="Connect to a Git provider to sync all repositories">
+                    <svg cIcon class="me-2" name="cil-sync"></svg>
+                    Connect Repository Provider
+                </button>
+                <button *ngIf="selectedRepos.length > 0 && isAdmin" cButton color="primary" (click)="openChangeTeamModal()">
+                    <svg cIcon name="cil-pencil" class="me-2"></svg>
+                    Edit Selected ({{ selectedRepos.length }})
+                </button>
             </c-card-body>
         </c-card>
     </c-col>
 </c-row>
 
-<!-- Main Dashboard Content -->
 <c-row>
     <c-col xs="12">
         <c-card class="mb-4">
             <c-card-body>
                 <c-tabs [activeItemKey]="0">
-                    <!-- Tab Navigation -->
                     <c-tabs-list variant="underline-border">
                         <button cTab [itemKey]="0" class="px-4 py-3">
                             <svg cIcon name="cil-code" class="me-2"></svg>
@@ -260,12 +251,14 @@
                             <svg cIcon name="cil-people" class="me-2"></svg>
                             Teams
                         </button>
+                        <button cTab [itemKey]="3" class="px-4 py-3" *ngIf="isAdmin">
+                            <svg cIcon name="cil-cloud" class="me-2"></svg>
+                            Repository Providers
+                        </button>
                     </c-tabs-list>
 
-                    <!-- Repositories Tab Content -->
                     <c-tabs-content>
                         <c-tab-panel class="p-3" [itemKey]="0">
-                            <!-- Search & Filter -->
                             <c-row class="mb-4">
                                 <c-col>
                                     <c-input-group class="dashboard-search-box">
@@ -283,7 +276,6 @@
                                 </c-col>
                             </c-row>
 
-                            <!-- Status Legend Toggle -->
                             <c-row class="mb-3">
                                 <c-col>
                                     <button
@@ -298,7 +290,6 @@
                                         {{ showStatusLegend ? 'Hide Status Legend' : 'View Status Legend' }}
                                     </button>
 
-                                    <!-- Collapsible Status Legend -->
                                     <div class="status-legend d-flex gap-4 align-items-center flex-wrap"
                                          *ngIf="showStatusLegend">
                                         <div class="legend-item d-flex align-items-center">
@@ -325,20 +316,22 @@
                                 </c-col>
                             </c-row>
 
-                            <!-- Repository Data Table (Same as original) -->
                             <ngx-datatable
                                     class="bootstrap security-table"
                                     [rows]="rows"
                                     [columns]="columns"
+                                    [selectionType]="selectionType.multiClick"
+                                    (select)="onSelect($event)"
+                                    [selected]="selectedRepos"
+                                    [rowIdentity]="rowIdentity"
+                                    [selectAllRowsOnPage]="false"
                                     [columnMode]="'force'"
                                     [footerHeight]="50"
                                     [headerHeight]="50"
                                     [rowHeight]="'auto'"
-                                    [limit]="10"
-                            >
-                                <!-- Action Column -->
-                                <ngx-datatable-column name="" prop="name2" [width]="60" [sortable]="false"
-                                                      [resizeable]="false">
+                                    [limit]="10">
+
+                                <ngx-datatable-column name="" prop="name2" [width]="60" [sortable]="false" [resizeable]="false">
                                     <ng-template ngx-datatable-cell-template let-row="row">
                                         <button type="button" class="btn btn-sm btn-primary" (click)="click(row)">
                                             <svg cIcon name="cil-magnifying-glass"></svg>
@@ -346,7 +339,6 @@
                                     </ng-template>
                                 </ngx-datatable-column>
 
-                                <!-- Target Column -->
                                 <ngx-datatable-column name="Repository" prop="target" [width]="350">
                                     <ng-template ngx-datatable-cell-template let-row="row">
                                         <div class="d-flex flex-column">
@@ -361,196 +353,39 @@
                                     </ng-template>
                                 </ngx-datatable-column>
 
-                                <!-- Team Column -->
                                 <ngx-datatable-column name="Team" prop="team" [width]="150">
                                     <ng-template ngx-datatable-cell-template let-row="row">
                                         <span class="team-badge">{{ row.team }}</span>
                                     </ng-template>
                                 </ngx-datatable-column>
 
-                                <!-- Security Scan Columns -->
-                                <ngx-datatable-column name="SAST" [width]="100">
-                                    <ng-template ngx-datatable-header-template>
-                                        <span class="scan-type-header" cTooltip="Static Application Security Testing">SAST</span>
-                                    </ng-template>
+                                <ngx-datatable-column name="Security Posture" [width]="320" [sortable]="false">
                                     <ng-template ngx-datatable-cell-template let-row="row">
-                                        <div class="scan-status-cell">
-                                            <div
-                                                    class="scan-status-indicator"
-                                                    [ngClass]="{
-                                                    'danger': row.sast === 'DANGER',
-                                                    'success': row.sast === 'SUCCESS',
-                                                    'warning': row.sast === 'WARNING',
-                                                    'neutral': row.sast === 'NOT_PERFORMED'
-                                                  }"
-                                            >
-                                                <svg *ngIf="row.sast === 'DANGER'" cIcon name="cil-warning"
-                                                     size="md"></svg>
-                                                <svg *ngIf="row.sast === 'SUCCESS'" cIcon name="cil-check"
-                                                     size="md"></svg>
-                                                <svg *ngIf="row.sast === 'WARNING'" cIcon name="cil-warning"
-                                                     size="md"></svg>
-                                                <svg *ngIf="row.sast === 'NOT_PERFORMED'" cIcon name="cil-ban"
-                                                     size="md"></svg>
-                                                <c-spinner *ngIf="row.sast === 'RUNNING'" size="sm"></c-spinner>
+                                        <div class="d-flex align-items-center security-posture-cell">
+
+                                            <div class="overall-risk-indicator me-3" [cTooltip]="'Overall Risk: ' + getOverallRiskStatus(row)">
+                                                <svg cIcon [name]="getOverallRiskIcon(row)" size="lg"
+                                                     [ngClass]="getOverallRiskClass(row)"></svg>
+                                            </div>
+
+                                            <div class="scan-health-bar d-flex flex-wrap gap-1">
+                                                <div class="scan-block" [cTooltip]="'SAST: ' + row.sast" [ngClass]="getScanStatusClass(row.sast)">SAST</div>
+                                                <div class="scan-block" [cTooltip]="'DAST: ' + row.dast" [ngClass]="getScanStatusClass(row.dast)">DAST</div>
+                                                <div class="scan-block" [cTooltip]="'SCA: ' + row.sca" [ngClass]="getScanStatusClass(row.sca)">SCA</div>
+                                                <div class="scan-block" [cTooltip]="'Secrets: ' + row.secrets" [ngClass]="getScanStatusClass(row.secrets)">SECR</div>
+                                                <div class="scan-block" [cTooltip]="'IaC: ' + row.iac" [ngClass]="getScanStatusClass(row.iac)">IAC</div>
+                                                <div class="scan-block" [cTooltip]="'GitLab: ' + row.gitlab" [ngClass]="getScanStatusClass(row.gitlab)">GIT</div>
                                             </div>
                                         </div>
                                     </ng-template>
                                 </ngx-datatable-column>
 
-                                <!-- Security Scan Columns - DAST -->
-                                <ngx-datatable-column name="DAST" [width]="100">
-                                    <ng-template ngx-datatable-header-template>
-                                        <span class="scan-type-header" cTooltip="Dynamic Application Security Testing">DAST</span>
-                                    </ng-template>
-                                    <ng-template ngx-datatable-cell-template let-row="row">
-                                        <div class="scan-status-cell">
-                                            <div
-                                                    class="scan-status-indicator"
-                                                    [ngClass]="{
-                                                    'danger': row.dast === 'DANGER',
-                                                    'success': row.dast === 'SUCCESS',
-                                                    'warning': row.dast === 'WARNING',
-                                                    'neutral': row.dast === 'NOT_PERFORMED'
-                                                  }"
-                                            >
-                                                <svg *ngIf="row.dast === 'DANGER'" cIcon name="cil-warning" size="md"></svg>
-                                                <svg *ngIf="row.dast === 'SUCCESS'" cIcon name="cil-check" size="md"></svg>
-                                                <svg *ngIf="row.dast === 'WARNING'" cIcon name="cil-warning" size="md"></svg>
-                                                <svg *ngIf="row.dast === 'NOT_PERFORMED'" cIcon name="cil-ban" size="md"></svg>
-                                                <c-spinner *ngIf="row.dast === 'RUNNING'" size="sm"></c-spinner>
-                                            </div>
-                                        </div>
-                                    </ng-template>
-                                </ngx-datatable-column>
-                                <!-- SCA Column -->
-                                <ngx-datatable-column name="SCA" [width]="100">
-                                    <ng-template ngx-datatable-header-template>
-                                        <span class="scan-type-header"
-                                              cTooltip="Software Composition Analysis">SCA</span>
-                                    </ng-template>
-                                    <ng-template ngx-datatable-cell-template let-row="row">
-                                        <div class="scan-status-cell">
-                                            <div
-                                                    class="scan-status-indicator"
-                                                    [ngClass]="{
-                                                    'danger': row.sca === 'DANGER',
-                                                    'success': row.sca === 'SUCCESS',
-                                                    'warning': row.sca === 'WARNING',
-                                                    'neutral': row.sca === 'NOT_PERFORMED'
-                                                  }"
-                                            >
-                                                <svg *ngIf="row.sca === 'DANGER'" cIcon name="cil-warning"
-                                                     size="md"></svg>
-                                                <svg *ngIf="row.sca === 'SUCCESS'" cIcon name="cil-check"
-                                                     size="md"></svg>
-                                                <svg *ngIf="row.sca === 'WARNING'" cIcon name="cil-warning"
-                                                     size="md"></svg>
-                                                <svg *ngIf="row.sca === 'NOT_PERFORMED'" cIcon name="cil-ban"
-                                                     size="md"></svg>
-                                                <c-spinner *ngIf="row.sca === 'RUNNING'" size="sm"></c-spinner>
-                                            </div>
-                                        </div>
-                                    </ng-template>
-                                </ngx-datatable-column>
-
-                                <!-- Secrets Column -->
-                                <ngx-datatable-column name="Secrets" [width]="100">
-                                    <ng-template ngx-datatable-header-template>
-                                        <span class="scan-type-header" cTooltip="Secret Detection">Secrets</span>
-                                    </ng-template>
-                                    <ng-template ngx-datatable-cell-template let-row="row">
-                                        <div class="scan-status-cell">
-                                            <div
-                                                    class="scan-status-indicator"
-                                                    [ngClass]="{
-                                                    'danger': row.secrets === 'DANGER',
-                                                    'success': row.secrets === 'SUCCESS',
-                                                    'warning': row.secrets === 'WARNING',
-                                                    'neutral': row.secrets === 'NOT_PERFORMED'
-                                                  }"
-                                            >
-                                                <svg *ngIf="row.secrets === 'DANGER'" cIcon name="cil-warning"
-                                                     size="md"></svg>
-                                                <svg *ngIf="row.secrets === 'SUCCESS'" cIcon name="cil-check"
-                                                     size="md"></svg>
-                                                <svg *ngIf="row.secrets === 'WARNING'" cIcon name="cil-warning"
-                                                     size="md"></svg>
-                                                <svg *ngIf="row.secrets === 'NOT_PERFORMED'" cIcon name="cil-ban"
-                                                     size="md"></svg>
-                                                <c-spinner *ngIf="row.secrets === 'RUNNING'" size="sm"></c-spinner>
-                                            </div>
-                                        </div>
-                                    </ng-template>
-                                </ngx-datatable-column>
-
-                                <!-- IaC Column -->
-                                <ngx-datatable-column name="IaC" [width]="100">
-                                    <ng-template ngx-datatable-header-template>
-                                        <span class="scan-type-header" cTooltip="Infrastructure as Code">IaC</span>
-                                    </ng-template>
-                                    <ng-template ngx-datatable-cell-template let-row="row">
-                                        <div class="scan-status-cell">
-                                            <div
-                                                    class="scan-status-indicator"
-                                                    [ngClass]="{
-                                                    'danger': row.iac === 'DANGER',
-                                                    'success': row.iac === 'SUCCESS',
-                                                    'warning': row.iac === 'WARNING',
-                                                    'neutral': row.iac === 'NOT_PERFORMED'
-                                                  }"
-                                            >
-                                                <svg *ngIf="row.iac === 'DANGER'" cIcon name="cil-warning"
-                                                     size="md"></svg>
-                                                <svg *ngIf="row.iac === 'SUCCESS'" cIcon name="cil-check"
-                                                     size="md"></svg>
-                                                <svg *ngIf="row.iac === 'WARNING'" cIcon name="cil-warning"
-                                                     size="md"></svg>
-                                                <svg *ngIf="row.iac === 'NOT_PERFORMED'" cIcon name="cil-ban"
-                                                     size="md"></svg>
-                                                <c-spinner *ngIf="row.iac === 'RUNNING'" size="sm"></c-spinner>
-                                            </div>
-                                        </div>
-                                    </ng-template>
-                                </ngx-datatable-column>
-                                <!-- GitLab Column -->
-                                <ngx-datatable-column name="GitLab" [width]="100">
-                                    <ng-template ngx-datatable-header-template>
-                                        <span class="scan-type-header"
-                                              cTooltip="GitLab Configuration Security">GitLab</span>
-                                    </ng-template>
-                                    <ng-template ngx-datatable-cell-template let-row="row">
-                                        <div class="scan-status-cell">
-                                            <div
-                                                    class="scan-status-indicator"
-                                                    [ngClass]="{
-                                                    'danger': row.gitlab === 'DANGER',
-                                                    'success': row.gitlab === 'SUCCESS',
-                                                    'warning': row.gitlab === 'WARNING',
-                                                    'neutral': row.gitlab === 'NOT_PERFORMED'
-                                                  }"
-                                            >
-                                                <svg *ngIf="row.gitlab === 'DANGER'" cIcon name="cil-warning"
-                                                     size="md"></svg>
-                                                <svg *ngIf="row.gitlab === 'SUCCESS'" cIcon name="cil-check"
-                                                     size="md"></svg>
-                                                <svg *ngIf="row.gitlab === 'WARNING'" cIcon name="cil-warning"
-                                                     size="md"></svg>
-                                                <svg *ngIf="row.gitlab === 'NOT_PERFORMED'" cIcon name="cil-ban"
-                                                     size="md"></svg>
-                                                <c-spinner *ngIf="row.gitlab === 'RUNNING'" size="sm"></c-spinner>
-                                            </div>
-                                        </div>
-                                    </ng-template>
-                                </ngx-datatable-column>
                             </ngx-datatable>
                         </c-tab-panel>
                     </c-tabs-content>
 
-                    <!-- Cloud Subscriptions Tab Content (Updated to match repository styling) -->
                     <c-tabs-content>
                         <c-tab-panel class="p-3" [itemKey]="1">
-                            <!-- Search & Filter -->
                             <c-row class="mb-4">
                                 <c-col>
                                     <c-input-group class="dashboard-search-box">
@@ -568,7 +403,6 @@
                                 </c-col>
                             </c-row>
 
-                            <!-- Data Table (Updated to match repository styling) -->
                             <ngx-datatable
                                     class="bootstrap security-table"
                                     [rows]="cloudRows"
@@ -579,7 +413,6 @@
                                     [rowHeight]="'auto'"
                                     [limit]="10"
                             >
-                                <!-- Action Column -->
                                 <ngx-datatable-column name="" prop="name2" [width]="60" [sortable]="false"
                                                       [resizeable]="false">
                                     <ng-template ngx-datatable-cell-template let-row="row">
@@ -589,7 +422,6 @@
                                     </ng-template>
                                 </ngx-datatable-column>
 
-                                <!-- Cloud Subscription Column -->
                                 <ngx-datatable-column name="Cloud Subscription" prop="cloudSubscription" [width]="350">
                                     <ng-template ngx-datatable-cell-template let-row="row">
                                         <div class="d-flex flex-column">
@@ -599,14 +431,12 @@
                                     </ng-template>
                                 </ngx-datatable-column>
 
-                                <!-- Team Column -->
                                 <ngx-datatable-column name="Team" prop="team" [width]="150">
                                     <ng-template ngx-datatable-cell-template let-row="row">
                                         <span class="team-badge">{{ row.team }}</span>
                                     </ng-template>
                                 </ngx-datatable-column>
 
-                                <!-- Cloud Scan Column -->
                                 <ngx-datatable-column name="Cloud Scan" [width]="100">
                                     <ng-template ngx-datatable-header-template>
                                         <span class="scan-type-header" cTooltip="Cloud Security Scan">Cloud Scan</span>
@@ -639,10 +469,8 @@
                         </c-tab-panel>
                     </c-tabs-content>
 
-                    <!-- Teams Tab Content (Updated to match repository styling) -->
                     <c-tabs-content>
                         <c-tab-panel class="p-3" [itemKey]="2">
-                            <!-- Search & Filter -->
                             <c-row class="mb-4">
                                 <c-col>
                                     <c-input-group class="dashboard-search-box">
@@ -660,7 +488,6 @@
                                 </c-col>
                             </c-row>
 
-                            <!-- Data Table (Updated to match repository styling) -->
                             <ngx-datatable
                                     class="bootstrap security-table"
                                     [rows]="teams"
@@ -671,7 +498,6 @@
                                     [rowHeight]="'auto'"
                                     [limit]="10"
                             >
-                                <!-- Action Column -->
                                 <ngx-datatable-column name="" prop="name2" [width]="60" [sortable]="false"
                                                       [resizeable]="false">
                                     <ng-template ngx-datatable-cell-template let-row="row">
@@ -681,7 +507,6 @@
                                     </ng-template>
                                 </ngx-datatable-column>
 
-                                <!-- Team Column -->
                                 <ngx-datatable-column name="Team" prop="name" [width]="350">
                                     <ng-template ngx-datatable-cell-template let-row="row">
                                         <div class="d-flex flex-column">
@@ -691,7 +516,6 @@
                                     </ng-template>
                                 </ngx-datatable-column>
 
-                                <!-- SAST Column -->
                                 <ngx-datatable-column name="SAST" [width]="100">
                                     <ng-template ngx-datatable-header-template>
                                         <span class="scan-type-header" cTooltip="Static Application Security Testing">SAST</span>
@@ -721,7 +545,6 @@
                                     </ng-template>
                                 </ngx-datatable-column>
 
-                                <!-- SCA Column -->
                                 <ngx-datatable-column name="SCA" [width]="100">
                                     <ng-template ngx-datatable-header-template>
                                         <span class="scan-type-header"
@@ -752,7 +575,6 @@
                                     </ng-template>
                                 </ngx-datatable-column>
 
-                                <!-- Secrets Column -->
                                 <ngx-datatable-column name="Secrets" [width]="100">
                                     <ng-template ngx-datatable-header-template>
                                         <span class="scan-type-header" cTooltip="Secret Detection">Secrets</span>
@@ -783,7 +605,6 @@
                                     </ng-template>
                                 </ngx-datatable-column>
 
-                                <!-- IaC Column -->
                                 <ngx-datatable-column name="IaC" [width]="100">
                                     <ng-template ngx-datatable-header-template>
                                         <span class="scan-type-header" cTooltip="Infrastructure as Code">IaC</span>
@@ -813,7 +634,6 @@
                                     </ng-template>
                                 </ngx-datatable-column>
 
-                                <!-- GitLab Scan Column -->
                                 <ngx-datatable-column name="Cloud Scan" [width]="100">
                                     <ng-template ngx-datatable-header-template>
                                         <span class="scan-type-header" cTooltip="GitLab Scan">GitLab Scan</span>
@@ -837,7 +657,6 @@
                                     </ng-template>
                                 </ngx-datatable-column>
 
-                                <!-- Cloud Scan Column -->
                                 <ngx-datatable-column name="Cloud Scan" [width]="100">
                                     <ng-template ngx-datatable-header-template>
                                         <span class="scan-type-header" cTooltip="Cloud Security Scan">Cloud Scan</span>
@@ -865,28 +684,65 @@
                             </ngx-datatable>
                         </c-tab-panel>
                     </c-tabs-content>
+
+
+                    <c-tab-panel class="p-3" [itemKey]="3" *ngIf="isAdmin">
+                        <ngx-datatable
+                                class="bootstrap security-table"
+                                [rows]="providerRows"
+                                [columns]="providerColumns"
+                                [columnMode]="'force'"
+                                [footerHeight]="50"
+                                [headerHeight]="50"
+                                [rowHeight]="'auto'"
+                                [limit]="10">
+
+                            <ngx-datatable-column name="Provider" prop="providerType" [width]="120">
+                                <ng-template ngx-datatable-cell-template let-row="row">
+                                    <div class="d-flex align-items-center">
+                                        <svg cIcon *ngIf="row.providerType === 'GITLAB'" name="cib-gitlab" size="xl" class="me-2"></svg>
+                                        <svg cIcon *ngIf="row.providerType === 'GITHUB'" name="cib-github" size="xl" class="me-2"></svg>
+                                        <span class="fw-bold">{{ row.providerType }}</span>
+                                    </div>
+                                </ng-template>
+                            </ngx-datatable-column>
+
+                            <ngx-datatable-column name="API URL" prop="apiUrl"></ngx-datatable-column>
+
+                            <ngx-datatable-column name="Default Team" prop="defaultTeamName"></ngx-datatable-column>
+
+                            <ngx-datatable-column name="Last Sync" prop="lastSyncDate">
+                                <ng-template ngx-datatable-cell-template let-row="row">
+                                    {{ row.lastSyncDate ? (row.lastSyncDate | date:'medium') : 'Never' }}
+                                </ng-template>
+                            </ngx-datatable-column>
+
+                            <ngx-datatable-column name="Synced Repositories" prop="syncedRepoCount">
+                                <ng-template ngx-datatable-cell-template let-row="row">
+                                    {{ row.syncedRepoCount || '0' }}
+                                </ng-template>
+                            </ngx-datatable-column>
+
+                        </ngx-datatable>
+                    </c-tab-panel>
                 </c-tabs>
             </c-card-body>
         </c-card>
     </c-col>
 </c-row>
 
-<!-- Repository List Modal -->
 <c-modal size="xl" id="repoListModal" alignment="center" [visible]="visibleList"
          (visibleChange)="handleListRepoChange($event)">
     <c-modal-header>
         <h5 cModalTitle>Available Repositories</h5>
     </c-modal-header>
     <c-modal-body>
-        <!-- Loading State -->
         <div *ngIf="isLoading" class="text-center p-5">
             <c-spinner color="primary" size="sm"></c-spinner>
             <p class="mt-3">Loading repositories...</p>
         </div>
 
-        <!-- Repository List -->
         <ng-container *ngIf="!isLoading">
-            <!-- Filter Input -->
             <c-input-group class="mb-4">
         <span cInputGroupText>
           <svg cIcon name="cil-magnifying-glass"></svg>
@@ -899,7 +755,6 @@
                 />
             </c-input-group>
 
-            <!-- Repository Table -->
             <ngx-datatable
                     class="bootstrap"
                     [rows]="repoRows"
@@ -930,20 +785,17 @@
     </c-modal-footer>
 </c-modal>
 
-<!-- Import Repository Modal (BULK IMPORT) -->
 <c-modal id="importRepoModal" alignment="center" [visible]="visible" (visibleChange)="handleImportRepoChange($event)">
     <c-modal-header>
         <h5 cModalTitle>Bulk Import Repositories</h5>
     </c-modal-header>
     <c-modal-body>
-        <!-- Introduction -->
         <div class="alert alert-info mb-3">
             <svg cIcon name="cil-info" class="me-2"></svg>
             <strong>Bulk Import:</strong> This option allows you to browse and select multiple repositories from a Git
             provider.
         </div>
 
-        <!-- Repository Type Selection -->
         <div class="repo-type-selector mb-4">
             <h6 class="mb-3">Select Git Provider</h6>
             <div class="d-flex justify-content-center gap-4">
@@ -974,7 +826,6 @@
             </div>
         </div>
 
-        <!-- Import Repository Form -->
         <form [formGroup]="importRepoForm" cForm>
             <div class="mb-3">
                 <label for="repoUrl" class="form-label">
@@ -1076,21 +927,18 @@
     </c-modal-footer>
 </c-modal>
 
-<!-- Single Repository Import Modal -->
 <c-modal id="importSingleRepoModal" alignment="center" [visible]="visibleSingleRepoModal"
          (visibleChange)="handleImportSingleRepoChange($event)">
     <c-modal-header>
         <h5 cModalTitle>Import Single Repository</h5>
     </c-modal-header>
     <c-modal-body>
-        <!-- Introduction -->
         <div class="alert alert-info mb-3">
             <svg cIcon name="cil-info" class="me-2"></svg>
             <strong>Single Import:</strong> This option allows you to import a specific repository by providing its
             direct URL.
         </div>
 
-        <!-- Repository Type Selection -->
         <div class="repo-type-selector mb-4">
             <h6 class="mb-3">Select Git Provider</h6>
             <div class="d-flex justify-content-center gap-4">
@@ -1121,7 +969,6 @@
             </div>
         </div>
 
-        <!-- Import Single Repository Form -->
         <form [formGroup]="importSingleRepoForm" cForm>
             <div class="mb-3">
                 <label for="repoUrl2" class="form-label">
@@ -1222,7 +1069,6 @@
         </button>
     </c-modal-footer>
 </c-modal>
-<!-- Add New Team Modal -->
 <c-modal id="newTeamModal" alignment="center" [visible]="visibleNewTeam" (visibleChange)="handleNewTeam($event)">
     <c-modal-header>
         <h5 cModalTitle>Add New Team</h5>
@@ -1277,7 +1123,6 @@
     </c-modal-footer>
 </c-modal>
 
-<!-- Notification Toast -->
 <c-toaster [placement]="position" class="p-3" position="fixed">
     <c-toast
             [color]="toastStatus"
@@ -1295,3 +1140,96 @@
         </c-toast-body>
     </c-toast>
 </c-toaster>
+
+<c-modal id="connectProviderModal" alignment="center" [visible]="visibleConnectProvider" (visibleChange)="handleConnectProviderChange($event)">
+    <c-modal-header>
+        <h5 cModalTitle>Connect Repository Provider</h5>
+    </c-modal-header>
+    <c-modal-body>
+        <div class="alert alert-info">
+            Connect to a Git provider to automatically discover and import all accessible repositories into a default team.
+        </div>
+        <form [formGroup]="connectProviderForm" cForm>
+            <div class="mb-3">
+                <label class="form-label">Git Provider</label>
+                <div class="form-check">
+                    <input class="form-check-input"
+                           type="radio"
+                           id="gitlabRadio"
+                           name="providerType"
+                           formControlName="providerType"
+                           value="GITLAB">
+                    <label class="form-check-label" for="gitlabRadio">GitLab</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input"
+                           type="radio"
+                           id="githubRadio"
+                           name="providerType"
+                           formControlName="providerType"
+                           value="GITHUB">
+                    <label class="form-check-label" for="githubRadio">GitHub</label>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="apiUrl" class="form-label">API URL</label>
+                <input cFormControl type="url" id="apiUrl" formControlName="apiUrl"
+                       placeholder="e.g., https://api.github.com or https://gitlab.com" required />
+            </div>
+
+            <div class="mb-3">
+                <label for="providerAccessToken" class="form-label">Access Token</label>
+                <input cFormControl type="password" id="providerAccessToken" formControlName="accessToken"
+                       placeholder="Provider access token" required />
+            </div>
+
+            <div class="mb-3">
+                <label for="defaultTeam" class="form-label">Default Team</label>
+                <select cSelect id="defaultTeam" formControlName="defaultTeamId" required>
+                    <option value="" disabled selected>Assign to team...</option>
+                    <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
+                </select>
+            </div>
+        </form>
+
+    </c-modal-body>
+    <c-modal-footer>
+        <button (click)="closeModal()" cButton color="secondary">Cancel</button>
+        <button (click)="onSubmitConnectProvider()" cButton color="primary" [disabled]="connectProviderForm.invalid">
+            Connect and Sync
+        </button>
+    </c-modal-footer>
+</c-modal>
+
+<c-modal id="changeTeamModal" alignment="center" [visible]="visibleChangeTeamModal" (visibleChange)="handleChangeTeamModalChange($event)">
+    <c-modal-header>
+        <h5 cModalTitle>Change Team for Selected Repositories</h5>
+    </c-modal-header>
+    <c-modal-body>
+        <p>You are about to change the team for <strong>{{ selectedRepos.length }}</strong> selected repositories.</p>
+
+        <div class="mb-3">
+            <small>Repositories:</small>
+            <ul class="list-group list-group-flush" style="max-height: 150px; overflow-y: auto;">
+                <li *ngFor="let repo of selectedRepos" class="list-group-item py-1 px-0">{{ repo.target }}</li>
+            </ul>
+        </div>
+
+        <form [formGroup]="changeTeamForm" cForm>
+            <div class="mb-3">
+                <label for="newTeamIdSelect" class="form-label">New Team</label>
+                <select cSelect id="newTeamIdSelect" formControlName="newTeamId" required>
+                    <option value="" disabled selected>Select new team...</option>
+                    <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
+                </select>
+            </div>
+        </form>
+    </c-modal-body>
+    <c-modal-footer>
+        <button (click)="visibleChangeTeamModal = false" cButton color="secondary">Cancel</button>
+        <button (click)="onSubmitChangeTeam()" cButton color="primary" [disabled]="changeTeamForm.invalid">
+            Change Team
+        </button>
+    </c-modal-footer>
+</c-modal>
