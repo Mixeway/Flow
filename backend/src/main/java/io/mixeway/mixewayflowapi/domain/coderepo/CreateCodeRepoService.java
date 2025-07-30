@@ -100,9 +100,11 @@ public class CreateCodeRepoService {
                                             throw new RuntimeException("Failed to create code repo", e);
                                         }
                                     }
-//                                    else {
-//                                        //throw new TeamNotFoundException("[CreateCodeRepoService] Team " + createCodeRepoRequestDto.getTeam() + " not found or repo already exists.");
-//                                    }
+                                    else {
+                                        // FIX: Uncommented this block to throw an exception when the team is not found or the repo already exists.
+                                        log.warn("[CodeRepoService] Trying to add repository that exsits");
+                                        //throw new TeamNotFoundException("[CreateCodeRepoService] Team " + createCodeRepoRequestDto.getTeam() + " not found or repo already exists.");
+                                    }
                                 })
                                 // Schedule the execution of the blocking code on the 'boundedElastic' scheduler.
                                 .subscribeOn(Schedulers.boundedElastic())
