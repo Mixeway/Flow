@@ -7,14 +7,20 @@ import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoResponseDto
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriComponentsBuilder;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,6 +28,51 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class GitHubApiClientService {
     private final WebClient webClient;
+    private static final Pattern NEXT_LINK_PATTERN = Pattern.compile("<(.*?)>; rel=\"next\"");
+
+    /**
+     * Fetches all repositories for the authenticated user from GitHub, handling pagination.
+     * @param repoUrl The base API URL for GitHub (e.g., https://api.github.com).
+     * @param accessToken The personal access token.
+     * @return A Flux emitting all found repositories.
+     */
+    public Flux<ImportCodeRepoGitHubResponseDto> fetchAllRepositories(String repoUrl, String accessToken) {
+        String initialUri = UriComponentsBuilder.fromHttpUrl(repoUrl)
+                .path("/user/repos")
+                .queryParam("per_page", 100)
+                .build()
+                .toUriString();
+        return fetchGitHubRepositoriesPage(initialUri, accessToken);
+    }
+    private Flux<ImportCodeRepoGitHubResponseDto> fetchGitHubRepositoriesPage(String uri, String accessToken) {
+        return webClient.get()
+                .uri(uri)
+                .header("Authorization", "token " + accessToken)
+                .retrieve()
+                .toEntityList(ImportCodeRepoGitHubResponseDto.class)
+                .flatMapMany(responseEntity -> {
+                    Flux<ImportCodeRepoGitHubResponseDto> currentPageRepos = Flux.fromIterable(responseEntity.getBody());
+                    Optional<String> nextUrl = parseNextLinkFromHeader(responseEntity.getHeaders());
+
+                    if (nextUrl.isPresent()) {
+                        return Flux.concat(currentPageRepos, fetchGitHubRepositoriesPage(nextUrl.get(), accessToken));
+                    }
+                    return currentPageRepos;
+                })
+                .doOnError(error -> log.error("Error fetching GitHub repositories from URI {}: {}", uri, error.getMessage()));
+    }
+    private Optional<String> parseNextLinkFromHeader(HttpHeaders headers) {
+        String linkHeader = headers.getFirst("Link");
+        if (linkHeader == null) {
+            return Optional.empty();
+        }
+        Matcher matcher = NEXT_LINK_PATTERN.matcher(linkHeader);
+        if (matcher.find()) {
+            return Optional.of(matcher.group(1));
+        }
+        return Optional.empty();
+    }
+
 
     public Mono<ImportCodeRepoGitHubResponseDto> getProjectInfo(String name, String repoUrl, String accessToken) {
         String apiUrl = String.format("%s/repos/%s", repoUrl, name);

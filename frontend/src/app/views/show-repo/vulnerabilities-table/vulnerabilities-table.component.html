@@ -1,8 +1,6 @@
 <c-card class="vuln-table-card">
-    <!-- Header Section -->
     <c-card-header class="vuln-table-header">
         <div class="filter-controls">
-            <!-- Primary Controls Row -->
             <div class="filter-row primary-controls">
                 <div class="branch-select">
                     <label cLabel for="branchSelect" class="form-label">Branch</label>
@@ -28,6 +26,7 @@
                                     cFormCheckInput
                                     id="showRemoved"
                                     type="checkbox"
+                                    [checked]="showRemoved"
                                     (change)="toggleShowRemoved($event)"
                             />
                             <label cFormCheckLabel for="showRemoved">Show Removed</label>
@@ -38,9 +37,30 @@
                                     cFormCheckInput
                                     id="showSuppressed"
                                     type="checkbox"
+                                    [checked]="showSuppressed"
                                     (change)="toggleShowSuppressed($event)"
                             />
                             <label cFormCheckLabel for="showSuppressed">Show Suppressed</label>
+                        </c-form-check>
+                        <c-form-check class="toggle-check" switch [ngClass]="{'pulse-urgent': hasUrgentFindings && !showUrgent}">
+                            <input
+                                    cFormCheckInput
+                                    id="showUrgent"
+                                    type="checkbox"
+                                    [checked]="showUrgent"
+                                    (change)="toggleShowUrgent($event)"
+                            />
+                            <label cFormCheckLabel for="showUrgent">Urgent Only</label>
+                        </c-form-check>
+                        <c-form-check class="toggle-check" switch [ngClass]="{'pulse-notable': hasNotableFindings && !showNotable}">
+                            <input
+                                    cFormCheckInput
+                                    id="showNotable"
+                                    type="checkbox"
+                                    [checked]="showNotable"
+                                    (change)="toggleShowNotable($event)"
+                            />
+                            <label cFormCheckLabel for="showNotable">Notable Only</label>
                         </c-form-check>
                     </div>
                 </div>
@@ -70,7 +90,6 @@
                 </div>
             </div>
 
-            <!-- Bulk Actions Row (only visible when bulk mode is active) -->
             <div class="bulk-actions-row" *ngIf="bulkActionMode">
                 <div class="bulk-actions-container">
                     <button
@@ -92,9 +111,7 @@
         </div>
     </c-card-header>
 
-    <!-- Table Body -->
     <c-card-body class="vuln-table-body">
-        <!-- Loading State -->
         <div
                 *ngIf="vulnerabilitiesLoading"
                 class="loading-container"
@@ -103,7 +120,6 @@
             <span class="loading-text">Loading vulnerabilities...</span>
         </div>
 
-        <!-- Table Content -->
         <div *ngIf="!vulnerabilitiesLoading" class="table-container">
             <ngx-datatable
                     class="bootstrap vuln-datatable"
@@ -114,7 +130,6 @@
                     [rowHeight]="'auto'"
                     [limit]="vulnerabilitiesLimit"
             >
-                <!-- Checkbox Column -->
                 <ngx-datatable-column
                         *ngIf="bulkActionMode"
                         name="Select"
@@ -156,7 +171,6 @@
                     </ng-template>
                 </ngx-datatable-column>
 
-                <!-- Actions Column -->
                 <ngx-datatable-column
                         name="Actions"
                         [width]="60"
@@ -186,7 +200,6 @@
                     </ng-template>
                 </ngx-datatable-column>
 
-                <!-- Severity Column -->
                 <ngx-datatable-column
                         name="Severity"
                         prop="severity"
@@ -223,7 +236,6 @@
                     </ng-template>
                 </ngx-datatable-column>
 
-                <!-- Name Column -->
                 <ngx-datatable-column name="Name" prop="name" [sortable]="true">
                     <ng-template ngx-datatable-header-template>
                         <div class="column-header">
@@ -238,7 +250,6 @@
                                     />
                                     <svg cIcon name="cil-magnifying-glass" class="search-icon"></svg>
                                 </div>
-                                <!-- Include status filter -->
                                 <select class="form-select form-select-sm mt-1" (change)="updateFilterStatus($event)">
                                     <option value="">All Statuses</option>
                                     <option value="New">New</option>
@@ -269,6 +280,10 @@
                                                 class="meta-icon"
                                         ></svg>
                                         <span [ngClass]="'status-text status-' + row?.status?.toLowerCase()">{{ row?.status }}</span>
+                                        <span *ngIf="row.urgency" class="urgency-badge ms-2" [ngClass]="row.urgency">
+                                            <svg cIcon [name]="row.urgency === 'urgent' ? 'cil-warning' : 'cil-bell'"></svg>
+                                            {{ row.urgency === 'urgent' ? 'Urgent' : 'Notable' }}
+                                        </span>
                                     </div>
                                     <div class="meta-item date-info">
                                         <span class="date-value">Last seen: {{ row?.last_seen | date:'short' }}</span>
@@ -279,7 +294,6 @@
                     </ng-template>
                 </ngx-datatable-column>
 
-                <!-- Source Column -->
                 <ngx-datatable-column
                         name="Source"
                         prop="source"
@@ -317,20 +331,6 @@
                     </ng-template>
                 </ngx-datatable-column>
 
-                <!-- Status filter in Name column header only -->
-                <ng-template #statusFilter>
-                    <div class="filter-container">
-                        <select class="form-select form-select-sm" (change)="updateFilterStatus($event)">
-                            <option value="">All Statuses</option>
-                            <option value="New">New</option>
-                            <option value="Existing">Existing</option>
-                            <option value="Removed">Removed</option>
-                            <option value="Supressed">Suppressed</option>
-                        </select>
-                    </div>
-                </ng-template>
-
-                <!-- Location Column -->
                 <ngx-datatable-column name="Location" prop="location" [sortable]="true">
                     <ng-template ngx-datatable-header-template>
                         <div class="column-header">
@@ -354,24 +354,27 @@
                             let-row="row"
                     >
                         <div class="location-cell">
-                            <a
-                                    [href]="getRepositoryLinkForRow(row)"
-                                    target="_blank"
-                                    class="location-link"
-                                    [cTooltip]="'Open in repository'"
-                            >
-                                <svg cIcon name="cib-git" class="location-icon"></svg>
-                                <span class="location-text">{{ getFormattedLocationForRow(row) }}</span>
-                                <svg cIcon name="cil-external-link" class="external-link-icon" size="sm"></svg>
-                            </a>
+                            <ng-container *ngIf="isLinkableSource(row.source); else plainTextLocation">
+                                <a [href]="getRepositoryLinkForRow(row)"
+                                   target="_blank"
+                                   class="location-link"
+                                   [cTooltip]="'Open in repository'">
+                                    <svg cIcon name="cib-git" class="location-icon" *ngIf="row.source !== 'DAST'"></svg>
+                                    <svg cIcon name="cil-link" class="location-icon" *ngIf="row.source === 'DAST'"></svg>
+                                    <span class="location-text">{{ getFormattedLocationForRow(row) }}</span>
+                                    <svg cIcon name="cil-external-link" class="external-link-icon" size="sm"></svg>
+                                </a>
+                            </ng-container>
+                            <ng-template #plainTextLocation>
+                            <span class="location-text-no-link">
+                                {{ getFormattedLocationForRow(row) }}
+                            </span>
+                            </ng-template>
                         </div>
                     </ng-template>
                 </ngx-datatable-column>
-
-                <!-- Dates column removed -->
             </ngx-datatable>
 
-            <!-- Empty state message -->
             <div *ngIf="filteredVulns.length === 0" class="empty-state">
                 <svg cIcon name="cil-check-circle" width="48" height="48"></svg>
                 <h4>No vulnerabilities found</h4>

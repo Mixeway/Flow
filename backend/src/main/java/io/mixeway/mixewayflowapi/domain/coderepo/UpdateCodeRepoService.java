@@ -228,4 +228,14 @@ public class UpdateCodeRepoService {
         codeRepoRepository.save(codeRepo);
         log.info("Changed team for code repo {} from {} to {}", codeRepo.getId(), codeRepo.getTeam().getName(), newTeam.getName());
     }
+
+    @Modifying
+    @Transactional
+    public void bulkChangeTeam(List<Long> repositoryIds, Team newTeam) {
+        if (repositoryIds == null || repositoryIds.isEmpty()) {
+            throw new IllegalArgumentException("Repository IDs cannot be empty.");
+        }
+        codeRepoRepository.updateTeamForRepositories(repositoryIds, newTeam.getId());
+        log.info("Bulk changed team to '{}' for {} repositories.", newTeam.getName(), repositoryIds.size());
+    }
 }

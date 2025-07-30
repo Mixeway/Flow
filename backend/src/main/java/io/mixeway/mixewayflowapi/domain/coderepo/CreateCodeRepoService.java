@@ -11,6 +11,7 @@ import io.mixeway.mixewayflowapi.domain.coderepobranch.GetOrCreateCodeRepoBranch
 import io.mixeway.mixewayflowapi.domain.organization.OrganizationService;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
+import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoGitHubResponseDto;
 import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoResponseDto;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GetCodeRepoInfoService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.service.SCAService;
@@ -19,6 +20,9 @@ import io.mixeway.mixewayflowapi.utils.PlanManagementService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -40,43 +44,109 @@ public class CreateCodeRepoService {
 
 
 
-    public void createCodeRepo(CreateCodeRepoRequestDto createCodeRepoRequestDto, CodeRepo.RepoType repoType) throws IOException, ScanException, InterruptedException {
-        ImportCodeRepoResponseDto importCodeRepoResponseDto = getCodeRepoInfoService.getRepoResponse(createCodeRepoRequestDto, repoType);
-        Optional<Team> team = findTeamService.findById(createCodeRepoRequestDto.getTeam());
-        Optional<CodeRepo> cr = codeRepoRepository.findByRepourl(importCodeRepoResponseDto.getWebUrl());
+    /**
+     * Reactively creates a CodeRepo. The original blocking logic is wrapped in a Mono
+     * and scheduled to run on a thread pool safe for blocking operations.
+     * The method now returns a Mono<Void> to signal asynchronous completion.
+     */
+    @Transactional
+    public Mono<Void> createCodeRepo(CreateCodeRepoRequestDto createCodeRepoRequestDto, CodeRepo.RepoType repoType) {
+        // Start the reactive chain by calling the non-blocking getRepoResponse method
+        return getCodeRepoInfoService.getRepoResponse(createCodeRepoRequestDto, repoType)
+                .flatMap(repoResponse ->
+                        // Wrap the entire block of existing, blocking logic in a Mono.
+                        // This ensures it doesn't block the reactive pipeline's thread.
+                        Mono.fromRunnable(() -> {
+                                    Optional<Team> team = findTeamService.findById(createCodeRepoRequestDto.getTeam());
+                                    Optional<CodeRepo> cr = codeRepoRepository.findByRepourl(repoResponse.getWebUrl());
 
-        if (team.isPresent() && cr.isEmpty()) {
-            // Check if we're in SaaS mode
-            if (appConfigService.isSaasMode()) {
-                // Validate quota for repository creation
-                organizationService.validateRepositoryAddition(team.get().getId());
-                planManagementService.validateRepositoryAddition(team.get().getId(), team.get().getOrganization());
+                                    if (team.isPresent() && cr.isEmpty()) {
+                                        try {
+                                            // Check if we're in SaaS mode
+                                            if (appConfigService.isSaasMode()) {
+                                                // Validate quota for repository creation
+                                                organizationService.validateRepositoryAddition(team.get().getId());
+                                                planManagementService.validateRepositoryAddition(team.get().getId(), team.get().getOrganization());
+                                            }
 
-            }
+                                            // Continue with existing logic
+                                            CodeRepo codeRepo = new CodeRepo(
+                                                    createCodeRepoRequestDto.getName(),
+                                                    repoResponse.getWebUrl(), createCodeRepoRequestDto.getAccessToken(), team.get(),
+                                                    repoResponse.getId(), repoType);
+                                            codeRepo = codeRepoRepository.save(codeRepo);
+                                            CodeRepoBranch codeRepoBranch = findOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(repoResponse.getDefaultBranch(), codeRepo);
+                                            codeRepo.updateBranch(codeRepoBranch);
+                                            codeRepoRepository.save(codeRepo);
+                                            log.info("[CodeRepoService] Created repo {} in team {} with default branch {}", codeRepo.getRepourl(), team.get().getName(), codeRepoBranch.getName());
+
+                                            // The getRepoLanguages method must also be non-blocking.
+                                            // We block here since we are already on a blocking-safe thread.
+                                            CodeRepo finalCodeRepo = codeRepo;
+                                            getCodeRepoInfoService.getRepoLanguages(codeRepo).block()
+                                                    .forEach(finalCodeRepo::upsertLanguage);
+
+                                            finalCodeRepo = codeRepoRepository.save(finalCodeRepo);
+                                            scaService.createDtrackProject(finalCodeRepo);
+                                            log.info("[CodeRepoService] Creating initial scan for {} default branch {}", codeRepo.getRepourl(), codeRepoBranch.getName());
+                                            scanManagerService.scanRepository(finalCodeRepo, finalCodeRepo.getDefaultBranch(), null, null);
+
+                                            log.info("[CodeRepo] Imported Code repo from {} id {} name {}",
+                                                    repoResponse.getWebUrl(),
+                                                    repoResponse.getId(),
+                                                    repoResponse.getPathWithNamespace());
+                                        } catch (Exception e) {
+                                            // Because we are in a Runnable, we must wrap checked exceptions.
+                                            throw new RuntimeException("Failed to create code repo", e);
+                                        }
+                                    }
+//                                    else {
+//                                        //throw new TeamNotFoundException("[CreateCodeRepoService] Team " + createCodeRepoRequestDto.getTeam() + " not found or repo already exists.");
+//                                    }
+                                })
+                                // Schedule the execution of the blocking code on the 'boundedElastic' scheduler.
+                                .subscribeOn(Schedulers.boundedElastic())
+                ).then(); // .then() converts the result to a Mono<Void> to signal completion.
+    }
 
 
-            // Continue with existing logic
-            CodeRepo codeRepo = new CodeRepo(
-                    createCodeRepoRequestDto.getName(),
-                    importCodeRepoResponseDto.getWebUrl(), createCodeRepoRequestDto.getAccessToken(),team.get(),
-                    importCodeRepoResponseDto.getId(), repoType);
-            codeRepo = codeRepoRepository.save(codeRepo);
-            CodeRepoBranch codeRepoBranch = findOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(importCodeRepoResponseDto.getDefaultBranch(),codeRepo);
-            codeRepo.updateBranch(codeRepoBranch);
-            codeRepoRepository.save(codeRepo);
-            log.info("[CodeRepoService] Created repo {} in team {} with default branch {}", codeRepo.getRepourl(), team.get().getName(), codeRepoBranch.getName());
-            CodeRepo finalCodeRepo = codeRepo;
-            getCodeRepoInfoService.getRepoLanguages(codeRepo).forEach(finalCodeRepo::upsertLanguage);
-            finalCodeRepo = codeRepoRepository.save(finalCodeRepo);
-            scaService.createDtrackProject(finalCodeRepo);
-            log.info("[CodeRepoService] Creating intial scan for {} default branch {}", codeRepo.getRepourl(), codeRepoBranch.getName());
-            scanManagerService.scanRepository(finalCodeRepo, finalCodeRepo.getDefaultBranch(), null, null);
+    /**
+     * Reactively imports a project by calling the reactive createCodeRepo method.
+     * This method MUST return a Mono<Void> to be compatible with the flatMap operator.
+     */
+    @Transactional
+    public Mono<Void> importProjectAsCodeRepo(Object projectDetails, Team team, String accessToken, String apiUrl, CodeRepo.RepoType repoType) {
+        String name;
+        long remoteId;
+
+        if (repoType == CodeRepo.RepoType.GITLAB && projectDetails instanceof ImportCodeRepoResponseDto) {
+            ImportCodeRepoResponseDto gitlabProject = (ImportCodeRepoResponseDto) projectDetails;
+            name = gitlabProject.getPathWithNamespace();
+            remoteId = gitlabProject.getId();
+        } else if (repoType == CodeRepo.RepoType.GITHUB && projectDetails instanceof ImportCodeRepoGitHubResponseDto) {
+            ImportCodeRepoGitHubResponseDto githubRepo = (ImportCodeRepoGitHubResponseDto) projectDetails;
+            name = githubRepo.getPathWithNamespace(); // 'pathWithNamespace' from GitHub DTO is typically 'full_name'
+            remoteId = githubRepo.getId();
         } else {
-            throw new TeamNotFoundException("[CreateCodeRepoService] Team " + createCodeRepoRequestDto.getTeam() + " not found");
+            log.warn("Skipping import due to mismatched project details type or unsupported repo type.");
+            return Mono.empty(); // Return an empty Mono for unsupported cases.
         }
-        log.info("[CodeRepo] Imported Code repo from {} id {} name {}",
-                importCodeRepoResponseDto.getWebUrl(),
-                importCodeRepoResponseDto.getId(),
-                importCodeRepoResponseDto.getPathWithNamespace());
+
+        // Use the static factory method to create the DTO
+        CreateCodeRepoRequestDto requestDto = CreateCodeRepoRequestDto.of(
+                name,
+                apiUrl, // The base API URL for the provider
+                accessToken,
+                remoteId,
+                team.getId()
+        );
+
+        // Call the other reactive method and return its Mono<Void> result.
+        return createCodeRepo(requestDto, repoType)
+                .doOnError(e -> {
+                    // Log the full stack trace for better debugging
+                    log.error("Failed to auto-import repository '{}'. Reason: {}", name, e.getMessage(), e);
+                })
+                .onErrorResume(e -> Mono.empty()); // Prevents one failure from stopping the whole sync process.
     }
 }

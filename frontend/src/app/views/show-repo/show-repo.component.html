@@ -1,4 +1,3 @@
-<!-- Repository Info Component -->
 <app-repository-info
         [repoData]="repoData"
         [scanRunning]="scanRunning"
@@ -10,7 +9,6 @@
         (openChangeTeamModalEvent)="openChangeTeamModal()"
 ></app-repository-info>
 
-<!-- Vulnerability Summary Component -->
 <div class="mt-4">
     <app-vulnerability-summary
             [counts]="counts"
@@ -18,7 +16,6 @@
     ></app-vulnerability-summary>
 </div>
 
-<!-- Main Content with Tabs -->
 <div class="repo-tabs-container mt-4">
     <c-card>
         <c-tabs>
@@ -54,7 +51,6 @@
             </c-tabs-list>
 
             <c-tabs-content>
-                <!-- Vulnerabilities Tab -->
                 <c-tab-panel class="tab-content-panel" [itemKey]="0">
                     <app-vulnerabilities-table
                             [repoData]="repoData"
@@ -63,6 +59,10 @@
                             [selectedBranch]="selectedBranch"
                             [showRemoved]="showRemoved"
                             [showSuppressed]="showSuppressed"
+                            [showUrgent]="showUrgent"
+                            [showNotable]="showNotable"
+                            [hasUrgentFindings]="hasUrgentFindings"
+                            [hasNotableFindings]="hasNotableFindings"
                             [bulkActionMode]="bulkActionMode"
                             [selectedFindings]="selectedFindings"
                             [vulnerabilitiesLoading]="vulnerabilitiesLoading"
@@ -74,6 +74,8 @@
                             (updateFilterSeverityEvent)="updateFilterSeverity($event)"
                             (toggleShowRemovedEvent)="toggleShowRemoved($event)"
                             (toggleShowSuppressedEvent)="toggleShowSuppressed($event)"
+                            (toggleShowUrgentEvent)="toggleShowUrgent($event)"
+                            (toggleShowNotableEvent)="toggleShowNotable($event)"
                             (toggleBulkActionEvent)="toggleBulkAction()"
                             (selectAllFindingsEvent)="selectAllFindings($event)"
                             (onSelectFindingEvent)="onSelectFinding($event.id, $event.event)"
@@ -84,10 +86,8 @@
                     ></app-vulnerabilities-table>
                 </c-tab-panel>
 
-                <!-- Statistics and Trends Tab -->
                 <c-tab-panel class="tab-content-panel" [itemKey]="1">
                     <div class="statistics-container">
-                        <!-- Trend Chart -->
                         <c-card class="trend-chart-card mb-4">
                             <c-card-header class="d-flex justify-content-between align-items-center">
                                 <h5 class="mb-0">Vulnerability Trend - Default Branch</h5>
@@ -100,7 +100,6 @@
                             </c-card-body>
                         </c-card>
 
-                        <!-- Stats Metrics -->
                         <div class="stats-metrics-container">
                             <c-row>
                                 <c-col [md]="6" [sm]="12" class="mb-4">
@@ -164,22 +163,18 @@
                     </div>
                 </c-tab-panel>
 
-                <!-- Scan Info Tab -->
                 <c-tab-panel class="tab-content-panel" [itemKey]="2">
                     <c-card class="scan-info-card">
                         <c-card-header>
                             <h5 class="mb-0">Scan History</h5>
                         </c-card-header>
                         <c-card-body>
-                            <!-- Loading State -->
                             <div *ngIf="scanInfoLoading" class="loading-container">
                                 <c-spinner color="primary"></c-spinner>
                                 <span class="loading-text">Loading scan history...</span>
                             </div>
 
-                            <!-- Content when data is loaded -->
                             <div *ngIf="!scanInfoLoading" class="scan-content">
-                                <!-- Search and Filter Controls -->
                                 <div class="scan-controls">
                                     <div class="scan-search">
                                         <div class="input-group">
@@ -207,7 +202,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Scan History Table -->
                                 <div class="scan-table">
                                     <ngx-datatable
                                             class="bootstrap scan-datatable"
@@ -219,7 +213,6 @@
                                             [limit]="scanInfoLimit"
                                             [sorts]="[{prop: 'insertedDate', dir: 'desc'}]"
                                     >
-                                        <!-- Branch Column -->
                                         <ngx-datatable-column
                                                 name="Branch"
                                                 prop="codeRepoBranch.name"
@@ -239,7 +232,6 @@
                                             </ng-template>
                                         </ngx-datatable-column>
 
-                                        <!-- CommitId Column -->
                                         <ngx-datatable-column
                                                 name="Commit ID"
                                                 prop="commitId"
@@ -258,7 +250,6 @@
                                             </ng-template>
                                         </ngx-datatable-column>
 
-                                        <!-- Scan Date Column -->
                                         <ngx-datatable-column
                                                 name="Scan Date"
                                                 prop="insertedDate"
@@ -278,7 +269,6 @@
                                             </ng-template>
                                         </ngx-datatable-column>
 
-                                        <!-- Results Column -->
                                         <ngx-datatable-column
                                                 name="Results"
                                                 [width]="220"
@@ -386,7 +376,6 @@
                                         </ngx-datatable-column>
                                     </ngx-datatable>
 
-                                    <!-- Empty state for no results -->
                                     <div *ngIf="scanInfosFiltered.length === 0" class="empty-state">
                                         <svg cIcon name="cil-magnifying-glass" width="48" height="48"></svg>
                                         <h5>No scan history found</h5>
@@ -401,7 +390,6 @@
                     </c-card>
                 </c-tab-panel>
 
-                <!-- Data Privacy Tab -->
                 <c-tab-panel class="tab-content-panel" [itemKey]="3">
                     <c-accordion>
                         <ng-container *ngFor="let group of grouppedDataTypes; let i = index">
@@ -440,7 +428,6 @@
                     </c-accordion>
                 </c-tab-panel>
 
-                <!-- OpenSource Components Tab -->
                 <c-tab-panel class="tab-content-panel" [itemKey]="4">
                     <c-card class="components-card">
                         <c-card-header>
@@ -448,7 +435,6 @@
                             <p class="text-muted mb-0">Open-source components identified in the codebase</p>
                         </c-card-header>
                         <c-card-body>
-                            <!-- Components Controls -->
                             <div class="components-controls mb-4">
                                 <div class="components-filter">
                                     <div class="row g-3">
@@ -523,7 +509,6 @@
                                 </div>
                             </div>
 
-                            <!-- Components Table -->
                             <div class="components-table">
                                 <ngx-datatable
                                         class="bootstrap components-datatable"
@@ -534,7 +519,6 @@
                                         [rowHeight]="'auto'"
                                         [limit]="componentsLimit"
                                 >
-                                    <!-- Group Column -->
                                     <ngx-datatable-column name="Group" prop="groupid">
                                         <ng-template
                                                 ngx-datatable-cell-template
@@ -546,7 +530,6 @@
                                         </ng-template>
                                     </ngx-datatable-column>
 
-                                    <!-- Name Column -->
                                     <ngx-datatable-column name="Name" prop="name">
                                         <ng-template
                                                 ngx-datatable-cell-template
@@ -558,7 +541,6 @@
                                         </ng-template>
                                     </ngx-datatable-column>
 
-                                    <!-- Version Column -->
                                     <ngx-datatable-column name="Version" prop="version" [width]="120">
                                         <ng-template
                                                 ngx-datatable-cell-template
@@ -571,7 +553,6 @@
                                     </ngx-datatable-column>
                                 </ngx-datatable>
 
-                                <!-- Empty state for no results -->
                                 <div *ngIf="filteredComponents.length === 0" class="empty-state">
                                     <svg cIcon name="cil-puzzle" width="48" height="48"></svg>
                                     <h5>No components found</h5>
@@ -584,7 +565,6 @@
                     </c-card>
                 </c-tab-panel>
 
-                <!-- Notifications Tab -->
                 <c-tab-panel class="tab-content-panel" [itemKey]="5">
                     <c-alert color="primary" class="d-flex align-items-center">
                         <svg
@@ -603,7 +583,6 @@
                     </c-alert>
                 </c-tab-panel>
 
-                <!-- Additional Infos Tab -->
                 <c-tab-panel class="tab-content-panel" [itemKey]="6">
                     <c-alert color="primary" class="d-flex align-items-center">
                         <svg
@@ -626,7 +605,6 @@
     </c-card>
 </div>
 
-<!-- Vulnerability Details Modal -->
 <app-vulnerability-details
         [detailsModal]="detailsModal"
         [selectedRowId]="selectedRowId"
@@ -647,7 +625,6 @@
         (suppressed)="onFindingSuppressed()"
 ></app-vulnerability-details>
 
-<!-- Toast Notifications -->
 <c-toaster [placement]="position" class="p-3" position="fixed">
     <c-toast
             [color]="toastStatus"
@@ -662,7 +639,6 @@
     </c-toast>
 </c-toaster>
 
-<!-- Add Change Team Modal -->
 <c-modal size="lg"
          id="changeTeamModal"
          alignment="center"
@@ -700,7 +676,6 @@
     </c-modal-footer>
 </c-modal>
 
-<!-- Add Confirmation Modal -->
 <c-modal size="lg"
          id="confirmationModal"
          alignment="center"

@@ -6,13 +6,17 @@ import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoResponseDto
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriComponentsBuilder;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -21,6 +25,56 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class GitLabApiClientService {
     private final WebClient webClient;
+    private static final String PROJECTS_API_PATH = "/api/v4/projects";
+
+    /**
+     * Fetches all accessible projects from GitLab using Flux.expand for robust pagination.
+     * @param repoUrl The base URL of the GitLab instance (e.g., https://gitlab.com).
+     * @param accessToken The personal access token.
+     * @return A Flux emitting all found projects across all pages.
+     */
+    public Flux<ImportCodeRepoResponseDto> fetchAllProjects(String repoUrl, String accessToken) {
+        // Build the initial URI for the first page of results.
+        String initialUri = UriComponentsBuilder.fromHttpUrl(repoUrl)
+                .path(PROJECTS_API_PATH)
+                .queryParam("membership", "true")
+                .queryParam("per_page", 100)
+                .toUriString();
+
+        // Use Flux.expand to recursively fetch pages until there are no more.
+        return fetchGitLabPage(initialUri, accessToken)
+                .expand(response -> {
+                    // Get the 'X-Next-Page' header from the response.
+                    String nextPage = response.getHeaders().getFirst("X-Next-Page");
+                    // If the header exists and is not empty, fetch the next page.
+                    if (nextPage != null && !nextPage.isEmpty()) {
+                        String nextUri = UriComponentsBuilder.fromUriString(initialUri)
+                                .replaceQueryParam("page", nextPage)
+                                .toUriString();
+                        return fetchGitLabPage(nextUri, accessToken);
+                    }
+                    // If there's no next page, return an empty Mono to terminate the expansion.
+                    return Mono.empty();
+                })
+                // Extract the body (the list of projects) from each response.
+                .flatMap(response -> Flux.fromIterable(response.getBody()))
+                .doOnError(error -> log.error("Failed to fetch all GitLab projects.", error));
+    }
+
+
+    /**
+     * Helper method to fetch a single page of projects.
+     * @return A Mono emitting the ResponseEntity which includes headers and the body.
+     */
+    private Mono<ResponseEntity<List<ImportCodeRepoResponseDto>>> fetchGitLabPage(String uri, String accessToken) {
+        return webClient.get()
+                .uri(uri)
+                .header("PRIVATE-TOKEN", accessToken)
+                .retrieve()
+                .toEntityList(ImportCodeRepoResponseDto.class)
+                .doOnError(error -> log.error("Error fetching GitLab projects page from URI {}: {}", uri, error.getMessage()));
+    }
+
 
     public Mono<ImportCodeRepoResponseDto> getProjectInfo(Long id, String repoUrl, String accessToken) {
         String apiUrl = String.format("%s/api/v4/projects/%d", repoUrl, id);

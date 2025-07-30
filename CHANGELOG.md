@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.6] - 2025-07-30
+
+### Introduced
+- Entire Git integration - synchronization automatically with all repositories
+- Possibility to change team from the dashboard
+- Urgent and Notable badges in repo details
+
+### Fixed
+- Filtering in show-repo
+- Location links in show-repo
+- Collision when webhook event have same repository ID across multiple providers
+
+
 ## [1.2.5] - 2025-07-01
 
 ### Introduced

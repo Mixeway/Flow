@@ -45,6 +45,18 @@ export class DashboardService {
         return this.http.get<any>(this.loginUrl + '/api/v1/widget_stats',{ withCredentials: true });
     }
 
+    connectProvider(repo: any): Observable<any> {
+        return this.http.post<any>(this.loginUrl + '/api/v1/repository-provider/connect',repo,{ withCredentials: true });
+    }
 
 
+    getRepositoryProviders() {
+        return this.http.get<any>(this.loginUrl + '/api/v1/repository-provider',{ withCredentials: true });
+
+    }
+
+    changeTeamForRepos(repoIds: any[], newTeamId: number) {
+        return this.http.put<any>(this.loginUrl + '/api/v1/coderepo/bulk/change-team', {"repositoryIds":repoIds,"newTeamId":newTeamId},{ withCredentials: true });
+
+    }
 }

@@ -3,8 +3,10 @@ package io.mixeway.mixewayflowapi.scanmanager.scheduler;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.ScanInfo;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
+import io.mixeway.mixewayflowapi.db.repository.RepositoryProviderRepository;
 import io.mixeway.mixewayflowapi.domain.scaninfo.FindScanInfoService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GetCodeRepoInfoService;
+import io.mixeway.mixewayflowapi.integrations.repo.service.RepositorySyncService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.service.SCAService;
 import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import jakarta.annotation.PostConstruct;
@@ -39,6 +41,8 @@ public class ScanScheduler {
     private final FindScanInfoService findScanInfoService;
     private static final int MAX_REPOS_TO_SCAN = 50; // Maximum number of repositories to scan per day
     private static final int DAYS_SINCE_LAST_SCAN = 7; // Number of days since last scan to trigger a new scan
+    private final RepositoryProviderRepository providerRepository;
+    private final RepositorySyncService syncService;
 
     /**
      * Initializes the SCA environment after the application startup.
@@ -50,6 +54,11 @@ public class ScanScheduler {
         scaService.initialize();
     }
 
+
+    @Scheduled(cron = "0 0 1 * * ?") // Every day at 1:00 AM
+    public void syncAllRepositories() {
+        providerRepository.findAll().forEach(syncService::syncProvider);
+    }
     /**
      * Scheduled task that runs every day at 1 AM.
      * This method fetches cloud vulnerability findings from Cloud Scanner.
@@ -157,12 +166,16 @@ public class ScanScheduler {
     public void runEveryDayAt5AM() throws MalformedURLException {
         Iterable<CodeRepo> codeRepos = codeRepoRepository.findAll();
         for (CodeRepo codeRepo : codeRepos) {
-            for (Map.Entry<String, Integer> entry : getCodeRepoInfoService.getRepoLanguages(codeRepo).entrySet()) {
-                String key = entry.getKey();
-                Integer value = entry.getValue();
-                codeRepo.upsertLanguage(key, value);
+            HashMap<String, Integer> languages = getCodeRepoInfoService.getRepoLanguages(codeRepo).block();
+
+            if (languages != null) {
+                for (Map.Entry<String, Integer> entry : languages.entrySet()) {
+                    String key = entry.getKey();
+                    Integer value = entry.getValue();
+                    codeRepo.upsertLanguage(key, value);
+                }
+                codeRepoRepository.save(codeRepo);
             }
-            codeRepoRepository.save(codeRepo);
         }
         log.info("[Scheduler] Updated metadata of repositories");
     }

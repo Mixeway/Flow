@@ -25,7 +25,7 @@ public class GitLabWebhookService {
 
     public void processPush(GLPushEventDTO gLPushEventDTO)  {
         try {
-            CodeRepo codeRepo = findCodeRepoService.findByRemoteId(gLPushEventDTO.getProject().getId());
+            CodeRepo codeRepo = findCodeRepoService.findByRemoteIdAndRepoUrl(gLPushEventDTO.getProject().getId(),gLPushEventDTO.getProject().getWeb_url());
             CodeRepoBranch codeRepoBranch = getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(gLPushEventDTO.getRef().replace("refs/heads/", ""), codeRepo);
             scanManagerService.scanRepository(codeRepo, codeRepoBranch, gLPushEventDTO.getAfter(), null);
         } catch (Exception e) {
@@ -35,7 +35,7 @@ public class GitLabWebhookService {
 
     public void processMerge(GLMergeEventDTO gLMergeEventDTO)  {
         try {
-            CodeRepo codeRepo = findCodeRepoService.findByRemoteId(gLMergeEventDTO.getProject().getId());
+            CodeRepo codeRepo = findCodeRepoService.findByRemoteIdAndRepoUrl(gLMergeEventDTO.getProject().getId(),gLMergeEventDTO.getProject().getWeb_url());
             CodeRepoBranch codeRepoBranch = getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(gLMergeEventDTO.getObjectAttributes().getSourceBranch(), codeRepo);
             if (gLMergeEventDTO.getObjectAttributes().getState().equals("opened")) {
                 log.info("[GitLab Webhook] Received open Merge Request event, proceeding with scan..");

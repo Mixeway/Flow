@@ -35,4 +35,19 @@ public interface CodeRepoRepository extends CrudRepository<CodeRepo, Long> {
     List<CodeRepo> findByTeam(Team team);
 
     int countByTeam(Team team);
+
+    List<CodeRepo> findByType(CodeRepo.RepoType type);
+
+    @Query("SELECT count(c) FROM CodeRepo c WHERE c.repourl LIKE CONCAT(:gitHostUrl, '%')")
+    long countByRepoUrlStartingWith(@Param("gitHostUrl") String gitHostUrl);
+
+    /**
+     * Updates the team for a given list of repository IDs in a single query.
+     * The @Modifying annotation is required for queries that change data.
+     */
+    @Modifying
+    @Query("UPDATE CodeRepo c SET c.team.id = :newTeamId WHERE c.id IN :repositoryIds")
+    void updateTeamForRepositories(@Param("repositoryIds") List<Long> repositoryIds, @Param("newTeamId") Long newTeamId);
+
+    Optional<CodeRepo> findByRemoteIdAndRepourl(Long id, String repoUrl);
 }
