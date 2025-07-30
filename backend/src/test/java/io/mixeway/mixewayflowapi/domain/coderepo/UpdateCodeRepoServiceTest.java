@@ -110,7 +110,7 @@ class UpdateCodeRepoServiceTest {
         CreateCodeRepoRequestDto dto = CreateCodeRepoRequestDto.of(name, repoUrl, accessToken, remoteId, team.getId());
 
         // Call the createRepo method to create repository
-        createCodeRepoService.createCodeRepo(dto, CodeRepo.RepoType.GITLAB);
+        createCodeRepoService.createCodeRepo(dto, CodeRepo.RepoType.GITLAB).block();
 
         CodeRepo codeRepo = findCodeRepoService.findByRemoteId(9999L);
 
