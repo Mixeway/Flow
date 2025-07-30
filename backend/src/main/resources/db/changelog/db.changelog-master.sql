@@ -766,7 +766,7 @@ create table repository_providers (
     api_url text not null,
     encrypted_access_token text not null,
     default_team_id int references team(id)
-)
+);
 
 --changeset siewrgrz:modify_repo_providers
 alter table repository_providers add column last_sync_date timestamp;
