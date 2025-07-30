@@ -26,6 +26,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.security.Principal;
@@ -98,8 +99,8 @@ class CreateCodeRepoServiceTest {
         importCodeRepoResponseDto.setPathWithNamespace("pathwithnamespace");
 
         when(getCodeRepoInfoService.getRepoResponse(any(CreateCodeRepoRequestDto.class), any(CodeRepo.RepoType.class)))
-                .thenReturn(importCodeRepoResponseDto);
-        when(getCodeRepoInfoService.getRepoLanguages(any(CodeRepo.class))).thenReturn(new HashMap<>());
+                .thenReturn(Mono.just(importCodeRepoResponseDto));
+        when(getCodeRepoInfoService.getRepoLanguages(any(CodeRepo.class))).thenReturn(Mono.just(new HashMap<>()));
 
         Mockito.when(principal.getName()).thenReturn("admin");
 
