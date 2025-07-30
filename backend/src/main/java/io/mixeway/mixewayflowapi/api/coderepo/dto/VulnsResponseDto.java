@@ -14,4 +14,6 @@ public class VulnsResponseDto {
     String inserted;
     @JsonProperty("last_seen")
     String lastSeen;
+    String urgency;
+
 }

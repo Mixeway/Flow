@@ -253,7 +253,12 @@ public class CreateFindingService {
         List<Finding> findings = new ArrayList<>();
 
         if (scanSecurity.getCritical() != null) {
-            findings.addAll(mapItemsToFindings(scanSecurity.getCritical(), codeRepoBranch, codeRepo, Finding.Severity.CRITICAL));
+            findings.addAll(mapItemsToFindings(
+                    scanSecurity.getCritical().stream()
+                            .filter(item -> !item.getTitle().equals("Usage of hard-coded secret"))
+                            .toList(),
+                    codeRepoBranch,
+                    codeRepo, Finding.Severity.CRITICAL));
         }
         if (scanSecurity.getHigh() != null) {
             findings.addAll(mapItemsToFindings(scanSecurity.getHigh(), codeRepoBranch, codeRepo, Finding.Severity.HIGH));

@@ -88,6 +88,7 @@ interface Vulnerability {
     inserted: string;
     last_seen: string;
     status: string;
+    urgency: string;
 }
 
 
@@ -340,6 +341,11 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
 
     showRemoved: boolean = false;
     showSuppressed: boolean = false;
+    showUrgent: boolean = false;
+    showNotable: boolean = false;
+    hasUrgentFindings: boolean = false;
+    hasNotableFindings: boolean = false;
+
     detailsModal: boolean = false;
     selectedRowId: number | null = null;
 
@@ -489,6 +495,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                 this.vulns = response;
                 this.filteredVulns = [...this.vulns];
                 this.counts = this.countFindings(this.vulns);
+                this.checkForSpecialFindings();
                 this.applyFilters();
                 this.vulnerabilitiesLoading = false;
             },
@@ -596,15 +603,38 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         this.applyFilters();
     }
 
+    toggleShowUrgent(event: any) {
+        this.showUrgent = event.target.checked;
+        if (this.showUrgent) {
+            this.showNotable = false;
+        }
+        this.applyFilters();
+    }
+
+    toggleShowNotable(event: any) {
+        this.showNotable = event.target.checked;
+        if (this.showNotable) {
+            this.showUrgent = false;
+        }
+        this.applyFilters();
+    }
+
+    checkForSpecialFindings(): void {
+        this.hasUrgentFindings = this.vulns.some(v => v.urgency === 'urgent' && v.status !== 'REMOVED' && v.status !== 'SUPRESSED');
+        this.hasNotableFindings = this.vulns.some(v => v.urgency === 'notable' && v.status !== 'REMOVED' && v.status !== 'SUPRESSED');
+    }
+
     applyFilters() {
         this.filteredVulns = this.vulns.filter((vuln) => {
+            // Standard text and select filters
             const matchesFilters = Object.keys(this.filters).every((key) => {
                 const filterValue = this.filters[key];
                 if (!filterValue) return true;
 
                 const vulnValue = (vuln as any)[key];
+                if (!vulnValue) return false;
 
-                if (key === 'source') {
+                if (key === 'source' || key === 'urgency') {
                     return vulnValue && vulnValue.toString() === filterValue;
                 }
 
@@ -614,11 +644,19 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                     .includes(filterValue.toLowerCase());
             });
 
+            // Filter for Removed and Suppressed toggles
             const matchesStatus =
                 (this.showRemoved || vuln.status !== 'REMOVED') &&
                 (this.showSuppressed || vuln.status !== 'SUPRESSED');
 
-            return matchesFilters && matchesStatus;
+            // Filter for Urgency and Notable toggles
+            const matchesUrgency = () => {
+                if (this.showUrgent) return vuln.urgency === 'urgent';
+                if (this.showNotable) return vuln.urgency === 'notable';
+                return true; // If no urgency filter is active, don't filter by it
+            };
+
+            return matchesFilters && matchesStatus && matchesUrgency();
         });
     }
 
@@ -701,6 +739,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                 this.vulns = response;
                 this.filteredVulns = [...this.vulns];
                 this.counts = this.countFindings(this.vulns);
+                this.checkForSpecialFindings();
                 this.applyFilters();
                 this.toastStatus = 'success';
                 this.toastMessage = 'Successfully switched to another branch';
@@ -715,16 +754,26 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
             critical: 0,
             high: 0,
             rest: 0,
+            urgent: 0,
+            notable: 0,
         };
 
         vulnerabilities.forEach((vuln) => {
             if (vuln.status === 'EXISTING' || vuln.status === 'NEW') {
+                // Severity counts
                 if (vuln.severity === 'CRITICAL') {
                     counts.critical++;
                 } else if (vuln.severity === 'HIGH') {
                     counts.high++;
                 } else {
                     counts.rest++;
+                }
+
+                // Urgency counts
+                if (vuln.urgency === 'urgent') {
+                    counts.urgent++;
+                } else if (vuln.urgency === 'notable') {
+                    counts.notable++;
                 }
             }
         });
