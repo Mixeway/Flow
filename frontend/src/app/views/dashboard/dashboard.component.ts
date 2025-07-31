@@ -1335,4 +1335,64 @@ export class DashboardComponent implements OnInit {
         }
     }
 
+    /**
+     * Calculates the overall risk status for a team, considering both code repos and cloud subscriptions.
+     * @param team The team object (should have .name property)
+     * @returns The highest severity status string among all scans and cloud subscriptions.
+     */
+    getOverallRiskStatusForTeam(team: Team): string {
+        const teamRepos = this.rows.filter(repo => repo.team.toLowerCase() === team.name.toLowerCase());
+        const teamClouds = this.cloudRows.filter(cloud => cloud.team.toLowerCase() === team.name.toLowerCase());
+
+        const repoStatuses = teamRepos.flatMap(repo => [
+            repo.sast, repo.dast, repo.sca, repo.secrets, repo.iac, repo.gitlab
+        ]);
+        const cloudStatuses = teamClouds.map(cloud => cloud.scanStatus);
+
+        const allStatuses = [...repoStatuses, ...cloudStatuses].map(s => (s || '').toUpperCase());
+
+        if (allStatuses.includes('DANGER')) return 'DANGER';
+        if (allStatuses.includes('RUNNING')) return 'RUNNING';
+        if (allStatuses.includes('WARNING')) return 'WARNING';
+        if (allStatuses.includes('SUCCESS')) return 'SUCCESS';
+        return 'NOT_PERFORMED';
+    }
+
+    /**
+     * Returns the CoreUI icon name based on the overall risk status.
+     * @param row The repository data row.
+     * @returns A string with the icon name (e.g., 'cil-shield-alt').
+     */
+    getOverallRiskIconForTeam(team: Team): string {
+        const status = this.getOverallRiskStatusForTeam(team);
+        switch (status) {
+            case 'DANGER':
+                return 'cil-warning';
+            case 'WARNING':
+                return 'cil-shield-alt';
+            case 'SUCCESS':
+                return 'cil-check-circle';
+            case 'RUNNING':
+                return 'cil-running';
+            default:
+                return 'cil-ban';
+        }
+    }
+
+    getOverallRiskClassForTeam(team: Team): string {
+        const status = this.getOverallRiskStatusForTeam(team);
+        switch (status) {
+            case 'DANGER':
+                return 'text-danger';
+            case 'WARNING':
+                return 'text-warning';
+            case 'SUCCESS':
+                return 'text-success';
+            case 'RUNNING':
+                return 'text-primary';
+            default:
+                return 'text-muted';
+        }
+    }
+
 }
