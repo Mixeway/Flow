@@ -24,8 +24,9 @@ ENV JAVA_HOME=/usr/local/jdk-22
 ENV PATH="$JAVA_HOME/bin:$PATH"
 
 # Then continue with your maven build
-# Copy the pom.xml and the project files to the container
+# Copy the pom.xml, requirements.txt and the project files to the container
 COPY pom.xml .
+COPY requirements.txt .
 COPY src ./src
 # Build the application using Maven
 RUN mvn clean package -DskipTests
@@ -85,6 +86,9 @@ RUN wget https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.
     && rm /tmp/gradle-${GRADLE_VERSION}-bin.zip
 ENV GRADLE_HOME=/opt/gradle/gradle-${GRADLE_VERSION}
 ENV PATH="$PATH:$GRADLE_HOME/bin"
+
+# Install Python dependencies
+RUN pip install -r requirements.txt
 
 # Install ZAP
 RUN wget https://github.com/zaproxy/zaproxy/releases/download/v2.16.1/ZAP_2.16.1_Linux.tar.gz && \
