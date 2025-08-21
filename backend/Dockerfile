@@ -27,6 +27,11 @@ ENV PATH="$JAVA_HOME/bin:$PATH"
 # Copy the pom.xml and the project files to the container
 COPY pom.xml .
 COPY src ./src
+
+# Copy the python secret filtering scripts to the app directory
+COPY src/main/java/io/mixeway/mixewayflowapi/integrations/scanner/secrets/service/secrets_filtering_service.py .
+COPY src/main/java/io/mixeway/mixewayflowapi/integrations/scanner/secrets/service/secrets_verifying_service.py .
+
 # Build the application using Maven
 RUN mvn clean package -DskipTests
 
