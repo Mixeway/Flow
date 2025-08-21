@@ -92,6 +92,7 @@ COPY src/main/java/io/mixeway/mixewayflowapi/integrations/scanner/secrets/servic
 COPY src/main/java/io/mixeway/mixewayflowapi/integrations/scanner/secrets/service/secrets_verifying_service.py .
 
 # Install Python dependencies
+RUN apt-get update && apt-get install -y libenchant-2-2
 COPY requirements.txt .
 RUN pip install -r requirements.txt --break-system-packages
 
