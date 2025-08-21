@@ -88,7 +88,7 @@ ENV GRADLE_HOME=/opt/gradle/gradle-${GRADLE_VERSION}
 ENV PATH="$PATH:$GRADLE_HOME/bin"
 
 # Install Python dependencies
-RUN pip install -r requirements.txt
+RUN pip install -r requirements.txt --break-system-packages
 
 # Install ZAP
 RUN wget https://github.com/zaproxy/zaproxy/releases/download/v2.16.1/ZAP_2.16.1_Linux.tar.gz && \
