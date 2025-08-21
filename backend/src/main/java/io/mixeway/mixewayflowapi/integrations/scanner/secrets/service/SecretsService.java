@@ -50,8 +50,7 @@ public class SecretsService {
         String secretsJsonPath = repoDir + File.separator + "secrets.json";
         List<Secret> secrets = objectMapper.readValue(new File(secretsJsonPath), new TypeReference<List<Secret>>() {});
 
-        String scriptDir = Paths.get("backend", "src", "main", "java", "io", "mixeway", "mixewayflowapi", "integrations", "scanner", "secrets", "service").toString();
-        String scriptPath = Paths.get(scriptDir, "secrets_filtering_service.py").toString();
+        String scriptPath = "/app/secrets_filtering_service.py";
         ProcessBuilder pythonPb = new ProcessBuilder("python3", scriptPath, secretsJsonPath);
         pythonPb.directory(new File(repoDir));
         pythonPb.redirectErrorStream(true);
