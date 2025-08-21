@@ -28,10 +28,6 @@ ENV PATH="$JAVA_HOME/bin:$PATH"
 COPY pom.xml .
 COPY src ./src
 
-# Copy the python secret filtering scripts to the app directory
-COPY src/main/java/io/mixeway/mixewayflowapi/integrations/scanner/secrets/service/secrets_filtering_service.py .
-COPY src/main/java/io/mixeway/mixewayflowapi/integrations/scanner/secrets/service/secrets_verifying_service.py .
-
 # Build the application using Maven
 RUN mvn clean package -DskipTests
 
@@ -90,6 +86,10 @@ RUN wget https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.
     && rm /tmp/gradle-${GRADLE_VERSION}-bin.zip
 ENV GRADLE_HOME=/opt/gradle/gradle-${GRADLE_VERSION}
 ENV PATH="$PATH:$GRADLE_HOME/bin"
+
+# Copy the python secret filtering scripts to the app directory
+COPY src/main/java/io/mixeway/mixewayflowapi/integrations/scanner/secrets/service/secrets_filtering_service.py .
+COPY src/main/java/io/mixeway/mixewayflowapi/integrations/scanner/secrets/service/secrets_verifying_service.py .
 
 # Install Python dependencies
 COPY requirements.txt .
