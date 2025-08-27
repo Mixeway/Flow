@@ -771,3 +771,12 @@ create table repository_providers (
 --changeset siewrgrz:modify_repo_providers
 alter table repository_providers add column last_sync_date timestamp;
 alter table repository_providers add column synced_repo_count int;
+
+--changeset bondtom:create_constraint_table
+create table constraint_table (
+    id              bigserial primary key,
+    text            text not null,
+    vulnerability_id bigint not null references vulnerability(id)
+);
+
+create index idx_constraint_table_vulnerability_id on constraint_table(vulnerability_id);
