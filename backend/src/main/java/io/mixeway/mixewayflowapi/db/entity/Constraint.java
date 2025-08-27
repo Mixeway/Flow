@@ -28,8 +28,7 @@ public final class Constraint {
     @Setter @Getter
     private Vulnerability vulnerability;
 
-
-    protected Constraint() {
+    public Constraint() {
         this.id = 0;
         this.text = null;
     }
