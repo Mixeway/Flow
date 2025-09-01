@@ -40,7 +40,7 @@ COPY --from=maven_build /app/target/MixewayFlowAPI-0.0.1-SNAPSHOT.jar flowapi.ja
 # Install dependencies, Node.js, Maven, Python, pip, and Firefox
 RUN apt-get update && \
     apt-get install -y curl cron firefox-esr && \
-    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y \
         wget \
         unzip \
