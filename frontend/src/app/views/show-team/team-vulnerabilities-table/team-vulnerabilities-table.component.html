@@ -43,13 +43,6 @@
             <c-spinner color="primary"></c-spinner>
         </div>
 
-        <!-- Empty state -->
-        <div *ngIf="!vulnerabilitiesLoading && filteredVulns.length === 0" class="empty-state">
-            <svg cIcon name="cilShieldAlt"></svg>
-            <h5>No vulnerabilities found</h5>
-            <p>There are no vulnerabilities matching your current filters. Try adjusting your filter criteria or scan your repositories again.</p>
-        </div>
-
         <!-- Vulnerability table -->
         <div *ngIf="!vulnerabilitiesLoading && filteredVulns.length > 0">
             <ngx-datatable
@@ -233,6 +226,22 @@
                     </ng-template>
                 </ngx-datatable-column>
 
+                <!-- Component Column -->
+                <ngx-datatable-column name="Component" prop="component_name" [minWidth]="125">
+                    <ng-template ngx-datatable-header-template>
+                        <input
+                                type="text"
+                                class="form-control filter-input"
+                                placeholder="Search component..."
+                                (input)="updateFilterComponent($event)">
+                    </ng-template>
+                    <ng-template ngx-datatable-cell-template let-row="row">
+                        <div class="location-display">
+                            {{ row?.component_name }}
+                        </div>
+                    </ng-template>
+                </ngx-datatable-column>
+
                 <!-- Location Column -->
                 <ngx-datatable-column name="Location" prop="component_name" [minWidth]="150">
                     <ng-template ngx-datatable-header-template>
@@ -250,5 +259,14 @@
                 </ngx-datatable-column>
             </ngx-datatable>
         </div>
+
+
+            <div *ngIf="!vulnerabilitiesLoading && filteredVulns.length === 0" class="empty-state">
+                <svg cIcon name="cil-check-circle" width="48" height="48"></svg>
+                <h4>No vulnerabilities found</h4>
+                <p>No vulnerabilities match your current filter criteria.</p>
+                <button cButton color="primary" (click)="clearFilters()">Clear filters</button>
+            </div>
+
     </c-card-body>
 </c-card>

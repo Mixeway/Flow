@@ -100,8 +100,9 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
            "AND (COALESCE(:severity, f.severity) = f.severity) " +
            "AND (COALESCE(:source, f.source) = f.source) " +
            "AND (COALESCE(:status, f.status) = f.status) " +
-           "AND (:epss IS NULL OR v.epss >= :epss)")
-    Page<Finding> findByCodeReposPageable(@Param("codeRepos") List<CodeRepo> codeRepos, Pageable pageable,  @Param("severity") String severity, @Param("source") String source, @Param("status") String status, @Param("epss") BigDecimal epss);
+           "AND (:epss IS NULL OR v.epss >= :epss)" +
+           "AND (COALESCE(:kev, v.exploitExists) = v.exploitExists)")
+    Page<Finding> findByCodeReposPageable(@Param("codeRepos") List<CodeRepo> codeRepos, Pageable pageable,  @Param("severity") String severity, @Param("source") String source, @Param("status") String status, @Param("epss") BigDecimal epss,  @Param("kev")  Boolean exploitExists);
 
     @Query("SELECT f FROM Finding f " +
            "JOIN f.vulnerability v " +
@@ -109,8 +110,9 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
            "AND (COALESCE(:severity, f.severity) = f.severity) " +
            "AND (COALESCE(:source, f.source) = f.source) " +
            "AND (COALESCE(:status, f.status) = f.status) " +
-           "AND (:epss IS NULL OR v.epss >= :epss)")
-    Page<Finding> findByCloudSubscriptionsPageable(@Param("cloudSubscriptions") List<CloudSubscription> cloudSubscriptions, Pageable pageable, @Param("severity") String severity, @Param("source") String source, @Param("status") String status, @Param("epss") BigDecimal epss);
+           "AND (:epss IS NULL OR v.epss >= :epss)" +
+           "AND (COALESCE(:kev, v.exploitExists) = v.exploitExists)")
+    Page<Finding> findByCloudSubscriptionsPageable(@Param("cloudSubscriptions") List<CloudSubscription> cloudSubscriptions, Pageable pageable, @Param("severity") String severity, @Param("source") String source, @Param("status") String status, @Param("epss") BigDecimal epss,  @Param("kev")  Boolean exploitExists);
 
 }
 

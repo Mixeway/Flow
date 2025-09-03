@@ -125,9 +125,14 @@ public class FindingsByTeamService {
         String status = filters.getOrDefault("status", null);
         String epssString = filters.getOrDefault("epss", null);
         BigDecimal epss = (epssString != null) ? new BigDecimal(epssString) : null;
+        String kevStr = filters.getOrDefault("kev", null);
+        Boolean kev = null;
+        if ("t".equalsIgnoreCase(kevStr) || "true".equalsIgnoreCase(kevStr)) kev = true;
+        else if ("f".equalsIgnoreCase(kevStr) || "false".equalsIgnoreCase(kevStr)) kev = false;
 
-        Page<Finding> codeRepoFindingsPage = findingRepository.findByCodeReposPageable(codeRepos, pageable, severity, source, status, epss);
-        Page<Finding> cloudSubscriptionFindingsPage = findingRepository.findByCloudSubscriptionsPageable(cloudSubscriptions, pageable, severity, source, status, epss);
+
+        Page<Finding> codeRepoFindingsPage = findingRepository.findByCodeReposPageable(codeRepos, pageable, severity, source, status, epss, kev);
+        Page<Finding> cloudSubscriptionFindingsPage = findingRepository.findByCloudSubscriptionsPageable(cloudSubscriptions, pageable, severity, source, status, epss, kev);
 
         List<Finding> combinedFindings = Stream.concat(
                 codeRepoFindingsPage.getContent().stream(),

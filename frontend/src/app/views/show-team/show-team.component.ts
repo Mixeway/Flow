@@ -82,6 +82,7 @@ import {TeamScanInfoComponent} from "./team-scan-info/team-scan-info.component";
 import {TeamStatisticsChartComponent} from "./team-statistics-chart/team-statistics-chart.component";
 import {TeamVulnerabilitiesTableComponent} from "./team-vulnerabilities-table/team-vulnerabilities-table.component";
 import {forkJoin} from "rxjs";
+import {VulnerabilitiesTableComponent} from "../show-repo/vulnerabilities-table/vulnerabilities-table.component";
 
 interface Vulnerability {
     id: number;
@@ -218,6 +219,7 @@ interface TeamUser {
         TeamScanInfoComponent,
         TeamStatisticsChartComponent,
         TeamVulnerabilitiesTableComponent,
+        VulnerabilitiesTableComponent,
     ],
     templateUrl: './show-team.component.html',
     styleUrls: ['./show-team.component.scss'],
@@ -802,6 +804,7 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
 
     suppressFinding() {
         // Implement your logic to handle the suppression of the finding here
+        console.log( this.suppressReason)
         if (this.selectedRowId && this.suppressReason) {
             this.teamFindingsService
                 .supressFinding(+this.teamId, this.selectedRowId, this.suppressReason)
@@ -814,6 +817,7 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
                     },
                 });
         }
+        console.log(this.teamId, this.selectedRowId, this.suppressReason)
         this.closeModal();
         this.applyFilters();
     }
@@ -1260,6 +1264,21 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
         const fileName = filePath.split('/').pop();
         return `${fileName}:${lineNumber}`;
 
+    }
+
+    clearVulnerabilityFilters(): void {
+        this.filters = {
+            actions: '',
+            name: '',
+            location: '',
+            source: '',
+            status: '',
+            severity: '',
+            dates: '',
+        };
+        this.showRemoved = false;
+        this.showSuppressed = false;
+        this.applyFilters();
     }
 
     // openChangeTeamModal() {
