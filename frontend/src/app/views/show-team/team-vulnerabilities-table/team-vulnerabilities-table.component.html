@@ -7,7 +7,8 @@
             </div>
 
             <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="showSuppressed" (change)="toggleShowSuppressed($event)">
+                <input class="form-check-input" type="checkbox" id="showSuppressed"
+                       (change)="toggleShowSuppressed($event)">
                 <label class="form-check-label ms-2" for="showSuppressed">Show Suppressed</label>
             </div>
 
@@ -19,7 +20,8 @@
 
             <div class="ms-auto d-flex align-items-center">
                 <label class="me-2 mb-0">Show</label>
-                <select class="form-select w-auto" [(ngModel)]="vulnerabilitiesLimit" (ngModelChange)="onLimitChange($event)">
+                <select class="form-select w-auto" [(ngModel)]="vulnerabilitiesLimit"
+                        (ngModelChange)="onLimitChange($event)">
                     <option [value]="10">10</option>
                     <option [value]="20">20</option>
                     <option [value]="50">50</option>
@@ -71,10 +73,12 @@
                     <ng-template ngx-datatable-cell-template let-row="row">
                         <div class="custom-checkbox">
                             <ng-container *ngIf="row?.source !== 'CLOUD_SCANNER'; else cloudScanner">
-                                <input type="checkbox" cFormCheckInput [checked]="isSelected(row.id)" (change)="onSelectFinding(row.id, $event)">
+                                <input type="checkbox" cFormCheckInput [checked]="isSelected(row.id)"
+                                       (change)="onSelectFinding(row.id, $event)">
                             </ng-container>
                             <ng-template #cloudScanner>
-                                <div cTooltip="Cloud issues can only be suppressed in the source system" tooltipPlacement="right">
+                                <div cTooltip="Cloud issues can only be suppressed in the source system"
+                                     tooltipPlacement="right">
                                     <input type="checkbox" cFormCheckInput disabled>
                                 </div>
                             </ng-template>
@@ -83,12 +87,14 @@
                 </ngx-datatable-column>
 
                 <!-- Action Column -->
-                <ngx-datatable-column [width]="60" [sortable]="false" [resizeable]="false" [draggable]="false" [canAutoResize]="false">
+                <ngx-datatable-column [width]="60" [sortable]="false" [resizeable]="false" [draggable]="false"
+                                      [canAutoResize]="false">
                     <ng-template ngx-datatable-header-template>
                         <div class="text-center">Action</div>
                     </ng-template>
                     <ng-template ngx-datatable-cell-template let-row="row">
-                        <button cButton class="action-btn" color="info" variant="outline" (click)="click(row)" cTooltip="View details">
+                        <button cButton class="action-btn" color="info" variant="outline" (click)="click(row)"
+                                cTooltip="View details">
                             <svg cIcon name="cilMagnifyingGlass"></svg>
                         </button>
                     </ng-template>
@@ -229,11 +235,18 @@
                 <!-- Component Column -->
                 <ngx-datatable-column name="Component" prop="component_name" [minWidth]="125">
                     <ng-template ngx-datatable-header-template>
-                        <input
-                                type="text"
-                                class="form-control filter-input"
-                                placeholder="Search component..."
-                                (input)="updateFilterComponent($event)">
+                        <div class="column-header">
+                            <div class="multi-filter-container">
+                                <span>Component</span>
+                                <div class="search-input">
+                                    <input
+                                            type="text"
+                                            class="form-control filter-input"
+                                            placeholder="Search component..."
+                                            (input)="updateFilterComponent($event)">
+                                </div>
+                            </div>
+                        </div>
                     </ng-template>
                     <ng-template ngx-datatable-cell-template let-row="row">
                         <div class="location-display">
@@ -245,11 +258,18 @@
                 <!-- Location Column -->
                 <ngx-datatable-column name="Location" prop="component_name" [minWidth]="150">
                     <ng-template ngx-datatable-header-template>
-                        <input
-                                type="text"
-                                class="form-control filter-input"
-                                placeholder="Search location..."
-                                (input)="updateFilterComponent($event)">
+                        <div class="column-header">
+                            <div class="multi-filter-container">
+                                <span>Location</span>
+                                <div class="search-input">
+                                    <input
+                                            type="text"
+                                            class="form-control filter-input"
+                                            placeholder="Search location..."
+                                            (input)="updateFilterComponent($event)">
+                                </div>
+                            </div>
+                        </div>
                     </ng-template>
                     <ng-template ngx-datatable-cell-template let-row="row">
                         <div class="location-display">
@@ -261,12 +281,12 @@
         </div>
 
 
-            <div *ngIf="!vulnerabilitiesLoading && filteredVulns.length === 0" class="empty-state">
-                <svg cIcon name="cil-check-circle" width="48" height="48"></svg>
-                <h4>No vulnerabilities found</h4>
-                <p>No vulnerabilities match your current filter criteria.</p>
-                <button cButton color="primary" (click)="clearFilters()">Clear filters</button>
-            </div>
+        <div *ngIf="!vulnerabilitiesLoading && filteredVulns.length === 0" class="empty-state">
+            <svg cIcon name="cil-check-circle" width="48" height="48"></svg>
+            <h4>No vulnerabilities found</h4>
+            <p>No vulnerabilities match your current filter criteria.</p>
+            <button cButton color="primary" (click)="clearFilters()">Clear filters</button>
+        </div>
 
     </c-card-body>
 </c-card>
