@@ -63,7 +63,8 @@
                             (onSelectFindingEvent)="onSelectFinding($event.id, $event.event)"
                             (suppressSelectedFindingsEvent)="suppressSelectedFindings()"
                             (vulnerabilitiesLimitChange)="vulnerabilitiesLimit = $event"
-                            (viewVulnerabilityDetailsEvent)="click($event)">
+                            (viewVulnerabilityDetailsEvent)="click($event)"
+                            (clearFiltersEvent)="clearVulnerabilityFilters()">
                     </app-team-vulnerabilities-table>
                 </c-tab-panel>
 

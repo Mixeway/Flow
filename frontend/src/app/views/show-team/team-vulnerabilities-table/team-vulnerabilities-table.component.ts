@@ -81,6 +81,16 @@ export class TeamVulnerabilitiesTableComponent {
   @Output() suppressSelectedFindingsEvent = new EventEmitter<void>();
   @Output() vulnerabilitiesLimitChange = new EventEmitter<number>();
   @Output() viewVulnerabilityDetailsEvent = new EventEmitter<Vulnerability>();
+  @Output() clearFiltersEvent = new EventEmitter<void>();
+
+
+  filters: { [key: string]: string } = {
+    name: '',
+    location: '',
+    source: '',
+    status: '',
+    severity: '',
+  };
 
   updateFilterName(event: any): void {
     this.updateFilterNameEvent.emit(event);
@@ -138,4 +148,9 @@ export class TeamVulnerabilitiesTableComponent {
   click(row: Vulnerability): void {
     this.viewVulnerabilityDetailsEvent.emit(row);
   }
+
+  clearFilters(): void {
+    this.clearFiltersEvent.emit();
+  }
+
 }
