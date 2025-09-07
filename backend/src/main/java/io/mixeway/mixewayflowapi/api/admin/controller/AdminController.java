@@ -1,9 +1,6 @@
 package io.mixeway.mixewayflowapi.api.admin.controller;
 
-import io.mixeway.mixewayflowapi.api.admin.dto.AdditionalScannerConfigDto;
-import io.mixeway.mixewayflowapi.api.admin.dto.ConfigScaRequestDto;
-import io.mixeway.mixewayflowapi.api.admin.dto.ConfigSmtpRequestDto;
-import io.mixeway.mixewayflowapi.api.admin.dto.ConfigWizRequestDto;
+import io.mixeway.mixewayflowapi.api.admin.dto.*;
 import io.mixeway.mixewayflowapi.api.admin.service.AdminApiService;
 import io.mixeway.mixewayflowapi.db.entity.Settings;
 import io.mixeway.mixewayflowapi.utils.StatusDTO;
@@ -70,6 +67,17 @@ public class AdminController {
             return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.OK);
         } catch (Exception e) {
             log.error("[AdminSettings] Error changing Wiz config {}", e.getLocalizedMessage());
+            return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
+        }
+    }
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @PostMapping(value = "/api/v1/admin/settings/other")
+    public ResponseEntity<StatusDTO> changeOtherConfig(@Valid @RequestBody OtherConfigRequestDto otherConfigRequestDto) {
+        try {
+            adminApiService.otherConfig(otherConfigRequestDto);
+            return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("[AdminSettings] Error changing config {}", e.getLocalizedMessage());
             return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
         }
     }

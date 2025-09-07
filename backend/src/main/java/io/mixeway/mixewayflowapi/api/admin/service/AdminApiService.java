@@ -1,13 +1,11 @@
 package io.mixeway.mixewayflowapi.api.admin.service;
 
-import io.mixeway.mixewayflowapi.api.admin.dto.AdditionalScannerConfigDto;
-import io.mixeway.mixewayflowapi.api.admin.dto.ConfigScaRequestDto;
-import io.mixeway.mixewayflowapi.api.admin.dto.ConfigSmtpRequestDto;
-import io.mixeway.mixewayflowapi.api.admin.dto.ConfigWizRequestDto;
+import io.mixeway.mixewayflowapi.api.admin.dto.*;
 import io.mixeway.mixewayflowapi.db.entity.Settings;
 import io.mixeway.mixewayflowapi.domain.settings.FindSettingsService;
 import io.mixeway.mixewayflowapi.domain.settings.UpdateSettingsService;
 import io.mixeway.mixewayflowapi.exceptions.SettingsException;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -42,4 +40,7 @@ public class AdminApiService {
         return settings.isEnableWiz();
     }
 
+    public void otherConfig(OtherConfigRequestDto otherConfigRequestDto) throws SettingsException {
+        updateSettingsService.changeSettingsOther(otherConfigRequestDto);
+    }
 }
