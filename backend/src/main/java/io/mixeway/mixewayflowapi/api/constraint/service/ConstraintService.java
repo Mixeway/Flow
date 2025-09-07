@@ -38,4 +38,5 @@ public class ConstraintService {
     public void deleteConstraint(Long id) {
         constraintRepository.deleteById(id);
     }
+
 }

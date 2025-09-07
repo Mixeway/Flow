@@ -16,6 +16,9 @@
                         <button cTab [itemKey]="3" class="d-flex align-items-center">
                             <svg cIcon name="cil-building" class="me-2"></svg> Organizations
                         </button>
+                        <button cTab [itemKey]="4" class="d-flex align-items-center">
+                            <svg cIcon name="cil-settings" class="me-2"></svg> Other
+                        </button>
                     </c-tabs-list>
                     <c-tabs-content>
                         <c-tab-panel class="p-4" [itemKey]="0">
@@ -392,6 +395,23 @@
                                 </div>
                                 <button cButton color="primary" class="mt-3" (click)="saveRunMode()">Save Run Mode</button>
                             </div>
+                        </c-tab-panel>
+
+                        <c-tab-panel class="p-4" [itemKey]="4">
+                            <!-- Other Configuration -->
+                            <div class="config-section p-4 rounded shadow-sm">
+                                <h4 class="mb-3 section-title">Other Settings</h4>
+                                <div class="col-md-6">
+                                    <label cLabel for="geminiApiKey" class="mb-2">Gemini API Key</label>
+                                    <input id="geminiApiKey"
+                                           [(ngModel)]="geminiApiKey"
+                                           required
+                                           type="text"
+                                           class="form-control"
+                                           placeholder="Enter Gemini API key" />
+                                </div>
+                            </div>
+                            <button cButton color="primary" class="mt-3" (click)="saveOtherConfigurationSettings()">Save Configuration</button>
                         </c-tab-panel>
                     </c-tabs-content>
                 </c-tabs>

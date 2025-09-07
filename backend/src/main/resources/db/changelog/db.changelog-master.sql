@@ -780,3 +780,6 @@ create table constraint_table (
 );
 
 create index idx_constraint_table_vulnerability_id on constraint_table(vulnerability_id);
+
+--changeset bondtom:add
+alter table settings add column gemini_api_key VARCHAR(255);

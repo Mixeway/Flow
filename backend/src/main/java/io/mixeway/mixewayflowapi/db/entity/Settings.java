@@ -3,6 +3,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Getter
@@ -74,6 +75,10 @@ public class Settings {
 
     @Column(name = "wiz_client_id")
     private String wizClientId;
+
+    @Column(name = "gemini_api_key")
+    @Setter
+    private String geminiApiKey;
 
     public void enableWiz(String clientId, String secret) {
         this.enableWiz = true;
@@ -152,4 +157,5 @@ public class Settings {
         this.scaApiKey = apikey;
         this.scaApiUrl = hostname;
     }
+
 }
