@@ -1,14 +1,10 @@
 import {Component, OnInit} from '@angular/core';
 import {
-    AccordionButtonDirective,
-    AccordionComponent,
-    AccordionItemComponent,
-    AlertComponent,
-    BadgeComponent, ButtonCloseDirective,
+    BadgeComponent,
+    ButtonCloseDirective,
     ButtonDirective,
     CardBodyComponent,
     CardComponent,
-    CardHeaderComponent,
     ColComponent,
     FormCheckComponent,
     FormCheckInputDirective,
@@ -18,41 +14,29 @@ import {
     FormFeedbackComponent,
     FormLabelDirective,
     FormSelectDirective,
-    FormTextDirective,
     GutterDirective,
-    InputGroupComponent,
-    InputGroupTextDirective,
-    ListGroupDirective,
-    ListGroupItemDirective,
     ModalBodyComponent,
     ModalComponent,
     ModalFooterComponent,
     ModalHeaderComponent,
     ModalTitleDirective,
-    ProgressComponent,
     RowComponent,
     RowDirective,
-    SpinnerComponent,
-    TabDirective, TableDirective,
+    TabDirective,
+    TableDirective,
     TabPanelComponent,
     TabsComponent,
     TabsContentComponent,
     TabsListComponent,
-    TemplateIdDirective,
     ToastBodyComponent,
     ToastComponent,
     ToasterComponent,
-    ToastHeaderComponent,
-    TooltipDirective,
-    WidgetStatCComponent
+    ToastHeaderComponent
 } from "@coreui/angular";
-import {ChartjsComponent} from "@coreui/angular-chartjs";
 import {DatePipe, NgForOf, NgIf} from "@angular/common";
-import {IconComponent, IconDirective} from "@coreui/icons-angular";
+import {IconDirective} from "@coreui/icons-angular";
 import {NgxDatatableModule} from "@swimlane/ngx-datatable";
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from "@angular/forms";
-import {map, startWith} from "rxjs/operators";
-import {of} from "rxjs";
 import {AuthService} from "../../service/AuthService";
 import {SettingsService} from "../../service/SettingsService";
 import {Router} from "@angular/router";
@@ -156,6 +140,9 @@ export class AdminSettingsComponent implements OnInit{
 
     // For Authentication Tab
     authType: string = 'userPass';
+
+    // For Other Configuration Tab
+    geminiApiKey: string = 'API Key';
 
     constructor(private fb: FormBuilder, private authService: AuthService, private settingsService: SettingsService,
                 private router: Router,
@@ -328,6 +315,8 @@ export class AdminSettingsComponent implements OnInit{
                 this.wizConfigForm.patchValue({clientId: this.settings.wizClientId});
                 this.wizConfigForm.patchValue({secret: "************"});
                 this.isWizEnabled = this.settings.enableWiz;
+
+                this.geminiApiKey = this.settings.geminiApiKey;
 
             }
         });
@@ -548,6 +537,23 @@ export class AdminSettingsComponent implements OnInit{
             error: (error) => {
                 this.toastStatus = "danger";
                 this.toastMessage = "Failed to update run mode";
+                this.toggleToast();
+            }
+        });
+    }
+
+    saveOtherConfigurationSettings() {
+        this.settingsService.changeOtherConfig({
+            geminiApiKey: this.geminiApiKey
+        }).subscribe({
+            next: () => {
+                this.toastStatus = "success";
+                this.toastMessage = "Application configuration updated successfully";
+                this.toggleToast();
+            },
+            error: (error) => {
+                this.toastStatus = "danger";
+                this.toastMessage = "Failed to update";
                 this.toggleToast();
             }
         });
