@@ -19,7 +19,7 @@ Permission is hereby granted to use the Mixeway Flow software for personal, educ
    Modifications or derivative works of the Mixeway Flow software are permitted under the condition that credit is given to the original authors. This includes providing a link to the original project and clearly stating any changes that were made.
 
 4. **Enterprise Support**  
-   For enterprise support services, including customization, integration, and extended maintenance, please contact Mixeway at https://mixeway.io/support.
+   For enterprise support services, including customization, integration, and extended maintenance, please contact Mixeway at [https://mixeway.io/support](https://github.com/sponsors/siewer) or via info [at] mixeway.io.
 
 ---
 
