@@ -52,7 +52,7 @@ This type of scan verify `Dockerfiles`, `terraform`, `kubernetes deployments` an
 
 **Scan requirements**: None. Scan is performed for every change without any conditions.
 
-### Secret Leaks - engine: giteaks (https://github.com/gitleaks/gitleaks)
+### Secret Leaks - engine: gitleaks (https://github.com/gitleaks/gitleaks)
 > **Secret leaks** refer to the unintentional exposure of sensitive information, such as API keys, passwords, tokens, and other credentials, in source code, configuration files, or logs. Detecting secret leaks is crucial, as exposed secrets can be exploited by attackers to gain unauthorized access to systems, services, or data. Secret scanning tools help identify and prevent the inclusion of sensitive information in public repositories or shared code, reducing the risk of security breaches.
 
 Most severe incidents in the Public Cloud (but not only) occurred due to misconfigurations, hardcoded keys or keys accidentally pushed to the git repository. This kind of tests help You detect such problems and give You the timeframe needed to properly rotate leaked secrets.
