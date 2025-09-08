@@ -1,79 +1,149 @@
-# Mixeway Flow
+# Mixeway Flow — DevSecOps Swiss Army Knife 🔐⚙️
 
 [![License](https://img.shields.io/badge/license-FlowLicense-blue.svg)](LICENSE.md)
-![example workflow](https://github.com/mixeway/flow/actions/workflows/docker-build-backend.yml/badge.svg)
+![CI: Docker Backend](https://github.com/mixeway/flow/actions/workflows/docker-build-backend.yml/badge.svg)
 [![Discord](https://img.shields.io/discord/1272884200323944550)](https://discord.gg/76RY2Y82)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-## Introduction
-![Mixeway Flow](.github/img/logo.png "logo")
+> **Mixeway Flow** integrates security into your SDLC from day one. It aggregates results from built-in scanners, hooks seamlessly into Git (webhooks), and presents everything in a single, actionable dashboard.
+>
+> **Under Development:** we are building an AI/LLM-powered verification engine that combines detected findings with extended vulnerability intelligence and then **verifies, in your own source code, whether a specific vulnerability is truly present and exploitable**. The goal is to deliver **100% accurate, properly prioritized information** for engineers and security teams. This feature will be available in a **future release** (see the details below).
 
-**Mixeway Flow** is a versatile and comprehensive tool designed to serve as the ultimate Swiss army knife for DevSecOps processes. It streamlines the integration of security practices into your development and operations workflows, ensuring that your software is secure from the ground up.
+---
 
-Mixeway Flow comes equipped with built-in open-source scanning engines that perform thorough security validations across multiple layers of your development stack. From Infrastructure as Code (IaC) to source code and open-source libraries, Mixeway Flow ensures that potential vulnerabilities are identified and addressed early in the development lifecycle.
+## Table of Contents
 
-One of Mixeway Flow's standout features is its seamless integration with Git and CI/CD environments through webhooks. This means you don't have to spend time configuring and maintaining complex CI/CD pipelines—Mixeway Flow automatically hooks into your existing workflows to provide continuous security monitoring.
+- [Why Mixeway Flow?](#why-mixeway-flow)
+- [How it Works](#how-it-works)
+- [What’s Scanned](#whats-scanned)
+    - [SAST (Bearer)](#sast-bearer)
+    - [SCA (SBOM + OWASP Dependency-Track)](#sca-sbom--owasp-dependency-track)
+    - [IaC (KICS)](#iac-kics)
+    - [Secret Leaks (gitleaks)](#secret-leaks-gitleaks)
+    - [GitLab Repository Scanner (Mixeway ruleset)](#gitlab-repository-scanner-mixeway-ruleset)
+- [AI/LLM Verification — Under Development](#aillm-verification--under-development)
+- [Quick Start](#quick-start)
+- [Initial Setup](#initial-setup)
+- [Screenshots](#screenshots)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [Community](#community)
+- [License](#license)
 
-All vulnerabilities detected by Mixeway Flow are displayed in a single, unified dashboard. This dashboard offers a comprehensive view of all potential threats, with the added ability to suppress or ignore certain vulnerabilities based on specific contexts or justifications. This flexibility allows you to focus on the most critical issues without being overwhelmed by false positives or low-priority alerts.
+---
 
-Whether you are a developer, a security engineer, or part of a DevOps team, Mixeway Flow simplifies the integration of security into your development process, helping you build and maintain secure software with ease.
+## Why Mixeway Flow?
 
-## How Mixeway Flow works
+- **One dashboard to rule them all** — SAST, SCA, IaC, and secret scanning in one place.
+- **Zero CI friction** — Git webhooks trigger scans automatically; no complex pipeline wiring needed.
+- **Focus on what matters** — Suppress/ignore by context to cut noise and prioritize real risk.
+- **Fast time-to-value** — Docker Compose install; be up and reviewing findings in minutes.
+- **Built for the next step** — Designed to plug in an AI/LLM verification layer that validates exploitability directly in your codebase.
 
-![Mixeway Process](.github/img/flow_process.jpg)
+---
 
-1. Register Git repository by entering repo URL and access token. At moment of initialization initial scan on last commit on default branch will be performed.
-2. Configure WebHook on the GitLab or GitHub instance that will be triggered every time push or pull/merge request is detected. This trigger will send information to FLow to run the scan on the selected branch / commit or queue it if there are many events
-3. Wait for the results and review detected threats
+## How it Works
 
-## Vulnerabilities and threats detection
-![Mixeway Threats](.github/img/flow_scans.png)
+![Process](.github/img/flow_process.jpg)
 
-Mixeway Flow has built in tools that verify security of given application across many layers. Each scan is performed in a transparent way from the CICD or developer perspective.
+1. **Register a Git repository** (URL + access token). An initial scan runs on the latest commit of the default branch.
+2. **Configure a webhook** (GitHub/GitLab). Each push or PR/MR triggers a scan; events are queued if needed.
+3. **Review results** in the unified dashboard and act.
 
-### SAST - engine: Bearer (https://github.com/Bearer/bearer)
-> **SAST (Static Application Security Testing)** is a security technique that analyzes source code, bytecode, or binary code for vulnerabilities without executing the program. It identifies security flaws at the code level early in the development process, allowing developers to fix issues before the code is deployed. SAST scans are essential for detecting common vulnerabilities like SQL injection, cross-site scripting (XSS), and insecure coding practices.
+---
 
-SAST scan is performed on the source code created and written by the team's developers looking for any places that might be a source for problems related with any type of injections or other threats.
+## What’s Scanned
 
-**Scan requirements**: None. Scan is performed for every change without any conditions.
+Each scan runs transparently from a developer/CI/CD perspective. You get consistent results without extra ceremony.
 
-### SCA - engine: SBOM & OWASP Dependency Track (https://github.com/DependencyTrack/dependency-track)
-> **SCA (Software Composition Analysis)** is a security practice that identifies and manages vulnerabilities in open-source and third-party components within a software project. By analyzing the software's dependencies, SCA tools detect known vulnerabilities, license compliance issues, and outdated libraries. This helps ensure that the software remains secure and compliant with industry standards, especially when using external code that may introduce risks into the project.
+### SAST (Bearer)
+Static analysis of your team’s source code for injection flaws, insecure patterns, and more.  
+**Requirements:** none — runs for every change.  
+Engine: https://github.com/Bearer/bearer
 
-Integrating SCA scanning into Your software development lifecycle help You properly manage dependencies You introduce to the codebase.
+### SCA (SBOM + OWASP Dependency-Track)
+Find known vulnerabilities, licensing issues, and outdated libraries via SBOM ingestion.  
+**Requirements:** place `sbom.json` in the repo root to enable SCA scans.  
+Engine: https://github.com/DependencyTrack/dependency-track
 
-**Scan requirements**: In order to trigger SCA engine there has to be `sbom.json` file located in the root of the repository
+### IaC (KICS)
+Scan Terraform, Kubernetes manifests, Dockerfiles and other templates for misconfigurations.  
+**Requirements:** none — runs for every change.  
+Engine: https://github.com/Checkmarx/kics
 
-### IAC - engine: KICS (https://github.com/Checkmarx/kics)
-> **IaC (Infrastructure as Code)** vulnerability scanning is a security practice that involves analyzing IaC templates and configurations for security risks before infrastructure is provisioned. By scanning these templates, such as Terraform or CloudFormation scripts, IaC vulnerability scanning tools detect misconfigurations, insecure settings, and potential vulnerabilities that could expose infrastructure to attacks. This proactive approach helps secure cloud environments and infrastructure by identifying issues early in the development process.
 
-This type of scan verify `Dockerfiles`, `terraform`, `kubernetes deployments` and much more configurations that can be deployed looking for the misconfiguration or bad practices to be alerted.
+Detect accidentally committed credentials (API keys, tokens, passwords) before they become incidents.  
+**Requirements:** none — runs for every change.  
+Engine: https://github.com/gitleaks/gitleaks
 
-**Scan requirements**: None. Scan is performed for every change without any conditions.
 
-### Secret Leaks - engine: giteaks (https://github.com/gitleaks/gitleaks)
-> **Secret leaks** refer to the unintentional exposure of sensitive information, such as API keys, passwords, tokens, and other credentials, in source code, configuration files, or logs. Detecting secret leaks is crucial, as exposed secrets can be exploited by attackers to gain unauthorized access to systems, services, or data. Secret scanning tools help identify and prevent the inclusion of sensitive information in public repositories or shared code, reducing the risk of security breaches.
+### Secret Leaks (gitleaks)
+Detect accidentally committed credentials (API keys, tokens, passwords) before they become incidents.  
+**Requirements:** none — runs for every change.  
+Engine: https://github.com/gitleaks/gitleaks
 
-Most severe incidents in the Public Cloud (but not only) occurred due to misconfigurations, hardcoded keys or keys accidentally pushed to the git repository. This kind of tests help You detect such problems and give You the timeframe needed to properly rotate leaked secrets.
+### GitLab Repository Scanner (Mixeway ruleset)
+First-class checks for **15+ GitLab repository/security misconfigurations** using our curated ruleset.
 
-**Scan requirements**: None. Scan is performed for every change without any conditions.
+**Examples of detections:**
+- No or weak **branch protection** on default branches (force-push allowed, missing approvals).
+- **Unknown or untrusted runner** registered to the project/group.
+- Secrets such as **passwords or tokens stored in GitLab CI/CD variables** without masking/protection.
+- Insecure **merge request** settings (missing code review/approvals).
+- Public exposure of private projects via **inherited visibility** or incorrect sharing.
+- Missing or lax **Protected Tags** / **Protected Branches** configuration.
+- **Pipeline triggers** and webhooks with overbroad permissions.
+- Artifact exposure / retention misconfigurations.
 
-## Installation
+**How it works:** Mixeway queries repository and project metadata, CI settings, and protection rules to evaluate policy compliance and highlight risky gaps with **actionable remediation tips**.
 
-- Prerequisites: access to docker hub, docker-compose command
-- Hardware requirements: minimal 2CPU, 16GB ram 50GB disk space. Recommended: 4CPU, 32GB RAM 100 GB Disk space
+**Requirements:** repository access with permissions to read project settings and CI/CD configuration (token or PAT).
+---
 
-### Option 1
-```shell
+## AI/LLM Verification — Under Development
+
+We are building a complementary **AI-assisted verification layer** that operates on top of your scans to **decide if a vulnerability is actually exploitable in your codebase**. This project combines three pillars:
+
+1. **Detected Findings**  
+   Ingests and normalizes SAST, SCA (SBOM), IaC, and secret-scan outputs from Mixeway Flow.
+
+2. **Extended Vulnerability Intelligence**  
+   Enriches findings with structured threat intelligence (e.g., CVE metadata, CWE, CVSS, KEV/“known exploited”, EPSS-like probabilities, exploit-exists signals, advisories, references).
+
+3. **Code-Aware AI/LLM Reasoning**  
+   Uses large language models and domain-specific rules to analyze **your repository’s source code** and verify whether the conditions required for exploitation are present.
+    - Produces a **constraint checklist** for each vulnerability (e.g., reachable sink, untrusted data flow, missing input validation, vulnerable library version & call-site usage).
+    - Maps verification to **concrete code locations** (files, functions, lines) and **execution paths**.
+    - **Reduces false positives** and upgrades critical issues that meet exploitability conditions.
+    - Outputs **actionable remediation** steps aligned to the exact code context.
+
+**Outcome & Goal**
+- **Target:** deliver **100% accurate and properly prioritized** results for developers and AppSec.
+- **Status:** under active development; will be released as a **future version** of Mixeway Flow.
+- **Early Access:** if you’re interested in testing this capability, open an issue or ping us on Discord.
+
+> _Note:_ “100% accurate” reflects the **design goal** for precision and prioritization in verified results; real-world performance will be transparently documented with evaluation datasets when the feature ships.
+
+---
+
+## Quick Start
+
+> **Prereqs:** Docker Hub access + `docker-compose`  
+> **Minimum:** 2 CPU, 16 GB RAM, 50 GB disk  
+> **Recommended:** 4 CPU, 32 GB RAM, 100 GB disk
+
+### Option A — Clone and run
+
+```bash
 git clone https://github.com/Mixeway/flow
 cd flow
 docker-compose up
 ```
 
-### Option 2
-```shell
-cat <<EOF > docker-compose.yml
+### Option B — One-file `docker-compose.yml`
+
+```bash
+cat <<'EOF' > docker-compose.yml
 version: '3.8'
 
 services:
@@ -119,43 +189,68 @@ volumes:
   pki_data:
   dependency_track_data:
 EOF
+
 docker-compose up
 ```
 
-either way what will happen:
-1. Postgres database will be set up
-2. Backend will be set up, self-signed certificates will be generated, dependency track will be started
-3. Frontend application will be started via nginx
+**What comes up:**
+1. Postgres database
+2. Backend with self-signed TLS + Dependency-Track
+3. Frontend (nginx)  
+   **App URL:** `https://localhost:443`  
+   **Default login:** `admin / admin` → you’ll be prompted to change it on first login.
 
-application will be started at: `https://localhost:443`
+> ⚠️ **Security note:** Self-signed certs are for local trials. For any shared/staging/prod use, replace with proper certificates and rotate the default credentials immediately.
 
-initial password is: `admin:admin` - You will be forced to change it during first login
+---
 
-## Initial configuration
+## Initial Setup
 
-1. after login create a team
-2. import the repository
-3. register webhook
-![webhook](.github/img/webhook.png)
+1. Create a **Team**
+2. **Import** your repository
+3. **Register** a webhook on your Git provider (GitLab/GitHub)  
+   Then start exploring findings in the **Vulnerabilities** view.
 
-Browse Detected vulnerabilities:
-![webhook](.github/img/vulns.png)
+---
 
+## Screenshots
+
+- Webhook configuration  
+  ![Webhook](.github/img/webhook.png)
+
+- Vulnerabilities overview  
+  ![Vulnerabilities](.github/img/vulns.png)
+
+- Scans overview  
+  ![Scans](.github/img/flow_scans.png)
+
+---
 
 ## Documentation
 
-> Under donstruction
-
-
-## Roadmap
-
-Features to be covered in the near future:
-- SSO integration (OAuth, keycloak, gitlab login)
-- BugTracking automated issues (gitlab issues, JIRA)
-- Merge Request commenting with scanning results
-
-Features to be covered in the further future:
-- Integration with GitHub (the same scope as GitLab)
-- Enhancing SCA engin with linking code repository with docker image in registry
+Under construction — contributors welcome to help outline and write the first docs pages (setup, configuration, SBOM generation tips, troubleshooting).
 
 ---
+
+## Contributing
+
+We ❤️ contributions — from bug fixes and docs to new rules and integrations.
+
+- Read **[CONTRIBUTING.md](CONTRIBUTING.md)** to get started
+- Look for issues labeled **good first issue** and **help wanted**
+- Propose ideas in **Discussions** or on **Discord** (link below)
+- Please keep PRs focused and include context, screenshots, and tests where possible
+
+---
+
+## Community
+
+- **Discord:** https://discord.gg/76RY2Y82
+- **Issues:** Use GitHub Issues for bugs and feature requests
+- **Security:** Please avoid posting sensitive details in public tickets. For suspected vulnerabilities, contact maintainers privately.
+
+---
+
+## License
+
+This project is licensed under the **FlowLicense**. See **[LICENSE.md](LICENSE.md)** for details.
