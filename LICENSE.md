@@ -1,7 +1,7 @@
 # Mixeway Flow License
 
 **Mixeway Flow**  
-**Copyright (c) 2024** Mixeway Security
+**Copyright (c) 2025** Mixeway Security
 
 ---
 
