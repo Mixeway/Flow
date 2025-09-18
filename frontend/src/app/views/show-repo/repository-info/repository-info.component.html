@@ -41,6 +41,13 @@
                         <svg cIcon name="cil-people" class="me-1"></svg>
                         Team
                     </button>
+                    <button *ngIf="userRole === 'ADMIN' || userRole === 'TEAM_MANAGER'"
+                            cButton color="warning" variant="ghost" size="sm"
+                            [cTooltip]="'Rename repository'"
+                            (click)="openRenameModal()">
+                        <svg cIcon name="cil-pencil" class="me-1"></svg>
+                        Rename
+                    </button>
                 </div>
             </c-card-header>
 
@@ -107,3 +114,25 @@
         </c-card>
     </c-col>
 </c-row>
+
+<c-modal [(visible)]="renameModalVisible" alignment="center" size="sm">
+    <c-modal-header>
+        <h5 cModalTitle>Rename repository</h5>
+        <button cButtonClose (click)="renameModalVisible=false"></button>
+    </c-modal-header>
+    <c-modal-body>
+        <label class="form-label">New name</label>
+        <input cFormControl type="text" [(ngModel)]="renameForm.name" maxlength="200" />
+        <small class="text-muted d-block mt-2">
+            Allowed: letters, digits, space, _ . - /
+        </small>
+        <div *ngIf="renameError" class="text-danger mt-2">{{ renameError }}</div>
+    </c-modal-body>
+    <c-modal-footer>
+        <button cButton color="secondary" variant="ghost" (click)="renameModalVisible=false">Cancel</button>
+        <button cButton color="warning" [disabled]="renameSaving" (click)="confirmRename()">
+            <c-spinner size="sm" *ngIf="renameSaving" class="me-2"></c-spinner>
+            Save
+        </button>
+    </c-modal-footer>
+</c-modal>

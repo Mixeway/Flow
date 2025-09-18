@@ -62,4 +62,11 @@ export class RepoService {
             { withCredentials: true }
         );
     }
+    rename(repoId: number, newName: string) {
+        return this.http.put<any>(
+            `${this.loginUrl}/api/v1/coderepo/${repoId}/rename`,
+            { newName },
+            { withCredentials: true }
+        );
+    }
 }

@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 
@@ -237,5 +238,30 @@ public class UpdateCodeRepoService {
         }
         codeRepoRepository.updateTeamForRepositories(repositoryIds, newTeam.getId());
         log.info("Bulk changed team to '{}' for {} repositories.", newTeam.getName(), repositoryIds.size());
+    }
+
+    @Transactional
+    public void renameCodeRepo(CodeRepo codeRepo, String newName) {
+        if (!StringUtils.hasText(newName)) {
+            throw new IllegalArgumentException("New name cannot be empty.");
+        }
+        String trimmed = newName.trim();
+
+        // Simple validation: letters, digits, space, dash, underscore, dot
+        if (!trimmed.matches("[\\p{L}\\p{N} _./-]{1,200}")) {
+            throw new IllegalArgumentException(
+                    "Invalid name. Allowed: letters, digits, space, _ . - / (max 200 chars)."
+            );
+        }
+
+        if (codeRepoRepository.existsByTeamAndNameIgnoreCase(codeRepo.getTeam(), trimmed)) {
+            throw new IllegalArgumentException("A repository with this name already exists in the team.");
+        }
+
+        String old = codeRepo.getName();
+        codeRepo.changeName(trimmed);
+        codeRepoRepository.save(codeRepo);
+
+        log.info("Renamed code repo id={} from '{}' to '{}'", codeRepo.getId(), old, trimmed);
     }
 }

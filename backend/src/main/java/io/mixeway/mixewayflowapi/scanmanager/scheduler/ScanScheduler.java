@@ -39,8 +39,8 @@ public class ScanScheduler {
     private static final int THREAD_POOL_SIZE = 15; // Adjust the pool size as needed
     private final GetCodeRepoInfoService getCodeRepoInfoService;
     private final FindScanInfoService findScanInfoService;
-    private static final int MAX_REPOS_TO_SCAN = 50; // Maximum number of repositories to scan per day
-    private static final int DAYS_SINCE_LAST_SCAN = 7; // Number of days since last scan to trigger a new scan
+    private static final int MAX_REPOS_TO_SCAN = 10;   // was 50
+    private static final int DAYS_SINCE_LAST_SCAN = 14; // was 7
     private final RepositoryProviderRepository providerRepository;
     private final RepositorySyncService syncService;
 
@@ -70,16 +70,16 @@ public class ScanScheduler {
     }
 
     /**
-     * Scheduled task that runs every day at 3 AM.
-     * This method scans up to MAX_REPOS_TO_SCAN repositories that haven't been scanned
+     * Runs every 8 hours from application start.
+     * Scans up to MAX_REPOS_TO_SCAN repositories that haven't been scanned
      * in the last DAYS_SINCE_LAST_SCAN days, prioritizing the oldest scans first.
      */
-    @Scheduled(cron = "0 0 3 * * ?")
-    public void runEveryDayAt3AM() {
+    @Scheduled(initialDelay = 0, fixedDelay = 28_800_000) // 8h in ms; runs again 8h after completion
+    public void runNotScannedScans() { // keeping the original name per your request
         List<CodeRepo> allRepos = new ArrayList<>();
         codeRepoRepository.findAll().forEach(allRepos::add);
 
-        // Get repositories that haven't been scanned in the last specified days
+        // Get repositories that haven't been scanned in the last specified days (sorted oldest-first)
         List<CodeRepo> reposToScan = getReposNotScannedRecently(allRepos);
 
         // Limit to MAX_REPOS_TO_SCAN repositories
@@ -87,30 +87,34 @@ public class ScanScheduler {
             reposToScan = reposToScan.subList(0, MAX_REPOS_TO_SCAN);
         }
 
-        log.info("[Scheduler] Starting scan for {} repositories that haven't been scanned in the last {} days",
+        log.info("[Scheduler] Starting scan for {} repositories not scanned in the last {} days",
                 reposToScan.size(), DAYS_SINCE_LAST_SCAN);
 
+        // You can drop this executor entirely and just call scanManagerService directly;
+        // leaving it as-is is fine since we're only submitting <= 10 tasks.
         ExecutorService executorService = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
 
         try {
             List<Future<?>> futures = new ArrayList<>();
+
             reposToScan.forEach(repo -> {
                 Future<?> future = executorService.submit(() -> {
+                    // default branch + no specific commit/MR
                     scanManagerService.scanRepository(repo, repo.getDefaultBranch(), null, null);
                 });
                 futures.add(future);
             });
 
-            // Wait for all tasks to complete
-            for (Future<?> future : futures) {
+            // Wait for all tasks submitted by this scheduler to dispatch
+            for (Future<?> f : futures) {
                 try {
-                    future.get();
+                    f.get();
                 } catch (Exception e) {
-                    log.error("Error waiting for task completion", e);
+                    log.warn("[Scheduler] Scan dispatch failed for a repository", e);
                 }
             }
 
-            log.info("[Scheduler] Completed scanning {} repositories", reposToScan.size());
+            log.info("[Scheduler] Completed dispatching scans for {} repositories", reposToScan.size());
         } finally {
             executorService.shutdown();
         }

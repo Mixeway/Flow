@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.7] - 2025-09-18
+
+### Introduced
+- Possibility to rename repositories
+
+### Fixed
+- Scan scheduler to rescan old scans
+- removed Last scan from the team view which was not correct
+- Properly update scan info when scan is for the same branch/commitid
+
 ## [1.2.6] - 2025-07-30
 
 ### Introduced

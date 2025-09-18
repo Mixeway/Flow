@@ -50,4 +50,6 @@ public interface CodeRepoRepository extends CrudRepository<CodeRepo, Long> {
     void updateTeamForRepositories(@Param("repositoryIds") List<Long> repositoryIds, @Param("newTeamId") Long newTeamId);
 
     Optional<CodeRepo> findByRemoteIdAndRepourl(Long id, String repoUrl);
+
+    boolean existsByTeamAndNameIgnoreCase(Team team, String trimmed);
 }

@@ -31,7 +31,7 @@ public final class CodeRepo {
     @NotBlank
     @Pattern(regexp = "^[a-zA-Z0-9-_/ ]+$", message = "Name must be alphanumeric with dashes allowed")
     @Column(nullable = false, unique = true)
-    private final String name;
+    private String name;
 
     @NotBlank
     @Pattern(regexp = "^https?://.+$", message = "Invalid URL format")
@@ -165,6 +165,9 @@ public final class CodeRepo {
         languages.put(language, percentOfCode);
     }
 
+    public void changeName(String newName) {
+        this.name = newName;
+    }
     public void updateBranch(CodeRepoBranch codeRepoBranch){
         this.defaultBranch = codeRepoBranch;
     }

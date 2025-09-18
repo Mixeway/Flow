@@ -8,6 +8,7 @@ import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import io.mixeway.mixewayflowapi.exceptions.CodeRepoNotFoundException;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
+import io.mixeway.mixewayflowapi.exceptions.UnauthorizedException;
 import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import io.mixeway.mixewayflowapi.utils.PermissionFactory;
 import lombok.RequiredArgsConstructor;
@@ -90,5 +91,14 @@ public class CodeRepoApiService {
 
         // Call the bulk update service
         updateCodeRepoService.bulkChangeTeam(repositoryIds, newTeam);
+    }
+
+    public void renameCodeRepo(Long repoId, String newName, Principal principal) {
+        CodeRepo repo = findCodeRepoService.findById(repoId)
+                .orElseThrow(() -> new CodeRepoNotFoundException("Repository not found"));
+
+
+        permissionFactory.canUserManageTeam(repo.getTeam(), principal);
+        updateCodeRepoService.renameCodeRepo(repo, newName);
     }
 }

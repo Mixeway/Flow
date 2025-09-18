@@ -32,7 +32,7 @@ public final class ScanInfo {
     private final String commitId;
 
     @Column(name = "inserted_date", nullable = false, updatable = false)
-    private final LocalDateTime insertedDate;
+    private LocalDateTime insertedDate;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "sca_scan_status", nullable = false)
@@ -182,5 +182,9 @@ public final class ScanInfo {
         this.secretsCritical = secretsCritical;
         this.gitlabHigh = gitlabHigh;
         this.gitlabCritical = gitlabCritical;
+    }
+    @PreUpdate
+    public void preUpdate() {
+        this.insertedDate = LocalDateTime.now();
     }
 }
