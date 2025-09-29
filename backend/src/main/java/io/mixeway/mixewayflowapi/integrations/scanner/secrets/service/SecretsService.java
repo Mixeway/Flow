@@ -44,7 +44,7 @@ public class SecretsService {
      * @throws InterruptedException If the scanning process is interrupted.
      */
     public void runGitleaks(String repoDir, CodeRepo codeRepo, CodeRepoBranch branch) throws IOException, InterruptedException {
-        ProcessBuilder pb = new ProcessBuilder("gitleaks", "detect", "--source", ".", "-r", "secrets.json");
+        ProcessBuilder pb = new ProcessBuilder("gitleaks", "detect", "--source", ".", "-r", "secrets.json","--config","/app/.gitleaks.default.toml");
         pb.directory(new File(repoDir));
         executeCommand(pb);
         String secretsJsonPath = repoDir + File.separator + "secrets.json";
