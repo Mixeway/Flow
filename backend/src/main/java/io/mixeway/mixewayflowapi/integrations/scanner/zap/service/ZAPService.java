@@ -90,7 +90,6 @@ public class ZAPService {
                 // Read configuration
                 MixewayConfig config = readMixewayConfig(repoDir);
 
-
                 // Check if config is empty (file was missing)
                 if (config.getBackendUrl() == null && config.getOpenApiPath() == null && config.getWebappType() == null) {
                     log.error("[ZapService] Cannot proceed with scan for repo: {}, branch: {} - missing configuration file",
@@ -101,6 +100,7 @@ public class ZAPService {
                     result.setAlerts(new ArrayList<>());
                     return result;
                 }
+
                 // Determine the webapp type with proper defaults
                 String webappType = config.getWebappType();
 
@@ -134,11 +134,19 @@ public class ZAPService {
                     if (config.getBackendUrl() == null || config.getBackendUrl().isEmpty()) {
                         throw new IllegalArgumentException("backendUrl is required for WWW scans");
                     }
+                } else if ("API-WWW".equalsIgnoreCase(webappType)) {
+                    // For API-WWW scans, backendUrl is required, openApiPath is optional but recommended
+                    if (config.getBackendUrl() == null || config.getBackendUrl().isEmpty()) {
+                        throw new IllegalArgumentException("backendUrl is required for API-WWW scans");
+                    }
+                    if (config.getOpenApiPath() == null || config.getOpenApiPath().isEmpty()) {
+                        log.warn("[ZapService] openApiPath not provided for API-WWW scan - only WWW scan will be performed");
+                    }
                 } else {
-                    throw new IllegalArgumentException("webappType must be either 'API' or 'WWW'");
+                    throw new IllegalArgumentException("webappType must be 'API', 'WWW', or 'API-WWW'");
                 }
 
-                // Read OpenAPI spec for API scans
+                // Read OpenAPI spec for API and API-WWW scans
                 String openApiSpec = null;
                 if ("API".equalsIgnoreCase(webappType)) {
                     openApiSpec = readOpenApiSpec(repoDir, config.getOpenApiPath());
@@ -153,9 +161,14 @@ public class ZAPService {
                         result.setAlerts(new ArrayList<>());
                         return result;
                     }
-                }
-                if ("API".equalsIgnoreCase(webappType)) {
-                    openApiSpec = readOpenApiSpec(repoDir, config.getOpenApiPath());
+                } else if ("API-WWW".equalsIgnoreCase(webappType)) {
+                    // For API-WWW, try to read OpenAPI spec but don't fail if it's missing
+                    if (config.getOpenApiPath() != null && !config.getOpenApiPath().isEmpty()) {
+                        openApiSpec = readOpenApiSpec(repoDir, config.getOpenApiPath());
+                        if (openApiSpec == null) {
+                            log.warn("[ZapService] OpenAPI specification not found for API-WWW scan - proceeding with WWW scan only");
+                        }
+                    }
                 }
 
                 // Generate a unique context name for this scan
@@ -172,19 +185,16 @@ public class ZAPService {
                 log.info("[ZapService] Completed {} scan for Target {}, repo: {}, branch: {}, found {} alerts",
                         webappType, config.getBackendUrl(), codeRepo.getName(), codeRepoBranch.getName(), result.getAlerts().size());
 
-
-
                 return result;
             } catch (Exception e) {
                 log.error("[ZapService] Scan failed for repo: {}, branch: {}",
                         codeRepo.getName(), codeRepoBranch.getName(), e);
 
-
-
                 throw new RuntimeException("Scan failed: " + e.getMessage(), e);
             }
         }, executorService);
     }
+
 
 
 
@@ -366,6 +376,94 @@ public class ZAPService {
                             log.info("[ZapService] AJAX spider completed for: {}", targetUrl);
                         } catch (Exception e) {
                             log.warn("[ZapService] AJAX spider failed or not available: {}", e.getMessage());
+                        }
+                    }
+                    else if ("API-WWW".equalsIgnoreCase(webappType)) {
+                        // For API-WWW, perform both WWW scan first, then API scan
+                        log.info("[ZapService] Starting combined API-WWW scan for target: {}", targetUrl);
+
+                        // Phase 1: Perform WWW scan
+                        log.info("[ZapService] Phase 1: Performing WWW scan...");
+
+                        // Spider scan
+                        log.info("[ZapService] Starting spider scan for WWW target: {}", targetUrl);
+                        Map<String, String> spiderParams = new HashMap<>();
+                        spiderParams.put("url", targetUrl);
+                        spiderParams.put("contextName", contextName);
+                        spiderParams.put("maxChildren", "0");
+                        spiderParams.put("recurse", "true");
+
+                        ApiResponse spiderResponse = zapApi.callApi("spider", "action", "scan", spiderParams);
+                        String spiderId = ((ApiResponseElement) spiderResponse).getValue();
+                        log.info("[ZapService] Spider scan started with ID: {}", spiderId);
+
+                        // Wait for spider to complete
+                        int spiderProgress = 0;
+                        while (spiderProgress < 100) {
+                            Thread.sleep(2000);
+                            ApiResponseElement statusResponse = (ApiResponseElement) zapApi.spider.status(spiderId);
+                            spiderProgress = Integer.parseInt(statusResponse.getValue());
+                            log.debug("[ZapService] Spider progress: {}%", spiderProgress);
+                        }
+                        log.info("[ZapService] Spider scan completed for: {}", targetUrl);
+
+                        // AJAX Spider
+                        log.info("[ZapService] Starting AJAX spider for WWW target: {}", targetUrl);
+                        Map<String, String> ajaxParams = new HashMap<>();
+                        ajaxParams.put("url", targetUrl);
+                        ajaxParams.put("contextName", contextName);
+
+                        try {
+                            ApiResponse ajaxResponse = zapApi.callApi("ajaxSpider", "action", "scan", ajaxParams);
+                            log.info("[ZapService] AJAX spider started: {}", ajaxResponse.toString());
+
+                            boolean ajaxRunning = true;
+                            while (ajaxRunning) {
+                                Thread.sleep(5000);
+                                ApiResponseElement ajaxStatusResponse = (ApiResponseElement) zapApi.callApi(
+                                        "ajaxSpider", "view", "status", null);
+                                ajaxRunning = "running".equalsIgnoreCase(ajaxStatusResponse.getValue());
+                                log.debug("[ZapService] AJAX spider status: {}", ajaxStatusResponse.getValue());
+                            }
+                            log.info("[ZapService] AJAX spider completed for: {}", targetUrl);
+                        } catch (Exception e) {
+                            log.warn("[ZapService] AJAX spider failed or not available: {}", e.getMessage());
+                        }
+
+                        // Phase 2: Perform API scan if OpenAPI spec is provided
+                        if (openApiSpec != null && !openApiSpec.trim().isEmpty()) {
+                            log.info("[ZapService] Phase 2: Performing API scan...");
+
+                            boolean isJson = isJsonFormat(openApiSpec);
+                            String fileExtension = isJson ? ".json" : ".yaml";
+                            log.info("[ZapService] Detected OpenAPI spec format: {}", isJson ? "JSON" : "YAML");
+
+                            String specFileName = "openapi-spec-" + contextName + fileExtension;
+                            File tempFile = new File(System.getProperty("java.io.tmpdir"), specFileName);
+                            Files.writeString(tempFile.toPath(), openApiSpec);
+                            log.debug("[ZapService] Saved OpenAPI spec to: {}", tempFile.getAbsolutePath());
+
+                            log.info("[ZapService] Importing OpenAPI spec from: {}", tempFile.getAbsolutePath());
+                            Map<String, String> importParams = new HashMap<>();
+                            importParams.put("file", tempFile.getAbsolutePath());
+                            importParams.put("target", targetUrl);
+
+                            if (contextId != null) {
+                                importParams.put("contextId", contextId);
+                                log.debug("[ZapService] Using context ID: {}", contextId);
+                            } else {
+                                log.warn("[ZapService] Could not determine context ID, continuing without it");
+                            }
+
+                            ApiResponse importResponse = zapApi.callApi("openapi", "action", "importFile", importParams);
+                            log.debug("[ZapService] Import response: {}", importResponse.toString());
+
+                            log.info("[ZapService] Waiting for OpenAPI import to complete...");
+                            Thread.sleep(5000);
+
+                            tempFile.delete();
+                        } else {
+                            log.warn("[ZapService] OpenAPI spec not provided for API-WWW scan, skipping API phase");
                         }
                     } else {
                         log.warn("[ZapService] Unknown webappType: {}, defaulting to WWW scan", webappType);
