@@ -1,0 +1,63 @@
+title = "mixeway-default"
+
+# Keep entropy useful but not noisy
+[entropy]
+enable = true
+# Raise slightly; pure hex/base64 junk will still pass if context suggests secret
+threshold = 4.2
+# Consider charsets – limits “random words” false positives
+maxBase64Entropy = 4.8
+maxHexEntropy    = 4.1
+
+[allowlist]
+# Paths you expect to contain fixtures/mocks/samples
+paths = [
+    '''^(.*/)?(tests?|__tests__|spec|samples?|examples?|fixtures?|mocks?|mockdata|testdata|docs|.github)/''',
+    '''(^|/)package-lock\.json$''',
+    '''(^|/)pnpm-lock\.yaml$''',
+    '''(^|/)poetry\.lock$''',
+    '''(^|/)Cargo\.lock$''',
+    '''(^|/)yarn\.lock$'''
+]
+# Words near a match that usually indicate non-secret content
+stopwords = ["example", "sample", "test", "mock", "fixture", "dummy", "localhost", "changeme", "notsecret", "default"]
+# Known false positives by regex (UUID/GUID, common hashes, JWT header/payload)
+regexes = [
+    '''(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b''', # UUID
+    '''\b[a-f0-9]{40}\b''',   # SHA1
+    '''\b[a-f0-9]{64}\b''',   # SHA256
+    '''eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*''' # JWT-like
+]
+
+# Prefer provider-aware rules over broad entropy matches
+[[rules]]
+id          = "github-pat"
+description = "GitHub Personal Access Token"
+regex       = '''\bgh[pousr]_[A-Za-z0-9_]{30,255}\b'''
+keywords    = ["ghp_", "gho_", "ghu_", "ghs_", "ghr_"]
+tags        = ["token", "code-hosting"]
+
+[[rules]]
+id          = "gitlab-pat"
+description = "GitLab Personal Access Token"
+regex       = '''\bglpat-[A-Za-z0-9_-]{20,}\b'''
+keywords    = ["glpat-"]
+tags        = ["token", "code-hosting"]
+
+[[rules]]
+id          = "openai-key"
+description = "OpenAI API key"
+regex       = '''\bsk-[A-Za-z0-9]{20,}\b'''
+keywords    = ["sk-"]
+tags        = ["api", "ai"]
+
+[[rules]]
+id          = "aws-ak"
+description = "AWS Access Key ID (must be paired nearby with a Secret)"
+regex       = '''\b(AKIA|ASIA|AIDA)[A-Z0-9]{16}\b'''
+tags        = ["cloud", "aws"]
+# Require *contextual pairing* within ~100 chars to cut FPs:
+[group]
+[[rules.regexes]]
+regex = '''(?s)\b(AKIA|ASIA|AIDA)[A-Z0-9]{16}\b.*?\b(?i:aws_secret_access_key|aws_secret|secret_key)\b[:=]\s*([A-Za-z0-9/+=]{30,})'''
+

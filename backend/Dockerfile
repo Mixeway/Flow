@@ -37,6 +37,7 @@ FROM bitnami/minideb:latest as final
 WORKDIR /app
 # Copy the built JAR file from the previous stage to the container
 COPY --from=maven_build /app/target/MixewayFlowAPI-0.0.1-SNAPSHOT.jar flowapi.jar
+COPY gitleaks.default.toml .gitleaks.default.toml
 
 # Install dependencies, Node.js, Maven, Python, pip, and Firefox
 RUN apt-get update && \
