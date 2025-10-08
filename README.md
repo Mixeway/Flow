@@ -9,6 +9,8 @@
 >
 > **Under Development:** we are building an AI/LLM-powered verification engine that combines detected findings with extended vulnerability intelligence and then **verifies, in your own source code, whether a specific vulnerability is truly present and exploitable**. The goal is to deliver **100% accurate, properly prioritized information** for engineers and security teams. This feature will be available in a **future release** (see the details below).
 
+Available demonstration: https://flow.mixeway.io
+
 ---
 
 ## Table of Contents
