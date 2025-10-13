@@ -143,6 +143,7 @@ public class ScanManagerService {
                     validateInputs(codeRepo, codeRepoBranch);
 
                     String repoUrl = codeRepo.getRepourl();
+                    String repoType = String.valueOf(codeRepo.getType());
                     String accessToken = codeRepo.getAccessToken();
 
                     // Clone or fetch the repository
@@ -153,10 +154,16 @@ public class ScanManagerService {
                     Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo, codeRepoBranch, scaScanPerformed);
                     Future<Void> sastScanFuture = runSASTScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> iacScanFuture = runIACScan(repoDir, codeRepo, codeRepoBranch);
-                    Future<Void> gitlabScanFuture = runGitLabScan(codeRepo);
+                    Future<Void> gitlabScanFuture = null;
+                    if ("GITLAB".equals(repoType)) {
+                        gitlabScanFuture = runGitLabScan(codeRepo);
+                    }
                     Future<Void> zapScanFuture = runZAPScan(repoDir, codeRepo, codeRepoBranch);
 
-                    List<Future<Void>> scanFutures = Arrays.asList(secretScanFuture, scaScanFuture, sastScanFuture, iacScanFuture, zapScanFuture,gitlabScanFuture);
+                    List<Future<Void>> scanFutures = Arrays.asList(secretScanFuture, scaScanFuture, sastScanFuture, iacScanFuture, zapScanFuture);
+                    if (gitlabScanFuture != null) {
+                        scanFutures.add(gitlabScanFuture);
+                    }
 
                     // Schedule a timeout task to cancel scans
                     ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
