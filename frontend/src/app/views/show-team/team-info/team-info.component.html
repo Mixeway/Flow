@@ -78,13 +78,13 @@
                 </div>
             </div>
 
-            <c-card-footer *ngIf="(cloudSubscriptionsData && cloudSubscriptionsData.length > 0) || (reposData && reposData.length > 0)">
-                <div class="d-flex justify-content-between align-items-center">
-                    <button cButton color="primary" size="sm">
-                        <svg cIcon name="cilSearch" size="sm" class="me-1"></svg>
-                        Scan Now
-                    </button>
-                </div>
+            <c-card-footer *ngIf="(cloudSubscriptionsData && cloudSubscriptionsData.length > 0) || (reposData && reposData.length > 0)" style="height: 60px;">
+<!--                <div class="d-flex justify-content-between align-items-center">-->
+<!--                    <button cButton color="primary" size="sm">-->
+<!--                        <svg cIcon name="cilSearch" size="sm" class="me-1"></svg>-->
+<!--                        Scan Now-->
+<!--                    </button>-->
+<!--                </div>-->
             </c-card-footer>
         </c-card>
     </c-col>
