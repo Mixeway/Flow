@@ -96,7 +96,7 @@ public class ScanManagerService {
 
     // Throttling cache: Repositories being scanned or scanned within the last 30 minutes
     private final Cache<Long, Boolean> scanThrottler = Caffeine.newBuilder()
-            .expireAfterWrite(30, TimeUnit.MINUTES)
+            .expireAfterWrite(10, TimeUnit.MINUTES)
             .build();
     private final GitLabScannerService gitLabScannerService;
 
@@ -112,18 +112,19 @@ public class ScanManagerService {
      */
     public void scanRepository(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId, Long iid) {
         // Get or create a lock object for the repository
-        Object repoLock = repoLocks.computeIfAbsent(codeRepo.getId(), k -> new Object());
+        final String throttleKey = codeRepo.getId() + "" + codeRepoBranch.getId();
+        final Object repoLock = repoLocks.computeIfAbsent(Long.valueOf(throttleKey), k -> new Object());
 
         synchronized (repoLock) {
             // Check if a scan is already running or was run within the last 5 minutes
             Boolean existing = scanThrottler.getIfPresent(codeRepo.getId());
             if (existing != null) {
-                log.info("[ScanManagerService] Scan for repo {} is already running or was run within the last 5 minutes. Ignoring request.", codeRepo.getName());
+                log.info("[ScanManagerService] Scan for repo {}:{} is already running or was run within the last 5 minutes. Ignoring request.", codeRepo.getName(),codeRepoBranch.getName());
                 return;
             }
 
             // Add repository to the throttler cache
-            scanThrottler.put(codeRepo.getId(), Boolean.TRUE);
+            scanThrottler.put(Long.valueOf(throttleKey), Boolean.TRUE);
         }
 
         // Submit the scan task to the executor service
@@ -214,7 +215,7 @@ public class ScanManagerService {
                 }
             } finally {
                 // Remove the repository from the locks map
-                repoLocks.remove(codeRepo.getId());
+                repoLocks.remove(Long.valueOf(throttleKey));
             }
         });
     }
