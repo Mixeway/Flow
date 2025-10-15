@@ -17,9 +17,11 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * Service responsible for running IaC (Infrastructure as Code) scans using KICS (Keeping Infrastructure as Code Secure).
@@ -106,7 +108,12 @@ public class IaCService {
         }
 
         KicsReport kicsReport = objectMapper.readValue(reportFile, KicsReport.class);
-        createFindingService.saveFindings(createFindingService.mapKicsReportToFindings(kicsReport, codeRepo, codeRepoBranch), codeRepoBranch, codeRepo, Finding.Source.IAC);
+        List<Finding> findings = createFindingService.mapKicsReportToFindings(kicsReport, codeRepo, codeRepoBranch);
+
+        List<Finding> filteredFindings = findings.stream()
+                .filter(finding -> !finding.getExplanation().contains("/etc/localtime")).collect(Collectors.toList());
+
+        createFindingService.saveFindings(filteredFindings, codeRepoBranch, codeRepo, Finding.Source.IAC);
         log.info("[KicsService] KICS scan completed for repository: {} branch: {}. Report saved at: {}", codeRepo.getName(), codeRepoBranch.getName(), reportFile.getAbsolutePath());
     }
 
