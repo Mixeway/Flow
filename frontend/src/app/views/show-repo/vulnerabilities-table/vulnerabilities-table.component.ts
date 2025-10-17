@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, OnInit, OnChanges, SimpleChanges } from '@angular/core';
 import {
   BadgeComponent,
   ButtonDirective,
@@ -65,7 +65,7 @@ interface Vulnerability {
   templateUrl: './vulnerabilities-table.component.html',
   styleUrls: ['./vulnerabilities-table.component.scss']
 })
-export class VulnerabilitiesTableComponent {
+export class VulnerabilitiesTableComponent implements OnInit, OnChanges {
   @Input() repoData: any;
   @Input() vulns: Vulnerability[] = [];
   @Input() filteredVulns: Vulnerability[] = [];
@@ -80,6 +80,7 @@ export class VulnerabilitiesTableComponent {
   @Input() selectedFindings: number[] = [];
   @Input() vulnerabilitiesLoading: boolean = false;
   @Input() vulnerabilitiesLimit: number = 20;
+  @Input() currentFilters: { [key: string]: string } | null = null;
 
   @Output() updateFilterNameEvent = new EventEmitter<any>();
   @Output() updateFilterLocationEvent = new EventEmitter<any>();
@@ -97,76 +98,121 @@ export class VulnerabilitiesTableComponent {
   @Output() onBranchSelectEvent = new EventEmitter<any>();
   @Output() viewVulnerabilityDetailsEvent = new EventEmitter<Vulnerability>();
   @Output() clearFiltersEvent = new EventEmitter<void>();
+  statusFilter: string = '';
 
-  filters: { [key: string]: string } = {
-    name: '',
-    location: '',
-    source: '',
-    status: '',
-    severity: '',
-  };
+
+  // Ensure we have a local object to bind to when parent hasn't provided one yet
+  private ensureCurrentFilters(): { [key: string]: string } {
+    if (!this.currentFilters) {
+      this.currentFilters = { name: '', location: '', source: '', status: '', severity: '' };
+    }
+    return this.currentFilters;
+  }
+
+  // Safe proxy for template bindings (always non-null)
+  get cf(): { [key: string]: string } {
+    return this.ensureCurrentFilters();
+  }
+
+  ngOnInit(): void {}
+
+  ngOnChanges(changes: SimpleChanges): void {
+    // Do not auto-reset filters here; parent owns source-of-truth (persistence/restore)
+  }
 
   /**
    * Update name filter
    */
-  updateFilterName(event: any): void {
-    this.updateFilterNameEvent.emit(event);
+  updateFilterName(valueOrEvent: any): void {
+    const v = (typeof valueOrEvent === 'string')
+      ? valueOrEvent
+      : (valueOrEvent?.target?.value ?? '').toString();
+    this.ensureCurrentFilters()['name'] = v;
+    this.updateFilterNameEvent.emit({ target: { value: v } });
   }
 
   /**
    * Update location filter
    */
-  updateFilterLocation(event: any): void {
-    this.updateFilterLocationEvent.emit(event);
+  updateFilterLocation(valueOrEvent: any): void {
+    const v = (typeof valueOrEvent === 'string')
+      ? valueOrEvent
+      : (valueOrEvent?.target?.value ?? '').toString();
+    this.ensureCurrentFilters()['location'] = v;
+    this.updateFilterLocationEvent.emit({ target: { value: v } });
   }
 
   /**
    * Update source filter
    */
-  updateFilterSource(event: any): void {
-    this.updateFilterSourceEvent.emit(event);
+  updateFilterSource(valueOrEvent: any): void {
+    const v = (typeof valueOrEvent === 'string')
+      ? valueOrEvent
+      : (valueOrEvent?.target?.value ?? '').toString();
+    this.ensureCurrentFilters()['source'] = v;
+    this.updateFilterSourceEvent.emit({ target: { value: v } });
   }
 
   /**
    * Update status filter
    */
-  updateFilterStatus(event: any): void {
-    this.updateFilterStatusEvent.emit(event);
+  updateFilterStatus(valueOrEvent: any): void {
+    const v = (typeof valueOrEvent === 'string')
+      ? valueOrEvent
+      : (valueOrEvent?.target?.value ?? '').toString();
+    this.ensureCurrentFilters()['status'] = v;
+    this.updateFilterStatusEvent.emit({ target: { value: v } });
   }
 
   /**
    * Update severity filter
    */
-  updateFilterSeverity(event: any): void {
-    this.updateFilterSeverityEvent.emit(event);
+  updateFilterSeverity(valueOrEvent: any): void {
+    const v = (typeof valueOrEvent === 'string')
+      ? valueOrEvent
+      : (valueOrEvent?.target?.value ?? '').toString();
+    this.ensureCurrentFilters()['severity'] = v;
+    this.updateFilterSeverityEvent.emit({ target: { value: v } });
   }
 
   /**
    * Toggle showing removed vulnerabilities
    */
-  toggleShowRemoved(event: any): void {
-    this.toggleShowRemovedEvent.emit(event);
+  toggleShowRemoved(stateOrEvent: any): void {
+    const checked = (typeof stateOrEvent === 'boolean')
+      ? stateOrEvent
+      : !!stateOrEvent?.target?.checked;
+    this.toggleShowRemovedEvent.emit({ target: { checked } });
   }
 
   /**
    * Toggle showing suppressed vulnerabilities
    */
-  toggleShowSuppressed(event: any): void {
-    this.toggleShowSuppressedEvent.emit(event);
+  toggleShowSuppressed(stateOrEvent: any): void {
+    const checked = (typeof stateOrEvent === 'boolean')
+      ? stateOrEvent
+      : !!stateOrEvent?.target?.checked;
+    this.toggleShowSuppressedEvent.emit({ target: { checked } });
   }
 
   /**
    * Toggle showing urgent vulnerabilities
    */
-  toggleShowUrgent(event: any): void {
-    this.toggleShowUrgentEvent.emit(event);
+  toggleShowUrgent(stateOrEvent: any): void {
+    const checked = (typeof stateOrEvent === 'boolean')
+      ? stateOrEvent
+      : !!stateOrEvent?.target?.checked;
+    this.toggleShowUrgentEvent.emit({ target: { checked } });
   }
 
   /**
    * Toggle showing notable vulnerabilities
    */
-  toggleShowNotable(event: any): void {
-    this.toggleShowNotableEvent.emit(event);
+  toggleShowNotable(stateOrEvent: any): void {
+    const checked = (typeof stateOrEvent === 'boolean')
+      ? stateOrEvent
+      : !!stateOrEvent?.target?.checked;
+    this.toggleShowNotableEvent.emit({ target: { checked } });
   }
 
   /**
