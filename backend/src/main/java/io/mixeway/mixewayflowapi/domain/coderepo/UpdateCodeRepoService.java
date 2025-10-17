@@ -264,4 +264,36 @@ public class UpdateCodeRepoService {
 
         log.info("Renamed code repo id={} from '{}' to '{}'", codeRepo.getId(), old, trimmed);
     }
+
+    /**
+     * Creates a ScanInfo snapshot for a throttled SCM event (no scanners executed).
+     * All numeric counters are set to -1 so the UI can show the event while clearly
+     * indicating that no scan results were produced.
+     */
+    @Transactional
+    public void createThrottledScanInfo(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId) {
+        // Re-fetch to avoid stale entity state
+        codeRepo = findCodeRepoService.findById(codeRepo.getId()).orElse(codeRepo);
+        if (codeRepoBranch == null) {
+            codeRepoBranch = codeRepo.getDefaultBranch();
+        }
+        createScanInfoService.createOrUpdateScanInfo(
+                codeRepo,
+                codeRepoBranch,
+                commitId,
+                // keep current scan-status flags so UI reflects last known repo state
+                codeRepo.getScaScan(),
+                codeRepo.getSastScan(),
+                codeRepo.getIacScan(),
+                codeRepo.getSecretsScan(),
+                codeRepo.getGitlabScan(),
+                // all counters set to -1 (throttled marker)
+                -1, -1,   // SCA: high, critical
+                -1, -1,   // SAST: high, critical
+                -1, -1,   // IaC: high, critical
+                -1, -1,   // Secrets: high, critical
+                -1, -1,   // GitLab: high, critical
+                -1, -1    // DAST: high, critical
+        );
+    }
 }

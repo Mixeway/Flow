@@ -280,98 +280,80 @@
                                                     ngx-datatable-cell-template
                                                     let-row="row"
                                             >
-                                                <div class="results-cell">
-                                                    <div class="result-category">
-                                                        <span class="category-label">SAST</span>
-                                                        <div class="category-badges">
-                                                            <c-badge color="danger" class="result-badge"
-                                                                     *ngIf="row.sastCritical > 0">{{ row.sastCritical }}
-                                                            </c-badge>
-                                                            <c-badge color="warning" class="result-badge"
-                                                                     *ngIf="row.sastHigh > 0">{{ row.sastHigh }}
-                                                            </c-badge>
-                                                            <c-badge color="info" class="result-badge"
-                                                                     *ngIf="row.sastMedium > 0">{{ row.sastMedium }}
-                                                            </c-badge>
-                                                        </div>
+                                                <ng-container *ngIf="row?.sastCritical === -1 || row?.sastHigh === -1 || row?.sastMedium === -1 ||
+                                                                    row?.scaCritical === -1 || row?.scaHigh === -1 || row?.scaMedium === -1 ||
+                                                                    row?.iacCritical === -1 || row?.iacHigh === -1 || row?.iacMedium === -1 ||
+                                                                    row?.secretsCritical === -1 || row?.secretsHigh === -1 || row?.secretsMedium === -1 ||
+                                                                    row?.gitlabCritical === -1 || row?.gitlabHigh === -1 || row?.gitlabMedium === -1 ||
+                                                                    row?.dastCritical === -1 || row?.dastHigh === -1 || row?.dastMedium === -1; else normalResults">
+                                                    <div class="results-cell">
+                                                        <c-badge
+                                                          color="secondary"
+                                                          class="result-badge"
+                                                          [cTooltip]="'Scan requested while previous was running or was run to early, there is limitation 1 scan for each 10minutes'">
+                                                          SCAN NOT PERFORMED
+                                                        </c-badge>
                                                     </div>
+                                                </ng-container>
 
-                                                    <div class="result-category">
-                                                        <span class="category-label">SCA</span>
-                                                        <div class="category-badges">
-                                                            <c-badge color="danger" class="result-badge"
-                                                                     *ngIf="row.scaCritical > 0">{{ row.scaCritical }}
-                                                            </c-badge>
-                                                            <c-badge color="warning" class="result-badge"
-                                                                     *ngIf="row.scaHigh > 0">{{ row.scaHigh }}
-                                                            </c-badge>
-                                                            <c-badge color="info" class="result-badge"
-                                                                     *ngIf="row.scaMedium > 0">{{ row.scaMedium }}
-                                                            </c-badge>
+                                                <ng-template #normalResults>
+                                                    <div class="results-cell">
+                                                        <div class="result-category">
+                                                          <span class="category-label">SAST</span>
+                                                          <div class="category-badges">
+                                                            <c-badge color="danger" class="result-badge" *ngIf="row.sastCritical > 0">{{ row.sastCritical }}</c-badge>
+                                                            <c-badge color="warning" class="result-badge" *ngIf="row.sastHigh > 0">{{ row.sastHigh }}</c-badge>
+                                                            <c-badge color="info" class="result-badge" *ngIf="row.sastMedium > 0">{{ row.sastMedium }}</c-badge>
+                                                          </div>
                                                         </div>
-                                                    </div>
 
-                                                    <div class="result-category">
-                                                        <span class="category-label">IaC</span>
-                                                        <div class="category-badges">
-                                                            <c-badge color="danger" class="result-badge"
-                                                                     *ngIf="row.iacCritical > 0">{{ row.iacCritical }}
-                                                            </c-badge>
-                                                            <c-badge color="warning" class="result-badge"
-                                                                     *ngIf="row.iacHigh > 0">{{ row.iacHigh }}
-                                                            </c-badge>
-                                                            <c-badge color="info" class="result-badge"
-                                                                     *ngIf="row.iacMedium > 0">{{ row.iacMedium }}
-                                                            </c-badge>
+                                                        <div class="result-category">
+                                                          <span class="category-label">SCA</span>
+                                                          <div class="category-badges">
+                                                            <c-badge color="danger" class="result-badge" *ngIf="row.scaCritical > 0">{{ row.scaCritical }}</c-badge>
+                                                            <c-badge color="warning" class="result-badge" *ngIf="row.scaHigh > 0">{{ row.scaHigh }}</c-badge>
+                                                            <c-badge color="info" class="result-badge" *ngIf="row.scaMedium > 0">{{ row.scaMedium }}</c-badge>
+                                                          </div>
                                                         </div>
-                                                    </div>
 
-                                                    <div class="result-category">
-                                                        <span class="category-label">Secrets</span>
-                                                        <div class="category-badges">
-                                                            <c-badge color="danger" class="result-badge"
-                                                                     *ngIf="row.secretsCritical > 0">{{ row.secretsCritical }}
-                                                            </c-badge>
-                                                            <c-badge color="warning" class="result-badge"
-                                                                     *ngIf="row.secretsHigh > 0">{{ row.secretsHigh }}
-                                                            </c-badge>
-                                                            <c-badge color="info" class="result-badge"
-                                                                     *ngIf="row.secretsMedium > 0">{{ row.secretsMedium }}
-                                                            </c-badge>
+                                                        <div class="result-category">
+                                                          <span class="category-label">IaC</span>
+                                                          <div class="category-badges">
+                                                            <c-badge color="danger" class="result-badge" *ngIf="row.iacCritical > 0">{{ row.iacCritical }}</c-badge>
+                                                            <c-badge color="warning" class="result-badge" *ngIf="row.iacHigh > 0">{{ row.iacHigh }}</c-badge>
+                                                            <c-badge color="info" class="result-badge" *ngIf="row.iacMedium > 0">{{ row.iacMedium }}</c-badge>
+                                                          </div>
                                                         </div>
-                                                    </div>
 
-                                                    <div class="result-category">
-                                                        <span class="category-label">GitLab</span>
-                                                        <div class="category-badges">
-                                                            <c-badge color="danger" class="result-badge"
-                                                                     *ngIf="row.gitlabCritical > 0">{{ row.gitlabCritical }}
-                                                            </c-badge>
-                                                            <c-badge color="warning" class="result-badge"
-                                                                     *ngIf="row.gitlabHigh > 0">{{ row.gitlabHigh }}
-                                                            </c-badge>
-                                                            <c-badge color="info" class="result-badge"
-                                                                     *ngIf="row.gitlabMedium > 0">{{ row.gitlabMedium }}
-                                                            </c-badge>
+                                                        <div class="result-category">
+                                                          <span class="category-label">Secrets</span>
+                                                          <div class="category-badges">
+                                                            <c-badge color="danger" class="result-badge" *ngIf="row.secretsCritical > 0">{{ row.secretsCritical }}</c-badge>
+                                                            <c-badge color="warning" class="result-badge" *ngIf="row.secretsHigh > 0">{{ row.secretsHigh }}</c-badge>
+                                                            <c-badge color="info" class="result-badge" *ngIf="row.secretsMedium > 0">{{ row.secretsMedium }}</c-badge>
+                                                          </div>
                                                         </div>
-                                                    </div>
 
-                                                    <div class="result-category">
-                                                        <span class="category-label">DAST</span>
-                                                        <div class="category-badges">
-                                                            <c-badge color="danger" class="result-badge"
-                                                                     *ngIf="row.dastCritical > 0">{{ row.dastCritical }}
-                                                            </c-badge>
-                                                            <c-badge color="warning" class="result-badge"
-                                                                     *ngIf="row.dastHigh > 0">{{ row.dastHigh }}
-                                                            </c-badge>
-                                                            <c-badge color="info" class="result-badge"
-                                                                     *ngIf="row.dastMedium > 0">{{ row.dastMedium }}
-                                                            </c-badge>
+                                                        <div class="result-category">
+                                                          <span class="category-label">GitLab</span>
+                                                          <div class="category-badges">
+                                                            <c-badge color="danger" class="result-badge" *ngIf="row.gitlabCritical > 0">{{ row.gitlabCritical }}</c-badge>
+                                                            <c-badge color="warning" class="result-badge" *ngIf="row.gitlabHigh > 0">{{ row.gitlabHigh }}</c-badge>
+                                                            <c-badge color="info" class="result-badge" *ngIf="row.gitlabMedium > 0">{{ row.gitlabMedium }}</c-badge>
+                                                          </div>
                                                         </div>
-                                                    </div>
 
-                                                </div>
+                                                        <div class="result-category">
+                                                          <span class="category-label">DAST</span>
+                                                          <div class="category-badges">
+                                                            <c-badge color="danger" class="result-badge" *ngIf="row.dastCritical > 0">{{ row.dastCritical }}</c-badge>
+                                                            <c-badge color="warning" class="result-badge" *ngIf="row.dastHigh > 0">{{ row.dastHigh }}</c-badge>
+                                                            <c-badge color="info" class="result-badge" *ngIf="row.dastMedium > 0">{{ row.dastMedium }}</c-badge>
+                                                          </div>
+                                                        </div>
+
+                                                    </div>
+                                                </ng-template>
                                             </ng-template>
                                         </ngx-datatable-column>
                                     </ngx-datatable>

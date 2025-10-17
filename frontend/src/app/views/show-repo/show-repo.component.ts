@@ -66,7 +66,7 @@ import { ChartjsComponent } from '@coreui/angular-chartjs';
 import { ChartData } from 'chart.js/dist/types';
 import { ChartOptions } from 'chart.js';
 import { NgxDatatableModule } from '@swimlane/ngx-datatable';
-import { DatePipe, NgForOf, NgIf } from '@angular/common';
+import {DatePipe, JsonPipe, NgForOf, NgIf} from '@angular/common';
 import { RepoService } from '../../service/RepoService';
 import { AuthService } from '../../service/AuthService';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -206,6 +206,7 @@ interface TeamUser {
         VulnerabilitySummaryComponent,
         VulnerabilitiesTableComponent,
         VulnerabilityDetailsComponent,
+        JsonPipe,
     ],
     templateUrl: './show-repo.component.html',
     styleUrls: ['./show-repo.component.scss'],

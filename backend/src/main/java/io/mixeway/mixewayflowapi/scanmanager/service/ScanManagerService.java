@@ -74,6 +74,7 @@ public class ScanManagerService {
     private final FindSettingsService findSettingsService;
     private final WebClient webClient;
 
+
     private final AtomicInteger zapScansRunning = new AtomicInteger(0);
 
     private final int maxConcurrentScans = 10; // Maximum number of concurrent scans
@@ -112,19 +113,29 @@ public class ScanManagerService {
      */
     public void scanRepository(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId, Long iid) {
         // Get or create a lock object for the repository
-        final String throttleKey = codeRepo.getId() + "" + codeRepoBranch.getId();
-        final Object repoLock = repoLocks.computeIfAbsent(Long.valueOf(throttleKey), k -> new Object());
+        Object repoLock = repoLocks.computeIfAbsent(codeRepo.getId(), k -> new Object());
 
         synchronized (repoLock) {
             // Check if a scan is already running or was run within the last 5 minutes
             Boolean existing = scanThrottler.getIfPresent(codeRepo.getId());
             if (existing != null) {
-                log.info("[ScanManagerService] Scan for repo {}:{} is already running or was run within the last 5 minutes. Ignoring request.", codeRepo.getName(),codeRepoBranch.getName());
+                log.info("[ScanManagerService] Scan for repo {} is already running or was run within the last 10 minutes. Ignoring request.", codeRepo.getName());
+                try {
+                    // If you have the actual branch entity and commitId here, pass them.
+                    // If not, default to the repo's default branch and commitId = null.
+                    updateCodeRepoService.createThrottledScanInfo(codeRepo, codeRepo.getDefaultBranch(), commitId);
+                    log.info("[ScanManagerService] Created throttled ScanInfo snapshot for repo {} (branch: {})",
+                            codeRepo.getName(),
+                            codeRepo.getDefaultBranch() != null ? codeRepo.getDefaultBranch().getName() : "<null>");
+                } catch (Exception e) {
+                    log.warn("[ScanManagerService] Unable to create throttled ScanInfo snapshot: {}", e.getMessage());
+                }
+
                 return;
             }
 
             // Add repository to the throttler cache
-            scanThrottler.put(Long.valueOf(throttleKey), Boolean.TRUE);
+            scanThrottler.put(codeRepo.getId(), Boolean.TRUE);
         }
 
         // Submit the scan task to the executor service
@@ -222,7 +233,7 @@ public class ScanManagerService {
                 }
             } finally {
                 // Remove the repository from the locks map
-                repoLocks.remove(Long.valueOf(throttleKey));
+                repoLocks.remove(codeRepo.getId());
             }
         });
     }
