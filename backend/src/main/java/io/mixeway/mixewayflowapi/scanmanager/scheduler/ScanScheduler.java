@@ -74,7 +74,7 @@ public class ScanScheduler {
      * Scans up to MAX_REPOS_TO_SCAN repositories that haven't been scanned
      * in the last DAYS_SINCE_LAST_SCAN days, prioritizing the oldest scans first.
      */
-    @Scheduled(initialDelay = 28_800_000, fixedDelay = 28_800_000) // 8h in ms; runs again 8h after completion
+    @Scheduled(initialDelay = 0, fixedDelay = 28_800_000) // 8h in ms; runs again 8h after completion
     public void runNotScannedScans() { // keeping the original name per your request
         List<CodeRepo> allRepos = new ArrayList<>();
         codeRepoRepository.findAll().forEach(allRepos::add);
