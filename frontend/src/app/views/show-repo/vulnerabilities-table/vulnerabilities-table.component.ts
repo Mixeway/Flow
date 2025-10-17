@@ -1,4 +1,5 @@
 import { Component, EventEmitter, Input, Output, OnInit, OnChanges, SimpleChanges } from '@angular/core';
+import * as XLSX from 'xlsx';
 import {
   BadgeComponent,
   ButtonDirective,
@@ -333,5 +334,85 @@ export class VulnerabilitiesTableComponent implements OnInit, OnChanges {
 
     const [, filePath, lineNumber] = match;
     return `${filePath}:${lineNumber}`;
+  }
+  // === XLSX Export ===
+  private formatDateForXlsx(d?: string | Date | null) {
+    if (!d) return '';
+    const date = typeof d === 'string' ? new Date(d) : d;
+    if (isNaN(date.getTime())) return '';
+    return date.toISOString(); // Excel parses ISO
+  }
+
+  private mapRowForExport(row: any): Record<string, any> {
+    return {
+      Severity: row?.severity ?? '',
+      Name: row?.name ?? '',
+      Status: row?.status ?? '',
+      Urgency: row?.urgency ? (row.urgency === 'urgent' ? 'Urgent' : 'Notable') : '',
+      'Last Seen': this.formatDateForXlsx(row?.last_seen),
+      Source: row?.source ?? '',
+      Location: this.getFormattedLocationForRow(row),
+    };
+  }
+
+  private buildFiltersSheet(): XLSX.WorkSheet {
+    const filters: Array<{ Key: string; Value: any }> = [
+      { Key: 'Branch', Value: this.selectedBranch || this.repoData?.defaultBranch?.name || '' },
+      { Key: 'Status filter (header select)', Value: this.cf?.['status'] ?? '' },
+      { Key: 'Severity', Value: this.cf?.['severity'] ?? '' },
+      { Key: 'Name contains', Value: this.cf?.['name'] ?? '' },
+      { Key: 'Source', Value: this.cf?.['source'] ?? '' },
+      { Key: 'Location contains', Value: this.cf?.['location'] ?? '' },
+      { Key: 'Show Removed toggle', Value: !!this.showRemoved },
+      { Key: 'Show Suppressed toggle', Value: !!this.showSuppressed },
+      { Key: 'Urgent Only toggle', Value: !!this.showUrgent },
+      { Key: 'Notable Only toggle', Value: !!this.showNotable },
+      { Key: 'StatusFilter (global)', Value: this.statusFilter ?? '' },
+      { Key: 'Page Size (limit)', Value: this.vulnerabilitiesLimit ?? '' },
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(filters);
+    (ws as any)['!cols'] = [{ wch: 28 }, { wch: 50 }];
+    return ws;
+  }
+
+  private getDataForExport(mode: 'filtered' | 'selected'): Vulnerability[] {
+    if (mode === 'selected') {
+      const selectedIds = new Set(this.selectedFindings ?? []);
+      return (this.filteredVulns ?? []).filter((r: any) => selectedIds.has(r.id));
+    }
+    return this.filteredVulns ?? [];
+  }
+
+  public exportToExcel(mode: 'filtered' | 'selected' = 'filtered'): void {
+    const rows = this.getDataForExport(mode);
+    if (!rows?.length) { return; }
+
+    const exportRows = rows.map(r => this.mapRowForExport(r));
+
+    const wb = XLSX.utils.book_new();
+    const wsData = XLSX.utils.json_to_sheet(exportRows, { dateNF: 'yyyy-mm-dd hh:mm' });
+    const headers = Object.keys(exportRows[0] || {});
+    (wsData as any)['!cols'] = headers.map(h => ({ wch: Math.max(12, h.length + 2) }));
+    XLSX.utils.book_append_sheet(wb, wsData, mode === 'selected' ? 'Selected' : 'Filtered');
+
+    const wsFilters = this.buildFiltersSheet();
+    XLSX.utils.book_append_sheet(wb, wsFilters, 'Filters');
+
+    const branchName = (this.selectedBranch || this.repoData?.defaultBranch?.name || 'branch')
+      .toString()
+      .replace(/[^\w.-]+/g, '_');
+
+    const ts = new Date();
+    const stamp = [
+      ts.getFullYear(),
+      String(ts.getMonth() + 1).padStart(2, '0'),
+      String(ts.getDate()).padStart(2, '0'),
+      String(ts.getHours()).padStart(2, '0'),
+      String(ts.getMinutes()).padStart(2, '0'),
+    ].join('');
+
+    const fileName = `vulnerabilities_${branchName}_${mode}_${stamp}.xlsx`;
+    XLSX.writeFile(wb, fileName);
   }
 }

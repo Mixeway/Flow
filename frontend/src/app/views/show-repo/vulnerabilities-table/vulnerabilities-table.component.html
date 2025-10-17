@@ -1,7 +1,7 @@
 <c-card class="vuln-table-card">
     <c-card-header class="vuln-table-header">
         <div class="filter-controls">
-            <div class="filter-row primary-controls">
+            <div class="filter-row primary-controls d-flex align-items-end gap-3 flex-wrap">
                 <div class="branch-select">
                     <label cLabel for="branchSelect" class="form-label">Branch</label>
                     <select
@@ -19,8 +19,9 @@
                     </select>
                 </div>
 
-                <div class="toggle-controls">
-                    <div class="toggle-group">
+
+                <div class="toggle-controls d-flex align-items-end">
+                    <div class="toggle-group d-flex align-items-center gap-3 flex-wrap">
                         <c-form-check class="toggle-check" switch>
                             <input cFormCheckInput id="showRemoved" type="checkbox"
                                    [(ngModel)]="showRemoved"
@@ -56,6 +57,20 @@
                 </div>
 
                 <div class="action-controls ms-auto">
+                    <!-- Export filtered icon button -->
+                    <button
+                      cButton
+                      color="success"
+                      variant="ghost"
+                      size="sm"
+                      class="export-icon-btn me-2"
+                      [disabled]="!filteredVulns.length"
+                      (click)="exportToExcel('filtered')"
+                      [cTooltip]="'Export filtered to Excel'"
+                      aria-label="Export filtered to Excel"
+                    >
+                      <svg cIcon name="cilCloudDownload"></svg>
+                    </button>
                     <button
                             cButton
                             [color]="bulkActionMode ? 'danger' : 'primary'"
@@ -67,7 +82,7 @@
                         {{ bulkActionMode ? 'Exit Bulk Mode' : 'Bulk Actions' }}
                     </button>
 
-                    <div class="page-size-control">
+                    <div class="page-size-control ms-2">
                         <label class="form-label">Page Size</label>
                         <select class="form-select" [(ngModel)]="vulnerabilitiesLimit">
                             <option [value]="10">10</option>
