@@ -69,7 +69,8 @@ public interface SuppressRuleRepository extends CrudRepository<SuppressRule, Lon
         END,
         sr.pathRegex,
         ui.username,
-        sr.createdDate
+        sr.createdDate,
+        sr.comment
     )
     FROM SuppressRule sr
     JOIN sr.vulnerability v

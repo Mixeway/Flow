@@ -43,7 +43,21 @@
                     {{ row.pathRegex || 'All Paths' }}
                 </ng-template>
             </ngx-datatable-column>
-            <ngx-datatable-column name="Inserted By" prop="insertedBy"></ngx-datatable-column>
+            <ngx-datatable-column name="Inserted By" prop="insertedBy">
+                <ng-template ngx-datatable-cell-template let-row="row">
+                  <span>{{ row.insertedBy }}</span>
+                  <button
+                    *ngIf="row.comment"
+                    type="button"
+                    class="btn btn-link p-0 ms-2 align-baseline"
+                    [cTooltip]="row.comment"
+                    cTooltipPlacement="top"
+                    aria-label="Show comment"
+                  >
+                    <svg cIcon name="cil-comment-square" class="icon"></svg>
+                  </button>
+                </ng-template>
+            </ngx-datatable-column>
             <ngx-datatable-column name="Inserted Date" prop="insertedDate">
                 <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-row="row">
                     {{ row.insertedDate | date }}
@@ -125,6 +139,18 @@
                         placeholder="e.g., /path/to/file/test/*"
                 />
                 <small class="form-text text-muted">Regular expression to match file paths. Leave empty to apply to all paths.</small>
+            </div>
+            <div class="mb-3">
+                <label for="comment" class="form-label">Comment (Optional)</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="comment"
+                  formControlName="comment"
+                  placeholder="Add a note for this suppress rule"
+                  maxlength="500"
+                />
+                <small class="form-text text-muted">This note will be visible as a tooltip next to the rule owner.</small>
             </div>
         </form>
     </c-modal-body>

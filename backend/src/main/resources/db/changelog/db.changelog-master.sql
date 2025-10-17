@@ -783,3 +783,6 @@ create index idx_constraint_table_vulnerability_id on constraint_table(vulnerabi
 
 --changeset bondtom:add
 alter table settings add column gemini_api_key VARCHAR(255);
+
+--changeset siewer:comment
+alter table suppress_rule add column if not exists comment text;

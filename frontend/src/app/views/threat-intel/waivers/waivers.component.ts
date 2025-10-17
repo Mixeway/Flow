@@ -10,7 +10,7 @@ import {
   InputGroupTextDirective,
   FormControlDirective,
   FormLabelDirective,
-  FormSelectDirective, FormDirective, AlertModule,
+  FormSelectDirective, FormDirective, AlertModule, TooltipDirective,
 } from '@coreui/angular';
 import {IconDirective, IconSetService} from '@coreui/icons-angular';
 import { ThreatIntelService } from '../../../service/ThreatIntelService';
@@ -42,6 +42,7 @@ interface RuleDTO{
   vulnerabilityId: string;
   codeRepoId: number;
   pathRegex?: string; // Added pathRegex field
+  comment?: string;   // Optional comment for suppress rule
 }
 interface Team {
   id: number;
@@ -54,6 +55,7 @@ interface SuppressRuleResponseDTO {
   scope: 'GLOBAL' | 'PROJECT' | 'TEAM';
   scopeDetail: string; // Now contains the name instead of ID
   pathRegex?: string; // Added pathRegex field
+  comment?: string; // Optional comment returned by backend
   insertedBy: string;
   insertedDate: Date;
 }
@@ -82,6 +84,7 @@ interface SuppressRuleResponseDTO {
     FormDirective,
     NgIf,
     AlertModule,
+    TooltipDirective,
   ],
   templateUrl: './waivers.component.html',
   styleUrls: ['./waivers.component.scss'],
@@ -114,7 +117,8 @@ export class WaiversComponent implements OnInit {
       scope: ['', Validators.required],
       project: [''],
       team: [''],
-      pathRegex: [''] // Added pathRegex field to form
+      pathRegex: [''], // Added pathRegex field to form
+      comment: [''] // Optional comment
     });
   }
 
@@ -173,7 +177,9 @@ export class WaiversComponent implements OnInit {
           d.scopeDetail.toLowerCase().includes(val) ||
           d.insertedBy.toLowerCase().includes(val) ||
           // Include pathRegex in filtering
-          (d.pathRegex && d.pathRegex.toLowerCase().includes(val))
+          (d.pathRegex && d.pathRegex.toLowerCase().includes(val)) ||
+          // Include comment in filtering
+          (d.comment && d.comment.toLowerCase().includes(val))
       );
     });
 
@@ -230,7 +236,8 @@ export class WaiversComponent implements OnInit {
         vulnerabilityId: formData.vulnerabilityName,
         teamId: formData.team,
         codeRepoId: formData.project,
-        pathRegex: formData.pathRegex // Include pathRegex in the request
+        pathRegex: formData.pathRegex, // Include pathRegex in the request
+        comment: formData.comment,
       }
 
       this.threatIntelService.createRule(rule).subscribe({

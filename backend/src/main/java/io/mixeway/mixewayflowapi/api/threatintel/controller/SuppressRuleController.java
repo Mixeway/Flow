@@ -9,6 +9,7 @@ import io.mixeway.mixewayflowapi.db.entity.UserRole;
 import io.mixeway.mixewayflowapi.domain.suppressrule.FindSuppressRuleService;
 import io.mixeway.mixewayflowapi.domain.user.FindUserService;
 import io.mixeway.mixewayflowapi.utils.StatusDTO;
+import io.mixeway.mixewayflowapi.exceptions.UnauthorizedException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.http.HttpStatus;
@@ -28,7 +29,7 @@ public class SuppressRuleController {
     private final FindUserService findUserService;
     private final SuppressRuleService suppressRuleService;
 
-    @PreAuthorize("hasAuthority('USER')")
+    @PreAuthorize("isAuthenticated()")
     @GetMapping(value= "/api/v1/threat-intel/suppress-rules")
     public List<SuppressRuleResponseDTO> getSuppressRules(Principal principal) {
         UserInfo user = findUserService.findUser(principal.getName());
@@ -37,13 +38,20 @@ public class SuppressRuleController {
         return findSuppressRuleService.suppressRuleResponseDTOS(isAdmin, userTeams);
     }
 
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @DeleteMapping(value= "/api/v1/threat-intel/suppress-rules/{id}")
     public ResponseEntity<StatusDTO> deleteRule(Principal principal, @PathVariable("id") Long id) {
         try {
-            suppressRuleService.deleteRule(id);
+            suppressRuleService.deleteRule(id, principal);
             return new ResponseEntity<>(new StatusDTO(""), HttpStatus.OK);
+        } catch (UnauthorizedException e) {
+            log.warn("[SuppressRule] Unauthorized delete for rule {}: {}", id, e.getMessage());
+            return new ResponseEntity<>(new StatusDTO(e.getMessage()), HttpStatus.FORBIDDEN);
+        } catch (IllegalArgumentException e) {
+            log.warn("[SuppressRule] Delete failed, rule not found {}: {}", id, e.getMessage());
+            return new ResponseEntity<>(new StatusDTO(e.getMessage()), HttpStatus.NOT_FOUND);
         } catch (Exception e) {
+            log.error("[SuppressRule] Error deleting rule {}: {}", id, e.getLocalizedMessage());
             return new ResponseEntity<>(new StatusDTO(""), HttpStatus.BAD_REQUEST);
         }
     }

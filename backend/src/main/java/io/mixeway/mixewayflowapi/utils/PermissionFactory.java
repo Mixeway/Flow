@@ -54,7 +54,7 @@ public class PermissionFactory {
         if (userInfo.getHighestRole().equals("ADMIN")) {
             return teamRepository.findAllPageable(pageable);
         }
-        else throw new UnauthorizedException();
+        else throw new UnauthorizedException("");
     }
 
     public Optional<Team> findById(Long teamId, Principal principal) {
@@ -78,12 +78,12 @@ public class PermissionFactory {
             if (!userInfo.getRoles().contains(adminRole) ||
                     (team.getOrganization() != null &&
                             !userInfo.getOrganizations().contains(team.getOrganization()))) {
-                throw new UnauthorizedException();
+                throw new UnauthorizedException("");
             }
         } else {
             // STANDALONE mode - existing logic
             if (!userInfo.getRoles().contains(adminRole) && !userInfo.getTeams().contains(team)) {
-                throw new UnauthorizedException();
+                throw new UnauthorizedException("");
             }
         }
     }
@@ -93,7 +93,7 @@ public class PermissionFactory {
 
         // Check if the user is an admin or belongs to the team
         if (!userInfo.getRoles().contains(adminRole) && !userInfo.getTeams().contains(team)) {
-            throw new UnauthorizedException();
+            throw new UnauthorizedException("");
         }
     }
 
@@ -103,7 +103,7 @@ public class PermissionFactory {
         boolean isMemberOfOrg = user.getOrganizations().contains(organization);
 
         if (!isAdmin && !isMemberOfOrg) {
-            throw new UnauthorizedException();
+            throw new UnauthorizedException("");
         }
     }
 
@@ -120,7 +120,7 @@ public class PermissionFactory {
             boolean isOrgMember = user.getOrganizations().contains(org);
 
             if (!isAdmin && !isTeamMember && !isOrgMember) {
-                throw new UnauthorizedException();
+                throw new UnauthorizedException("");
             }
         }
 

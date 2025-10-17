@@ -96,7 +96,9 @@ public class CreateSuppressRuleService {
                 vulnerability,
                 team,
                 codeRepo,
-                pathRegex
+                pathRegex,
+                suppressRuleDTO.getComment()
+
         );
         suppressRule = suppressRuleRepository.save(suppressRule);
         this.applySuppressRule(suppressRule);

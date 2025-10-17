@@ -2,6 +2,8 @@ package io.mixeway.mixewayflowapi.db.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.Setter;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -43,8 +45,11 @@ public class SuppressRule {
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
+    @Column(name = "comment")
+    private String comment; // optional textual note provided at creation time
+
     // Constructor for new SuppressRule
-    public SuppressRule(UserInfo owner, Scope scope, Vulnerability vulnerability, Team team, CodeRepo codeRepo, String pathRegex) {
+    public SuppressRule(UserInfo owner, Scope scope, Vulnerability vulnerability, Team team, CodeRepo codeRepo, String pathRegex, String comment) {
         this.owner = owner;
         this.scope = scope;
         this.vulnerability = vulnerability;
@@ -52,6 +57,7 @@ public class SuppressRule {
         this.codeRepo = codeRepo;
         this.pathRegex = pathRegex;
         this.createdDate = LocalDateTime.now();
+        this.comment = comment;
     }
 
 

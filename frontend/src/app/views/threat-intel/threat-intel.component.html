@@ -29,12 +29,16 @@
 
 <br/>
 
-<c-row class="d-flex align-items-stretch">
-    <c-col xs="8">
-        <app-threat-list [items]="findings" />
+<c-row class="d-flex align-items-stretch" style="height: calc(100vh - 320px);">
+    <c-col xs="8" class="h-100 d-flex flex-column">
+        <div class="h-100" style="overflow-y: auto;">
+            <app-threat-list [items]="findings" />
+        </div>
     </c-col>
-    <c-col xs="4">
-        <app-reviews />
+    <c-col xs="4" class="h-100 d-flex flex-column">
+        <div class="h-100" style="overflow-y: auto;">
+            <app-reviews />
+        </div>
     </c-col>
 </c-row>
 

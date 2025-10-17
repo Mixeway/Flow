@@ -1,5 +1,5 @@
-<div class="threats-container">
-    <div class="threats-card">
+<div class="threats-container h-100">
+    <div class="threats-card h-100 d-flex flex-column overflow-auto">
         <div class="card-header">
             <h5 class="header-title">
                 <svg cIcon name="cilShieldAlt"></svg>
@@ -8,7 +8,7 @@
             </h5>
         </div>
 
-        <div class="card-body">
+        <div class="card-body flex-grow-1 overflow-auto">
             <!-- Loading state -->
             <div class="loading-state" *ngIf="!items">
                 <c-spinner color="primary"></c-spinner>

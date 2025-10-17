@@ -14,10 +14,11 @@ public class SuppressRuleResponseDTO {
     private String pathRegex;
     private String insertedBy;
     private LocalDateTime insertedDate;
+    private String comment;
 
     // Constructor
     public SuppressRuleResponseDTO(Long id, String vulnerabilityName, SuppressRule.Scope scope, String scopeDetail,
-                                   String pathRegex, String insertedBy, LocalDateTime insertedDate) {
+                                   String pathRegex, String insertedBy, LocalDateTime insertedDate, String comment) {
         this.id = id;
         this.vulnerabilityName = vulnerabilityName;
         this.scope = scope;
@@ -25,5 +26,6 @@ public class SuppressRuleResponseDTO {
         this.pathRegex = pathRegex;
         this.insertedBy = insertedBy;
         this.insertedDate = insertedDate;
+        this.comment = comment;
     }
 }

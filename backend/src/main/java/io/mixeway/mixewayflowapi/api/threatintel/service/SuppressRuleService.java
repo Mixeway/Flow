@@ -16,8 +16,8 @@ public class SuppressRuleService {
     private final DeleteSuppressRuleService deleteSuppressRuleService;
     private final CreateSuppressRuleService createSuppressRuleService;
 
-    public void deleteRule(Long id){
-        deleteSuppressRuleService.removeRule(id);
+    public void deleteRule(Long id, Principal principal){
+        deleteSuppressRuleService.removeRule(id, principal);
     }
 
     public void createRule(SuppressRuleDTO suppressRuleDTO, Principal principal) {
