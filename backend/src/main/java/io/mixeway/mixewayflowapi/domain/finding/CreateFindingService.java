@@ -134,6 +134,8 @@ public class CreateFindingService {
     public List<Finding> mapKicsReportToFindings(KicsReport kicsReport, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
         return kicsReport.getQueries().stream()
                 .flatMap(query -> query.getFiles().stream()
+                        .filter(fileIssue ->
+                                !("Privilege Escalation Allowed".equals(query.getQueryName()) && fileIssue.getActualValue() != null && fileIssue.getActualValue().contains("allowPrivilegeEscalation is undefined")))
                         .map(fileIssue -> {
                             Vulnerability vulnerability = getOrCreateVulnerabilityService.getOrCreate(
                                     query.getQueryName(),
