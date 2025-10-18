@@ -144,7 +144,7 @@ class CloudSubscriptionDomainServicesTest {
         when(findUserService.findUser(username)).thenReturn(userInfo);
 
         PermissionFactory permissionFactory = mock(PermissionFactory.class);
-        doThrow(new UnauthorizedException()).when(permissionFactory).canUserManageTeam(any(), any());
+        doThrow(new UnauthorizedException("")).when(permissionFactory).canUserManageTeam(any(), any());
 
         Principal principal = mock(Principal.class);
         when(principal.getName()).thenReturn(username);

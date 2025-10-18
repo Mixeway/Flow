@@ -138,7 +138,7 @@ public class FindingService {
      * @param finding The Finding entity to analyze.
      * @return A string representing the urgency ("urgent", "notable", or null).
      */
-    private String calculateUrgency(Finding finding) {
+    public String calculateUrgency(Finding finding) {
         Vulnerability vulnerability = finding.getVulnerability();
         if (vulnerability == null) {
             return null; // Cannot determine urgency without vulnerability details

@@ -10,109 +10,115 @@
     </div>
 
     <!-- Vulnerability Summary -->
-    <div class="dashboard-content">
-        <app-team-vulnerability-summary [counts]="counts"></app-team-vulnerability-summary>
+    <div class="mt-4">
+        <app-team-vulnerability-summary [counts]="counts" [icons]="icons"></app-team-vulnerability-summary>
     </div>
 
     <!-- Main Tabs Container -->
-    <div class="tab-container">
-        <c-tabs [activeItemKey]="0">
-            <c-tabs-list variant="underline-border" class="nav-tabs">
-                <button cTab [itemKey]="0" class="nav-link">
-                    <svg cIcon name="cilBug"></svg>
-                    Vulnerabilities
-                </button>
-                <button cTab [itemKey]="1" class="nav-link">
-                    <svg cIcon name="cilChartPie"></svg>
-                    Statistics & Trends
-                </button>
-                <button cTab [itemKey]="2" class="nav-link">
-                    <svg cIcon name="cilMagnifyingGlass"></svg>
-                    Scan Information
-                </button>
-                <button cTab [itemKey]="3" class="nav-link">
-                    <svg cIcon name="cilBell"></svg>
-                    Notifications
-                </button>
-                <button cTab [itemKey]="4" class="nav-link">
-                    <svg cIcon name="cilInfo"></svg>
-                    Additional Info
-                </button>
-            </c-tabs-list>
+    <div class="team-tabs-container mt-4">
+        <c-card>
+            <c-tabs>
+                <c-tabs-list variant="underline-border">
+                    <button cTab [itemKey]="0">
+                        <svg cIcon name="cil-bug" class="me-2"></svg>
+                        Vulnerabilities
+                    </button>
+                    <button cTab [itemKey]="1">
+                        <svg cIcon name="cil-chart-line" class="me-2"></svg>
+                        Statistics &amp; Trends
+                    </button>
+                    <button cTab [itemKey]="2">
+                        <svg cIcon name="cil-magnifying-glass" class="me-2"></svg>
+                        Scan Info
+                    </button>
+                    <button cTab [itemKey]="3">
+                        <svg cIcon name="cil-bell" class="me-2"></svg>
+                        Notifications
+                    </button>
+                    <button cTab [itemKey]="4">
+                        <svg cIcon name="cil-info" class="me-2"></svg>
+                        Additional Info
+                    </button>
+                </c-tabs-list>
 
-            <c-tabs-content class="tab-content">
-                <!-- Vulnerabilities Tab -->
-                <c-tab-panel [itemKey]="0">
-                    <app-team-vulnerabilities-table
-                            [filteredVulns]="filteredVulns"
-                            [showRemoved]="showRemoved"
-                            [showSuppressed]="showSuppressed"
-                            [bulkActionMode]="bulkActionMode"
-                            [selectedFindings]="selectedFindings"
-                            [vulnerabilitiesLoading]="vulnerabilitiesLoading"
-                            [vulnerabilitiesLimit]="vulnerabilitiesLimit"
-                            (updateFilterNameEvent)="updateFilterName($event)"
-                            (updateFilterComponentEvent)="updateFilterComponent($event)"
-                            (updateFilterSourceEvent)="updateFilterSource($event)"
-                            (updateFilterStatusEvent)="updateFilterStatus($event)"
-                            (updateFilterSeverityEvent)="updateFilterSeverity($event)"
-                            (toggleShowRemovedEvent)="toggleShowRemoved($event)"
-                            (toggleShowSuppressedEvent)="toggleShowSuppressed($event)"
-                            (toggleBulkActionEvent)="toggleBulkAction()"
-                            (selectAllFindingsEvent)="selectAllFindings($event)"
-                            (onSelectFindingEvent)="onSelectFinding($event.id, $event.event)"
-                            (suppressSelectedFindingsEvent)="suppressSelectedFindings()"
-                            (vulnerabilitiesLimitChange)="vulnerabilitiesLimit = $event"
-                            (viewVulnerabilityDetailsEvent)="click($event)"
-                            (clearFiltersEvent)="clearVulnerabilityFilters()">
-                    </app-team-vulnerabilities-table>
-                </c-tab-panel>
+                <c-tabs-content>
+                    <!-- Vulnerabilities Tab -->
+                    <c-tab-panel class="tab-content-panel" [itemKey]="0">
+                        <app-team-vulnerabilities-table
+                                [filteredVulns]="filteredVulns"
+                                [showRemoved]="showRemoved"
+                                [showSuppressed]="showSuppressed"
+                                [bulkActionMode]="bulkActionMode"
+                                [selectedFindings]="selectedFindings"
+                                [vulnerabilitiesLoading]="vulnerabilitiesLoading"
+                                [vulnerabilitiesLimit]="vulnerabilitiesLimit"
+                                (updateFilterNameEvent)="updateFilterName($event)"
+                                (updateFilterLocationEvent)="updateFilterLocation($event)"
+                                (updateFilterComponentEvent)="updateFilterComponent($event)"
+                                (updateFilterSourceEvent)="updateFilterSource($event)"
+                                (updateFilterStatusEvent)="updateFilterStatus($event)"
+                                (updateFilterSeverityEvent)="updateFilterSeverity($event)"
+                                (toggleShowRemovedEvent)="toggleShowRemoved($event)"
+                                (toggleShowSuppressedEvent)="toggleShowSuppressed($event)"
+                                (toggleBulkActionEvent)="toggleBulkAction()"
+                                (selectAllFindingsEvent)="selectAllFindings($event)"
+                                (onSelectFindingEvent)="onSelectFinding($event.id, $event.event)"
+                                (suppressSelectedFindingsEvent)="suppressSelectedFindings()"
+                                (vulnerabilitiesLimitChange)="vulnerabilitiesLimit = $event"
+                                (viewVulnerabilityDetailsEvent)="click($event)"
+                                (toggleShowNotableEvent)="toggleShowNotable($event)"
+                                (toggleShowUrgentEvent)="toggleShowUrgent($event)"
 
-                <!-- Statistics and Trends Tab -->
-                <c-tab-panel [itemKey]="1">
-                    <app-team-statistics-chart
-                            [chartLineData]="chartLineData"
-                            [options2]="options2"
-                            [openedFindings]="getLastOpenedFindings() == 0 ? 'None' : getLastOpenedFindings()"
-                            [removedFindings]="getLastRemovedFinding() == 0 ? 'None' : getLastRemovedFinding()"
-                            [reviewedFindings]="getLastRevievedFinding() == 0 ? 'None' : getLastRevievedFinding()"
-                            [fixTime]="getLastFixTime() == 0 ? 'Unknown' : getLastFixTime()"
-                            (refreshDataEvent)="refreshData()">
-                    </app-team-statistics-chart>
-                </c-tab-panel>
+                                (clearFiltersEvent)="clearVulnerabilityFilters()">
+                        </app-team-vulnerabilities-table>
+                    </c-tab-panel>
 
-                <!-- Scan Info Tab -->
-                <c-tab-panel [itemKey]="2">
-                    <app-team-scan-info
-                            [scanInfoLoading]="scanInfoLoading"
-                            [allScanInfos]="allScanInfos"
-                            [scanInfoLimit]="scanInfoLimit">
-                    </app-team-scan-info>
-                </c-tab-panel>
+                    <!-- Statistics and Trends Tab -->
+                    <c-tab-panel class="tab-content-panel" [itemKey]="1">
+                        <app-team-statistics-chart
+                                [chartLineData]="chartLineData"
+                                [options2]="options2"
+                                [openedFindings]="getLastOpenedFindings() == 0 ? 'None' : getLastOpenedFindings()"
+                                [removedFindings]="getLastRemovedFinding() == 0 ? 'None' : getLastRemovedFinding()"
+                                [reviewedFindings]="getLastRevievedFinding() == 0 ? 'None' : getLastRevievedFinding()"
+                                [fixTime]="getLastFixTime() == 0 ? 'Unknown' : getLastFixTime()"
+                                (refreshDataEvent)="refreshData()">
+                        </app-team-statistics-chart>
+                    </c-tab-panel>
 
-                <!-- Notifications Tab -->
-                <c-tab-panel [itemKey]="3">
-                    <div class="notification-message">
-                        <svg cIcon name="cilInfo" width="24" height="24"></svg>
-                        <div class="message-content">
-                            <h5>Coming Soon</h5>
-                            <p>This section will provide notification management for vulnerability alerts. You'll be able to configure notification preferences and view alert history.</p>
+                    <!-- Scan Info Tab -->
+                    <c-tab-panel class="tab-content-panel" [itemKey]="2">
+                        <app-team-scan-info
+                                [scanInfoLoading]="scanInfoLoading"
+                                [allScanInfos]="allScanInfos"
+                                [scanInfoLimit]="scanInfoLimit">
+                        </app-team-scan-info>
+                    </c-tab-panel>
+
+                    <!-- Notifications Tab -->
+                    <c-tab-panel class="tab-content-panel" [itemKey]="3">
+                        <div class="notification-message">
+                            <svg cIcon name="cil-info" width="24" height="24"></svg>
+                            <div class="message-content">
+                                <h5>Coming Soon</h5>
+                                <p>This section will provide notification management for vulnerability alerts. You'll be able to configure notification preferences and view alert history.</p>
+                            </div>
                         </div>
-                    </div>
-                </c-tab-panel>
+                    </c-tab-panel>
 
-                <!-- Additional Info Tab -->
-                <c-tab-panel [itemKey]="4">
-                    <div class="notification-message">
-                        <svg cIcon name="cilInfo" width="24" height="24"></svg>
-                        <div class="message-content">
-                            <h5>Coming Soon</h5>
-                            <p>This section will provide integration guidance for adding MixewayFlow to your CI/CD pipeline, including configuration examples and best practices.</p>
+                    <!-- Additional Info Tab -->
+                    <c-tab-panel class="tab-content-panel" [itemKey]="4">
+                        <div class="notification-message">
+                            <svg cIcon name="cil-info" width="24" height="24"></svg>
+                            <div class="message-content">
+                                <h5>Coming Soon</h5>
+                                <p>This section will provide integration guidance for adding MixewayFlow to your CI/CD pipeline, including configuration examples and best practices.</p>
+                            </div>
                         </div>
-                    </div>
-                </c-tab-panel>
-            </c-tabs-content>
-        </c-tabs>
+                    </c-tab-panel>
+                </c-tabs-content>
+            </c-tabs>
+        </c-card>
     </div>
 
     <!-- Vulnerability Details Modal -->
@@ -131,6 +137,7 @@
             (suppressFindingEvent)="suppressFinding()"
             (reactivateFindingEvent)="reactivateFinding()"
             (addCommentEvent)="addComment()"
+            [teamId]="teamId"
             (newCommentChange)="newComment = $event">
     </app-team-vulnerability-details>
 

@@ -6,7 +6,7 @@ import {
   CardHeaderComponent,
   ColComponent,
   RowComponent,
-  SpinnerComponent
+  SpinnerComponent, TooltipDirective
 } from '@coreui/angular';
 import { NgxDatatableModule } from '@swimlane/ngx-datatable';
 import {DatePipe, JsonPipe, NgForOf, NgIf} from '@angular/common';
@@ -30,7 +30,8 @@ import {IconDirective} from "@coreui/icons-angular";
     FormsModule,
     IconDirective,
     JsonPipe,
-    NgForOf
+    NgForOf,
+    TooltipDirective
   ],
   templateUrl: './team-scan-info.component.html',
   styleUrls: ['./team-scan-info.component.scss']

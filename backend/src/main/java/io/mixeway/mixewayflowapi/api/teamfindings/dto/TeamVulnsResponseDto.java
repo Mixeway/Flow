@@ -16,5 +16,8 @@ public class TeamVulnsResponseDto {
     String lastSeen;
     @JsonProperty("component_name")
     String componentName;
+    String urgency;
+    String repoUrl;
+
 
 }

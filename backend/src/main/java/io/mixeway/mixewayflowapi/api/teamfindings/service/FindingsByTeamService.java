@@ -3,6 +3,7 @@ package io.mixeway.mixewayflowapi.api.teamfindings.service;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.CommentDto;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.GetFindingResponseDto;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.VulnsResponseDto;
+import io.mixeway.mixewayflowapi.api.coderepo.service.FindingService;
 import io.mixeway.mixewayflowapi.api.team.dto.TeamDto;
 import io.mixeway.mixewayflowapi.api.teamfindings.dto.TeamFindingsAndVulnsResponseDto;
 import io.mixeway.mixewayflowapi.api.teamfindings.dto.TeamVulnsResponseDto;
@@ -45,6 +46,9 @@ public class FindingsByTeamService {
     private final UpdateFindingService updateFindingService;
     private final UserRepository userRepository;
     private final FindingRepository findingRepository;
+    private final FindingService findingService;
+
+
 
     public List<TeamVulnsResponseDto> getCloudAndRepoFindings(Long teamId, Principal principal) {
         Team team = findTeamService.findById(teamId)
@@ -63,7 +67,36 @@ public class FindingsByTeamService {
         List<Finding> findingsByTeam = Stream.concat(codeReposFindings.stream(), cloudSubscriptionsFindings.stream())
                 .collect(Collectors.toList());
 
-        return TeamFindingMapper.mapToDtoList(findingsByTeam);
+        // Map to DTOs and enrich with urgency when DTO supports it
+        List<TeamVulnsResponseDto> dtos = TeamFindingMapper.mapToDtoList(findingsByTeam);
+        try {
+            for (int i = 0; i < dtos.size(); i++) {
+                TeamVulnsResponseDto dto = dtos.get(i);
+                Finding f = findingsByTeam.get(i);
+                // If DTO has setUrgency(String), populate it; otherwise ignore gracefully
+                try {
+                    TeamVulnsResponseDto.class.getMethod("setUrgency", String.class)
+                            .invoke(dto, findingService.calculateUrgency(f));
+                } catch (NoSuchMethodException ignore) {
+                    // older DTO without urgency support – skip
+                }
+                // Populate repoUrl from finding.codeRepo.repourl when available
+                try {
+                    String repoUrl = null;
+                    CodeRepo codeRepo = f.getCodeRepo();
+                    if (codeRepo != null && codeRepo.getRepourl() != null) {
+                        repoUrl = codeRepo.getRepourl();
+                    }
+                    TeamVulnsResponseDto.class.getMethod("setRepoUrl", String.class)
+                            .invoke(dto, repoUrl);
+                } catch (NoSuchMethodException ignore) {
+                    // Older DTO without repoUrl support – skip
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Unable to enrich TeamVulnsResponseDto with urgency: {}", e.getMessage());
+        }
+        return dtos;
     }
 
     public GetFindingResponseDto getCloudAndRepoFinding(Long teamId, Long findingId, Principal principal) {
@@ -79,6 +112,15 @@ public class FindingsByTeamService {
         if (cloudSubscriptions.contains(finding.getCloudSubscription()) || codeRepos.contains(finding.getCodeRepo())) {
             GetFindingResponseDto getFindingResponseDto = new GetFindingResponseDto();
             VulnsResponseDto vulnsResponseDto = FindingMapper.mapToDto(finding);
+            // Enrich single finding response with urgency if DTO supports it
+            try {
+                VulnsResponseDto.class.getMethod("setUrgency", String.class)
+                        .invoke(vulnsResponseDto, findingService.calculateUrgency(finding));
+            } catch (NoSuchMethodException ignore) {
+                // DTO without urgency – skip
+            } catch (Exception e) {
+                log.warn("Unable to enrich VulnsResponseDto with urgency: {}", e.getMessage());
+            }
             getFindingResponseDto.setVulnsResponseDto(vulnsResponseDto);
             getFindingResponseDto.setDescription(finding.getVulnerability().getDescription());
             getFindingResponseDto.setRecommendation(finding.getVulnerability().getRecommendation());
@@ -129,7 +171,7 @@ public class FindingsByTeamService {
         Boolean kev = null;
         if ("t".equalsIgnoreCase(kevStr) || "true".equalsIgnoreCase(kevStr)) kev = true;
         else if ("f".equalsIgnoreCase(kevStr) || "false".equalsIgnoreCase(kevStr)) kev = false;
-
+        String urgencyFilter = filters.getOrDefault("urgency", null); // expected values: "urgent" | "notable"
 
         Page<Finding> codeRepoFindingsPage = findingRepository.findByCodeReposPageable(codeRepos, pageable, severity, source, status, epss, kev);
         Page<Finding> cloudSubscriptionFindingsPage = findingRepository.findByCloudSubscriptionsPageable(cloudSubscriptions, pageable, severity, source, status, epss, kev);
@@ -139,7 +181,32 @@ public class FindingsByTeamService {
                 cloudSubscriptionFindingsPage.getContent().stream()
         ).collect(Collectors.toList());
 
+        if (urgencyFilter != null && !urgencyFilter.isBlank()) {
+            String uf = urgencyFilter.trim().toLowerCase();
+            combinedFindings = combinedFindings.stream()
+                    .filter(f -> {
+                        String u = Optional.ofNullable(findingService.calculateUrgency(f)).orElse("").toLowerCase();
+                        return uf.equals(u);
+                    })
+                    .collect(Collectors.toList());
+        }
+
         List<TeamFindingsAndVulnsResponseDto> dtos = TeamFindingAndVulnsMapper.mapToDtoList(remoteIdentifier, combinedFindings);
+
+        try {
+            for (int i = 0; i < dtos.size(); i++) {
+                TeamFindingsAndVulnsResponseDto dto = dtos.get(i);
+                Finding f = combinedFindings.get(i);
+                try {
+                    TeamFindingsAndVulnsResponseDto.class.getMethod("setUrgency", String.class)
+                            .invoke(dto, findingService.calculateUrgency(f));
+                } catch (NoSuchMethodException ignore) {
+                    // DTO without urgency – skip
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Unable to enrich TeamFindingsAndVulnsResponseDto with urgency: {}", e.getMessage());
+        }
 
         return new PageImpl<>(dtos, pageable, codeRepoFindingsPage.getTotalElements() + cloudSubscriptionFindingsPage.getTotalElements());
     }

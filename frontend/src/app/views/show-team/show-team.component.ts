@@ -93,7 +93,9 @@ interface Vulnerability {
     inserted: string;
     last_seen: string;
     status: string;
+    urgency?: string;
     component_name: string;
+    repoUrl: string;
 }
 
 
@@ -357,6 +359,7 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
     filters: { [key: string]: string } = {
         actions: '',
         name: '',
+        location: '',
         component_name: '',
         source: '',
         status: '',
@@ -364,8 +367,47 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
         dates: '',
     };
 
+    private storageKey(): string {
+        return `teamFilters:${this.teamId || 'unknown'}`;
+    }
+
     showRemoved: boolean = false;
     showSuppressed: boolean = false;
+    showUrgent: boolean = false;
+    showNotable: boolean = false;
+    hasUrgentFindings: boolean = false;
+    hasNotableFindings: boolean = false;
+    statusFilter: string = '';
+
+    private saveFilterState(): void {
+        try {
+            const state = {
+                filters: this.filters,
+                showRemoved: this.showRemoved,
+                showSuppressed: this.showSuppressed,
+                showUrgent: this.showUrgent,
+                showNotable: this.showNotable,
+                statusFilter: this.statusFilter,
+                vulnerabilitiesLimit: this.vulnerabilitiesLimit
+            };
+            localStorage.setItem(this.storageKey(), JSON.stringify(state));
+        } catch (_) {}
+    }
+
+    private restoreFilterState(): void {
+        try {
+            const raw = localStorage.getItem(this.storageKey());
+            if (!raw) return;
+            const state = JSON.parse(raw);
+            if (state?.filters) this.filters = { ...this.filters, ...state.filters };
+            if (typeof state?.showRemoved === 'boolean') this.showRemoved = state.showRemoved;
+            if (typeof state?.showSuppressed === 'boolean') this.showSuppressed = state.showSuppressed;
+            if (typeof state?.vulnerabilitiesLimit === 'number') this.vulnerabilitiesLimit = state.vulnerabilitiesLimit;
+            if (typeof state?.showUrgent === 'boolean') this.showUrgent = state.showUrgent;
+            if (typeof state?.showNotable === 'boolean') this.showNotable = state.showNotable;
+            if (typeof state?.statusFilter === 'string') this.statusFilter = state.statusFilter;
+        } catch (_) {}
+    }
     detailsModal: boolean = false;
     selectedRowId: number | null = null;
 
@@ -497,9 +539,10 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
         this.vulnerabilitiesLoading = true;
         this.teamFindingsService.getFindingsByTeam(+this.teamId).subscribe({
             next: (response) => {
-                this.vulns = response;
+                this.vulns = (response || []).map((v: any, i: number) => ({ ...v, __idx: i }));
                 this.filteredVulns = [...this.vulns];
                 this.counts = this.countFindings(this.vulns);
+                this.checkForSpecialFindings();
                 this.applyFilters();
                 this.vulnerabilitiesLoading = false;
             },
@@ -726,40 +769,104 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
         const val = event.target.value.toLowerCase();
         this.filters['name'] = val;
         this.applyFilters();
+        this.saveFilterState();
+    }
+
+    updateFilterLocation(event: any) {
+        const val = (event?.target?.value ?? '').toString().toLowerCase();
+        this.filters['location'] = val;
+        this.applyFilters();
+        this.saveFilterState();
     }
 
     updateFilterComponent(event: any) {
         const val = event.target.value.toLowerCase();
         this.filters['component_name'] = val;
         this.applyFilters();
+        this.saveFilterState();
     }
 
     updateFilterSource(event: any) {
         const val = event.target.value;
         this.filters['source'] = val;
         this.applyFilters();
+        this.saveFilterState();
     }
 
     updateFilterStatus(event: any) {
-        const val = event.target.value;
+        const valRaw = event.target.value;
+        const val = (valRaw || '').toUpperCase();
         this.filters['status'] = val;
+        this.statusFilter = val;
+
+        // Auto-toggle show flags based on selected status (repo parity)
+        if (val === 'SUPPRESSED' || val === 'SUPRESSED') {
+            this.showSuppressed = true;
+            this.showRemoved = false;
+        } else if (val === 'REMOVED') {
+            this.showRemoved = true;
+            this.showSuppressed = false;
+        } else if (val === 'NEW' || val === 'EXISTING' || val === '') {
+            this.showRemoved = false;
+            this.showSuppressed = false;
+        }
+
         this.applyFilters();
+        this.saveFilterState();
     }
 
     updateFilterSeverity(event: any) {
         const val = event.target.value;
         this.filters['severity'] = val;
         this.applyFilters();
+        this.saveFilterState();
+    }
+
+    toggleShowUrgent(event: any) {
+        this.showUrgent = !!event?.target?.checked;
+        if (this.showUrgent) {
+            this.showNotable = false;
+        }
+        this.applyFilters();
+        this.saveFilterState();
+    }
+
+    toggleShowNotable(event: any) {
+        this.showNotable = !!event?.target?.checked;
+        if (this.showNotable) {
+            this.showUrgent = false;
+        }
+        this.applyFilters();
+        this.saveFilterState();
+    }
+
+    checkForSpecialFindings(): void {
+        this.hasUrgentFindings = this.vulns.some(v => v.urgency === 'urgent' && v.status !== 'REMOVED' && v.status !== 'SUPRESSED');
+        this.hasNotableFindings = this.vulns.some(v => v.urgency === 'notable' && v.status !== 'REMOVED' && v.status !== 'SUPRESSED');
+    }
+
+    private sortByUrgencyThenOriginal(rows: any[]): any[] {
+        const prio = (u?: string) => (u === 'urgent' ? 0 : u === 'notable' ? 1 : 2);
+        return rows.sort((a, b) => {
+            const pa = prio(a.urgency);
+            const pb = prio(b.urgency);
+            if (pa !== pb) return pa - pb;
+            const ia = typeof a.__idx === 'number' ? a.__idx : 0;
+            const ib = typeof b.__idx === 'number' ? b.__idx : 0;
+            return ia - ib;
+        });
     }
 
     toggleShowRemoved(event: any) {
         this.showRemoved = event.target.checked;
         this.applyFilters();
+        this.saveFilterState();
     }
 
     toggleShowSuppressed(event: any) {
         this.showSuppressed = event.target.checked;
         this.applyFilters();
+        this.saveFilterState();
     }
 
     applyFilters() {
@@ -767,26 +874,48 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
             const matchesFilters = Object.keys(this.filters).every((key) => {
                 const filterValue = this.filters[key];
                 if (!filterValue) return true;
-                const vulnValue = (vuln as any)[key];
 
-                // Use strict equality for the 'source' filter
-                if (key === 'source') {
-                    return vulnValue.toLowerCase() === filterValue.toLowerCase();
+                const fv = filterValue.toString().toLowerCase();
+
+                // exact-match keys
+                if (key === 'source' || key === 'status' || key === 'severity' || key === 'urgency') {
+                    const v = (vuln as any)[key];
+                    return typeof v === 'string' && v.toLowerCase() === fv;
                 }
 
-                // Use includes for other filters
-                return vulnValue
-                    .toString()
-                    .toLowerCase()
-                    .includes(filterValue.toLowerCase());
+                // location: match file path OR repoUrl (contains check)
+                if (key === 'location') {
+                    const loc = (vuln as any).location ? (vuln as any).location.toString().toLowerCase() : '';
+                    const repo = (vuln as any).repoUrl ? (vuln as any).repoUrl.toString().toLowerCase() : '';
+                    return loc.includes(fv) || repo.includes(fv);
+                }
+
+                // default: contains check on the raw field
+                const raw = (vuln as any)[key];
+                if (raw === undefined || raw === null) return false;
+                return raw.toString().toLowerCase().includes(fv);
             });
 
-            const matchesStatus =
-                (this.showRemoved || vuln.status !== 'REMOVED') &&
-                (this.showSuppressed || vuln.status !== 'SUPRESSED');
+            // Normalize status for checks
+            const statusUpper = (vuln.status || '').toUpperCase();
+            const isRemoved = statusUpper === 'REMOVED';
+            const isSuppressed = statusUpper === 'SUPPRESSED' || statusUpper === 'SUPRESSED';
 
-            return matchesFilters && matchesStatus;
+            const matchesStatus = (this.showRemoved || !isRemoved) && (this.showSuppressed || !isSuppressed);
+
+            // Urgency toggles
+            const matchesUrgency = () => {
+                if (this.showUrgent) return vuln.urgency === 'urgent';
+                if (this.showNotable) return vuln.urgency === 'notable';
+                return true;
+            };
+
+            return matchesFilters && matchesStatus && matchesUrgency();
         });
+
+        // Default sort: urgency first, then original index
+        this.sortByUrgencyThenOriginal(this.filteredVulns);
+        this.saveFilterState();
     }
 
     handleDetailsModal(visible: boolean) {
@@ -858,15 +987,26 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
             critical: 0,
             high: 0,
             rest: 0,
+            urgent: 0,
+            notable: 0,
         };
+
         vulnerabilities.forEach((vuln) => {
             if (vuln.status === 'EXISTING' || vuln.status === 'NEW') {
+                // Severity counts
                 if (vuln.severity === 'CRITICAL') {
                     counts.critical++;
                 } else if (vuln.severity === 'HIGH') {
                     counts.high++;
                 } else {
                     counts.rest++;
+                }
+
+                // Urgency counts
+                if (vuln.urgency === 'urgent') {
+                    counts.urgent++;
+                } else if (vuln.urgency === 'notable') {
+                    counts.notable++;
                 }
             }
         });
@@ -1278,7 +1418,11 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
         };
         this.showRemoved = false;
         this.showSuppressed = false;
+        this.showUrgent = false;
+        this.showNotable = false;
+        this.statusFilter = '';
         this.applyFilters();
+        this.saveFilterState();
     }
 
     // openChangeTeamModal() {
