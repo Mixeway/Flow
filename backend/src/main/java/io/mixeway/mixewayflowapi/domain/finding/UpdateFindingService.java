@@ -29,19 +29,4 @@ public class UpdateFindingService {
         log.info("[UpdateFinding] Re-activated finding status {} in {} reason", finding.getVulnerability().getName(), finding.getCodeRepo().getRepourl());
 
     }
-
-    @Transactional
-    public void verifyGitLabFinding(String rule, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String location) {
-        List<Finding> findings = findingRepository.findByCodeRepoAndVulnerabilityNameAndBranchAndLocation(codeRepo, rule, codeRepoBranch, location);
-        if (findings.isEmpty()) {
-            log.debug("[UpdateFinding] No findings found for rule: {} for {}", rule, location);
-            return;
-        }
-        Finding finding = findings.get(0);
-        if (finding.getStatus() == Finding.Status.EXISTING || finding.getStatus() == Finding.Status.NEW) {
-            finding.updateStatus(Finding.Status.REMOVED, null);
-            findingRepository.save(finding);
-        }
-
-    }
 }

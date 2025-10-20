@@ -19,6 +19,7 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.StreamSupport;
 
@@ -81,7 +82,7 @@ public class GitLabRules {
         return null;
     }
 
-    public void checkDefaultBranchProtection(CodeRepo codeRepo) {
+    public List<Finding> checkDefaultBranchProtection(CodeRepo codeRepo) {
         String token = codeRepo.getAccessToken();
         String repo = getRepositoryName(codeRepo);
         String domain = getGitLabDomain(codeRepo);
@@ -104,33 +105,34 @@ public class GitLabRules {
                     log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Default branch is not protected'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return;
+                return null;
             } catch (Exception e) {
                 log.error("[GitLabScannerService] Unexpected error during API request for repository {} for rule 'Default branch is not protected'",
                         codeRepo.getRepourl());
-                return;
+                return null;
             }
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode branches = objectMapper.readTree(response);
+
+            List<Finding> newFindings = new ArrayList<>();
 
             for (JsonNode branch : branches) {
                 boolean isProtected = branch.get("protected").asBoolean();
                 boolean isDefault = branch.get("default").asBoolean();
                 JsonNode rule = findRule("Default branch is not protected");
                 if (!isProtected && isDefault) {
-                    Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
+                    newFindings.add(createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText()));
                     log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
-                    createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
-                } else {
-                    updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
                 }
             }
+            return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl());
+            return null;
         }
     }
 
-    public void checkMembersPrivileges(CodeRepo codeRepo) {
+    public List<Finding> checkMembersPrivileges(CodeRepo codeRepo) {
         String token = codeRepo.getAccessToken();
         String repo = getRepositoryName(codeRepo);
         String domain = getGitLabDomain(codeRepo);
@@ -153,16 +155,18 @@ public class GitLabRules {
                     log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Too many members with high privileges'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return;
+                return null;
             } catch (Exception e) {
                 log.error("[GitLabScannerService] Unexpected error during API request for repository {} for rule 'Too many members with high privileges'",
                         codeRepo.getRepourl());
-                return;
+                return null;
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode members = objectMapper.readTree(response);
             int memberCount = members.size();
+
+            List<Finding> newFindings = new ArrayList<>();
 
             if (memberCount > 1) {
                 int privilegedMembers = 0;
@@ -174,19 +178,19 @@ public class GitLabRules {
                 }
                 JsonNode rule = findRule("Too many members with high privileges");
                 if ((float) privilegedMembers / memberCount > 0.8) {
-                    Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
+                    newFindings.add(createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText()));
                     log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
-                    createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
-                } else {
-                    updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
                 }
             }
-        } catch (Exception e) {
+            return newFindings;
+        }
+        catch (Exception e) {
             log.error("[v] Unexpected error for repository {}", codeRepo.getRepourl());
+            return null;
         }
     }
 
-    public void checkRunnersTags(CodeRepo codeRepo) {
+    public List<Finding> checkRunnersTags(CodeRepo codeRepo) {
         String token = codeRepo.getAccessToken();
         String repo = getRepositoryName(codeRepo);
         String domain = getGitLabDomain(codeRepo);
@@ -210,15 +214,17 @@ public class GitLabRules {
                     log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Untagged runner'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return;
+                return null;
             } catch (Exception e) {
                 log.error("[GitLabScannerService] Unexpected error during API request for repository {} for rule 'Untagged runner'",
                         codeRepo.getRepourl());
-                return;
+                return null;
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode runners = objectMapper.readTree(response);
+
+            List<Finding> newFindings = new ArrayList<>();
 
             for (JsonNode runner : runners) {
                 int runnerId = runner.get("id").asInt();
@@ -240,30 +246,29 @@ public class GitLabRules {
                         log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Untagged runner'",
                                 codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                     }
-                    return;
+                    return null;
                 } catch (Exception e) {
                     log.error("[GitLabScannerService] Unexpected error during API request for repository {} for rule 'Untagged runner'",
                             codeRepo.getRepourl());
-                    return;
+                    return null;
                 }
 
                 ObjectMapper runnerObjectMapper = new ObjectMapper();
                 JsonNode runnerDetails = runnerObjectMapper.readTree(runnerResponse);
                 JsonNode rule = findRule("Untagged runner");
                 if (runnerDetails.get("tag_list").isArray() && runnerDetails.get("tag_list").size() == 0) {
-                    Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), "Incorrect configuration of " + rule.get("location").asText(), rule.get("location").asText() + " (" + runnerDetails.get("id").asInt() + ")", rule.get("description").asText(), rule.get("recommendation").asText());
+                    newFindings.add(createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), "Incorrect configuration of " + rule.get("location").asText(), rule.get("location").asText() + " (" + runnerDetails.get("id").asInt() + ")", rule.get("description").asText(), rule.get("recommendation").asText()));
                     log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {} for runner: {}", rule.get("name").asText(), codeRepo.getRepourl(), runnerDetails.get("description").asText());
-                    createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
-                } else {
-                    updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + runnerDetails.get("id").asInt() + ")");
                 }
             }
+            return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {} ", codeRepo.getRepourl());
+            return null;
         }
     }
 
-    public void checkJobsTags(CodeRepo codeRepo) {
+    public List<Finding> checkJobsTags(CodeRepo codeRepo) {
         String token = codeRepo.getAccessToken();
         String repo = getRepositoryName(codeRepo);
         String domain = getGitLabDomain(codeRepo);
@@ -287,15 +292,17 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Runner allows untagged jobs'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return;
+                return null;
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Runner allows untagged jobs'",
                         codeRepo.getRepourl());
-                return;
+                return null;
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode runners = objectMapper.readTree(response);
+
+            List<Finding> newFindings = new ArrayList<>();
 
             for (JsonNode runner : runners) {
                 int runnerId = runner.get("id").asInt();
@@ -317,30 +324,29 @@ public class GitLabRules {
                         log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Runner allows untagged jobs'",
                                 codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                     }
-                    return;
+                    return null;
                 } catch (Exception e) {
                     log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Runner allows untagged jobs'",
                             codeRepo.getRepourl());
-                    return;
+                    return null;
                 }
 
                 ObjectMapper runnerObjectMapper = new ObjectMapper();
                 JsonNode runnerDetails = runnerObjectMapper.readTree(runnerResponse);
                 JsonNode rule = findRule("Runner allows untagged jobs");
                 if (runnerDetails.get("run_untagged").asBoolean()) {
-                    Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), "Incorrect configuration of " + rule.get("location").asText(), rule.get("location").asText() + " (" + runnerDetails.get("id").asInt() + ")", rule.get("description").asText(), rule.get("recommendation").asText());
+                    newFindings.add(createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), "Incorrect configuration of " + rule.get("location").asText(), rule.get("location").asText() + " (" + runnerDetails.get("id").asInt() + ")", rule.get("description").asText(), rule.get("recommendation").asText()));
                     log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {} for runner: {}", rule.get("name").asText(), codeRepo.getRepourl(), runnerDetails.get("description").asText());
-                    createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
-                } else {
-                    updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + runnerDetails.get("id").asInt() + ")");
                 }
             }
+            return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
+            return null;
         }
     }
 
-    public void checkJobsProtection(CodeRepo codeRepo) {
+    public List<Finding> checkJobsProtection(CodeRepo codeRepo) {
         String token = codeRepo.getAccessToken();
         String repo = getRepositoryName(codeRepo);
         String domain = getGitLabDomain(codeRepo);
@@ -364,15 +370,17 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Runner allows unprotected jobs'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return;
+                return null;
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Runner allows unprotected jobs'",
                         codeRepo.getRepourl());
-                return;
+                return null;
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode runners = objectMapper.readTree(response);
+
+            List<Finding> newFindings = new ArrayList<>();
 
             for (JsonNode runner : runners) {
                 int runnerId = runner.get("id").asInt();
@@ -394,30 +402,29 @@ public class GitLabRules {
                         log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Runner allows unprotected jobs'",
                                 codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                     }
-                    return;
+                    return null;
                 } catch (Exception e) {
                     log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Runner allows unprotected jobs'",
                             codeRepo.getRepourl());
-                    return;
+                    return null;
                 }
 
                 ObjectMapper runnerObjectMapper = new ObjectMapper();
                 JsonNode runnerDetails = runnerObjectMapper.readTree(runnerResponse);
                 JsonNode rule = findRule("Runner allows unprotected jobs");
                 if (!runnerDetails.get("access_level").asText().equals("ref_protected")) {
-                    Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), "Incorrect configuration of " + rule.get("location").asText(), rule.get("location").asText() + " (" + runnerDetails.get("id").asInt() + ")", rule.get("description").asText(), rule.get("recommendation").asText());
+                    newFindings.add(createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), "Incorrect configuration of " + rule.get("location").asText(), rule.get("location").asText() + " (" + runnerDetails.get("id").asInt() + ")", rule.get("description").asText(), rule.get("recommendation").asText()));
                     log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {} for runner: {}", rule.get("name").asText(), codeRepo.getRepourl(), runnerDetails.get("description").asText());
-                    createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
-                } else {
-                    updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + runnerDetails.get("id").asInt() + ")");
                 }
             }
+            return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
+            return null;
         }
     }
 
-    public void checkRunnersExecutors(CodeRepo codeRepo) {
+    public List<Finding> checkRunnersExecutors(CodeRepo codeRepo) {
         String token = codeRepo.getAccessToken();
         String repo = getRepositoryName(codeRepo);
         String domain = getGitLabDomain(codeRepo);
@@ -461,11 +468,11 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Runner uses insecure executor type'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return;
+                return null;
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Runner uses insecure executor type'",
                         codeRepo.getRepourl());
-                return;
+                return null;
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
@@ -473,6 +480,8 @@ public class GitLabRules {
 
             JsonNode project = root.path("data").path("project");
             JsonNode runners = project.path("runners").path("nodes");
+
+            List<Finding> newFindings = new ArrayList<>();
 
             if (runners.isArray()) {
                 for (JsonNode runnerNode : runners) {
@@ -484,23 +493,21 @@ public class GitLabRules {
 
                             JsonNode rule = findRule("Runner uses insecure executor type");
                             if (!executorName.equals("docker") && !executorName.equals("kubernetes")) {
-                                Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), "Incorrect configuration of " + rule.get("location").asText(), rule.get("location").asText() + " (" + runnerId + ")", rule.get("description").asText(), rule.get("recommendation").asText());
+                                newFindings.add(createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), "Incorrect configuration of " + rule.get("location").asText(), rule.get("location").asText() + " (" + runnerId + ")", rule.get("description").asText(), rule.get("recommendation").asText()));
                                 log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {} for runner: {}", rule.get("name").asText(), codeRepo.getRepourl(), runnerId);
-                                createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
-                            } else {
-                                updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + runnerId + ")"
-                                );
                             }
                         }
                     }
                 }
             }
+            return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
+            return null;
         }
     }
 
-    public void checkAccessTokensScope(CodeRepo codeRepo) {
+    public List<Finding> checkAccessTokensScope(CodeRepo codeRepo) {
         String token = codeRepo.getAccessToken();
         String repo = getRepositoryName(codeRepo);
         String domain = getGitLabDomain(codeRepo);
@@ -524,35 +531,36 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Access token with api scope'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return;
+                return null;
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Access token with api scope'",
                         codeRepo.getRepourl());
-                return;
+                return null;
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode tokens = objectMapper.readTree(response);
+
+            List<Finding> newFindings = new ArrayList<>();
 
             for (JsonNode tokenInfo : tokens) {
                 if (tokenInfo.has("scopes") && tokenInfo.get("scopes").isArray()) {
                     boolean hasApiScope = StreamSupport.stream(tokenInfo.get("scopes").spliterator(), false).anyMatch(scope -> "api".equals(scope.asText()));
                     JsonNode rule = findRule("Access token with api scope");
                     if (hasApiScope) {
-                        Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText() + " (" + tokenInfo.get("name").asText() + ")", rule.get("description").asText(), rule.get("recommendation").asText());
+                        newFindings.add(createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText() + " (" + tokenInfo.get("name").asText() + ")", rule.get("description").asText(), rule.get("recommendation").asText()));
                         log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
-                        createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
-                    } else {
-                        updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + tokenInfo.get("name").asText() + ")");
                     }
                 }
             }
+            return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
+            return null;
         }
     }
 
-    public void checkDescription(CodeRepo codeRepo) {
+    public List<Finding> checkDescription(CodeRepo codeRepo) {
         String token = codeRepo.getAccessToken();
         String repo = getRepositoryName(codeRepo);
         String domain = getGitLabDomain(codeRepo);
@@ -576,30 +584,31 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Lack of repository description'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return;
+                return null;
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Lack of repository description'",
                         codeRepo.getRepourl());
-                return;
+                return null;
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode description = objectMapper.readTree(response);
 
+            List<Finding> newFindings = new ArrayList<>();
+
             JsonNode rule = findRule("Lack of repository description");
             if (description.get("description").asText().equals("")) {
-                Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
+                newFindings.add(createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText()));
                 log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
-                createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
-            } else {
-                updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
             }
+            return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
+            return null;
         }
     }
 
-    public void checkReadmeFile(CodeRepo codeRepo) {
+    public List<Finding> checkReadmeFile(CodeRepo codeRepo) {
         String token = codeRepo.getAccessToken();
         String repo = getRepositoryName(codeRepo);
         String domain = getGitLabDomain(codeRepo);
@@ -623,11 +632,11 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Lack of README file'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return;
+                return null;
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Lack of README file'",
                         codeRepo.getRepourl());
-                return;
+                return null;
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
@@ -638,6 +647,8 @@ public class GitLabRules {
             boolean readmeExists = false;
             boolean reamdeIsEmpty = false;
             String ReadmePath = "";
+
+            List<Finding> newFindings = new ArrayList<>();
 
             for (JsonNode file : files) {
                 String path = file.get("path").asText();
@@ -666,11 +677,11 @@ public class GitLabRules {
                         log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Lack of README file'",
                                 codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                     }
-                    return;
+                    return null;
                 } catch (Exception e) {
                     log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Lack of README file'",
                             codeRepo.getRepourl());
-                    return;
+                    return null;
                 }
                 if (readmeContent == null || readmeContent.trim().isEmpty()) {
                     reamdeIsEmpty = true;
@@ -678,18 +689,17 @@ public class GitLabRules {
             }
 
             if (!readmeExists || reamdeIsEmpty) {
-                Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
+                newFindings.add(createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText()));
                 log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
-                createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
-            } else {
-                updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
             }
+            return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
+            return null;
         }
     }
 
-    public void checkContributingFile(CodeRepo codeRepo) {
+    public List<Finding> checkContributingFile(CodeRepo codeRepo) {
         String token = codeRepo.getAccessToken();
         String repo = getRepositoryName(codeRepo);
         String domain = getGitLabDomain(codeRepo);
@@ -713,17 +723,19 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Lack of CONTRIBUTING file'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return;
+                return null;
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Lack of CONTRIBUTING file'",
                         codeRepo.getRepourl());
-                return;
+                return null;
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode files = objectMapper.readTree(response);
 
             JsonNode rule = findRule("Lack of CONTRIBUTING file");
+
+            List<Finding> newFindings = new ArrayList<>();
 
             boolean contributingExists = false;
             boolean contributingIsEmpty = false;
@@ -755,11 +767,11 @@ public class GitLabRules {
                         log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Lack of CONTRIBUTING file'",
                                 codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                     }
-                    return;
+                    return null;
                 } catch (Exception e) {
                     log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Lack of CONTRIBUTING file'",
                             codeRepo.getRepourl());
-                    return;
+                    return null;
                 }
 
                 if (contributingContent == null || contributingContent.trim().isEmpty()) {
@@ -768,18 +780,17 @@ public class GitLabRules {
             }
 
             if (!contributingExists || contributingIsEmpty) {
-                Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
+                newFindings.add(createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText()));
                 log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
-                createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
-            } else {
-                updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
             }
+            return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
+            return null;
         }
     }
 
-    public void checkSecurityFile(CodeRepo codeRepo) {
+    public List<Finding> checkSecurityFile(CodeRepo codeRepo) {
         String token = codeRepo.getAccessToken();
         String repo = getRepositoryName(codeRepo);
         String domain = getGitLabDomain(codeRepo);
@@ -803,17 +814,19 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Lack of SECURITY file'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return;
+                return null;
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Lack of SECURITY file'",
                         codeRepo.getRepourl());
-                return;
+                return null;
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode files = objectMapper.readTree(response);
 
             JsonNode rule = findRule("Lack of SECURITY file");
+
+            List<Finding> newFindings = new ArrayList<>();
 
             boolean securityExists = false;
             boolean securityIsEmpty = false;
@@ -845,11 +858,11 @@ public class GitLabRules {
                         log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Lack of SECURITY file'",
                                 codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                     }
-                    return;
+                    return null;
                 } catch (Exception e) {
                     log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Lack of SECURITY file'",
                             codeRepo.getRepourl());
-                    return;
+                    return null;
                 }
 
                 if (securityContent == null || securityContent.trim().isEmpty()) {
@@ -858,18 +871,17 @@ public class GitLabRules {
             }
 
             if (!securityExists || securityIsEmpty) {
-                Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
+                newFindings.add(createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText()));
                 log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
-                createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
-            } else {
-                updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
             }
+            return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
+            return null;
         }
     }
 
-    public void checkExternalRepositories(CodeRepo codeRepo) {
+    public List<Finding> checkExternalRepositories(CodeRepo codeRepo) {
         String token = codeRepo.getAccessToken();
         String repo = getRepositoryName(codeRepo);
         String domain = getGitLabDomain(codeRepo);
@@ -893,17 +905,19 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Usage of external repository'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return;
+                return null;
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Usage of external repository'",
                         codeRepo.getRepourl());
-                return;
+                return null;
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode files = objectMapper.readTree(response);
 
             JsonNode rule = findRule("Usage of external repository");
+
+            List<Finding> newFindings = new ArrayList<>();
 
             String[] repositoryAllowlist = StreamSupport.stream(findRepositoryAllowlistService.findAll().spliterator(), false).map(RepositoryAllowlist::getRepositoryDomain).toArray(String[]::new);
 
@@ -927,11 +941,11 @@ public class GitLabRules {
                             log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Usage of external repository'",
                                     codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                         }
-                        return;
+                        return null;
                     } catch (Exception e) {
                         log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Usage of external repository'",
                                 codeRepo.getRepourl());
-                        return;
+                        return null;
                     }
 
                     String[] lines = fileContent.split("\n");
@@ -945,23 +959,21 @@ public class GitLabRules {
                                 }
                             }
                             if (!matchesAllowlist) {
-                                Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText() + " (" + path + "/" + line + ")", rule.get("description").asText(), rule.get("recommendation").asText());
+                                newFindings.add(createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText() + " (" + path + "/" + line + ")", rule.get("description").asText(), rule.get("recommendation").asText()));
                                 log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
-                                createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
-                            } else {
-                                updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + path + "/" + line + ")");
                             }
                         }
                     }
                 }
             }
-
+            return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
+            return null;
         }
     }
 
-    public void checkProtectedBranchesAccessLevel(CodeRepo codeRepo) {
+    public List<Finding> checkProtectedBranchesAccessLevel(CodeRepo codeRepo) {
         String token = codeRepo.getAccessToken();
         String repo = getRepositoryName(codeRepo);
         String domain = getGitLabDomain(codeRepo);
@@ -985,15 +997,18 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Protected branch with insufficient access level'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return;
+                return null;
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Protected branch with insufficient access level'",
                         codeRepo.getRepourl());
-                return;
+                return null;
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode branches = objectMapper.readTree(response);
+
+            List<Finding> newFindings = new ArrayList<>();
+
             if (branches.isArray()) {
                 for (JsonNode branch : branches) {
                     JsonNode rule = findRule("Protected branch with insufficient access level");
@@ -1012,21 +1027,20 @@ public class GitLabRules {
                     }
 
                     if (!isSecureAccess) {
-                        Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText() + " (" + branch.get("name").asText() + ")", rule.get("description").asText(), rule.get("recommendation").asText());
+                        newFindings.add(createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText() + " (" + branch.get("name").asText() + ")", rule.get("description").asText(), rule.get("recommendation").asText()));
                         log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
-                        createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
-                    } else {
-                        updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + branch.get("name").asText() + ")");
                     }
                 }
             }
+            return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
+            return null;
         }
     }
 
 
-    public void checkSecretsInVariables(CodeRepo codeRepo) {
+    public List<Finding> checkSecretsInVariables(CodeRepo codeRepo) {
         String token = codeRepo.getAccessToken();
         String repo = getRepositoryName(codeRepo);
         String domain = getGitLabDomain(codeRepo);
@@ -1050,33 +1064,34 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Secret stored in GitLab CI/CD variables'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return;
+                return null;
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Secret stored in GitLab CI/CD variables'",
                         codeRepo.getRepourl());
-                return;
+                return null;
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode variables = objectMapper.readTree(response);
 
+            List<Finding> newFindings = new ArrayList<>();
+
             for (JsonNode variable : variables) {
                 String variableName = variable.get("key").asText();
                 JsonNode rule = findRule("Secret stored in GitLab CI/CD variables");
                 if (variableName.toLowerCase().contains("secret") || variableName.toLowerCase().contains("key") || variableName.toLowerCase().contains("token") || variableName.toLowerCase().contains("pass")) {
-                    Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText() + " (" + variableName + ")", rule.get("description").asText(), rule.get("recommendation").asText());
+                    newFindings.add(createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText() + " (" + variableName + ")", rule.get("description").asText(), rule.get("recommendation").asText()));
                     log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
-                    createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
-                } else {
-                    updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + variableName + ")");
                 }
             }
+            return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
+            return null;
         }
     }
 
-    public void checkSuccessfulPipelineOnMerge(CodeRepo codeRepo) {
+    public List<Finding> checkSuccessfulPipelineOnMerge(CodeRepo codeRepo) {
         String token = codeRepo.getAccessToken();
         String repo = getRepositoryName(codeRepo);
         String domain = getGitLabDomain(codeRepo);
@@ -1099,31 +1114,31 @@ public class GitLabRules {
                     log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Pipeline must succeed before merging'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return;
+                return null;
             } catch (Exception e) {
                 log.error("[GitLabScannerService] Unexpected error during API request for repository {} for rule 'Pipeline must succeed before merging'",
                         codeRepo.getRepourl());
-                return;
+                return null;
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode settings = objectMapper.readTree(response);
             JsonNode rule = findRule("Pipeline must succeed before merging");
 
-            if (!settings.get("only_allow_merge_if_pipeline_succeeds").asBoolean()) {
-                Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
-                log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
-                createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
-            } else {
-                updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
+            List<Finding> newFindings = new ArrayList<>();
 
+            if (!settings.get("only_allow_merge_if_pipeline_succeeds").asBoolean()) {
+                newFindings.add(createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText()));
+                log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
             }
+            return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
+            return null;
         }
     }
 
-    public void checkSkippedPipelineOnMerge(CodeRepo codeRepo) {
+    public List<Finding> checkSkippedPipelineOnMerge(CodeRepo codeRepo) {
         String token = codeRepo.getAccessToken();
         String repo = getRepositoryName(codeRepo);
         String domain = getGitLabDomain(codeRepo);
@@ -1146,31 +1161,31 @@ public class GitLabRules {
                     log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Merge on skipped pipelines allowed'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return;
+                return null;
             } catch (Exception e) {
                 log.error("[GitLabScannerService] Unexpected error during API request for repository {} for rule 'Merge on skipped pipelines allowed'",
                         codeRepo.getRepourl());
-                return;
+                return null;
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode settings = objectMapper.readTree(response);
             JsonNode rule = findRule("Merge on skipped pipelines allowed");
 
-            if (settings.get("allow_merge_on_skipped_pipeline").asBoolean()) {
-                Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
-                log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
-                createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
-            } else {
-                updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
+            List<Finding> newFindings = new ArrayList<>();
 
+            if (settings.get("allow_merge_on_skipped_pipeline").asBoolean()) {
+                newFindings.add(createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText()));
+                log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
             }
+            return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
+            return null;
         }
     }
 
-    public void checkContainerRegistryAccessControl(CodeRepo codeRepo) {
+    public List<Finding> checkContainerRegistryAccessControl(CodeRepo codeRepo) {
         String token = codeRepo.getAccessToken();
         String repo = getRepositoryName(codeRepo);
         String domain = getGitLabDomain(codeRepo);
@@ -1194,15 +1209,17 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Access control for Container registry repository not configured'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return;
+                return null;
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Access control for Container registry repository not configured'",
                         codeRepo.getRepourl());
-                return;
+                return null;
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode containerRegistryRules = objectMapper.readTree(response);
+
+            List<Finding> newFindings = new ArrayList<>();
 
             ArrayList<String> containerRegistryRulesArray = new ArrayList<>();
             for (JsonNode containerRegistryRule : containerRegistryRules) {
@@ -1226,11 +1243,11 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Access control for Container registry repository not configured'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return;
+                return null;
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Access control for Container registry repository not configured'",
                         codeRepo.getRepourl());
-                return;
+                return null;
             }
 
             JsonNode registries = objectMapper.readTree(registryContent);
@@ -1252,19 +1269,18 @@ public class GitLabRules {
                     }
                 }
                 if (!regexMatch) {
-                    Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText() + " (" + registry + ")", rule.get("description").asText(), rule.get("recommendation").asText());
+                    newFindings.add(createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText() + " (" + registry + ")", rule.get("description").asText(), rule.get("recommendation").asText()));
                     log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
-                    createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
-                } else {
-                    updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText() + " (" + registry + ")");
                 }
             }
+            return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
+            return null;
         }
     }
 
-    public void checkProjectVisibility(CodeRepo codeRepo) {
+    public List<Finding> checkProjectVisibility(CodeRepo codeRepo) {
         String token = codeRepo.getAccessToken();
         String repo = getRepositoryName(codeRepo);
         String domain = getGitLabDomain(codeRepo);
@@ -1287,27 +1303,27 @@ public class GitLabRules {
                     log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Project is not private'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return;
+                return null;
             } catch (Exception e) {
                 log.error("[GitLabScannerService] Unexpected error during API request for repository {} for rule 'Project is not private'",
                         codeRepo.getRepourl());
-                return;
+                return null;
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode settings = objectMapper.readTree(response);
             JsonNode rule = findRule("Project is not private");
 
-            if (!settings.get("visibility").asText().equals("private")) {
-                Finding finding = createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText());
-                log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
-                createFindingService.saveFinding(finding, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
-            } else {
-                updateFindingService.verifyGitLabFinding(rule.get("name").asText(), codeRepo, codeRepo.getDefaultBranch(), rule.get("location").asText());
+            List<Finding> newFindings = new ArrayList<>();
 
+            if (!settings.get("visibility").asText().equals("private")) {
+                newFindings.add(createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText(), rule.get("description").asText(), rule.get("recommendation").asText()));
+                log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
             }
+            return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
+            return null;
         }
     }
 }
