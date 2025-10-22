@@ -36,10 +36,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -172,10 +169,13 @@ public class ScanManagerService {
                     }
                     Future<Void> zapScanFuture = runZAPScan(repoDir, codeRepo, codeRepoBranch);
 
-                    List<Future<Void>> scanFutures = Arrays.asList(secretScanFuture, scaScanFuture, sastScanFuture, iacScanFuture, zapScanFuture);
+                    List<Future<Void>> scanFutures = new ArrayList<>(Arrays.asList(
+                            secretScanFuture, scaScanFuture, sastScanFuture, iacScanFuture, zapScanFuture
+                    ));
                     if (gitlabScanFuture != null) {
                         scanFutures.add(gitlabScanFuture);
                     }
+
 
                     // Schedule a timeout task to cancel scans
                     ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
@@ -208,6 +208,7 @@ public class ScanManagerService {
 
                 } catch (Exception e) {
                     log.error("[ScanManagerService] Exception during scan, failed to fetch repository: {}", codeRepo.getRepourl());
+                    log.error(e);
                 } finally {
                     // Update status
                     try {
