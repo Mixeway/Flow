@@ -110,7 +110,7 @@ public class UpdateCodeRepoService {
                 iacHigh,
                 countCriticalFindings(Finding.Source.IAC, codeRepo, codeRepoBranch),
                 secretsHigh,
-                countCriticalFindings(Finding.Source.SECRETS, codeRepo, null),
+                countCriticalFindings(Finding.Source.SECRETS, codeRepo, codeRepoBranch),
                 gitlabHigh,
                 countCriticalFindings(Finding.Source.GITLAB_SCANNER, codeRepo, codeRepo.getDefaultBranch()),
                 dastHigh,
