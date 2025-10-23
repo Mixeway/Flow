@@ -31,7 +31,7 @@ public final class ScanInfo {
     @Column(nullable = false, length = 40)
     private final String commitId;
 
-    @Column(name = "inserted_date", nullable = false, updatable = false)
+    @Column(name = "inserted_date", nullable = false)
     private LocalDateTime insertedDate;
 
     @Enumerated(EnumType.STRING)

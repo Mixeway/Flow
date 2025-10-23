@@ -19,6 +19,7 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.StreamSupport;
@@ -105,11 +106,11 @@ public class GitLabRules {
                     log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Default branch is not protected'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return null;
+                return Collections.emptyList();
             } catch (Exception e) {
                 log.error("[GitLabScannerService] Unexpected error during API request for repository {} for rule 'Default branch is not protected'",
                         codeRepo.getRepourl());
-                return null;
+                return Collections.emptyList();
             }
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode branches = objectMapper.readTree(response);
@@ -128,7 +129,7 @@ public class GitLabRules {
             return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScannerService] Unexpected error for repository {}: {}", codeRepo.getRepourl());
-            return null;
+            return Collections.emptyList();
         }
     }
 
@@ -155,11 +156,11 @@ public class GitLabRules {
                     log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Too many members with high privileges'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return null;
+                return Collections.emptyList();
             } catch (Exception e) {
                 log.error("[GitLabScannerService] Unexpected error during API request for repository {} for rule 'Too many members with high privileges'",
                         codeRepo.getRepourl());
-                return null;
+                return Collections.emptyList();
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
@@ -186,7 +187,7 @@ public class GitLabRules {
         }
         catch (Exception e) {
             log.error("[v] Unexpected error for repository {}", codeRepo.getRepourl());
-            return null;
+            return Collections.emptyList();
         }
     }
 
@@ -214,11 +215,11 @@ public class GitLabRules {
                     log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Untagged runner'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return null;
+                return Collections.emptyList();
             } catch (Exception e) {
                 log.error("[GitLabScannerService] Unexpected error during API request for repository {} for rule 'Untagged runner'",
                         codeRepo.getRepourl());
-                return null;
+                return Collections.emptyList();
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
@@ -246,11 +247,11 @@ public class GitLabRules {
                         log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Untagged runner'",
                                 codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                     }
-                    return null;
+                    return Collections.emptyList();
                 } catch (Exception e) {
                     log.error("[GitLabScannerService] Unexpected error during API request for repository {} for rule 'Untagged runner'",
                             codeRepo.getRepourl());
-                    return null;
+                    return Collections.emptyList();
                 }
 
                 ObjectMapper runnerObjectMapper = new ObjectMapper();
@@ -264,7 +265,7 @@ public class GitLabRules {
             return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {} ", codeRepo.getRepourl());
-            return null;
+            return Collections.emptyList();
         }
     }
 
@@ -292,11 +293,11 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Runner allows untagged jobs'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return null;
+                return Collections.emptyList();
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Runner allows untagged jobs'",
                         codeRepo.getRepourl());
-                return null;
+                return Collections.emptyList();
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
@@ -324,11 +325,11 @@ public class GitLabRules {
                         log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Runner allows untagged jobs'",
                                 codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                     }
-                    return null;
+                    return Collections.emptyList();
                 } catch (Exception e) {
                     log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Runner allows untagged jobs'",
                             codeRepo.getRepourl());
-                    return null;
+                    return Collections.emptyList();
                 }
 
                 ObjectMapper runnerObjectMapper = new ObjectMapper();
@@ -342,7 +343,7 @@ public class GitLabRules {
             return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
-            return null;
+            return Collections.emptyList();
         }
     }
 
@@ -370,11 +371,11 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Runner allows unprotected jobs'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return null;
+                return Collections.emptyList();
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Runner allows unprotected jobs'",
                         codeRepo.getRepourl());
-                return null;
+                return Collections.emptyList();
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
@@ -402,11 +403,11 @@ public class GitLabRules {
                         log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Runner allows unprotected jobs'",
                                 codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                     }
-                    return null;
+                    return Collections.emptyList();
                 } catch (Exception e) {
                     log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Runner allows unprotected jobs'",
                             codeRepo.getRepourl());
-                    return null;
+                    return Collections.emptyList();
                 }
 
                 ObjectMapper runnerObjectMapper = new ObjectMapper();
@@ -420,7 +421,7 @@ public class GitLabRules {
             return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
-            return null;
+            return Collections.emptyList();
         }
     }
 
@@ -468,11 +469,11 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Runner uses insecure executor type'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return null;
+                return Collections.emptyList();
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Runner uses insecure executor type'",
                         codeRepo.getRepourl());
-                return null;
+                return Collections.emptyList();
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
@@ -503,7 +504,7 @@ public class GitLabRules {
             return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
-            return null;
+            return Collections.emptyList();
         }
     }
 
@@ -531,11 +532,11 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Access token with api scope'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return null;
+                return Collections.emptyList();
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Access token with api scope'",
                         codeRepo.getRepourl());
-                return null;
+                return Collections.emptyList();
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
@@ -556,7 +557,7 @@ public class GitLabRules {
             return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
-            return null;
+            return Collections.emptyList();
         }
     }
 
@@ -584,11 +585,11 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Lack of repository description'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return null;
+                return Collections.emptyList();
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Lack of repository description'",
                         codeRepo.getRepourl());
-                return null;
+                return Collections.emptyList();
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
@@ -604,7 +605,7 @@ public class GitLabRules {
             return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
-            return null;
+            return Collections.emptyList();
         }
     }
 
@@ -632,11 +633,11 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Lack of README file'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return null;
+                return Collections.emptyList();
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Lack of README file'",
                         codeRepo.getRepourl());
-                return null;
+                return Collections.emptyList();
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
@@ -677,11 +678,11 @@ public class GitLabRules {
                         log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Lack of README file'",
                                 codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                     }
-                    return null;
+                    return Collections.emptyList();
                 } catch (Exception e) {
                     log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Lack of README file'",
                             codeRepo.getRepourl());
-                    return null;
+                    return Collections.emptyList();
                 }
                 if (readmeContent == null || readmeContent.trim().isEmpty()) {
                     reamdeIsEmpty = true;
@@ -695,7 +696,7 @@ public class GitLabRules {
             return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
-            return null;
+            return Collections.emptyList();
         }
     }
 
@@ -723,11 +724,11 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Lack of CONTRIBUTING file'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return null;
+                return Collections.emptyList();
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Lack of CONTRIBUTING file'",
                         codeRepo.getRepourl());
-                return null;
+                return Collections.emptyList();
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
@@ -767,11 +768,11 @@ public class GitLabRules {
                         log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Lack of CONTRIBUTING file'",
                                 codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                     }
-                    return null;
+                    return Collections.emptyList();
                 } catch (Exception e) {
                     log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Lack of CONTRIBUTING file'",
                             codeRepo.getRepourl());
-                    return null;
+                    return Collections.emptyList();
                 }
 
                 if (contributingContent == null || contributingContent.trim().isEmpty()) {
@@ -786,7 +787,7 @@ public class GitLabRules {
             return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
-            return null;
+            return Collections.emptyList();
         }
     }
 
@@ -814,11 +815,11 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Lack of SECURITY file'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return null;
+                return Collections.emptyList();
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Lack of SECURITY file'",
                         codeRepo.getRepourl());
-                return null;
+                return Collections.emptyList();
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
@@ -858,11 +859,11 @@ public class GitLabRules {
                         log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Lack of SECURITY file'",
                                 codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                     }
-                    return null;
+                    return Collections.emptyList();
                 } catch (Exception e) {
                     log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Lack of SECURITY file'",
                             codeRepo.getRepourl());
-                    return null;
+                    return Collections.emptyList();
                 }
 
                 if (securityContent == null || securityContent.trim().isEmpty()) {
@@ -877,7 +878,7 @@ public class GitLabRules {
             return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
-            return null;
+            return Collections.emptyList();
         }
     }
 
@@ -905,11 +906,11 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Usage of external repository'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return null;
+                return Collections.emptyList();
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Usage of external repository'",
                         codeRepo.getRepourl());
-                return null;
+                return Collections.emptyList();
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
@@ -941,11 +942,11 @@ public class GitLabRules {
                             log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Usage of external repository'",
                                     codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                         }
-                        return null;
+                        return Collections.emptyList();
                     } catch (Exception e) {
                         log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Usage of external repository'",
                                 codeRepo.getRepourl());
-                        return null;
+                        return Collections.emptyList();
                     }
 
                     String[] lines = fileContent.split("\n");
@@ -969,7 +970,7 @@ public class GitLabRules {
             return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
-            return null;
+            return Collections.emptyList();
         }
     }
 
@@ -997,11 +998,11 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Protected branch with insufficient access level'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return null;
+                return Collections.emptyList();
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Protected branch with insufficient access level'",
                         codeRepo.getRepourl());
-                return null;
+                return Collections.emptyList();
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
@@ -1035,7 +1036,7 @@ public class GitLabRules {
             return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
-            return null;
+            return Collections.emptyList();
         }
     }
 
@@ -1064,11 +1065,11 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Secret stored in GitLab CI/CD variables'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return null;
+                return Collections.emptyList();
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Secret stored in GitLab CI/CD variables'",
                         codeRepo.getRepourl());
-                return null;
+                return Collections.emptyList();
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
@@ -1087,7 +1088,7 @@ public class GitLabRules {
             return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
-            return null;
+            return Collections.emptyList();
         }
     }
 
@@ -1114,11 +1115,11 @@ public class GitLabRules {
                     log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Pipeline must succeed before merging'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return null;
+                return Collections.emptyList();
             } catch (Exception e) {
                 log.error("[GitLabScannerService] Unexpected error during API request for repository {} for rule 'Pipeline must succeed before merging'",
                         codeRepo.getRepourl());
-                return null;
+                return Collections.emptyList();
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
@@ -1134,7 +1135,7 @@ public class GitLabRules {
             return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
-            return null;
+            return Collections.emptyList();
         }
     }
 
@@ -1161,11 +1162,11 @@ public class GitLabRules {
                     log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Merge on skipped pipelines allowed'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return null;
+                return Collections.emptyList();
             } catch (Exception e) {
                 log.error("[GitLabScannerService] Unexpected error during API request for repository {} for rule 'Merge on skipped pipelines allowed'",
                         codeRepo.getRepourl());
-                return null;
+                return Collections.emptyList();
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
@@ -1181,7 +1182,7 @@ public class GitLabRules {
             return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
-            return null;
+            return Collections.emptyList();
         }
     }
 
@@ -1209,11 +1210,11 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Access control for Container registry repository not configured'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return null;
+                return Collections.emptyList();
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Access control for Container registry repository not configured'",
                         codeRepo.getRepourl());
-                return null;
+                return Collections.emptyList();
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
@@ -1243,11 +1244,11 @@ public class GitLabRules {
                     log.error("[GitLabScanner] API request failed for repository {}: HTTP Status {} - {} for rule 'Access control for Container registry repository not configured'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return null;
+                return Collections.emptyList();
             } catch (Exception e) {
                 log.error("[GitLabScanner] Unexpected error during API request for repository {} for rule 'Access control for Container registry repository not configured'",
                         codeRepo.getRepourl());
-                return null;
+                return Collections.emptyList();
             }
 
             JsonNode registries = objectMapper.readTree(registryContent);
@@ -1276,7 +1277,7 @@ public class GitLabRules {
             return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
-            return null;
+            return Collections.emptyList();
         }
     }
 
@@ -1303,11 +1304,11 @@ public class GitLabRules {
                     log.error("[GitLabScannerService] API request failed for repository {}: HTTP Status {} - {} for rule 'Project is not private'",
                             codeRepo.getRepourl(), e.getRawStatusCode(), e.getResponseBodyAsString());
                 }
-                return null;
+                return Collections.emptyList();
             } catch (Exception e) {
                 log.error("[GitLabScannerService] Unexpected error during API request for repository {} for rule 'Project is not private'",
                         codeRepo.getRepourl());
-                return null;
+                return Collections.emptyList();
             }
 
             ObjectMapper objectMapper = new ObjectMapper();
@@ -1323,7 +1324,7 @@ public class GitLabRules {
             return newFindings;
         } catch (Exception e) {
             log.error("[GitLabScanner] Unexpected error for repository {}", codeRepo.getRepourl());
-            return null;
+            return Collections.emptyList();
         }
     }
 }

@@ -132,7 +132,7 @@ public class UpdateCodeRepoService {
 
         // Handle the SECRETS source separately as it doesn't need CodeRepoBranch
         if (source == Finding.Source.SECRETS) {
-            findings = findingRepository.findBySourceAndCodeRepo(source, codeRepo);
+            findings = findingRepository.findBySourceAndCodeRepoBranchAndCodeRepo(source, codeRepoBranch, codeRepo);
         } else {
             findings = findingRepository.findBySourceAndCodeRepoBranchAndCodeRepo(source, codeRepoBranch, codeRepo);
         }
