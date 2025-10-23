@@ -182,6 +182,7 @@ public final class ScanInfo {
         this.secretsCritical = secretsCritical;
         this.gitlabHigh = gitlabHigh;
         this.gitlabCritical = gitlabCritical;
+        this.insertedDate = LocalDateTime.now();
     }
     @PreUpdate
     public void preUpdate() {
