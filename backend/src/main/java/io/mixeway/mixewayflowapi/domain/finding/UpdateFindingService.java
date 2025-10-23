@@ -23,6 +23,32 @@ public class UpdateFindingService {
         log.info("[UpdateFinding] Suppressed finding {} in {} reason {}", finding.getVulnerability().getName(), finding.getCodeRepo().getRepourl(), reason);
     }
 
+    @Transactional
+    public void suppressFindingAcrossBranches(Finding finding, String reason) {
+        CodeRepo repo = finding.getCodeRepo();
+        var vuln = finding.getVulnerability();
+        String location = finding.getLocation();
+        // Update everything in one go (includes the current finding)
+        int affected = findingRepository.bulkSuppressInRepoForSameVulnAndLocation(
+                repo, vuln, location, parseReason(reason)
+        );
+
+        log.info("[UpdateFinding] Suppressed {} finding(s) across repository {} for vuln {} at {}",
+                affected, repo.getName(), vuln.getName(), location);
+
+    }
+    private Finding.SuppressedReason parseReason(String text) {
+        if (text == null) throw new IllegalArgumentException("Suppressed reason is required");
+        // normalize (e.g., "accepted", "ACCEPTED", "Accepted")
+        String norm = text.trim().toUpperCase();
+        try {
+            return Finding.SuppressedReason.valueOf(norm);
+        } catch (IllegalArgumentException ex) {
+            // If you want friendlier aliases, map them here before throwing.
+            throw new IllegalArgumentException("Unknown suppressed reason: " + text);
+        }
+    }
+
     public void reactivate(Finding finding) {
         finding.updateStatus(Finding.Status.EXISTING, null);
         findingRepository.save(finding);

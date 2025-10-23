@@ -9,9 +9,11 @@ import io.mixeway.mixewayflowapi.db.projection.ReviewedVulnerabilityProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -114,5 +116,25 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
            "AND (COALESCE(:kev, v.exploitExists) = v.exploitExists)")
     Page<Finding> findByCloudSubscriptionsPageable(@Param("cloudSubscriptions") List<CloudSubscription> cloudSubscriptions, Pageable pageable, @Param("severity") String severity, @Param("source") String source, @Param("status") String status, @Param("epss") BigDecimal epss,  @Param("kev")  Boolean exploitExists);
 
+    List<Finding> findAllByCodeRepoAndVulnerabilityAndLocation(CodeRepo repo,
+                                                               Vulnerability vuln,
+                                                               String location);
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
+    @Query("""
+UPDATE Finding f
+   SET f.status = io.mixeway.mixewayflowapi.db.entity.Finding.Status.SUPRESSED,
+       f.suppressedReason = :reason,
+       f.updatedDate = CURRENT_TIMESTAMP
+ WHERE f.codeRepo = :repo
+   AND f.vulnerability = :vuln
+   AND f.location = :location
+""")
+    int bulkSuppressInRepoForSameVulnAndLocation(
+            @Param("repo") CodeRepo repo,
+            @Param("vuln") Vulnerability vuln,
+            @Param("location") String location,
+            @Param("reason") Finding.SuppressedReason reason
+    );
 }
 

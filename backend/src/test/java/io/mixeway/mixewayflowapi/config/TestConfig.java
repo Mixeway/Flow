@@ -4,10 +4,13 @@ import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.Settings;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.apiclient.DependencyTrackApiClientService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
+import org.springframework.beans.factory.config.BeanPostProcessor;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
-
+import org.springframework.scheduling.config.TaskManagementConfigUtils;
 
 
 import static org.mockito.Mockito.*;
@@ -24,4 +27,5 @@ public class TestConfig {
         doNothing().when(dependencyTrackApiClientService).createProject(any(Settings.class), any(CodeRepo.class));
         return dependencyTrackApiClientService;
     }
+
 }
