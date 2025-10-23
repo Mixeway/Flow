@@ -57,11 +57,11 @@ public class CreateFindingService {
                     existingFinding.updateStatus(Finding.Status.EXISTING, existingFinding.getSuppressedReason());
                 }
                 existingFinding.noteFindingDetected();  // Ensure updatedDate is always updated
-                findingRepository.save(existingFinding);
+                findingRepository.saveAndFlush(existingFinding);
                 existingFindingsMap.remove(key);
             } else {
                 newFinding.updateStatus(Finding.Status.NEW, null);
-                checkSuppressRuleService.validate(findingRepository.save(newFinding));
+                checkSuppressRuleService.validate(findingRepository.saveAndFlush(newFinding));
             }
         }
 
@@ -69,7 +69,7 @@ public class CreateFindingService {
         for (Finding remainingFinding : existingFindingsMap.values()) {
             if (remainingFinding.getStatus() != Finding.Status.SUPRESSED) {
                 remainingFinding.updateStatus(Finding.Status.REMOVED, null);
-                findingRepository.save(remainingFinding);
+                findingRepository.saveAndFlush(remainingFinding);
             }
         }
         if (repoInWhichFindingWasFound != null) {

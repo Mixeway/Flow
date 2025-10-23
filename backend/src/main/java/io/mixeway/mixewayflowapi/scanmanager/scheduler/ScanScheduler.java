@@ -80,15 +80,28 @@ public class ScanScheduler {
         codeRepoRepository.findAll().forEach(allRepos::add);
 
         // Get repositories that haven't been scanned in the last specified days (sorted oldest-first)
-        List<CodeRepo> reposToScan = getReposNotScannedRecently(allRepos);
+        List<CodeRepo> candidates = getReposNotScannedRecently(allRepos);
+
+        // Filter out repositories without a default branch to avoid passing null into scanRepository
+        List<CodeRepo> filtered = candidates.stream()
+                .filter(r -> {
+                    if (r.getDefaultBranch() == null) {
+                        log.warn("[Scheduler] Skipping repo {} (id={}) — no default branch set; sync providers to populate branches.", r.getName(), r.getId());
+                        return false;
+                    }
+                    return true;
+                })
+                .collect(Collectors.toList());
 
         // Limit to MAX_REPOS_TO_SCAN repositories
-        if (reposToScan.size() > MAX_REPOS_TO_SCAN) {
-            reposToScan = reposToScan.subList(0, MAX_REPOS_TO_SCAN);
-        }
+        List<CodeRepo> reposToScan = filtered.size() > MAX_REPOS_TO_SCAN
+                ? filtered.subList(0, MAX_REPOS_TO_SCAN)
+                : filtered;
 
-        log.info("[Scheduler] Starting scan for {} repositories not scanned in the last {} days",
-                reposToScan.size(), DAYS_SINCE_LAST_SCAN);
+        int skippedDueToNoBranch = candidates.size() - filtered.size();
+
+        log.info("[Scheduler] Starting scan for {} repositories ({} skipped: missing default branch) not scanned in the last {} days",
+                reposToScan.size(), skippedDueToNoBranch, DAYS_SINCE_LAST_SCAN);
 
         // You can drop this executor entirely and just call scanManagerService directly;
         // leaving it as-is is fine since we're only submitting <= 10 tasks.

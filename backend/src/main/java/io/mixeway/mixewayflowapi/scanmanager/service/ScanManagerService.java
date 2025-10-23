@@ -33,6 +33,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import jakarta.annotation.PreDestroy;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -178,8 +180,7 @@ public class ScanManagerService {
 
 
                     // Schedule a timeout task to cancel scans
-                    ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-                    timeoutFuture = scheduler.schedule(() -> {
+                    timeoutFuture = this.scheduler.schedule(() -> {
                         // Cancel the scans
                         for (Future<Void> future : scanFutures) {
                             future.cancel(true);
@@ -605,5 +606,14 @@ public class ScanManagerService {
             return null;
         };
         return scanExecutorService.submit(task);
+    }
+    @PreDestroy
+    public void shutdownExecutors() {
+        try {
+            log.info("[ScanManagerService] Shutting down executor services...");
+        } catch (Exception ignored) {}
+        try { scheduler.shutdownNow(); } catch (Exception ignored) {}
+        try { executorService.shutdown(); } catch (Exception ignored) {}
+        try { scanExecutorService.shutdown(); } catch (Exception ignored) {}
     }
 }
