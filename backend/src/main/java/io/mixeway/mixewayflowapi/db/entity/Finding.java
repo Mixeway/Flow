@@ -1,6 +1,7 @@
 package io.mixeway.mixewayflowapi.db.entity;
 
 import jakarta.persistence.*;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
@@ -10,11 +11,11 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 @Entity
 @Getter
-@ToString
+@ToString(onlyExplicitlyIncluded = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @RequiredArgsConstructor
 @Table(name = "finding")
 public final class Finding {
@@ -37,47 +38,59 @@ public final class Finding {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
+    @ToString.Include
     private final long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "vulnerability_id", nullable = false)
+    @ToString.Exclude
     private final Vulnerability vulnerability;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "component_id")
+    @ToString.Exclude
     private final Component component;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "coderepo_branch_id")
+    @ToString.Exclude
     private final CodeRepoBranch codeRepoBranch;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "coderepo_id")
+    @ToString.Exclude
     private final CodeRepo codeRepo;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cloud_subscription_id")
+    @ToString.Exclude
     private final CloudSubscription cloudSubscription;
 
     @Column(columnDefinition = "TEXT")
     private final String explanation;
 
     @Column(length = 200, nullable = false)
+    @ToString.Include
     private final String location;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @ToString.Include
     private final Severity severity;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @ToString.Include
     private Status status;
 
     @Enumerated(EnumType.STRING)
+    @ToString.Include
     private SuppressedReason suppressedReason;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @ToString.Include
     private final Source source;
 
     @CreationTimestamp
@@ -89,6 +102,7 @@ public final class Finding {
     private LocalDateTime updatedDate;
 
     @OneToMany(mappedBy = "finding", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
     private final List<Comment> comments = new ArrayList<>();
 
     // Default constructor for JPA
@@ -141,23 +155,6 @@ public final class Finding {
         this.status = newStatus;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Finding finding = (Finding) o;
-        return Objects.equals(vulnerability, finding.vulnerability) &&
-                severity == finding.severity &&
-                Objects.equals(location, finding.location) &&
-                Objects.equals(codeRepoBranch, finding.codeRepoBranch) &&
-                Objects.equals(codeRepo, finding.codeRepo) &&
-                Objects.equals(cloudSubscription, finding.cloudSubscription);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(vulnerability, severity, location, codeRepoBranch, codeRepo, cloudSubscription);
-    }
     @PreUpdate
     protected void onUpdate() {
         this.updatedDate = LocalDateTime.now();
@@ -178,4 +175,5 @@ public final class Finding {
     public void noteFindingDetected() {
         this.updatedDate = LocalDateTime.now();
     }
+
 }

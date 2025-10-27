@@ -4,6 +4,7 @@ import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.db.entity.Finding;
 import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -16,6 +17,8 @@ import java.util.List;
 @Log4j2
 public class UpdateFindingService {
     private final FindingRepository findingRepository;
+    private final EntityManager entityManager;
+
 
     public void suppressFinding(Finding finding, String reason) {
         finding.suppress(reason);
@@ -25,17 +28,19 @@ public class UpdateFindingService {
 
     @Transactional
     public void suppressFindingAcrossBranches(Finding finding, String reason) {
-        CodeRepo repo = finding.getCodeRepo();
-        var vuln = finding.getVulnerability();
-        String location = finding.getLocation();
+        Finding managed = entityManager.merge(finding);
+        finding = managed;
+        CodeRepo repo = managed.getCodeRepo();
+        var vuln = managed.getVulnerability();
+        String location = managed.getLocation();
+
         // Update everything in one go (includes the current finding)
         int affected = findingRepository.bulkSuppressInRepoForSameVulnAndLocation(
-                repo, vuln, location, parseReason(reason)
+                repo.getId(), vuln.getId(), location, parseReason(reason)
         );
 
         log.info("[UpdateFinding] Suppressed {} finding(s) across repository {} for vuln {} at {}",
                 affected, repo.getName(), vuln.getName(), location);
-
     }
     private Finding.SuppressedReason parseReason(String text) {
         if (text == null) throw new IllegalArgumentException("Suppressed reason is required");

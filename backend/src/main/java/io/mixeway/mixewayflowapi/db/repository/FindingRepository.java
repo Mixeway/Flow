@@ -8,6 +8,7 @@ import io.mixeway.mixewayflowapi.db.projection.RemovedVulnerabilityProjection;
 import io.mixeway.mixewayflowapi.db.projection.ReviewedVulnerabilityProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -49,6 +50,7 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
     TeamVulnStatsResponseDto countFindingsByTeam(@Param("codeRepoIds") List<Long> codeRepoIds, @Param("cloudSubscriptionIds") List<Long> cloudSubscriptionIds);
 
 
+    @EntityGraph(attributePaths = {"vulnerability"})
     List<Finding> findByCodeRepoAndCodeRepoBranch(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch);
     List<Finding> findByVulnerability(Vulnerability vulnerability);
 
@@ -119,22 +121,32 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
     List<Finding> findAllByCodeRepoAndVulnerabilityAndLocation(CodeRepo repo,
                                                                Vulnerability vuln,
                                                                String location);
+
+    boolean existsByCodeRepoAndVulnerabilityAndLocationAndStatus(CodeRepo codeRepo,
+                                                                 Vulnerability vulnerability,
+                                                                 String location,
+                                                                 Finding.Status status);
+
+    Finding findFirstByCodeRepoAndVulnerabilityAndLocationAndStatus(CodeRepo codeRepo,
+                                                                    Vulnerability vulnerability,
+                                                                    String location,
+                                                                    Finding.Status status);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Transactional
     @Query("""
-UPDATE Finding f
-   SET f.status = io.mixeway.mixewayflowapi.db.entity.Finding.Status.SUPRESSED,
-       f.suppressedReason = :reason,
-       f.updatedDate = CURRENT_TIMESTAMP
- WHERE f.codeRepo = :repo
-   AND f.vulnerability = :vuln
-   AND f.location = :location
+    update Finding f
+       set f.status = io.mixeway.mixewayflowapi.db.entity.Finding.Status.SUPRESSED,
+           f.suppressedReason = :reason
+     where f.codeRepo.id = :repoId
+       and f.vulnerability.id = :vulnId
+       and f.location = :location
+       and f.status <> io.mixeway.mixewayflowapi.db.entity.Finding.Status.SUPRESSED
 """)
-    int bulkSuppressInRepoForSameVulnAndLocation(
-            @Param("repo") CodeRepo repo,
-            @Param("vuln") Vulnerability vuln,
-            @Param("location") String location,
-            @Param("reason") Finding.SuppressedReason reason
-    );
+    int bulkSuppressInRepoForSameVulnAndLocation(@Param("repoId") Long repoId,
+                                                 @Param("vulnId") Long vulnId,
+                                                 @Param("location") String location,
+                                                 @Param("reason") Finding.SuppressedReason reason);
 }
+
+
 

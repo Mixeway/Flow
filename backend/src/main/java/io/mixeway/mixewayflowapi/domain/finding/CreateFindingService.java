@@ -57,7 +57,22 @@ public class CreateFindingService {
                 findingRepository.saveAndFlush(existingFinding);
                 existingFindingsMap.remove(key);
             } else {
-                newFinding.updateStatus(Finding.Status.NEW, null);
+                // Auto-suppress across branches: if (repo, vuln, location) is already SUPRESSED in any branch, inherit that state
+                if (repoInWhichFindingWasFound != null) {
+                    Finding exemplar = findingRepository.findFirstByCodeRepoAndVulnerabilityAndLocationAndStatus(
+                            repoInWhichFindingWasFound,
+                            newFinding.getVulnerability(),
+                            newFinding.getLocation(),
+                            Finding.Status.SUPRESSED
+                    );
+                    if (exemplar != null) {
+                        newFinding.updateStatus(Finding.Status.SUPRESSED, exemplar.getSuppressedReason());
+                    } else {
+                        newFinding.updateStatus(Finding.Status.NEW, null);
+                    }
+                } else {
+                    newFinding.updateStatus(Finding.Status.NEW, null);
+                }
                 checkSuppressRuleService.validate(findingRepository.saveAndFlush(newFinding));
             }
         }
@@ -78,7 +93,8 @@ public class CreateFindingService {
     }
 
     private String findingKey(Finding finding) {
-        return finding.getVulnerability().getName() + "|" + finding.getSeverity() + "|" + finding.getLocation();
+        Long vulnId = finding.getVulnerability() != null ? finding.getVulnerability().getId() : null;
+        return vulnId + "|" + finding.getSeverity() + "|" + finding.getLocation();
     }
 
     public List<Finding> mapSecretsToFindings(List<Secret> secrets, CodeRepoBranch codeRepoBranch, CodeRepo codeRepo) {

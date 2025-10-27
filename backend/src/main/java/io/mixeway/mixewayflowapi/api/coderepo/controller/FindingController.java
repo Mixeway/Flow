@@ -63,6 +63,7 @@ public class FindingController {
         try {
             return new ResponseEntity<>(findingService.supressFinding(id,findingId,reason,principal), HttpStatus.OK);
         } catch (Exception e){
+            e.printStackTrace();
             return new ResponseEntity<>( HttpStatus.BAD_REQUEST);
         }
     }

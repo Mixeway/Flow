@@ -13,6 +13,7 @@ import io.mixeway.mixewayflowapi.utils.StatusDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.security.Principal;
 import java.util.List;
@@ -59,6 +60,7 @@ public class FindingService {
         }
     }
 
+    @Transactional
     public StatusDTO supressFinding(Long id, Long findingId, String reason, Principal principal) {
         CodeRepo codeRepo = findCodeRepoService.findById(id, principal);
         Optional<Finding> finding = findFindingService.findById(findingId);

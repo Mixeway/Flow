@@ -13,7 +13,7 @@ import java.util.List;
 
 @Entity
 @Getter
-@ToString
+@ToString(onlyExplicitlyIncluded = true)
 @RequiredArgsConstructor
 @Table(name = "component", uniqueConstraints = {
         @UniqueConstraint(columnNames = {"name", "version", "groupid"})
@@ -25,12 +25,15 @@ public final class Component {
     private final long id;
 
     @Column(nullable = false, length = 160)
+    @ToString.Include
     private final String groupid;
 
     @Column(nullable = false, length = 160)
+    @ToString.Include
     private final String name;
 
     @Column(nullable = false, length = 120)
+    @ToString.Include
     private final String version;
 
     @Column(length = 30)
@@ -42,10 +45,12 @@ public final class Component {
 
     @ManyToMany(mappedBy = "components")
     @JsonIgnore
+    @ToString.Exclude
     private List<Vulnerability> vulnerabilities;
 
     @ManyToMany(mappedBy = "components", fetch = FetchType.LAZY)
     @JsonIgnore
+    @ToString.Exclude
     private List<CodeRepo> codeRepos = new ArrayList<>();
 
 

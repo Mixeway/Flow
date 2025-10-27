@@ -1,5 +1,11 @@
 package io.mixeway.mixewayflowapi.domain.finding;
 
+import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
+import io.mixeway.mixewayflowapi.db.repository.CodeRepoBranchRepository;
+import io.mixeway.mixewayflowapi.domain.finding.UpdateFindingService;
+import jakarta.persistence.EntityManager;
+import java.util.stream.Collectors;
+
 import io.mixeway.mixewayflowapi.config.TestConfig;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.Finding;
@@ -17,6 +23,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,6 +43,11 @@ class CreateFindingServiceTest {
     private CreateFindingService createFindingService;
     @Autowired
     FindFindingService findFindingService;
+
+    @Autowired
+    UpdateFindingService updateFindingService;
+    @Autowired
+    CodeRepoBranchRepository codeRepoBranchRepository;
 
     @Test
     void saveFindings() {
@@ -237,5 +249,117 @@ class CreateFindingServiceTest {
         }
 
         return secrets;
+    }
+
+    @Test
+    @Transactional
+    void autoSuppressAcrossBranches_ok() {
+        // Arrange: repo and three branches
+        CodeRepo codeRepo = findCodeRepoService.findByRemoteId(14493750L);
+        CodeRepoBranch branch1 = codeRepo.getDefaultBranch();
+
+        CodeRepoBranch branch2 = new CodeRepoBranch("feature/test-2",codeRepo);
+        codeRepoBranchRepository.save(branch2);
+
+        CodeRepoBranch branch3 = new CodeRepoBranch("feature/test-3",codeRepo);
+        codeRepoBranchRepository.save(branch3);
+
+        // Prepare 10 findings (take first 10 from bearer mapping)
+        BearerScanSecurity dummyReport = generateDummyReport();
+        List<Finding> base = createFindingService.mapBearerScanToFindings(dummyReport, codeRepo, branch1);
+        List<Finding> tenFindings = base.stream().limit(10).collect(Collectors.toList());
+
+        // Save to branch1/2/3
+        createFindingService.saveFindings(tenFindings, branch1, codeRepo, Finding.Source.SAST, null);
+        // remap new instances for each branch (entity graphs shouldn't be reused across branches)
+        List<Finding> tenFindingsB2 = createFindingService.mapBearerScanToFindings(dummyReport, codeRepo, branch2)
+                .stream().limit(10).collect(Collectors.toList());
+        createFindingService.saveFindings(tenFindingsB2, branch2, codeRepo, Finding.Source.SAST, null);
+
+        List<Finding> tenFindingsB3 = createFindingService.mapBearerScanToFindings(dummyReport, codeRepo, branch3)
+                .stream().limit(10).collect(Collectors.toList());
+        createFindingService.saveFindings(tenFindingsB3, branch3, codeRepo, Finding.Source.SAST, null);
+
+        // Act: pick a concrete persisted finding from branch1 and suppress across branches
+        List<Finding> branch1Persisted = findFindingService.getCodeRepoFindings(codeRepo, branch1);
+        List<Finding> branch2Persisted = findFindingService.getCodeRepoFindings(codeRepo, branch2);
+        List<Finding> branch3Persisted = findFindingService.getCodeRepoFindings(codeRepo, branch3);
+        assertTrue(branch1Persisted.size() >= 10, "Expected at least 10 findings on branch1");
+        Finding toSuppress = branch2Persisted.get(0);
+        assertTrue(branch1Persisted.stream().anyMatch(f -> f.getVulnerability().getId() == toSuppress.getVulnerability().getId() && f.getLocation().equals(toSuppress.getLocation())));
+        assertTrue(branch2Persisted.stream().anyMatch(f -> f.getVulnerability().getId() == toSuppress.getVulnerability().getId() && f.getLocation().equals(toSuppress.getLocation())));
+        assertTrue(branch3Persisted.stream().anyMatch(f -> f.getVulnerability().getId() == toSuppress.getVulnerability().getId() && f.getLocation().equals(toSuppress.getLocation())));
+
+        updateFindingService.suppressFindingAcrossBranches(toSuppress, "ACCEPTED");
+
+        // Assert: the chosen (vuln, location) is suppressed on every branch
+        for (CodeRepoBranch b : List.of(branch1, branch2, branch3)) {
+            List<Finding> list = findFindingService.getCodeRepoFindings(codeRepo, b);
+            long suppressedMatches = list.stream()
+                    .filter(f -> f.getVulnerability().getId()==(toSuppress.getVulnerability().getId()))
+                    .filter(f -> f.getLocation().equals(toSuppress.getLocation()))
+                    .filter(f -> f.getStatus() == Finding.Status.SUPRESSED)
+                    .count();
+            assertEquals(1, suppressedMatches, "Exactly one matching finding should be SUPRESSED on branch " + b.getName());
+
+            long newOrExisting = list.stream()
+                    .filter(f -> f.getStatus() == Finding.Status.NEW || f.getStatus() == Finding.Status.EXISTING)
+                    .count();
+
+            // Default branch may already have findings; enforce 9 only on newly created branches
+            if (!b.equals(branch1)) {
+                assertEquals(9, newOrExisting, "Each NEW branch should have 9 NEW/EXISTING after suppression on branch " + b.getName());
+            }
+        }
+    }
+    @Test
+    @Transactional
+    void suppressionPersistsToNewBranch_ok() {
+        // 1) repo + first new branch
+        CodeRepo repo = findCodeRepoService.findByRemoteId(14493750L);
+        CodeRepoBranch branchA = new CodeRepoBranch("feature/seed-suppress", repo);
+        codeRepoBranchRepository.save(branchA);
+
+        // 2) generate & save findings on branchA
+        List<Finding> seed = createFindingService
+                .mapBearerScanToFindings(generateDummyReport(), repo, branchA)
+                .stream().limit(10).collect(java.util.stream.Collectors.toList());
+        createFindingService.saveFindings(seed, branchA, repo, Finding.Source.SAST, null);
+
+        // pick one persisted finding to suppress (take exact vulnId + location)
+        List<Finding> aPersisted = findFindingService.getCodeRepoFindings(repo, branchA);
+        assertTrue(aPersisted.size() >= 10, "Expected at least 10 findings on branchA");
+        Finding toSuppress = aPersisted.get(0);
+
+        // 3) suppress that one across branches (by repoId + vulnId + location)
+        updateFindingService.suppressFindingAcrossBranches(toSuppress, "ACCEPTED");
+
+        // 4) create a second new branch (after suppression)
+        CodeRepoBranch branchB = new CodeRepoBranch("feature/follow-up", repo);
+        codeRepoBranchRepository.save(branchB);
+
+        // 5) save the *same* findings to the new branch
+        // Re-generate from the same report so they map to the same vulnId if your model reuses Vulnerability per repo.
+        List<Finding> again = createFindingService
+                .mapBearerScanToFindings(generateDummyReport(), repo, branchB)
+                .stream().limit(10).collect(java.util.stream.Collectors.toList());
+        createFindingService.saveFindings(again, branchB, repo, Finding.Source.SAST, null);
+
+        // 6) expect the corresponding finding on branchB to be SUPRESSED
+        List<Finding> bPersisted = findFindingService.getCodeRepoFindings(repo, branchB);
+
+        long suppressedMatches = bPersisted.stream()
+                .filter(f -> f.getVulnerability().getId()==(toSuppress.getVulnerability().getId()))
+                .filter(f -> f.getLocation().equals(toSuppress.getLocation()))
+                .filter(f -> f.getStatus() == Finding.Status.SUPRESSED)
+                .count();
+
+        assertEquals(1, suppressedMatches,
+                "New branch should inherit suppression for the same vulnId+location");
+
+        long newOrExisting = bPersisted.stream()
+                .filter(f -> f.getStatus() == Finding.Status.NEW || f.getStatus() == Finding.Status.EXISTING)
+                .count();
+        assertEquals(9, newOrExisting, "Exactly one finding should be suppressed on the new branch");
     }
 }
