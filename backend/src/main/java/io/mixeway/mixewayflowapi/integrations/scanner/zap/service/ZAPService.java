@@ -854,7 +854,7 @@ public class ZAPService {
 
         // Also save the findings to the database
         List<Finding> findings = mapZapReportToFindings(zapReport, codeRepo, codeRepoBranch);
-        createFindingService.saveFindings(findings, codeRepoBranch, codeRepo, Finding.Source.DAST);
+        createFindingService.saveFindings(findings, codeRepoBranch, codeRepo, Finding.Source.DAST, null);
 
         // Create and return the ScanResult for backward compatibility
         ScanResult result = new ScanResult();

@@ -472,10 +472,10 @@ public class ScanManagerService {
                 if (findings == null || findings.isEmpty()) {
                     log.info("[CloudScannerService] No findings for subscription: {}", cloudSubscription.getExternal_project_name());
                     updateCloudSubscriptionService.updateCloudSubscriptionScanStatus(cloudSubscription);
-                    continue;
+                    findings = new ArrayList<>();
                 }
 
-                createFindingService.saveFindings(findings, null, null, Finding.Source.CLOUD_SCANNER);
+                createFindingService.saveFindings(findings, null, null, Finding.Source.CLOUD_SCANNER, cloudSubscription);
                 updateCloudSubscriptionService.updateCloudSubscriptionScanStatus(cloudSubscription);
             } catch (Exception e) {
                 log.error("Error running cloud scan for project ID {}: {}", cloudSubscription.getName(), e.getMessage(), e);
@@ -507,11 +507,11 @@ public class ScanManagerService {
             if (findings == null || findings.isEmpty()) {
                 log.info("[CloudScannerService] No findings for subscription: {}", cloudSubscription.getExternal_project_name());
                 updateCloudSubscriptionService.updateCloudSubscriptionScanStatus(cloudSubscription);
-                return;
+                findings = new ArrayList<>();
             }
 
 
-            createFindingService.saveFindings(findings, null, null, Finding.Source.CLOUD_SCANNER);
+            createFindingService.saveFindings(findings, null, null, Finding.Source.CLOUD_SCANNER, cloudSubscription);
             updateCloudSubscriptionService.updateCloudSubscriptionScanStatus(cloudSubscription);
         } catch (Exception e) {
             log.error("Error running cloud scan for project ID {}: {}", cloudSubscription.getName(), e.getMessage(), e);
