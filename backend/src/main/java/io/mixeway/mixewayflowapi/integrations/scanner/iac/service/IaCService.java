@@ -111,7 +111,7 @@ public class IaCService {
         List<Finding> findings = createFindingService.mapKicsReportToFindings(kicsReport, codeRepo, codeRepoBranch);
 
         List<Finding> filteredFindings = findings.stream()
-                .filter(finding -> !finding.getExplanation().contains("/etc/localtime")).collect(Collectors.toList());
+                .filter(finding -> !finding.getExplanation().contains("/etc/localtime") && !("Volume Mount With OS Directory Write Permissions".equals(finding.getVulnerability().getName()) && finding.getExplanation() != null && finding.getExplanation().contains("log"))).collect(Collectors.toList());
 
         createFindingService.saveFindings(filteredFindings, codeRepoBranch, codeRepo, Finding.Source.IAC);
         log.info("[KicsService] KICS scan completed for repository: {} branch: {}. Report saved at: {}", codeRepo.getName(), codeRepoBranch.getName(), reportFile.getAbsolutePath());
