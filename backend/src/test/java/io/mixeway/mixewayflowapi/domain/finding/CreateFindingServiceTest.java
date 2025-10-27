@@ -41,13 +41,13 @@ class CreateFindingServiceTest {
     void saveFindings() {
         CodeRepo codeRepo = findCodeRepoService.findByRemoteId(14493750L);
         List<Finding> findings = createFindingService.mapSecretsToFindings(generateDummySecretsSecrets(),codeRepo.getDefaultBranch(), codeRepo);
-        createFindingService.saveFindings(findings,codeRepo.getDefaultBranch(),codeRepo, Finding.Source.SECRETS);
+        createFindingService.saveFindings(findings,codeRepo.getDefaultBranch(),codeRepo, Finding.Source.SECRETS, null);
 
         findings =createFindingService.mapKicsReportToFindings(generateDummyReportKics(),codeRepo, codeRepo.getDefaultBranch());
-        createFindingService.saveFindings(findings,codeRepo.getDefaultBranch(),codeRepo, Finding.Source.IAC);
+        createFindingService.saveFindings(findings,codeRepo.getDefaultBranch(),codeRepo, Finding.Source.IAC, null);
 
         findings =createFindingService.mapBearerScanToFindings(generateDummyReport(),codeRepo, codeRepo.getDefaultBranch());
-        createFindingService.saveFindings(findings,codeRepo.getDefaultBranch(),codeRepo, Finding.Source.SAST);
+        createFindingService.saveFindings(findings,codeRepo.getDefaultBranch(),codeRepo, Finding.Source.SAST, null);
 
         List<Finding> findingList = findFindingService.getCodeRepoFindings(codeRepo, codeRepo.getDefaultBranch());
         assertTrue(findings.size() > 10);

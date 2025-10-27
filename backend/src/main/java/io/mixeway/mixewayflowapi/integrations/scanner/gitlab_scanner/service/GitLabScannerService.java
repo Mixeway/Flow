@@ -41,7 +41,7 @@ public class GitLabScannerService {
         newFindings.addAll(gitLabRules.checkContainerRegistryAccessControl(codeRepo));
         newFindings.addAll(gitLabRules.checkProjectVisibility(codeRepo));
 
-        createFindingService.saveFindings(newFindings, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER);
+        createFindingService.saveFindings(newFindings, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.GITLAB_SCANNER, null);
         log.info("[GitLabScannerService] Finished GitLab scan for repository: {} ", codeRepo.getName());
     }
 }

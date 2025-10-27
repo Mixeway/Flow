@@ -82,7 +82,7 @@ public class SASTService {
             BearerScanDataflow bearerScanDataflow = objectMapper.readValue(dataflowReportFile, BearerScanDataflow.class);
 
             // Save findings and update status
-            createFindingService.saveFindings(createFindingService.mapBearerScanToFindings(bearerScanSecurity, codeRepo, codeRepoBranch), codeRepoBranch, codeRepo, Finding.Source.SAST);
+            createFindingService.saveFindings(createFindingService.mapBearerScanToFindings(bearerScanSecurity, codeRepo, codeRepoBranch), codeRepoBranch, codeRepo, Finding.Source.SAST, null);
 
             if (bearerScanDataflow != null && bearerScanDataflow.getDataTypes() != null) {
                 createAppDataTypeService.getDataTypesForCodeRepo(codeRepo, bearerScanDataflow);

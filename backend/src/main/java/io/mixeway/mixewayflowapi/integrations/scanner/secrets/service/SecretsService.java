@@ -79,7 +79,7 @@ public class SecretsService {
             }
         }
         log.info("[GitLeaks SecretScan] GitLeaks Secret scan results saved [for: {}]", repoDir);
-        createFindingService.saveFindings(filteredFindings, branch, codeRepo, Finding.Source.SECRETS);
+        createFindingService.saveFindings(filteredFindings, branch, codeRepo, Finding.Source.SECRETS, null);
     }
 
     /**

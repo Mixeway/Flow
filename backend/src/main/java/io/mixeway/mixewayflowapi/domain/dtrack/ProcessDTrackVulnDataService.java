@@ -79,7 +79,7 @@ public class ProcessDTrackVulnDataService {
                 findings.add(finding);
             }
         }
-        createFindingService.saveFindings(findings, codeRepoBranch, codeRepo, Finding.Source.SCA);
+        createFindingService.saveFindings(findings, codeRepoBranch, codeRepo, Finding.Source.SCA, null);
     }
 
     private Finding.Severity mapSeverity(String severity) {

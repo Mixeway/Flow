@@ -178,7 +178,7 @@ class CreateSuppressRuleServiceTest {
         CodeRepo codeRepo = findCodeRepoService.findByRemoteId(14493750L);
         List<Finding> findings = createFindingService.mapSecretsToFindings(
                 generateDummySecrets(), codeRepo.getDefaultBranch(), codeRepo);
-        createFindingService.saveFindings(findings, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.SECRETS);
+        createFindingService.saveFindings(findings, codeRepo.getDefaultBranch(), codeRepo, Finding.Source.SECRETS, null);
 
         // Retrieve and assert findings are suppressed
         List<Finding> findingList = findFindingService.getCodeRepoFindings(codeRepo, codeRepo.getDefaultBranch());

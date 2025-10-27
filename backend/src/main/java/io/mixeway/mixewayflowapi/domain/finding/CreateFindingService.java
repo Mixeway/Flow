@@ -29,16 +29,13 @@ public class CreateFindingService {
     private final CheckSuppressRuleService checkSuppressRuleService;
 
     @Transactional
-    public void saveFindings(List<Finding> newFindings, CodeRepoBranch repoWhereFindingWasFound, CodeRepo repoInWhichFindingWasFound, Finding.Source source) {
-        newFindings = mergeFindings(newFindings);
-
+    public void saveFindings(List<Finding> newFindings, CodeRepoBranch repoWhereFindingWasFound, CodeRepo repoInWhichFindingWasFound, Finding.Source source, CloudSubscription cloudSubscription) {
         newFindings = mergeFindings(newFindings);
         List<Finding> existingFindings;
 
         // Handle different types of findings based on source
         if (source == Finding.Source.CLOUD_SCANNER) {
-            CloudSubscription subscription = newFindings.get(0).getCloudSubscription();
-            existingFindings = findingRepository.findBySourceAndCloudSubscription(source, subscription);
+            existingFindings = findingRepository.findBySourceAndCloudSubscription(source, cloudSubscription);
         } else {
             existingFindings = findingRepository.findBySourceAndCodeRepoBranchAndCodeRepo(source, repoWhereFindingWasFound, repoInWhichFindingWasFound);
         }
