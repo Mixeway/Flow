@@ -27,11 +27,11 @@ public class UpdateFindingService {
     }
 
     @Transactional
-    public void suppressFindingAcrossBranches(Finding finding, Long findingId, String location, Long vulnId, String reason) {
+    public void suppressFindingAcrossBranches(Finding finding, Long codeRepoId, String location, Long vulnId, String reason) {
 
         // Update everything in one go (includes the current finding)
         int affected = findingRepository.bulkSuppressInRepoForSameVulnAndLocation(
-                findingId, vulnId, location, parseReason(reason)
+                codeRepoId, vulnId, location, parseReason(reason)
         );
 
         log.info("[UpdateFinding] Suppressed {} finding(s) across repository {} at {}",

@@ -236,7 +236,7 @@ public class FindingsByTeamService {
             Optional<Finding> finding = findFindingService.findById(findingId);
             if (finding.isPresent() && codeRepos.contains(finding.get().getCodeRepo())) {
                 updateFindingService.suppressFindingAcrossBranches(finding.get(),
-                        finding.get().getId(),
+                        finding.get().getCodeRepo().getId(),
                         finding.get().getLocation(),
                         finding.get().getVulnerability().getId(),
                         reason);

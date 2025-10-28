@@ -291,7 +291,7 @@ class CreateFindingServiceTest {
         assertTrue(branch3Persisted.stream().anyMatch(f -> f.getVulnerability().getId() == toSuppress.getVulnerability().getId() && f.getLocation().equals(toSuppress.getLocation())));
 
         updateFindingService.suppressFindingAcrossBranches(toSuppress,
-                toSuppress.getId(),
+                toSuppress.getCodeRepo().getId(),
                 toSuppress.getLocation(),
                 toSuppress.getVulnerability().getId(),
                 "ACCEPTED");
@@ -337,7 +337,7 @@ class CreateFindingServiceTest {
 
         // 3) suppress that one across branches (by repoId + vulnId + location)
         updateFindingService.suppressFindingAcrossBranches(toSuppress,
-                toSuppress.getId(),
+                toSuppress.getCodeRepo().getId(),
                 toSuppress.getLocation(),
                 toSuppress.getVulnerability().getId(),
                 "ACCEPTED");
