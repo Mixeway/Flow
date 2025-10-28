@@ -42,7 +42,7 @@ public final class Finding {
     @ToString.Include
     private final long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "vulnerability_id", nullable = false)
     @ToString.Exclude
     private final Vulnerability vulnerability;
