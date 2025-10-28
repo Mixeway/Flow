@@ -290,7 +290,11 @@ class CreateFindingServiceTest {
         assertTrue(branch2Persisted.stream().anyMatch(f -> f.getVulnerability().getId() == toSuppress.getVulnerability().getId() && f.getLocation().equals(toSuppress.getLocation())));
         assertTrue(branch3Persisted.stream().anyMatch(f -> f.getVulnerability().getId() == toSuppress.getVulnerability().getId() && f.getLocation().equals(toSuppress.getLocation())));
 
-        updateFindingService.suppressFindingAcrossBranches(toSuppress, "ACCEPTED");
+        updateFindingService.suppressFindingAcrossBranches(toSuppress,
+                toSuppress.getId(),
+                toSuppress.getLocation(),
+                toSuppress.getVulnerability().getId(),
+                "ACCEPTED");
 
         // Assert: the chosen (vuln, location) is suppressed on every branch
         for (CodeRepoBranch b : List.of(branch1, branch2, branch3)) {
@@ -332,7 +336,11 @@ class CreateFindingServiceTest {
         Finding toSuppress = aPersisted.get(0);
 
         // 3) suppress that one across branches (by repoId + vulnId + location)
-        updateFindingService.suppressFindingAcrossBranches(toSuppress, "ACCEPTED");
+        updateFindingService.suppressFindingAcrossBranches(toSuppress,
+                toSuppress.getId(),
+                toSuppress.getLocation(),
+                toSuppress.getVulnerability().getId(),
+                "ACCEPTED");
 
         // 4) create a second new branch (after suppression)
         CodeRepoBranch branchB = new CodeRepoBranch("feature/follow-up", repo);

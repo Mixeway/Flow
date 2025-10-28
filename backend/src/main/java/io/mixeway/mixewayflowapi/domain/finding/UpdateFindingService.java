@@ -27,20 +27,15 @@ public class UpdateFindingService {
     }
 
     @Transactional
-    public void suppressFindingAcrossBranches(Finding finding, String reason) {
-        Finding managed = entityManager.merge(finding);
-        finding = managed;
-        CodeRepo repo = managed.getCodeRepo();
-        var vuln = managed.getVulnerability();
-        String location = managed.getLocation();
+    public void suppressFindingAcrossBranches(Finding finding, Long findingId, String location, Long vulnId, String reason) {
 
         // Update everything in one go (includes the current finding)
         int affected = findingRepository.bulkSuppressInRepoForSameVulnAndLocation(
-                repo.getId(), vuln.getId(), location, parseReason(reason)
+                findingId, vulnId, location, parseReason(reason)
         );
 
-        log.info("[UpdateFinding] Suppressed {} finding(s) across repository {} for vuln {} at {}",
-                affected, repo.getName(), vuln.getName(), location);
+        log.info("[UpdateFinding] Suppressed {} finding(s) across repository {} at {}",
+                affected, finding.getCodeRepo().getName(), location);
     }
     private Finding.SuppressedReason parseReason(String text) {
         if (text == null) throw new IllegalArgumentException("Suppressed reason is required");

@@ -235,7 +235,11 @@ public class FindingsByTeamService {
             List<CodeRepo> codeRepos = findCodeRepoService.findByTeam(team);
             Optional<Finding> finding = findFindingService.findById(findingId);
             if (finding.isPresent() && codeRepos.contains(finding.get().getCodeRepo())) {
-                updateFindingService.suppressFindingAcrossBranches(finding.get(), reason);
+                updateFindingService.suppressFindingAcrossBranches(finding.get(),
+                        finding.get().getId(),
+                        finding.get().getLocation(),
+                        finding.get().getVulnerability().getId(),
+                        reason);
             }
 
             return new StatusDTO("OK");

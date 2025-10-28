@@ -65,7 +65,7 @@ public class FindingService {
         CodeRepo codeRepo = findCodeRepoService.findById(id, principal);
         Optional<Finding> finding = findFindingService.findById(findingId);
         if (finding.isPresent() && finding.get().getCodeRepo().equals(codeRepo)) {
-            updateFindingService.suppressFindingAcrossBranches(finding.get(), reason);
+            updateFindingService.suppressFindingAcrossBranches(finding.get(),finding.get().getId(), finding.get().getLocation(), finding.get().getVulnerability().getId(), reason);
             return new StatusDTO("OK");
         } else {
             return null;

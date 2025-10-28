@@ -145,7 +145,11 @@ class UpdateFindingServiceTest {
         }
 
         // --- 3) SUPPRESS one of the matching findings (this should fan-out by (repo, vuln, location)) ---
-        updateFindingService.suppressFindingAcrossBranches(mA, "ACCEPTED");
+        updateFindingService.suppressFindingAcrossBranches(mA,
+                mA.getId(),
+                mA.getLocation(),
+                mA.getVulnerability().getId(),
+                "ACCEPTED");
 
         // --- 4) VERIFY: all matching rows (mA, mB, mC) are suppressed with ACCEPTED ---
         for (Finding f : List.of(mA, mB, mC)) {
@@ -193,7 +197,11 @@ class UpdateFindingServiceTest {
 
         // Call with an invalid reason; service should refuse to suppress
         assertThrows(IllegalArgumentException.class, () ->
-                updateFindingService.suppressFindingAcrossBranches(seed, "not-a-valid-reason")
+                updateFindingService.suppressFindingAcrossBranches(seed,
+                        seed.getId(),
+                        seed.getLocation(),
+                        seed.getVulnerability().getId(),
+                        "not-a-valid-reason")
         );
 
         // Verify no sibling changed state
