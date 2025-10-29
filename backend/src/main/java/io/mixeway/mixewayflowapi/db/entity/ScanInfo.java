@@ -125,7 +125,11 @@ public final class ScanInfo {
         this.id = 0;
         this.codeRepo = codeRepo;
         this.codeRepoBranch = codeRepoBranch;
-        this.commitId = commitId;
+        if (commitId != null && !commitId.isEmpty()) {
+            this.commitId = commitId;
+        } else {
+            this.commitId = "0000000000000000000000000000000000000000";
+        }
         this.scaScanStatus = scaScanStatus;
         this.sastScanStatus = sastScanStatus;
         this.iacScanStatus = iacScanStatus;

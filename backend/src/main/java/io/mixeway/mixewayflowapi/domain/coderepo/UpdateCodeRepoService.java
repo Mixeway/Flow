@@ -202,11 +202,8 @@ public class UpdateCodeRepoService {
     private int countCriticalFindings(Finding.Source source, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
         List<Finding> findings;
 
-        if (source == Finding.Source.SECRETS) {
-            findings = findingRepository.findBySourceAndCodeRepo(source, codeRepo);
-        } else {
-            findings = findingRepository.findBySourceAndCodeRepoBranchAndCodeRepo(source, codeRepoBranch, codeRepo);
-        }
+
+        findings = findingRepository.findBySourceAndCodeRepoBranchAndCodeRepo(source, codeRepoBranch, codeRepo);
 
         return (int) findings.stream()
                 .filter(finding -> finding.getStatus() == Finding.Status.NEW || finding.getStatus() == Finding.Status.EXISTING)
