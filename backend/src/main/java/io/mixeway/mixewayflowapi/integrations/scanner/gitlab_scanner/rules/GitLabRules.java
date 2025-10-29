@@ -546,9 +546,10 @@ public class GitLabRules {
 
             for (JsonNode tokenInfo : tokens) {
                 if (tokenInfo.has("scopes") && tokenInfo.get("scopes").isArray()) {
+                    boolean isActive = tokenInfo.get("active").asBoolean();
                     boolean hasApiScope = StreamSupport.stream(tokenInfo.get("scopes").spliterator(), false).anyMatch(scope -> "api".equals(scope.asText()));
                     JsonNode rule = findRule("Access token with api scope");
-                    if (hasApiScope) {
+                    if (hasApiScope && isActive) {
                         newFindings.add(createFindingService.mapGitLabScannerReportToFindings(codeRepo, codeRepo.getDefaultBranch(), rule.get("name").asText(), rule.get("severity").asText(), null, rule.get("location").asText() + " (" + tokenInfo.get("name").asText() + ")", rule.get("description").asText(), rule.get("recommendation").asText()));
                         log.debug("[GitLabScanner] Detected configuration \"{}\" in repository {}", rule.get("name").asText(), codeRepo.getRepourl());
                     }
