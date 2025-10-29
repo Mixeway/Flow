@@ -50,7 +50,7 @@ export class TeamInfoComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
     if (!this.chartPieData) {
-      this.initializeDefaultChartData();
+      this.renderChart();
     }
   }
 
@@ -131,23 +131,6 @@ export class TeamInfoComponent implements OnInit, AfterViewInit {
         this.renderChart();
       }
     }
-  }
-
-  initializeDefaultChartData(): void {
-    this.chartPieData = {
-      labels: ['SAST', 'DAST', 'SCA', 'DAST', 'Cloud', 'Container'],
-      datasets: [{
-        data: [14, 14, 10, 8, 8, 2],
-        backgroundColor: [
-          '#FF6384',
-          '#8B4513',
-          '#36A2EB',
-          '#FFCE56',
-          '#4BC0C0',
-          '#9966FF'
-        ]
-      }]
-    };
   }
 
   renderChart(): void {
