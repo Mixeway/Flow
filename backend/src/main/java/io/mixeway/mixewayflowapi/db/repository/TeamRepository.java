@@ -15,6 +15,7 @@ public interface TeamRepository extends CrudRepository<Team, Long>  {
     Optional<Team> findByName(String name);
     Optional<Team> findById(Long id);
 
+
     List<Team> findByRemoteIdentifier(String remoteIdentifier);
     List<Team> findAll();
 
@@ -40,6 +41,7 @@ public interface TeamRepository extends CrudRepository<Team, Long>  {
     @Query("SELECT t FROM Team t WHERE t.organization.id = :organizationId")
     List<Team> findByOrganizationId(@Param("organizationId") Long organizationId);
 
-
+    @Query("SELECT c.team FROM CodeRepo c WHERE c.repourl = :repoUrl")
+    Optional<Team> findByRepoUrl(@Param("repoUrl") String repoUrl);
 
 }
