@@ -1,5 +1,6 @@
 package io.mixeway.mixewayflowapi.api.gitlabcicd.controller;
-import io.mixeway.mixewayflowapi.api.gitlabcicd.dto.GitlabCICDRequestDto;
+import io.mixeway.mixewayflowapi.api.gitlabcicd.dto.GitLabCICDRequestDto;
+import io.mixeway.mixewayflowapi.api.gitlabcicd.dto.GitLabCICDSummaryResponseDto;
 import io.mixeway.mixewayflowapi.api.gitlabcicd.service.GitLabCICDService;
 import io.mixeway.mixewayflowapi.api.teamfindings.dto.TeamFindingsAndVulnsResponseDto;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
@@ -21,14 +22,14 @@ import org.springframework.web.bind.annotation.*;
 public class GitLabCICDController {
 
     private final GitLabCICDService gitLabCICDService;
-    private final ScanManagerService scanManagerService;
 
     @PreAuthorize("hasAuthority('USER')")
     @PostMapping(value = "/api/v1/gitlabcicd/run")
-    public ResponseEntity<Page<TeamFindingsAndVulnsResponseDto>> runScanViaGitLabCICD(@RequestHeader("X-API-KEY") String apiKey, @RequestBody GitlabCICDRequestDto requestDto) {
+    public ResponseEntity<String> runScanViaGitLabCICD(@RequestHeader("X-API-KEY") String apiKey, @RequestBody GitLabCICDRequestDto requestDto) {
         try {
             String repoUrl = requestDto.getRepoUrl();
             String branch = requestDto.getBranch();
+            String domain = requestDto.getDomain();
 
             if (!gitLabCICDService.isValidApiKey(apiKey, repoUrl)) {
                 return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
@@ -37,9 +38,11 @@ public class GitLabCICDController {
             CodeRepo codeRepo = gitLabCICDService.getCodeRepo(repoUrl);
             CodeRepoBranch codeRepoBranch = gitLabCICDService.getCodeRepoBranch(branch, codeRepo);
 
-            scanManagerService.scanRepository(codeRepo, codeRepoBranch, null, null);
+            gitLabCICDService.runCodeRepoScan(codeRepo, codeRepoBranch);
 
-            return new ResponseEntity<>(HttpStatus.OK);
+            String scanSummary = gitLabCICDService.createScanSummary(codeRepo, codeRepoBranch, domain);
+
+            return new ResponseEntity<>(scanSummary, HttpStatus.OK);
         } catch (Exception e){
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }

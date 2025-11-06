@@ -239,6 +239,132 @@ public class ScanManagerService {
         });
     }
 
+    public void scanRepositoryViaGitLabCICD(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId, Long iid) {
+        // Get or create a lock object for the repository
+        Object repoLock = repoLocks.computeIfAbsent(codeRepo.getId(), k -> new Object());
+
+        synchronized (repoLock) {
+            // Check if a scan is already running or was run within the last 5 minutes
+            Boolean existing = scanThrottler.getIfPresent(codeRepo.getId());
+            if (existing != null) {
+                log.info("[ScanManagerService] Scan for repo {} is already running or was run within the last 10 minutes. Ignoring request.", codeRepo.getName());
+                try {
+                    // If you have the actual branch entity and commitId here, pass them.
+                    // If not, default to the repo's default branch and commitId = null.
+                    updateCodeRepoService.createThrottledScanInfo(codeRepo, codeRepo.getDefaultBranch(), commitId);
+                    log.info("[ScanManagerService] Created throttled ScanInfo snapshot for repo {} (branch: {})",
+                            codeRepo.getName(),
+                            codeRepo.getDefaultBranch() != null ? codeRepo.getDefaultBranch().getName() : "<null>");
+                } catch (Exception e) {
+                    log.warn("[ScanManagerService] Unable to create throttled ScanInfo snapshot: {}", e.getMessage());
+                }
+
+                return;
+            }
+
+            // Add repository to the throttler cache
+            scanThrottler.put(codeRepo.getId(), Boolean.TRUE);
+        }
+
+            try {
+                // Set scan running status
+                updateCodeRepoService.setScanRunning(codeRepo);
+
+                String repoDir = "/tmp/" + codeRepo.getName();
+                String commit = "";
+                AtomicBoolean scaScanPerformed = new AtomicBoolean(false);
+                Future<?> timeoutFuture = null;
+
+                try {
+                    log.info("[ScanManagerService] Starting scan for {} with branch {}", codeRepo.getRepourl(), codeRepoBranch.getName());
+
+                    validateInputs(codeRepo, codeRepoBranch);
+
+                    String repoUrl = codeRepo.getRepourl();
+                    String repoType = String.valueOf(codeRepo.getType());
+                    String accessToken = codeRepo.getAccessToken();
+
+                    // Clone or fetch the repository
+                    commit = fetchRepository(commitId, repoUrl, accessToken, codeRepoBranch, repoDir);
+
+                    // Run scans in parallel
+                    Future<Void> secretScanFuture = runSecretScan(repoDir, codeRepo, codeRepoBranch);
+                    Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo, codeRepoBranch, scaScanPerformed);
+                    Future<Void> sastScanFuture = runSASTScan(repoDir, codeRepo, codeRepoBranch);
+                    Future<Void> iacScanFuture = runIACScan(repoDir, codeRepo, codeRepoBranch);
+                    Future<Void> gitlabScanFuture = null;
+                    if ("GITLAB".equals(repoType)) {
+                        gitlabScanFuture = runGitLabScan(codeRepo);
+                    }
+                    Future<Void> zapScanFuture = runZAPScan(repoDir, codeRepo, codeRepoBranch);
+
+                    List<Future<Void>> scanFutures = new ArrayList<>(Arrays.asList(
+                            secretScanFuture, scaScanFuture, sastScanFuture, iacScanFuture, zapScanFuture
+                    ));
+                    if (gitlabScanFuture != null) {
+                        scanFutures.add(gitlabScanFuture);
+                    }
+
+
+                    // Schedule a timeout task to cancel scans
+                    timeoutFuture = this.scheduler.schedule(() -> {
+                        // Cancel the scans
+                        for (Future<Void> future : scanFutures) {
+                            future.cancel(true);
+                        }
+                        log.error("[ScanManagerService] Scan timed out for repo {}.", codeRepo.getName());
+                    }, 2, TimeUnit.HOURS);
+
+                    // Wait for all scans to complete
+                    for (Future<Void> future : scanFutures) {
+                        try {
+                            future.get(); // Wait for scan to complete
+                        } catch (CancellationException ce) {
+                            log.warn("[ScanManagerService] Scan task was cancelled.");
+                        } catch (InterruptedException ie) {
+                            log.warn("[ScanManagerService] Scan task was interrupted.");
+                            Thread.currentThread().interrupt();
+                        } catch (ExecutionException ee) {
+                            log.error("[ScanManagerService] Exception during scan task: {}", ee.getMessage(), ee);
+                        }
+                    }
+
+                    // If scans completed before timeout, cancel the timeout task
+                    if (timeoutFuture != null && !timeoutFuture.isDone()) {
+                        timeoutFuture.cancel(false);
+                    }
+
+                } catch (Exception e) {
+                    log.error("[ScanManagerService] Exception during scan, failed to fetch repository: {}", codeRepo.getRepourl());
+                } finally {
+                    // Update status
+                    try {
+                        updateCodeRepoService.updateCodeRepoStatus(codeRepo, codeRepoBranch, scaScanPerformed.get(), commit);
+                    } catch (Exception updateEx) {
+                        log.error("[ScanManagerService] Failed to update CodeRepo status for {}: {}", codeRepo.getName(), updateEx.getMessage(), updateEx);
+                    }
+
+                    // Clean up
+                    try {
+                        cleanUp(repoDir);
+                    } catch (IOException cleanupEx) {
+                        log.error("[ScanManagerService] Failed to clean up repository directory {}: {}", repoDir, cleanupEx.getMessage(), cleanupEx);
+                    }
+
+                    if (iid != null && iid > 0) {
+                        try {
+                            gitCommentService.processMergeComment(codeRepo, codeRepoBranch, iid);
+                        } catch (MalformedURLException e) {
+                            log.error("[Scan Service] Unable to process Merge request - {}", e.getLocalizedMessage());
+                        }
+                    }
+                }
+            } finally {
+                // Remove the repository from the locks map
+                repoLocks.remove(codeRepo.getId());
+            }
+    }
+
     private Future<Void> runSecretScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
         Callable<Void> task = () -> {
             int currentSecretScans = secretScansRunning.incrementAndGet();

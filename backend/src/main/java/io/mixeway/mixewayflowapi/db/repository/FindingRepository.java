@@ -6,6 +6,7 @@ import io.mixeway.mixewayflowapi.db.entity.*;
 import io.mixeway.mixewayflowapi.db.projection.ItemProjection;
 import io.mixeway.mixewayflowapi.db.projection.RemovedVulnerabilityProjection;
 import io.mixeway.mixewayflowapi.db.projection.ReviewedVulnerabilityProjection;
+import org.aspectj.apache.bcel.classfile.Code;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -26,6 +28,8 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
     List<Finding> findBySourceAndCodeRepoBranchAndCodeRepo(Finding.Source source, CodeRepoBranch codeRepoBranch, CodeRepo codeRepo);
     List<Finding> findBySourceAndCodeRepo(Finding.Source source, CodeRepo codeRepo);
     List<Finding> findByCloudSubscription(CloudSubscription cloudSubscription);
+    List<Finding> findByCodeRepoAndCodeRepoBranchAndSeverityAndStatusInAndSource(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, Finding.Severity severity, Collection<Finding.Status> statuses, Finding.Source source);
+    List<Finding> findByCodeRepoAndCodeRepoBranchAndStatusIn(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, Collection<Finding.Status> statuses);
 
 
     @Query("SELECT new io.mixeway.mixewayflowapi.api.coderepo.dto.VulnStatsResponseDto("
