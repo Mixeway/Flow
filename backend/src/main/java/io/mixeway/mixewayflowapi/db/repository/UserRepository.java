@@ -1,5 +1,6 @@
 package io.mixeway.mixewayflowapi.db.repository;
 
+import io.mixeway.mixewayflowapi.db.entity.Team;
 import io.mixeway.mixewayflowapi.db.entity.UserInfo;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;

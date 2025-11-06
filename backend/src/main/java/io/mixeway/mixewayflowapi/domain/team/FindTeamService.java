@@ -91,4 +91,8 @@ public class FindTeamService {
     public List<Team> findByOrganizationId(Long organizationId) {
         return teamRepository.findByOrganizationId(organizationId);
     }
+
+    public Optional<Team> findByRepoUrl(String repoUrl) {
+        return teamRepository.findByRepoUrl(repoUrl);
+    }
 }
