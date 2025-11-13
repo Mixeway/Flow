@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.11] - 2025-11-13
+
+### Intrduced
+- Added gitea support
 
 ## [1.2.10] - 2025-10-29
 

@@ -49,8 +49,11 @@ export class GiteaService {
 
     getRepositoryDetailsFromUrl(repoUrl: string, token: string): Observable<{ id: number; name: string; full_name: string } | null> {
         const repoPath = this.extractRepositoryPath(repoUrl);
-        const encodedRepoPath = encodeURIComponent(repoPath);
-        const url = `${this.giteaApiUrl.replace('/user/repos', '')}/repos/${encodedRepoPath}`;
+        // Gitea API requires encoding each segment separately, not the entire path
+        // Split by / and encode each part, then join with /
+        const pathParts = repoPath.split('/');
+        const encodedPath = pathParts.map(part => encodeURIComponent(part)).join('/');
+        const url = `${this.giteaApiUrl.replace('/user/repos', '')}/repos/${encodedPath}`;
 
         const headers = new HttpHeaders({
             'Authorization': `token ${token}`
