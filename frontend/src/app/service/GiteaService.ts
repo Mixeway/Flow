@@ -2,19 +2,20 @@ import {Injectable} from '@angular/core';
 import {HttpClient, HttpHeaders} from '@angular/common/http';
 import {Observable, of, takeWhile} from 'rxjs';
 import {catchError, expand, map, reduce} from 'rxjs/operators';
+import {environment} from "../../environments/environment";
 
 @Injectable({
     providedIn: 'root'
 })
 export class GiteaService {
-    private giteaApiUrl = ''; // Set the base URL dynamically from form
+    private giteaBaseUrl = ''; // Set the base URL dynamically from form
+    private backendUrl = environment.backendUrl;
 
     constructor(private http: HttpClient) {}
 
     setApiUrl(repoUrl: string) {
         const urlObject = new URL(repoUrl);
-        const host = `${urlObject.protocol}//${urlObject.host}`;
-        this.giteaApiUrl = `${host}/api/v1/user/repos`;
+        this.giteaBaseUrl = `${urlObject.protocol}//${urlObject.host}`;
     }
 
     getAllRepositories(token: string): Observable<any[]> {
@@ -37,29 +38,37 @@ export class GiteaService {
 
     getRepositories(token: string, page: number = 1, limit: number = 50): Observable<any[]> {
         const headers = new HttpHeaders({
-            'Authorization': `token ${token}`
+            'X-Gitea-Token': token
         });
 
-        const url = `${this.giteaApiUrl}?page=${page}&limit=${limit}`;
+        // Use backend proxy to avoid CORS issues
+        // JWT token for backend auth is automatically sent via withCredentials: true
+        const url = `${this.backendUrl}/api/v1/gitea/proxy/repos?giteaUrl=${encodeURIComponent(this.giteaBaseUrl)}&page=${page}&limit=${limit}`;
 
-        return this.http.get<any[]>(url, { headers }).pipe(
+        return this.http.get<any[]>(url, { headers, withCredentials: true }).pipe(
             catchError(this.handleError<any[]>('getRepositories', []))
         );
     }
 
     getRepositoryDetailsFromUrl(repoUrl: string, token: string): Observable<{ id: number; name: string; full_name: string } | null> {
         const repoPath = this.extractRepositoryPath(repoUrl);
-        // Gitea API requires encoding each segment separately, not the entire path
-        // Split by / and encode each part, then join with /
+        // Split by / to get owner and repo
         const pathParts = repoPath.split('/');
-        const encodedPath = pathParts.map(part => encodeURIComponent(part)).join('/');
-        const url = `${this.giteaApiUrl.replace('/user/repos', '')}/repos/${encodedPath}`;
+        if (pathParts.length < 2) {
+            return of(null);
+        }
+        const owner = pathParts[0];
+        const repo = pathParts[1];
 
         const headers = new HttpHeaders({
-            'Authorization': `token ${token}`
+            'X-Gitea-Token': token
         });
 
-        return this.http.get<any>(url, { headers }).pipe(
+        // Use backend proxy to avoid CORS issues
+        // JWT token for backend auth is automatically sent via withCredentials: true
+        const url = `${this.backendUrl}/api/v1/gitea/proxy/repo?giteaUrl=${encodeURIComponent(this.giteaBaseUrl)}&owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`;
+
+        return this.http.get<any>(url, { headers, withCredentials: true }).pipe(
             map(response => ({
                 id: response.id,
                 name: response.name,

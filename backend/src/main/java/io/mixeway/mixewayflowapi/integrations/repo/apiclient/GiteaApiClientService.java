@@ -18,7 +18,6 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @Log4j2
@@ -135,13 +134,16 @@ public class GiteaApiClientService {
     }
 
     private HashMap<String, Integer> convertToIntegerMap(HashMap<String, Double> doubleMap) {
-        return doubleMap.entrySet().stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry -> (int) Math.floor(entry.getValue()), // round down
-                        (e1, e2) -> e1,
-                        HashMap::new
-                ));
+        // Calculate percentages like GitHub does
+        double totalLines = doubleMap.values().stream().mapToDouble(Double::doubleValue).sum();
+        
+        HashMap<String, Integer> languagePercentages = new HashMap<>();
+        for (Map.Entry<String, Double> entry : doubleMap.entrySet()) {
+            double percentage = (entry.getValue() / totalLines) * 100;
+            languagePercentages.put(entry.getKey(), (int) Math.floor(percentage));
+        }
+        
+        return languagePercentages;
     }
 
     public Mono<String> commentMergeRequest(CodeRepo codeRepo, Long iid, String comment) throws MalformedURLException {
