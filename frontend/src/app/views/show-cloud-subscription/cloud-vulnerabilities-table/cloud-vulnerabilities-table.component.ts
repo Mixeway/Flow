@@ -65,6 +65,10 @@ export class CloudVulnerabilitiesTableComponent {
   @Input() vulnerabilitiesLoading: boolean = false;
   @Input() vulnerabilitiesLimit: number = 15;
 
+  @Input() filteredIssues: Vulnerability[] = [];
+  @Input() issuesLoading: boolean = false;
+  @Input() issuesLimit: number = 15;
+
   @Output() updateFilterNameEvent = new EventEmitter<any>();
   @Output() updateFilterLocationEvent = new EventEmitter<any>();
   @Output() updateFilterStatusEvent = new EventEmitter<any>();
@@ -72,6 +76,7 @@ export class CloudVulnerabilitiesTableComponent {
   @Output() toggleShowRemovedEvent = new EventEmitter<any>();
   @Output() viewVulnerabilityDetailsEvent = new EventEmitter<Vulnerability>();
   @Output() vulnerabilitiesLimitChange = new EventEmitter<number>();
+
 
   /**
    * Update name filter

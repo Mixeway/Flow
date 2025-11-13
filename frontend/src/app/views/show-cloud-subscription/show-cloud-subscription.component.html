@@ -33,18 +33,22 @@
                     Vulnerabilities
                 </button>
                 <button cTab [itemKey]="1">
+                    <svg cIcon name="cil-shield-alt" class="me-2"></svg>
+                    Issues
+                </button>
+                <button cTab [itemKey]="2">
                     <svg cIcon name="cil-chart-line" class="me-2"></svg>
                     Statistics & Trends
                 </button>
-                <button cTab [itemKey]="2">
+                <button cTab [itemKey]="3">
                     <svg cIcon name="cil-magnifying-glass" class="me-2"></svg>
                     Scan History
                 </button>
-                <button cTab [itemKey]="3">
+                <button cTab [itemKey]="4">
                     <svg cIcon name="cil-burn" class="me-2"></svg>
                     Notifications
                 </button>
-                <button cTab [itemKey]="4">
+                <button cTab [itemKey]="5">
                     <svg cIcon name="cil-info" class="me-2"></svg>
                     Additional Info
                 </button>
@@ -67,8 +71,24 @@
                     ></app-cloud-vulnerabilities-table>
                 </c-tab-panel>
 
-                <!-- Statistics and Trends Tab -->
+                <!-- Issues Tab -->
                 <c-tab-panel class="p-3" [itemKey]="1">
+                    <app-cloud-vulnerabilities-table
+                            [filteredVulns]="filteredIssues"
+                            [vulnerabilitiesLoading]="issuesLoading"
+                            [vulnerabilitiesLimit]="issuesLimit"
+                            (updateFilterNameEvent)="updateFilterName($event)"
+                            (updateFilterLocationEvent)="updateFilterLocation($event)"
+                            (updateFilterStatusEvent)="updateFilterStatus($event)"
+                            (updateFilterSeverityEvent)="updateFilterSeverity($event)"
+                            (toggleShowRemovedEvent)="toggleShowRemoved($event)"
+                            (viewVulnerabilityDetailsEvent)="viewVulnerabilityDetails($event)"
+                            (vulnerabilitiesLimitChange)="vulnerabilitiesLimit = $event"
+                    ></app-cloud-vulnerabilities-table>
+                </c-tab-panel>
+
+                <!-- Statistics and Trends Tab -->
+                <c-tab-panel class="p-3" [itemKey]="2">
                     <div class="statistics-container">
                         <!-- Trend Chart -->
                         <c-card class="trend-chart-card mb-4">
@@ -130,7 +150,7 @@
                 </c-tab-panel>
 
                 <!-- Scan Info Tab -->
-                <c-tab-panel class="p-3" [itemKey]="2">
+                <c-tab-panel class="p-3" [itemKey]="3">
                     <c-card class="scan-info-card">
                         <c-card-header>
                             <h5 class="mb-0">Scan History</h5>
@@ -235,7 +255,7 @@
                 </c-tab-panel>
 
                 <!-- Notifications Tab -->
-                <c-tab-panel class="p-3" [itemKey]="3">
+                <c-tab-panel class="p-3" [itemKey]="4">
                     <c-alert color="primary" class="d-flex align-items-center">
                         <svg
                                 cIcon
@@ -252,7 +272,7 @@
                 </c-tab-panel>
 
                 <!-- Additional Infos Tab -->
-                <c-tab-panel class="p-3" [itemKey]="4">
+                <c-tab-panel class="p-3" [itemKey]="5">
                     <c-alert color="primary" class="d-flex align-items-center">
                         <svg
                                 cIcon
