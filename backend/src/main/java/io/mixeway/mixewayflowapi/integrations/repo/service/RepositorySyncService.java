@@ -6,7 +6,9 @@ import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
 import io.mixeway.mixewayflowapi.domain.coderepo.CreateCodeRepoService;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GitHubApiClientService;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GitLabApiClientService;
+import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GiteaApiClientService;
 import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoGitHubResponseDto;
+import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoGiteaResponseDto;
 import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -26,6 +28,7 @@ public class RepositorySyncService {
     private final CreateCodeRepoService createCodeRepoService;
     private final GitLabApiClientService gitLabApiClientService;
     private final GitHubApiClientService gitHubApiClientService;
+    private final GiteaApiClientService giteaApiClientService;
 
     @Async
     public void syncProvider(RepositoryProvider provider) {
@@ -42,16 +45,25 @@ public class RepositorySyncService {
             repositoryFlux = gitLabApiClientService.fetchAllProjects(provider.getApiUrl(), provider.getEncryptedAccessToken());
         } else if (provider.getProviderType().equals(CodeRepo.RepoType.GITHUB)) {
             repositoryFlux = gitHubApiClientService.fetchAllRepositories(provider.getApiUrl(), provider.getEncryptedAccessToken());
+        } else if (provider.getProviderType().equals(CodeRepo.RepoType.GITEA)) {
+            repositoryFlux = giteaApiClientService.fetchAllRepositories(provider.getApiUrl(), provider.getEncryptedAccessToken());
         } else {
             return;
         }
 
         repositoryFlux
                 .filter(project -> {
-                    long remoteId = (project instanceof ImportCodeRepoResponseDto)
-                            ? ((ImportCodeRepoResponseDto) project).getId()
-                            : ((ImportCodeRepoGitHubResponseDto) project).getId();
-                    return !existingRemoteIds.contains(remoteId);
+                    long remoteId;
+                    if (project instanceof ImportCodeRepoResponseDto) {
+                        remoteId = ((ImportCodeRepoResponseDto) project).getId();
+                    } else if (project instanceof ImportCodeRepoGitHubResponseDto) {
+                        remoteId = ((ImportCodeRepoGitHubResponseDto) project).getId();
+                    } else if (project instanceof ImportCodeRepoGiteaResponseDto) {
+                        remoteId = ((ImportCodeRepoGiteaResponseDto) project).getId();
+                    } else {
+                        return false;
+                    }
+                    return !existingRemoteIds.contains((int) remoteId);
                 })
                 .flatMap(project ->
                                 // flatMap now correctly calls a method that returns a Mono<Void>

@@ -54,6 +54,19 @@ public class CodeRepoController {
     }
 
     @PreAuthorize("hasAuthority('USER')")
+    @PostMapping(value= "/api/v1/coderepo/create/gitea")
+    public ResponseEntity<StatusDTO> createCodeRepoGitea(@Valid @RequestBody CreateCodeRepoRequestDto createCodeRepoRequestDto, Principal principal){
+        try {
+            createCodeRepoService.createCodeRepo(createCodeRepoRequestDto, CodeRepo.RepoType.GITEA).block();
+            return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.CREATED);
+        } catch (Exception e){
+            e.printStackTrace();
+            log.error("[CodeRepo] Error Creating CodeRepo {} by {}", createCodeRepoRequestDto.getName(), principal.getName());
+            return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('USER')")
     @GetMapping(value= "/api/v1/coderepo")
     public ResponseEntity<List<GetCodeReposResponseDto>> getRepos(Principal principal){
         try {

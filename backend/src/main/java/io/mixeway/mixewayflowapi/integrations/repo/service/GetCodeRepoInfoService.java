@@ -4,7 +4,9 @@ import io.mixeway.mixewayflowapi.api.coderepo.dto.CreateCodeRepoRequestDto;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GitHubApiClientService;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GitLabApiClientService;
+import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GiteaApiClientService;
 import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoGitHubResponseDto;
+import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoGiteaResponseDto;
 import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -13,7 +15,6 @@ import reactor.core.publisher.Mono;
 
 import java.net.MalformedURLException;
 import java.util.HashMap;
-import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +22,7 @@ import java.util.Locale;
 public class GetCodeRepoInfoService {
     private final GitLabApiClientService gitLabApiClientService;
     private final GitHubApiClientService gitHubApiClientService;
+    private final GiteaApiClientService giteaApiClientService;
 
     /**
      * Reactively fetches repository information without blocking.
@@ -48,8 +50,23 @@ public class GetCodeRepoInfoService {
                 commonDto.setWebUrl(githubDto.getWebUrl());
                 return commonDto;
             });
+        } else if (repoType.equals(CodeRepo.RepoType.GITEA)) {
+            // Gitea API uses owner/repo path format, not ID, and returns html_url instead of web_url
+            return giteaApiClientService.getProjectInfo(
+                    createCodeRepoRequestDto.getName(),
+                    createCodeRepoRequestDto.getRepoUrl(),
+                    createCodeRepoRequestDto.getAccessToken()
+            ).map(giteaDto -> {
+                ImportCodeRepoResponseDto commonDto = new ImportCodeRepoResponseDto();
+                commonDto.setDefaultBranch(giteaDto.getDefaultBranch());
+                commonDto.setId(giteaDto.getId());
+                commonDto.setDescription(giteaDto.getDescription());
+                commonDto.setPathWithNamespace(giteaDto.getPathWithNamespace());
+                commonDto.setWebUrl(giteaDto.getWebUrl()); // This maps html_url to webUrl
+                return commonDto;
+            });
         } else {
-            log.error("[CodeRepo Import Service] Only GitLab and GitHub are supported.");
+            log.error("[CodeRepo Import Service] Only GitLab, GitHub, and Gitea are supported.");
             return Mono.error(new UnsupportedOperationException("Unsupported repository type."));
         }
     }
@@ -62,6 +79,12 @@ public class GetCodeRepoInfoService {
                             codeRepo.getAccessToken());
         } else if (codeRepo.getType().equals(CodeRepo.RepoType.GITHUB)){
             return gitHubApiClientService
+                    .getProjectLanguages(codeRepo.getName(),
+                            codeRepo.getGitHostUrl(),
+                            codeRepo.getAccessToken());
+        } else if (codeRepo.getType().equals(CodeRepo.RepoType.GITEA)){
+            // Gitea API uses owner/repo path format, not ID
+            return giteaApiClientService
                     .getProjectLanguages(codeRepo.getName(),
                             codeRepo.getGitHostUrl(),
                             codeRepo.getAccessToken());
