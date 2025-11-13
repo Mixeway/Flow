@@ -27,6 +27,7 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
     List<Finding> findBySourceAndCloudSubscription(Finding.Source source, CloudSubscription cloudSubscription);
     List<Finding> findBySourceAndCodeRepoBranchAndCodeRepo(Finding.Source source, CodeRepoBranch codeRepoBranch, CodeRepo codeRepo);
     List<Finding> findBySourceAndCodeRepo(Finding.Source source, CodeRepo codeRepo);
+    List<Finding> findByCloudSubscriptionAndSource(CloudSubscription cloudSubscription, Finding.Source source);
     List<Finding> findByCloudSubscription(CloudSubscription cloudSubscription);
     List<Finding> findByCodeRepoAndCodeRepoBranchAndSeverityAndStatusInAndSource(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, Finding.Severity severity, Collection<Finding.Status> statuses, Finding.Source source);
     List<Finding> findByCodeRepoAndCodeRepoBranchAndStatusIn(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, Collection<Finding.Status> statuses);

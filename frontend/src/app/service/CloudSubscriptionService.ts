@@ -27,6 +27,14 @@ export class CloudSubscriptionService {
         return this.http.get<any>(this.loginUrl + '/api/v1/cloudsubscription/' + id + '/finding/' + finding,{ withCredentials: true });
     }
 
+    getIssues(id: number): Observable<any> {
+        return this.http.get<any>(this.loginUrl + '/api/v1/cloudsubscription/' + id + '/issues', { withCredentials: true });
+    }
+
+    getIssue(id: number, issue: number): Observable<any> {
+        return this.http.get<any>(this.loginUrl + '/api/v1/cloudsubscription/' + id + '/issue/' + issue,{ withCredentials: true });
+    }
+
     getCloudFindingStats(id: number): Observable<any> {
         return this.http.get<any>(this.loginUrl + '/api/v1/cloudsubscription/' + id + '/finding_stats',{ withCredentials: true });
     }
