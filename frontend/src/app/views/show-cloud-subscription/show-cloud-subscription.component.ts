@@ -637,12 +637,22 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
     }
 
     runScan() {
+        this.scanRunning = true;
+        this.cdr.detectChanges();
         this.cloudSubscriptionService.runScan(+this.id).subscribe({
             next: (response) => {
                 this.toastStatus = 'success';
                 this.toastMessage = 'Successfully requested a scan';
                 this.toggleToast();
+                this.scanRunning = false;
+                this.cdr.detectChanges();
             },
+            error: (error) => {
+                this.scanRunning = false;
+                this.toastStatus = 'danger';
+                this.toastMessage = 'Error starting scan';
+                this.toggleToast();
+            }
         });
     }
 
