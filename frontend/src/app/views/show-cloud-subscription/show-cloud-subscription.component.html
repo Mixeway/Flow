@@ -1,19 +1,53 @@
 <div class="cloud-subscription-container">
     <!-- Header Section with Info and Summary -->
     <div class="header-section">
-        <c-row>
-            <!-- Cloud Subscription Info Component -->
-            <c-col [lg]="12" [md]="12">
-                <app-cloud-subscription-info
+        <c-row class="align-items-stretch">
+            <c-col [lg]="6" [md]="6">
+                <div class="h-100">
+                    <app-cloud-subscription-info class="h-100 d-flex flex-column"
                         [cloudSubscriptionData]="cloudSubscriptionData"
                         [scanRunning]="scanRunning"
                         [userRole]="userRole"
                         (runScanEvent)="runScan()"
                         (openChangeTeamModalEvent)="openChangeTeamModal()"
                 ></app-cloud-subscription-info>
+                </div>
             </c-col>
 
+            <c-col [lg]="6" [md]="6">
+                <div class="h-100">
+                    <c-card class="h-100 d-flex flex-column flex-grow-1 justify-content-center">
+                        <c-card-header>
+                            <strong>Findings vs Issues Distribution</strong>
+                        </c-card-header>
+                        <c-card-body class="d-flex flex-column flex-grow-1 justify-content-center">
+                            <c-progress class="mb-3">
+                                <c-progress-bar
+                                        [value]="findingsPercentage"
+                                        color="info"
+                                        textWhite
+                                >
+                                    {{ findingsPercentage }}%
+                                </c-progress-bar>
+                                <c-progress-bar
+                                        [value]="issuesPercentage"
+                                        color="danger"
+                                        textWhite
+                                >
+                                    {{ issuesPercentage }}%
+                                </c-progress-bar>
+                            </c-progress>
+
+                            <div class="text-center mt-2">
+                                <strong>Findings:</strong> {{ findingsPercentage }}% &nbsp; | &nbsp;
+                                <strong>Issues:</strong> {{ issuesPercentage }}%
+                            </div>
+                        </c-card-body>
+                    </c-card>
+                </div>
+            </c-col>
         </c-row>
+
         <c-row>
             <!-- Cloud Vulnerability Summary Component -->
             <c-col [lg]="12" [md]="12">

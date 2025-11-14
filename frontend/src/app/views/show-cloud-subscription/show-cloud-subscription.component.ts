@@ -42,6 +42,7 @@ import {
     ProgressComponent,
     RowComponent,
     SpinnerComponent,
+    ProgressBarComponent,
     TabDirective,
     TabPanelComponent,
     TabsComponent,
@@ -78,6 +79,8 @@ import {
     TeamVulnerabilitiesTableComponent
 } from "../show-team/team-vulnerabilities-table/team-vulnerabilities-table.component";
 import {VulnerabilitySummaryComponent} from "../show-repo/vulnerability-summary/vulnerability-summary.component";
+import _default from "chart.js/dist/core/core.interaction";
+import dataset = _default.modes.dataset;
 
 interface Vulnerability {
     id: number;
@@ -156,6 +159,7 @@ export interface CloudSubscriptionFindingStats {
         ModalHeaderComponent,
         ModalTitleDirective,
         ProgressComponent,
+        ProgressBarComponent,
         SpinnerComponent,
         TabsComponent,
         TemplateIdDirective,
@@ -386,6 +390,9 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
         });
     }
 
+    findingsLoaded = false;
+    issuesLoaded = false;
+
     loadCloudFindings() {
         this.vulnerabilitiesLoading = true;
         this.cloudSubscriptionService.getFindings(+this.id).subscribe({
@@ -393,7 +400,8 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
                 this.vulns = response;
                 this.filteredVulns = [...this.vulns];
                 this.findingsCounts = this.countFindings(this.vulns);
-                this.updateSummaryCounts();
+                this.findingsLoaded = true;
+                this.tryUpdateSummaryCounts();
                 this.applyFilters();
                 this.vulnerabilitiesLoading = false;
             },
@@ -410,7 +418,8 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
                 this.issues = response;
                 this.filteredIssues = [...this.issues];
                 this.issuesCounts = this.countFindings(this.issues);
-                this.updateSummaryCounts();
+                this.issuesLoaded = true;
+                this.tryUpdateSummaryCounts();
                 this.applyFilters();
                 this.issuesLoading = false;
             },
@@ -418,6 +427,89 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
                 this.issuesLoading = false;
             },
         });
+    }
+
+    tryUpdateSummaryCounts() {
+        if (this.findingsLoaded && this.issuesLoaded) {
+            this.updateSummaryCounts();
+        }
+    }
+
+    updateSummaryCounts() {
+        const findings = this.findingsCounts || {};
+        const issues = this.issuesCounts || {};
+
+        this.counts = {
+            critical: (findings.critical || 0) + (issues.critical || 0),
+            high: (findings.high || 0) + (issues.high || 0),
+            rest: (findings.rest || 0) + (issues.rest || 0)
+        };
+
+        this.updateFindingsIssuesChartData();
+
+        this.findingsLoaded = false;
+        this.issuesLoaded = false;
+    }
+
+    get findingsTotal(): number {
+        return (Object.values(this.findingsCounts) as number[]).reduce((a, b) => a + b, 0);
+    }
+
+    get issuesTotal(): number {
+        return (Object.values(this.issuesCounts) as number[]).reduce((a, b) => a + b, 0);
+    }
+
+    get total(): number {
+        return this.findingsTotal + this.issuesTotal;
+    }
+
+    get findingsPercentage(): number {
+        return this.total === 0 ? 0 : Math.round((this.findingsTotal / this.total) * 100);
+    }
+
+    get issuesPercentage(): number {
+        return this.total === 0 ? 0 : Math.round((this.issuesTotal / this.total) * 100);
+    }
+
+    public findingsIssuesChartData: ChartData<'pie', number[], string> = {
+        labels: ['Findings', 'Issues'],
+        datasets: [
+            {
+                data: [this.findingsPercentage, this.issuesPercentage],
+                backgroundColor: ['#36A2EB', '#FF6384'],
+            }
+        ]
+    };
+
+    public findingsIssuesChartOptions: ChartOptions<'pie'> = {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'top',
+            },
+            tooltip: {
+                callbacks: {
+                    label: (context) => {
+                        const label = context.label || '';
+                        const value = context.parsed || 0;
+                        return `${label}: ${value}%`;
+                    }
+                }
+            }
+        }
+    };
+
+    updateFindingsIssuesChartData() {
+        this.findingsIssuesChartData = {
+            labels: ['Findings', 'Issues'],
+            datasets: [
+                {
+                    data: [this.findingsPercentage, this.issuesPercentage],
+                    backgroundColor: ['#36A2EB', '#FF6384'],
+                }
+            ]
+        };
+        this.cdr.detectChanges();
     }
 
     loadCloudSubscriptionFindingStats() {
@@ -453,6 +545,7 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
                 }
             ],
         };
+        this.cdr.detectChanges();
     }
 
 
@@ -686,24 +779,4 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
         // Reload relevant data
         this.loadCloudSubscriptionFindingStats();
     }
-
-    updateSummaryCounts() {
-        const findings = this.findingsCounts || {};
-        const issues = this.issuesCounts || {};
-
-        this.counts = {
-            critical: (findings.critical || 0) + (issues.critical || 0),
-            high: (findings.high || 0) + (issues.high || 0),
-            rest: (findings.rest || 0) + (issues.rest || 0)
-        };
-
-        if ('autoFixable' in findings || 'autoFixable' in issues) {
-            this.counts.autoFixable = (findings.autoFixable || 0) + (issues.autoFixable || 0);
-        }
-
-        if ('fixed' in findings || 'fixed' in issues) {
-            this.counts.fixed = (findings.fixed || 0) + (issues.fixed || 0);
-        }
-    }
-
 }
