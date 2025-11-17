@@ -79,7 +79,8 @@
 .vuln-name, .location-cell span {
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
   display: block;
 }
 

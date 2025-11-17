@@ -95,6 +95,8 @@
                             [filteredVulns]="filteredVulns"
                             [vulnerabilitiesLoading]="vulnerabilitiesLoading"
                             [vulnerabilitiesLimit]="vulnerabilitiesLimit"
+                            [showRemoved]="showRemoved"
+                            [sourceType]="'CLOUD_SCANNER'"
                             (updateFilterNameEvent)="updateFilterName($event)"
                             (updateFilterLocationEvent)="updateFilterLocation($event)"
                             (updateFilterStatusEvent)="updateFilterStatus($event)"
@@ -102,22 +104,26 @@
                             (toggleShowRemovedEvent)="toggleShowRemoved($event)"
                             (viewVulnerabilityDetailsEvent)="viewVulnerabilityDetails($event)"
                             (vulnerabilitiesLimitChange)="vulnerabilitiesLimit = $event"
+                            (clearVulnFiltersEvent)="clearVulnFilters()"
                     ></app-cloud-vulnerabilities-table>
                 </c-tab-panel>
 
                 <!-- Issues Tab -->
                 <c-tab-panel class="p-3" [itemKey]="1">
                     <app-cloud-vulnerabilities-table
-                            [filteredVulns]="filteredIssues"
+                            [filteredIssues]="filteredIssues"
                             [vulnerabilitiesLoading]="issuesLoading"
                             [vulnerabilitiesLimit]="issuesLimit"
-                            (updateFilterNameEvent)="updateFilterName($event)"
-                            (updateFilterLocationEvent)="updateFilterLocation($event)"
-                            (updateFilterStatusEvent)="updateFilterStatus($event)"
-                            (updateFilterSeverityEvent)="updateFilterSeverity($event)"
-                            (toggleShowRemovedEvent)="toggleShowRemoved($event)"
-                            (viewVulnerabilityDetailsEvent)="viewVulnerabilityDetails($event)"
+                            [showIssuesRemoved]="showIssuesRemoved"
+                            [sourceType]="'CLOUD_ISSUE'"
+                            (updateIssuesFilterNameEvent)="updateIssuesFilterName($event)"
+                            (updateIssuesFilterLocationEvent)="updateIssuesFilterLocation($event)"
+                            (updateIssuesFilterStatusEvent)="updateIssuesFilterStatus($event)"
+                            (updateIssuesFilterSeverityEvent)="updateIssuesFilterSeverity($event)"
+                            (toggleShowIssuesRemovedEvent)="toggleShowIssuesRemoved($event)"
+                            (viewVulnerabilityDetailsEvent)="viewIssueDetails($event)"
                             (vulnerabilitiesLimitChange)="vulnerabilitiesLimit = $event"
+                            (clearIssuesFiltersEvent)="clearIssuesFilters()"
                     ></app-cloud-vulnerabilities-table>
                 </c-tab-panel>
 

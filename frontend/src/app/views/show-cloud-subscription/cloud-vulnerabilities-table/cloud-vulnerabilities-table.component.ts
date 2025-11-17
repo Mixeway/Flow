@@ -61,13 +61,16 @@ interface Vulnerability {
   styleUrls: ['./cloud-vulnerabilities-table.component.scss']
 })
 export class CloudVulnerabilitiesTableComponent {
+  @Input() sourceType: 'CLOUD_SCANNER' | 'CLOUD_ISSUE' = 'CLOUD_SCANNER';
   @Input() filteredVulns: Vulnerability[] = [];
+  @Input() filteredIssues: Vulnerability[] = [];
   @Input() vulnerabilitiesLoading: boolean = false;
   @Input() vulnerabilitiesLimit: number = 15;
 
-  @Input() filteredIssues: Vulnerability[] = [];
   @Input() issuesLoading: boolean = false;
   @Input() issuesLimit: number = 15;
+  @Input() showRemoved: boolean = false;
+  @Input() showIssuesRemoved: boolean = false;
 
   @Output() updateFilterNameEvent = new EventEmitter<any>();
   @Output() updateFilterLocationEvent = new EventEmitter<any>();
@@ -76,9 +79,19 @@ export class CloudVulnerabilitiesTableComponent {
   @Output() toggleShowRemovedEvent = new EventEmitter<any>();
   @Output() viewVulnerabilityDetailsEvent = new EventEmitter<Vulnerability>();
   @Output() vulnerabilitiesLimitChange = new EventEmitter<number>();
+  statusFilter: string = '';
+  statusIssuesFilter: string = '';
 
+  @Output() updateIssuesFilterNameEvent = new EventEmitter<any>();
+  @Output() updateIssuesFilterLocationEvent = new EventEmitter<any>();
+  @Output() updateIssuesFilterStatusEvent = new EventEmitter<any>();
+  @Output() updateIssuesFilterSeverityEvent = new EventEmitter<any>();
+  @Output() toggleShowIssuesRemovedEvent = new EventEmitter<any>();
+  @Output() viewIssueDetailsEvent = new EventEmitter<Vulnerability>();
+  @Output() clearVulnFiltersEvent = new EventEmitter<void>();
+  @Output() clearIssuesFiltersEvent = new EventEmitter<void>();
 
-  /**
+    /**
    * Update name filter
    */
   updateFilterName(event: any): void {
@@ -107,10 +120,35 @@ export class CloudVulnerabilitiesTableComponent {
   }
 
   toggleShowRemoved(event: any): void {
-    this.toggleShowRemovedEvent.emit(event);
+      const checked = event.target.checked;
+      this.toggleShowRemovedEvent.emit(event);
   }
+    updateIssuesFilterName(event: any): void {
+        this.updateIssuesFilterNameEvent.emit(event);
+    }
 
-  /**
+    updateIssuesFilterLocation(event: any): void {
+        this.updateIssuesFilterLocationEvent.emit(event);
+    }
+
+    updateIssuesFilterStatus(event: any): void {
+        this.updateIssuesFilterStatusEvent.emit(event);
+    }
+
+    updateIssuesFilterSeverity(event: any): void {
+        this.updateIssuesFilterSeverityEvent.emit(event);
+    }
+
+    toggleShowIssuesRemoved(event: any): void {
+        const checked = event.target.checked;
+        this.toggleShowIssuesRemovedEvent.emit(event);
+    }
+
+    get tableRows(): Vulnerability[] {
+        return this.sourceType === 'CLOUD_SCANNER' ? this.filteredVulns : this.filteredIssues;
+    }
+
+    /**
    * Handle limit change for pagination
    */
   onLimitChange(newLimit: number): void {
@@ -129,6 +167,10 @@ export class CloudVulnerabilitiesTableComponent {
    * Clear all filters
    */
   clearFilters(): void {
-    // Implement this method if needed for the empty state action
+      if (this.sourceType === 'CLOUD_SCANNER') {
+          this.clearVulnFiltersEvent.emit();
+      } else {
+          this.clearIssuesFiltersEvent.emit();
+      }
   }
 }

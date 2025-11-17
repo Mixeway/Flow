@@ -107,7 +107,7 @@ interface TeamUser {
 
 export interface CloudSubscriptionFindingStats {
     id: number;
-    dateInserted: string; // Using string to represent ISO date format
+    dateInserted: string;
     criticalFindings: number;
     highFindings: number;
     openedFindings: number;
@@ -266,7 +266,21 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
         dates: '',
     };
 
+    issuesFilters: { [key: string]: string } = {
+        actions: '',
+        name: '',
+        location: '',
+        source: '',
+        status: '',
+        severity: '',
+        dates: '',
+    };
+
+    statusFilter: string = '';
+    statusIssuesFilter: string = '';
+
     showRemoved: boolean = false;
+    showIssuesRemoved: boolean = false;
     detailsModal: boolean = false;
     selectedRowId: number | null = null;
 
@@ -293,6 +307,18 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
     // Comment properties
     newComment: string = '';
     isAddingComment: boolean = false;
+
+    private filterUiSnapshot: {
+        filters: { [key: string]: string };
+        showRemoved: boolean;
+        statusFilter: string;
+    } | null = null;
+
+    private issuesFilterUiSnapshot: {
+        issuesFilters: { [key: string]: string };
+        showIssuesRemoved: boolean;
+        statusIssuesFilter: string;
+    } | null = null;
 
     constructor(
         public iconSet: IconSetService,
@@ -420,7 +446,7 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
                 this.issuesCounts = this.countFindings(this.issues);
                 this.issuesLoaded = true;
                 this.tryUpdateSummaryCounts();
-                this.applyFilters();
+                this.applyIssuesFilters();
                 this.issuesLoading = false;
             },
             error: () => {
@@ -593,16 +619,53 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
         this.applyFilters();
     }
 
+    updateIssuesFilterName(event: any) {
+        const val = event.target.value.toLowerCase();
+        this.issuesFilters['name'] = val;
+        this.applyIssuesFilters();
+    }
+
     updateFilterLocation(event: any) {
         const val = event.target.value.toLowerCase();
         this.filters['location'] = val;
         this.applyFilters();
     }
 
+    updateIssuesFilterLocation(event: any) {
+        const val = event.target.value.toLowerCase();
+        this.issuesFilters['location'] = val;
+        this.applyIssuesFilters();
+    }
+
     updateFilterStatus(event: any) {
         const val = event.target.value;
         this.filters['status'] = val;
+        this.statusFilter = val;
+
+        if (val === 'REMOVED') {
+            if (!this.showRemoved) this.showRemoved = true;
+        } else if (val === 'SUPRESSED') {
+        } else if (val === 'NEW' || val === 'EXISTING' || val === '') {
+            if (this.showRemoved) this.showRemoved = false;
+        }
+
+
         this.applyFilters();
+    }
+
+    updateIssuesFilterStatus(event: any) {
+        const val = event.target.value;
+        this.issuesFilters['status'] = val;
+        this.statusIssuesFilter = val;
+
+        if (val === 'REMOVED') {
+            if (!this.showIssuesRemoved) this.showIssuesRemoved = true;
+        } else if (val === 'SUPRESSED') {
+        } else if (val === 'NEW' || val === 'EXISTING' || val === '') {
+            if (this.showIssuesRemoved) this.showIssuesRemoved = false;
+        }
+
+        this.applyIssuesFilters();
     }
 
     updateFilterSeverity(event: any) {
@@ -611,12 +674,22 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
         this.applyFilters();
     }
 
+    updateIssuesFilterSeverity(event: any) {
+        const val = event.target.value;
+        this.issuesFilters['severity'] = val;
+        this.applyIssuesFilters();
+    }
+
 
     toggleShowRemoved(event: any) {
         this.showRemoved = event.target.checked;
         this.applyFilters();
     }
 
+    toggleShowIssuesRemoved(event: any) {
+        this.showIssuesRemoved = event.target.checked;
+        this.applyIssuesFilters();
+    }
 
     applyFilters() {
         this.filteredVulns = this.vulns.filter((vuln) => {
@@ -636,6 +709,55 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
         });
     }
 
+    applyIssuesFilters() {
+        this.filteredIssues = this.issues.filter((issue) => {
+            const matchesIssuesFilters = Object.keys(this.issuesFilters).every((key) => {
+                const filterIssueValue = this.issuesFilters[key];
+                if (!filterIssueValue) return true;
+                const issueValue = (issue as any)[key];
+                return issueValue
+                    .toString()
+                    .toLowerCase()
+                    .includes(filterIssueValue.toLowerCase());
+            });
+
+            const matchesIssuesStatus = (this.showIssuesRemoved || issue.status !== 'REMOVED');
+
+            return matchesIssuesFilters && matchesIssuesStatus;
+
+        });
+    }
+
+    clearVulnFilters(): void {
+        this.filters = {
+            actions: '',
+            name: '',
+            location: '',
+            source: '',
+            status: '',
+            severity: '',
+            dates: '',
+        };
+        this.showRemoved = false;
+        this.statusFilter = '';
+        this.applyFilters();
+    }
+
+    clearIssuesFilters(): void {
+        this.issuesFilters = {
+            actions: '',
+            name: '',
+            location: '',
+            source: '',
+            status: '',
+            severity: '',
+            dates: '',
+        };
+        this.showIssuesRemoved = false;
+        this.statusIssuesFilter = '';
+        this.applyIssuesFilters();
+    }
+
     runScan() {
         this.scanRunning = true;
         this.cdr.detectChanges();
@@ -645,6 +767,8 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
                 this.toastMessage = 'Successfully requested a scan';
                 this.toggleToast();
                 this.scanRunning = false;
+                this.loadCloudFindings();
+                this.loadCloudIssues();
                 this.cdr.detectChanges();
             },
             error: (error) => {
@@ -754,6 +878,27 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
     }
 
     viewVulnerabilityDetails(row: Vulnerability) {
+        this.filterUiSnapshot = {
+            filters: { ...this.filters },
+            showRemoved: this.showRemoved,
+            statusFilter: this.statusFilter,
+        };
+        this.selectedRowId = row.id;
+        this.detailsModal = true;
+        this.cloudSubscriptionService.getFinding(+this.id, this.selectedRowId).subscribe({
+            next: (response) => {
+                this.singleVuln = response;
+                this.cdr.markForCheck();
+            },
+        });
+    }
+
+    viewIssueDetails(row: Vulnerability) {
+        this.issuesFilterUiSnapshot = {
+            issuesFilters: { ...this.issuesFilters },
+            showIssuesRemoved: this.showIssuesRemoved,
+            statusIssuesFilter: this.statusIssuesFilter,
+        };
         this.selectedRowId = row.id;
         this.detailsModal = true;
         this.cloudSubscriptionService.getFinding(+this.id, this.selectedRowId).subscribe({
