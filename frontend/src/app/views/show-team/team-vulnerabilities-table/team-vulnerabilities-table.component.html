@@ -342,7 +342,7 @@
                     >
                         <div class="source-cell">
                             <div [ngClass]="'source-badge source-' + row?.source?.toLowerCase()">
-                                {{ row?.source }}
+                                {{ row?.source?.replace("_", ' ') }}
                             </div>
                         </div>
                     </ng-template>

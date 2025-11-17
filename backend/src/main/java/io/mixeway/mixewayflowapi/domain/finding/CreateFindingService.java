@@ -35,7 +35,7 @@ public class CreateFindingService {
         List<Finding> existingFindings;
 
         // Handle different types of findings based on source
-        if (source == Finding.Source.CLOUD_SCANNER) {
+        if (source == Finding.Source.CLOUD_SCANNER || source == Finding.Source.CLOUD_ISSUE) {
             existingFindings = findingRepository.findBySourceAndCloudSubscription(source, cloudSubscription);
         } else {
             existingFindings = findingRepository.findBySourceAndCodeRepoBranchAndCodeRepo(source, repoWhereFindingWasFound, repoInWhichFindingWasFound);

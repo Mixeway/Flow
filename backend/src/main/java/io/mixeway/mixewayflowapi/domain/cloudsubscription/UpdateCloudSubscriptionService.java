@@ -105,7 +105,7 @@ public class UpdateCloudSubscriptionService {
      * @return the corresponding {@link CloudSubscription.ScanStatus}
      */
     private CloudSubscription.ScanStatus determineScanStatus(long highSeverityCount, long criticalSeverityCount) {
-        if (criticalSeverityCount >= 3) {
+        if (criticalSeverityCount >= 15 || highSeverityCount >= 15) {
             return CloudSubscription.ScanStatus.DANGER;
         } else if (criticalSeverityCount > 0 || highSeverityCount > 0) {
             return CloudSubscription.ScanStatus.WARNING;
