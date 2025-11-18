@@ -63,7 +63,7 @@ public class ScanScheduler {
      * Scheduled task that runs every day at 1 AM.
      * This method fetches cloud vulnerability findings from Cloud Scanner.
      */
-    @Scheduled(cron = "0 0 1 * * ?")
+    @Scheduled(cron = "0 0 2 * * ?")
     public void runEveryDayAt1AM() {
         scanManagerService.runCloudScansForAllSubscriptions();
         log.info("[Scheduler] Fetched cloud vulnerability findings.");

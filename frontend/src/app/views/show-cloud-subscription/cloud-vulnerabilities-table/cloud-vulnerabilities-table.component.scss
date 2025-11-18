@@ -79,7 +79,8 @@
 .vuln-name, .location-cell span {
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
   display: block;
 }
 
@@ -210,6 +211,11 @@
       &.source-cloud_scanner {
         background-color: rgba(199, 225, 222, 0.71);
         color: rgba(0, 89, 89, 0.78);
+      }
+
+      &.source-cloud_issue {
+        background-color: rgba(241, 192, 205, 0.71);
+        color: rgba(159, 38, 74, 0.78);
       }
     }
   }

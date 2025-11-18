@@ -4,6 +4,7 @@ import io.mixeway.mixewayflowapi.db.entity.*;
 import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
 import io.mixeway.mixewayflowapi.domain.suppressrule.CheckSuppressRuleService;
 import io.mixeway.mixewayflowapi.domain.vulnerability.GetOrCreateVulnerabilityService;
+import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.dto.CloudIssueReport;
 import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.dto.CloudScannerReport;
 import io.mixeway.mixewayflowapi.integrations.scanner.iac.dto.KicsReport;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.BearerScanSecurity;
@@ -34,7 +35,7 @@ public class CreateFindingService {
         List<Finding> existingFindings;
 
         // Handle different types of findings based on source
-        if (source == Finding.Source.CLOUD_SCANNER) {
+        if (source == Finding.Source.CLOUD_SCANNER || source == Finding.Source.CLOUD_ISSUE) {
             existingFindings = findingRepository.findBySourceAndCloudSubscription(source, cloudSubscription);
         } else {
             existingFindings = findingRepository.findBySourceAndCodeRepoBranchAndCodeRepo(source, repoWhereFindingWasFound, repoInWhichFindingWasFound);
@@ -171,6 +172,36 @@ public class CreateFindingService {
                             node.getVulnerableAsset().getName() + ":" + node.getDetailedName(),
                             mapSeverity(node.getSeverity()),
                             Finding.Source.CLOUD_SCANNER
+                    );
+                })
+                .collect(Collectors.toList());
+    }
+
+    public List<Finding> mapCloudIssueReportToFindings(CloudIssueReport cloudIssueReport, CloudSubscription cloudSubscription) {
+        return cloudIssueReport.getData().getIssuesV2().getNodes().stream()
+                .map(node -> {
+                    Vulnerability vulnerability = getOrCreateVulnerabilityService.getOrCreate(
+                            node.getSourceRules().get(0).getName(),
+                            node.getSourceRules().get(0).getDescription(),
+                            null,
+                            node.getSourceRules().get(0).getResolutionRecommendationPlainText(),
+                            mapSeverity(node.getSeverity()),
+                            null,
+                            null,
+                            node.getValidatedAsExploitable()
+                    );
+                    return new Finding(
+                            vulnerability,
+                            null,
+                            null,
+                            null,
+                            cloudSubscription,
+                            "Vulnerable Asset: " + node.getEntitySnapshot().getName() +
+                                    ", Vulnerable Asset Type: " + node.getEntitySnapshot().getType() +
+                                    ", Issue Type: " + node.getType(),
+                            node.getEntitySnapshot().getName(),
+                            mapSeverity(node.getSeverity()),
+                            Finding.Source.CLOUD_ISSUE
                     );
                 })
                 .collect(Collectors.toList());

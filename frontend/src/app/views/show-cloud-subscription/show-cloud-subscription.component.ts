@@ -42,6 +42,7 @@ import {
     ProgressComponent,
     RowComponent,
     SpinnerComponent,
+    ProgressBarComponent,
     TabDirective,
     TabPanelComponent,
     TabsComponent,
@@ -78,6 +79,8 @@ import {
     TeamVulnerabilitiesTableComponent
 } from "../show-team/team-vulnerabilities-table/team-vulnerabilities-table.component";
 import {VulnerabilitySummaryComponent} from "../show-repo/vulnerability-summary/vulnerability-summary.component";
+import _default from "chart.js/dist/core/core.interaction";
+import dataset = _default.modes.dataset;
 
 interface Vulnerability {
     id: number;
@@ -104,7 +107,7 @@ interface TeamUser {
 
 export interface CloudSubscriptionFindingStats {
     id: number;
-    dateInserted: string; // Using string to represent ISO date format
+    dateInserted: string;
     criticalFindings: number;
     highFindings: number;
     openedFindings: number;
@@ -156,6 +159,7 @@ export interface CloudSubscriptionFindingStats {
         ModalHeaderComponent,
         ModalTitleDirective,
         ProgressComponent,
+        ProgressBarComponent,
         SpinnerComponent,
         TabsComponent,
         TemplateIdDirective,
@@ -196,9 +200,14 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
         cilVolumeOff,
         cilMagnifyingGlass,
     };
-    counts: any;
+    findingsCounts: any = { critical: 0, high: 0, rest: 0 };
+    issuesCounts: any = { critical: 0, high: 0, rest: 0 };
+    counts: any = { critical: 0, high: 0, rest: 0 };
+
     vulns: Vulnerability[] = [];
-    filteredVulns = [...this.vulns]; // a copy of the original rows for filtering
+    issues: Vulnerability[] = [];
+    filteredVulns = [...this.vulns];
+    filteredIssues = [...this.issues];
 
     cloudSubscriptionFindingStats: CloudSubscriptionFindingStats[] = [];
 
@@ -257,7 +266,21 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
         dates: '',
     };
 
+    issuesFilters: { [key: string]: string } = {
+        actions: '',
+        name: '',
+        location: '',
+        source: '',
+        status: '',
+        severity: '',
+        dates: '',
+    };
+
+    statusFilter: string = '';
+    statusIssuesFilter: string = '';
+
     showRemoved: boolean = false;
+    showIssuesRemoved: boolean = false;
     detailsModal: boolean = false;
     selectedRowId: number | null = null;
 
@@ -266,6 +289,9 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
 
     vulnerabilitiesLoading: boolean = false;
     vulnerabilitiesLimit: number = 15;
+
+    issuesLoading: boolean = false;
+    issuesLimit: number = 15;
 
     scanRunning: boolean = false;
     userRole: string = 'USER';
@@ -281,6 +307,18 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
     // Comment properties
     newComment: string = '';
     isAddingComment: boolean = false;
+
+    private filterUiSnapshot: {
+        filters: { [key: string]: string };
+        showRemoved: boolean;
+        statusFilter: string;
+    } | null = null;
+
+    private issuesFilterUiSnapshot: {
+        issuesFilters: { [key: string]: string };
+        showIssuesRemoved: boolean;
+        statusIssuesFilter: string;
+    } | null = null;
 
     constructor(
         public iconSet: IconSetService,
@@ -316,6 +354,8 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
         });
         this.loadCloudSubscriptionInfo();
         this.loadCloudFindings();
+        this.loadCloudIssues()
+
         this.loadCloudSubscriptionFindingStats();
         this.options2 = {
             responsive: true,
@@ -376,13 +416,18 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
         });
     }
 
+    findingsLoaded = false;
+    issuesLoaded = false;
+
     loadCloudFindings() {
         this.vulnerabilitiesLoading = true;
         this.cloudSubscriptionService.getFindings(+this.id).subscribe({
             next: (response) => {
                 this.vulns = response;
                 this.filteredVulns = [...this.vulns];
-                this.counts = this.countFindings(this.vulns);
+                this.findingsCounts = this.countFindings(this.vulns);
+                this.findingsLoaded = true;
+                this.tryUpdateSummaryCounts();
                 this.applyFilters();
                 this.vulnerabilitiesLoading = false;
             },
@@ -390,6 +435,107 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
                 this.vulnerabilitiesLoading = false;
             },
         });
+    }
+
+    loadCloudIssues() {
+        this.issuesLoading = true;
+        this.cloudSubscriptionService.getIssues(+this.id).subscribe({
+            next: (response) => {
+                this.issues = response;
+                this.filteredIssues = [...this.issues];
+                this.issuesCounts = this.countFindings(this.issues);
+                this.issuesLoaded = true;
+                this.tryUpdateSummaryCounts();
+                this.applyIssuesFilters();
+                this.issuesLoading = false;
+            },
+            error: () => {
+                this.issuesLoading = false;
+            },
+        });
+    }
+
+    tryUpdateSummaryCounts() {
+        if (this.findingsLoaded && this.issuesLoaded) {
+            this.updateSummaryCounts();
+        }
+    }
+
+    updateSummaryCounts() {
+        const findings = this.findingsCounts || {};
+        const issues = this.issuesCounts || {};
+
+        this.counts = {
+            critical: (findings.critical || 0) + (issues.critical || 0),
+            high: (findings.high || 0) + (issues.high || 0),
+            rest: (findings.rest || 0) + (issues.rest || 0)
+        };
+
+        this.updateFindingsIssuesChartData();
+
+        this.findingsLoaded = false;
+        this.issuesLoaded = false;
+    }
+
+    get findingsTotal(): number {
+        return (Object.values(this.findingsCounts) as number[]).reduce((a, b) => a + b, 0);
+    }
+
+    get issuesTotal(): number {
+        return (Object.values(this.issuesCounts) as number[]).reduce((a, b) => a + b, 0);
+    }
+
+    get total(): number {
+        return this.findingsTotal + this.issuesTotal;
+    }
+
+    get findingsPercentage(): number {
+        return this.total === 0 ? 0 : Math.round((this.findingsTotal / this.total) * 100);
+    }
+
+    get issuesPercentage(): number {
+        return this.total === 0 ? 0 : Math.round((this.issuesTotal / this.total) * 100);
+    }
+
+    public findingsIssuesChartData: ChartData<'pie', number[], string> = {
+        labels: ['Findings', 'Issues'],
+        datasets: [
+            {
+                data: [this.findingsPercentage, this.issuesPercentage],
+                backgroundColor: ['#36A2EB', '#FF6384'],
+            }
+        ]
+    };
+
+    public findingsIssuesChartOptions: ChartOptions<'pie'> = {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'top',
+            },
+            tooltip: {
+                callbacks: {
+                    label: (context) => {
+                        const label = context.label || '';
+                        const value = context.parsed || 0;
+                        return `${label}: ${value}%`;
+                    }
+                }
+            }
+        }
+    };
+
+    updateFindingsIssuesChartData() {
+        this.findingsIssuesChartData = {
+            labels: ['Findings', 'Issues'],
+            datasets: [
+                {
+                    data: [this.findingsPercentage, this.issuesPercentage],
+                    backgroundColor: ['#36A2EB', '#FF6384'],
+                }
+            ]
+        };
+        this.cdr.detectChanges();
     }
 
     loadCloudSubscriptionFindingStats() {
@@ -425,6 +571,7 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
                 }
             ],
         };
+        this.cdr.detectChanges();
     }
 
 
@@ -472,16 +619,53 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
         this.applyFilters();
     }
 
+    updateIssuesFilterName(event: any) {
+        const val = event.target.value.toLowerCase();
+        this.issuesFilters['name'] = val;
+        this.applyIssuesFilters();
+    }
+
     updateFilterLocation(event: any) {
         const val = event.target.value.toLowerCase();
         this.filters['location'] = val;
         this.applyFilters();
     }
 
+    updateIssuesFilterLocation(event: any) {
+        const val = event.target.value.toLowerCase();
+        this.issuesFilters['location'] = val;
+        this.applyIssuesFilters();
+    }
+
     updateFilterStatus(event: any) {
         const val = event.target.value;
         this.filters['status'] = val;
+        this.statusFilter = val;
+
+        if (val === 'REMOVED') {
+            if (!this.showRemoved) this.showRemoved = true;
+        } else if (val === 'SUPRESSED') {
+        } else if (val === 'NEW' || val === 'EXISTING' || val === '') {
+            if (this.showRemoved) this.showRemoved = false;
+        }
+
+
         this.applyFilters();
+    }
+
+    updateIssuesFilterStatus(event: any) {
+        const val = event.target.value;
+        this.issuesFilters['status'] = val;
+        this.statusIssuesFilter = val;
+
+        if (val === 'REMOVED') {
+            if (!this.showIssuesRemoved) this.showIssuesRemoved = true;
+        } else if (val === 'SUPRESSED') {
+        } else if (val === 'NEW' || val === 'EXISTING' || val === '') {
+            if (this.showIssuesRemoved) this.showIssuesRemoved = false;
+        }
+
+        this.applyIssuesFilters();
     }
 
     updateFilterSeverity(event: any) {
@@ -490,12 +674,22 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
         this.applyFilters();
     }
 
+    updateIssuesFilterSeverity(event: any) {
+        const val = event.target.value;
+        this.issuesFilters['severity'] = val;
+        this.applyIssuesFilters();
+    }
+
 
     toggleShowRemoved(event: any) {
         this.showRemoved = event.target.checked;
         this.applyFilters();
     }
 
+    toggleShowIssuesRemoved(event: any) {
+        this.showIssuesRemoved = event.target.checked;
+        this.applyIssuesFilters();
+    }
 
     applyFilters() {
         this.filteredVulns = this.vulns.filter((vuln) => {
@@ -515,13 +709,74 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
         });
     }
 
+    applyIssuesFilters() {
+        this.filteredIssues = this.issues.filter((issue) => {
+            const matchesIssuesFilters = Object.keys(this.issuesFilters).every((key) => {
+                const filterIssueValue = this.issuesFilters[key];
+                if (!filterIssueValue) return true;
+                const issueValue = (issue as any)[key];
+                return issueValue
+                    .toString()
+                    .toLowerCase()
+                    .includes(filterIssueValue.toLowerCase());
+            });
+
+            const matchesIssuesStatus = (this.showIssuesRemoved || issue.status !== 'REMOVED');
+
+            return matchesIssuesFilters && matchesIssuesStatus;
+
+        });
+    }
+
+    clearVulnFilters(): void {
+        this.filters = {
+            actions: '',
+            name: '',
+            location: '',
+            source: '',
+            status: '',
+            severity: '',
+            dates: '',
+        };
+        this.showRemoved = false;
+        this.statusFilter = '';
+        this.applyFilters();
+    }
+
+    clearIssuesFilters(): void {
+        this.issuesFilters = {
+            actions: '',
+            name: '',
+            location: '',
+            source: '',
+            status: '',
+            severity: '',
+            dates: '',
+        };
+        this.showIssuesRemoved = false;
+        this.statusIssuesFilter = '';
+        this.applyIssuesFilters();
+    }
+
     runScan() {
+        this.scanRunning = true;
+        this.cdr.detectChanges();
         this.cloudSubscriptionService.runScan(+this.id).subscribe({
             next: (response) => {
                 this.toastStatus = 'success';
                 this.toastMessage = 'Successfully requested a scan';
                 this.toggleToast();
+                this.scanRunning = false;
+                this.loadCloudFindings();
+                this.loadCloudIssues();
+                this.cdr.detectChanges();
             },
+            error: (error) => {
+                this.scanRunning = false;
+                this.toastStatus = 'danger';
+                this.toastMessage = 'Error starting scan';
+                this.toggleToast();
+            }
         });
     }
 
@@ -623,6 +878,27 @@ export class ShowCloudSubscriptionComponent implements OnInit, AfterViewInit {
     }
 
     viewVulnerabilityDetails(row: Vulnerability) {
+        this.filterUiSnapshot = {
+            filters: { ...this.filters },
+            showRemoved: this.showRemoved,
+            statusFilter: this.statusFilter,
+        };
+        this.selectedRowId = row.id;
+        this.detailsModal = true;
+        this.cloudSubscriptionService.getFinding(+this.id, this.selectedRowId).subscribe({
+            next: (response) => {
+                this.singleVuln = response;
+                this.cdr.markForCheck();
+            },
+        });
+    }
+
+    viewIssueDetails(row: Vulnerability) {
+        this.issuesFilterUiSnapshot = {
+            issuesFilters: { ...this.issuesFilters },
+            showIssuesRemoved: this.showIssuesRemoved,
+            statusIssuesFilter: this.statusIssuesFilter,
+        };
         this.selectedRowId = row.id;
         this.detailsModal = true;
         this.cloudSubscriptionService.getFinding(+this.id, this.selectedRowId).subscribe({

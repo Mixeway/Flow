@@ -27,6 +27,7 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
     List<Finding> findBySourceAndCloudSubscription(Finding.Source source, CloudSubscription cloudSubscription);
     List<Finding> findBySourceAndCodeRepoBranchAndCodeRepo(Finding.Source source, CodeRepoBranch codeRepoBranch, CodeRepo codeRepo);
     List<Finding> findBySourceAndCodeRepo(Finding.Source source, CodeRepo codeRepo);
+    List<Finding> findByCloudSubscriptionAndSource(CloudSubscription cloudSubscription, Finding.Source source);
     List<Finding> findByCloudSubscription(CloudSubscription cloudSubscription);
     List<Finding> findByCodeRepoAndCodeRepoBranchAndSeverityAndStatusInAndSource(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, Finding.Severity severity, Collection<Finding.Status> statuses, Finding.Source source);
     List<Finding> findByCodeRepoAndCodeRepoBranchAndStatusIn(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, Collection<Finding.Status> statuses);
@@ -104,12 +105,15 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
 
     @Query("SELECT f FROM Finding f " +
            "JOIN f.vulnerability v " +
+           "JOIN f.codeRepo cr " +
+           "JOIN f.codeRepoBranch b " +
            "WHERE f.codeRepo IN :codeRepos " +
            "AND (COALESCE(:severity, f.severity) = f.severity) " +
            "AND (COALESCE(:source, f.source) = f.source) " +
            "AND (COALESCE(:status, f.status) = f.status) " +
            "AND (:epss IS NULL OR v.epss >= :epss)" +
-           "AND (COALESCE(:kev, v.exploitExists) = v.exploitExists)")
+           "AND (COALESCE(:kev, v.exploitExists) = v.exploitExists)" +
+           "AND b = cr.defaultBranch")
     Page<Finding> findByCodeReposPageable(@Param("codeRepos") List<CodeRepo> codeRepos, Pageable pageable,  @Param("severity") String severity, @Param("source") String source, @Param("status") String status, @Param("epss") BigDecimal epss,  @Param("kev")  Boolean exploitExists);
 
     @Query("SELECT f FROM Finding f " +

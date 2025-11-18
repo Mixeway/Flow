@@ -61,7 +61,7 @@ public class FindingsByTeamService {
 
         List<CloudSubscription> cloudSubscriptions = findCloudSubscriptionService.getByTeam(teamId, principal);
         List<Finding> cloudSubscriptionsFindings = cloudSubscriptions.stream()
-                .flatMap(cloudSubscription -> findFindingService.getCloudSubscriptionFindings(cloudSubscription).stream())
+                .flatMap(cloudSubscription -> findFindingService.getCloudSubscriptionFindings(cloudSubscription, Finding.Source.valueOf("CLOUD_SCANNER")).stream())
                 .collect(Collectors.toList());
 
         List<Finding> findingsByTeam = Stream.concat(codeReposFindings.stream(), cloudSubscriptionsFindings.stream())

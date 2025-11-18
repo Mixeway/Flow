@@ -330,7 +330,9 @@
                                     <option value="SCA">SCA</option>
                                     <option value="GITLAB_SCANNER">GitLab</option>
                                     <option value="DAST">DAST</option>
-                                    <option value="CLOUD_SCANNER">Cloud</option>
+                                    <option value="CLOUD_SCANNER">Cloud Scanner</option>
+                                    <option value="CLOUD_ISSUE">Cloud Issues</option>
+
                                 </select>
                             </div>
                         </div>
@@ -342,7 +344,7 @@
                     >
                         <div class="source-cell">
                             <div [ngClass]="'source-badge source-' + row?.source?.toLowerCase()">
-                                {{ row?.source }}
+                                {{ row?.source?.replace("_", ' ') }}
                             </div>
                         </div>
                     </ng-template>

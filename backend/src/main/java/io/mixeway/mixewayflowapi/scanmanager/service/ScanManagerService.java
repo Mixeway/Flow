@@ -15,7 +15,9 @@ import io.mixeway.mixewayflowapi.domain.vulnerability.UpdateVulnerabilityService
 import io.mixeway.mixewayflowapi.exceptions.GitException;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GitCommentService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GitService;
+import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.dto.CloudIssueReport;
 import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.dto.CloudScannerReport;
+import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.service.CloudIssueService;
 import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.service.CloudScannerService;
 import io.mixeway.mixewayflowapi.integrations.scanner.gitlab_scanner.service.GitLabScannerService;
 import io.mixeway.mixewayflowapi.integrations.scanner.iac.service.IaCService;
@@ -28,7 +30,6 @@ import io.mixeway.mixewayflowapi.integrations.scanner.secrets.service.SecretsSer
 import io.mixeway.mixewayflowapi.integrations.scanner.zap.service.ZAPService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -42,8 +43,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -67,6 +66,7 @@ public class ScanManagerService {
     private final KEVApiClient kevApiClient;
     private final UpdateVulnerabilityService updateVulnerabilityService;
     private final CloudScannerService cloudScannerService;
+    private final CloudIssueService cloudIssueService;
     private final UpdateCloudSubscriptionService updateCloudSubscriptionService;
     private final CreateFindingService createFindingService;
     private final CloudSubscriptionRepository cloudSubscriptionRepository;
@@ -99,6 +99,7 @@ public class ScanManagerService {
             .expireAfterWrite(10, TimeUnit.MINUTES)
             .build();
     private final GitLabScannerService gitLabScannerService;
+
 
 
     /**
@@ -593,15 +594,19 @@ public class ScanManagerService {
                 cloudSubscription.updateCloudSubscriptionScanStatus(CloudSubscription.ScanStatus.RUNNING);
                 cloudSubscriptionRepository.save(cloudSubscription);
                 CloudScannerReport cloudScannerReport = cloudScannerService.runCloudScanner(cloudSubscription.getName(), wizAuthToken);
+                CloudIssueReport cloudIssueReport = cloudIssueService.runCloudIssueScanner(cloudSubscription.getName(), wizAuthToken);
                 List<Finding> findings = createFindingService.mapCloudScannerReportToFindings(cloudScannerReport, cloudSubscription);
+                List<Finding> issues = createFindingService.mapCloudIssueReportToFindings(cloudIssueReport, cloudSubscription);
 
                 if (findings == null || findings.isEmpty()) {
                     log.info("[CloudScannerService] No findings for subscription: {}", cloudSubscription.getExternal_project_name());
                     updateCloudSubscriptionService.updateCloudSubscriptionScanStatus(cloudSubscription);
                     findings = new ArrayList<>();
+                    issues = new ArrayList<>();
                 }
 
                 createFindingService.saveFindings(findings, null, null, Finding.Source.CLOUD_SCANNER, cloudSubscription);
+                createFindingService.saveFindings(issues, null, null, Finding.Source.CLOUD_ISSUE, cloudSubscription);
                 updateCloudSubscriptionService.updateCloudSubscriptionScanStatus(cloudSubscription);
             } catch (Exception e) {
                 log.error("Error running cloud scan for project ID {}: {}", cloudSubscription.getName(), e.getMessage(), e);
@@ -625,19 +630,23 @@ public class ScanManagerService {
 
         try {
             log.info("[CloudScannerService] Scanning {}", cloudSubscription.getExternal_project_name());
-            CloudScannerReport cloudScannerReport = cloudScannerService.runCloudScanner(cloudSubscription.getName(), wizAuthToken);
             cloudSubscription.updateCloudSubscriptionScanStatus(CloudSubscription.ScanStatus.RUNNING);
             cloudSubscriptionRepository.save(cloudSubscription);
+            CloudScannerReport cloudScannerReport = cloudScannerService.runCloudScanner(cloudSubscription.getName(), wizAuthToken);
+            CloudIssueReport cloudIssueReport = cloudIssueService.runCloudIssueScanner(cloudSubscription.getName(), wizAuthToken);
             List<Finding> findings = createFindingService.mapCloudScannerReportToFindings(cloudScannerReport, cloudSubscription);
+            List<Finding> issues = createFindingService.mapCloudIssueReportToFindings(cloudIssueReport, cloudSubscription);
 
             if (findings == null || findings.isEmpty()) {
                 log.info("[CloudScannerService] No findings for subscription: {}", cloudSubscription.getExternal_project_name());
                 updateCloudSubscriptionService.updateCloudSubscriptionScanStatus(cloudSubscription);
                 findings = new ArrayList<>();
+                issues = new ArrayList<>();
             }
 
 
             createFindingService.saveFindings(findings, null, null, Finding.Source.CLOUD_SCANNER, cloudSubscription);
+            createFindingService.saveFindings(issues, null, null, Finding.Source.CLOUD_ISSUE, cloudSubscription);
             updateCloudSubscriptionService.updateCloudSubscriptionScanStatus(cloudSubscription);
         } catch (Exception e) {
             log.error("Error running cloud scan for project ID {}: {}", cloudSubscription.getName(), e.getMessage(), e);
@@ -659,7 +668,6 @@ public class ScanManagerService {
         if (!jsonResponse.has("access_token")) {
             throw new IllegalStateException("Failed to fetch Wiz auth token.");
         }
-
         return jsonResponse.get("access_token").getAsString();
     }
 

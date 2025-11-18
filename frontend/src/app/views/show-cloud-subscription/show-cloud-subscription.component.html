@@ -1,19 +1,53 @@
 <div class="cloud-subscription-container">
     <!-- Header Section with Info and Summary -->
     <div class="header-section">
-        <c-row>
-            <!-- Cloud Subscription Info Component -->
-            <c-col [lg]="12" [md]="12">
-                <app-cloud-subscription-info
+        <c-row class="align-items-stretch">
+            <c-col [lg]="6" [md]="6">
+                <div class="h-100">
+                    <app-cloud-subscription-info class="h-100 d-flex flex-column"
                         [cloudSubscriptionData]="cloudSubscriptionData"
                         [scanRunning]="scanRunning"
                         [userRole]="userRole"
                         (runScanEvent)="runScan()"
                         (openChangeTeamModalEvent)="openChangeTeamModal()"
                 ></app-cloud-subscription-info>
+                </div>
             </c-col>
 
+            <c-col [lg]="6" [md]="6">
+                <div class="h-100">
+                    <c-card class="h-100 d-flex flex-column flex-grow-1 justify-content-center">
+                        <c-card-header>
+                            <strong>Findings vs Issues Distribution</strong>
+                        </c-card-header>
+                        <c-card-body class="d-flex flex-column flex-grow-1 justify-content-center">
+                            <c-progress class="mb-3">
+                                <c-progress-bar
+                                        [value]="findingsPercentage"
+                                        class="findings-bar"
+                                        textWhite
+                                >
+                                    {{ findingsPercentage }}%
+                                </c-progress-bar>
+                                <c-progress-bar
+                                        [value]="issuesPercentage"
+                                        class="issues-bar"
+                                        textWhite
+                                >
+                                    {{ issuesPercentage }}%
+                                </c-progress-bar>
+                            </c-progress>
+
+                            <div class="text-center mt-2">
+                                <strong>Findings:</strong> {{ findingsPercentage }}% &nbsp; | &nbsp;
+                                <strong>Issues:</strong> {{ issuesPercentage }}%
+                            </div>
+                        </c-card-body>
+                    </c-card>
+                </div>
+            </c-col>
         </c-row>
+
         <c-row>
             <!-- Cloud Vulnerability Summary Component -->
             <c-col [lg]="12" [md]="12">
@@ -33,18 +67,22 @@
                     Vulnerabilities
                 </button>
                 <button cTab [itemKey]="1">
+                    <svg cIcon name="cil-shield-alt" class="me-2"></svg>
+                    Issues
+                </button>
+                <button cTab [itemKey]="2">
                     <svg cIcon name="cil-chart-line" class="me-2"></svg>
                     Statistics & Trends
                 </button>
-                <button cTab [itemKey]="2">
+                <button cTab [itemKey]="3">
                     <svg cIcon name="cil-magnifying-glass" class="me-2"></svg>
                     Scan History
                 </button>
-                <button cTab [itemKey]="3">
+                <button cTab [itemKey]="4">
                     <svg cIcon name="cil-burn" class="me-2"></svg>
                     Notifications
                 </button>
-                <button cTab [itemKey]="4">
+                <button cTab [itemKey]="5">
                     <svg cIcon name="cil-info" class="me-2"></svg>
                     Additional Info
                 </button>
@@ -57,6 +95,8 @@
                             [filteredVulns]="filteredVulns"
                             [vulnerabilitiesLoading]="vulnerabilitiesLoading"
                             [vulnerabilitiesLimit]="vulnerabilitiesLimit"
+                            [showRemoved]="showRemoved"
+                            [sourceType]="'CLOUD_SCANNER'"
                             (updateFilterNameEvent)="updateFilterName($event)"
                             (updateFilterLocationEvent)="updateFilterLocation($event)"
                             (updateFilterStatusEvent)="updateFilterStatus($event)"
@@ -64,11 +104,31 @@
                             (toggleShowRemovedEvent)="toggleShowRemoved($event)"
                             (viewVulnerabilityDetailsEvent)="viewVulnerabilityDetails($event)"
                             (vulnerabilitiesLimitChange)="vulnerabilitiesLimit = $event"
+                            (clearVulnFiltersEvent)="clearVulnFilters()"
+                    ></app-cloud-vulnerabilities-table>
+                </c-tab-panel>
+
+                <!-- Issues Tab -->
+                <c-tab-panel class="p-3" [itemKey]="1">
+                    <app-cloud-vulnerabilities-table
+                            [filteredIssues]="filteredIssues"
+                            [vulnerabilitiesLoading]="issuesLoading"
+                            [vulnerabilitiesLimit]="issuesLimit"
+                            [showIssuesRemoved]="showIssuesRemoved"
+                            [sourceType]="'CLOUD_ISSUE'"
+                            (updateIssuesFilterNameEvent)="updateIssuesFilterName($event)"
+                            (updateIssuesFilterLocationEvent)="updateIssuesFilterLocation($event)"
+                            (updateIssuesFilterStatusEvent)="updateIssuesFilterStatus($event)"
+                            (updateIssuesFilterSeverityEvent)="updateIssuesFilterSeverity($event)"
+                            (toggleShowIssuesRemovedEvent)="toggleShowIssuesRemoved($event)"
+                            (viewVulnerabilityDetailsEvent)="viewIssueDetails($event)"
+                            (vulnerabilitiesLimitChange)="vulnerabilitiesLimit = $event"
+                            (clearIssuesFiltersEvent)="clearIssuesFilters()"
                     ></app-cloud-vulnerabilities-table>
                 </c-tab-panel>
 
                 <!-- Statistics and Trends Tab -->
-                <c-tab-panel class="p-3" [itemKey]="1">
+                <c-tab-panel class="p-3" [itemKey]="2">
                     <div class="statistics-container">
                         <!-- Trend Chart -->
                         <c-card class="trend-chart-card mb-4">
@@ -130,7 +190,7 @@
                 </c-tab-panel>
 
                 <!-- Scan Info Tab -->
-                <c-tab-panel class="p-3" [itemKey]="2">
+                <c-tab-panel class="p-3" [itemKey]="3">
                     <c-card class="scan-info-card">
                         <c-card-header>
                             <h5 class="mb-0">Scan History</h5>
@@ -235,7 +295,7 @@
                 </c-tab-panel>
 
                 <!-- Notifications Tab -->
-                <c-tab-panel class="p-3" [itemKey]="3">
+                <c-tab-panel class="p-3" [itemKey]="4">
                     <c-alert color="primary" class="d-flex align-items-center">
                         <svg
                                 cIcon
@@ -252,7 +312,7 @@
                 </c-tab-panel>
 
                 <!-- Additional Infos Tab -->
-                <c-tab-panel class="p-3" [itemKey]="4">
+                <c-tab-panel class="p-3" [itemKey]="5">
                     <c-alert color="primary" class="d-flex align-items-center">
                         <svg
                                 cIcon
