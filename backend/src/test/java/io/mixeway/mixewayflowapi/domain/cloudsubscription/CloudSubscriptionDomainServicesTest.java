@@ -76,7 +76,7 @@ class CloudSubscriptionDomainServicesTest {
 
     private Team team;
     private CloudSubscription subscription;
-    @MockBean
+    @Autowired
     private ScanManagerService scanManagerService;
 
     @BeforeEach

@@ -46,6 +46,7 @@ import {DashboardService} from "../../service/DashboardService";
 import {TeamService} from "../../service/TeamService";
 import {gitRepoUrlValidator} from "../../utils/GitRepoUrlValidator";
 import {GitHubService} from "../../service/GitHubService";
+import {GiteaService} from "../../service/GiteaService";
 import {CloudService} from "../../service/CloudService";
 import {StatsService} from "../../service/StatsService";
 import {VulnerabilitySummary, VulnerabilityTrendDataPoint} from "../../model/stats.models";
@@ -308,6 +309,7 @@ export class DashboardComponent implements OnInit {
         private dashboardService: DashboardService,
         private teamService: TeamService,
         private gitHubService: GitHubService,
+        private giteaService: GiteaService,
         private cloudService: CloudService,
         private statsService: StatsService,
         private appInfoService: AppConfigService
@@ -1053,6 +1055,31 @@ export class DashboardComponent implements OnInit {
                         this.isLoading = false;  // Hide the spinner
                     }
                 });
+            } else if (this.selectedRepo === 'Gitea') {
+                this.giteaService.setApiUrl(this.repoUrl);
+                this.giteaService.getAllRepositories(this.accessToken).subscribe({
+                    next: (projects) => {
+                        this.repoRows = projects.map(proj => ({
+                            id: proj.id,
+                            name: proj.name,
+                            repo_url: proj.web_url,
+                            namespace: proj.path_with_namespace,
+                            imported: false
+                        }));
+                        this.tempRepos = [...this.repoRows];  // Update the temp array with the new data
+
+                        // Check if any repo in rows matches the URL and set imported to true
+                        this.repoRows.forEach(repoRow => {
+                            repoRow.imported = this.rows.some(row => row.repo_url === repoRow.repo_url);
+                        });
+                    },
+                    error: (error) => {
+                        console.error('Error fetching repositories:', error);
+                    },
+                    complete: () => {
+                        this.isLoading = false;  // Hide the spinner
+                    }
+                });
             } else {
                 this.toastStatus = "danger"
                 this.toastMessage = "Unknown repo type."
@@ -1075,6 +1102,9 @@ export class DashboardComponent implements OnInit {
         }
         if (this.selectedRepo === 'GitHub') {
             repoObject.repoUrl = this.gitHubService.gitHubApiUrl
+        } else if (this.selectedRepo === 'Gitea') {
+            // Gitea uses the same repoUrl format as GitLab
+            repoObject.repoUrl = this.repoUrl
         }
         row.imported = true;
         this.dashboardService.createRepo(repoObject, this.selectedRepo.toLowerCase()).subscribe({
@@ -1191,6 +1221,42 @@ export class DashboardComponent implements OnInit {
                     this.showToast("danger", "Problem loading Git repo details. Make sure that both URL to repo and AccessToken are correct.");
                 }
             });
+        } else if (this.selectedRepo === 'Gitea') {
+            // Set the base API URL based on the repo URL
+            this.giteaService.setApiUrl(repoUrl);
+            // Get the repository details
+            this.giteaService.getRepositoryDetailsFromUrl(repoUrl, accessToken).subscribe({
+                next: (response) => {
+                    if (!response || !response.id) {
+                        this.showToast("danger", "Problem loading Git repo details. Make sure that both URL to repo and AccessToken are correct.");
+                        return;
+                    }
+                    const strippedRepoUrl = this.getBaseUrl(repoUrl);
+
+                    const repoObject: CreateRepo = {
+                        name: response.full_name,
+                        remoteId: response.id,
+                        repoUrl: strippedRepoUrl,
+                        accessToken,
+                        team,
+                    };
+
+                    this.dashboardService.createRepo(repoObject, this.selectedRepo.toLowerCase()).subscribe({
+                        next: () => {
+                            this.showToast("success", `Successfully imported repo: ${repoUrl}`);
+                            this.loadCodeRepos();
+                            this.loadSecurityData(); // Reload security data after adding a repository
+                            this.visibleSingleRepoModal = false;
+                        },
+                        error: () => {
+                            this.showToast("danger", "Problem during repo import. If it will keep occurring contact system administrator.");
+                        },
+                    });
+                },
+                error: () => {
+                    this.showToast("danger", "Problem loading Git repo details. Make sure that both URL to repo and AccessToken are correct.");
+                }
+            });
         } else if (this.selectedRepo === 'GitHub') {
             // Set the base API URL based on the repo URL
             this.gitHubService.setApiUrl(repoUrl);
@@ -1246,6 +1312,62 @@ export class DashboardComponent implements OnInit {
             console.error("Invalid URL provided:", e);
             return url;  // Return the original URL if there's an error parsing it
         }
+    }
+
+    // Helper methods for provider-specific placeholders and examples
+    getRepoUrlPlaceholder(): string {
+        if (this.selectedRepo === 'GitLab') {
+            return 'https://gitlab.com/namespace/project';
+        } else if (this.selectedRepo === 'GitHub') {
+            return 'https://github.com/username/repo';
+        } else if (this.selectedRepo === 'Gitea') {
+            return 'https://gitea.example.com/username/repo';
+        }
+        return 'https://example.com/username/repo';
+    }
+
+    getRepoUrlExample(): string {
+        if (this.selectedRepo === 'GitLab') {
+            return 'https://gitlab.com/namespace/project';
+        } else if (this.selectedRepo === 'GitHub') {
+            return 'https://github.com/username/repo';
+        } else if (this.selectedRepo === 'Gitea') {
+            return 'https://gitea.example.com/username/repo';
+        }
+        return 'https://example.com/username/repo';
+    }
+
+    getBaseUrlPlaceholder(): string {
+        if (this.selectedRepo === 'GitLab') {
+            return 'https://gitlab.com';
+        } else if (this.selectedRepo === 'GitHub') {
+            return 'https://github.com';
+        } else if (this.selectedRepo === 'Gitea') {
+            return 'https://gitea.example.com';
+        }
+        return 'https://example.com';
+    }
+
+    getBaseUrlExample(): string {
+        if (this.selectedRepo === 'GitLab') {
+            return 'https://gitlab.com';
+        } else if (this.selectedRepo === 'GitHub') {
+            return 'https://github.com';
+        } else if (this.selectedRepo === 'Gitea') {
+            return 'https://gitea.example.com';
+        }
+        return 'https://example.com';
+    }
+
+    getTokenInstructions(): string {
+        if (this.selectedRepo === 'GitLab') {
+            return 'Create token at GitLab > Settings > Access Tokens';
+        } else if (this.selectedRepo === 'GitHub') {
+            return 'Create token at GitHub > Settings > Developer settings > Personal access tokens';
+        } else if (this.selectedRepo === 'Gitea') {
+            return 'Create token at Gitea > Settings > Applications > Generate New Token';
+        }
+        return 'Create a personal access token';
     }
 
     // Add this property to your DashboardComponent class

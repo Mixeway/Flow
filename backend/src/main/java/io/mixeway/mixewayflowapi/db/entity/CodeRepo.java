@@ -20,7 +20,7 @@ public final class CodeRepo {
         SUCCESS, DANGER, WARNING, NOT_PERFORMED, RUNNING
     }
     public enum RepoType {
-        GITLAB, GITHUB
+        GITLAB, GITHUB, GITEA
     }
 
 

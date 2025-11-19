@@ -823,6 +823,18 @@
                     <svg cIcon name="cib-github" size="3xl"></svg>
                     <span class="repo-type-label">GitHub</span>
                 </button>
+                <button
+                        cButton
+                        type="button"
+                        class="repo-type-btn"
+                        [class.active]="selectedRepo === 'Gitea'"
+                        (click)="selectRepoType('Gitea')"
+                        cTooltip="Import from Gitea"
+                        cTooltipPlacement="top"
+                >
+                    <svg cIcon name="cib-gitea" size="3xl"></svg>
+                    <span class="repo-type-label">Gitea</span>
+                </button>
             </div>
         </div>
 
@@ -844,7 +856,7 @@
                             type="url"
                             id="repoUrl"
                             formControlName="repoUrl"
-                            [placeholder]="selectedRepo === 'GitLab' ? 'https://gitlab.com' : 'https://github.com'"
+                            [placeholder]="getBaseUrlPlaceholder()"
                             required
                     />
                     <div class="invalid-feedback"
@@ -854,12 +866,12 @@
                 </c-input-group>
                 <small class="text-muted d-block mt-1">
                     <svg cIcon name="cil-check-circle" class="me-1 text-success" size="sm"></svg>
-                    Example: <code>{{ selectedRepo === 'GitLab' ? 'https://gitlab.com' : 'https://github.com' }}</code>
+                    Example: <code>{{ getBaseUrlExample() }}</code>
                 </small>
                 <small class="text-muted d-block mt-1">
                     <svg cIcon name="cil-x-circle" class="me-1 text-danger" size="sm"></svg>
                     Not:
-                    <code>{{ selectedRepo === 'GitLab' ? 'https://gitlab.com/namespace/project' : 'https://github.com/username/repo' }}</code>
+                    <code>{{ getRepoUrlExample() }}</code>
                 </small>
             </div>
 
@@ -890,7 +902,7 @@
                 </c-input-group>
                 <small class="text-muted d-flex align-items-center mt-1">
                     <svg cIcon name="cil-info" class="me-1" size="sm"></svg>
-                    {{ selectedRepo === 'GitLab' ? 'Create token at GitLab > Settings > Access Tokens' : 'Create token at GitHub > Settings > Developer settings > Personal access tokens' }}
+                    {{ getTokenInstructions() }}
                 </small>
             </div>
 
@@ -966,6 +978,18 @@
                     <svg cIcon name="cib-github" size="3xl"></svg>
                     <span class="repo-type-label">GitHub</span>
                 </button>
+                <button
+                        cButton
+                        type="button"
+                        class="repo-type-btn"
+                        [class.active]="selectedRepo === 'Gitea'"
+                        (click)="selectRepoType('Gitea')"
+                        cTooltip="Import from Gitea"
+                        cTooltipPlacement="top"
+                >
+                    <svg cIcon name="cib-gitea" size="3xl"></svg>
+                    <span class="repo-type-label">Gitea</span>
+                </button>
             </div>
         </div>
 
@@ -987,7 +1011,7 @@
                             type="url"
                             id="repoUrl2"
                             formControlName="repoUrl"
-                            [placeholder]="selectedRepo === 'GitLab' ? 'https://gitlab.com/namespace/project' : 'https://github.com/username/repo'"
+                            [placeholder]="getRepoUrlPlaceholder()"
                             required
                     />
                     <div class="invalid-feedback"
@@ -998,11 +1022,11 @@
                 <small class="text-muted d-block mt-1">
                     <svg cIcon name="cil-check-circle" class="me-1 text-success" size="sm"></svg>
                     Example:
-                    <code>{{ selectedRepo === 'GitLab' ? 'https://gitlab.com/namespace/project' : 'https://github.com/username/repo' }}</code>
+                    <code>{{ getRepoUrlExample() }}</code>
                 </small>
                 <small class="text-muted d-block mt-1">
                     <svg cIcon name="cil-x-circle" class="me-1 text-danger" size="sm"></svg>
-                    Not: <code>{{ selectedRepo === 'GitLab' ? 'https://gitlab.com' : 'https://github.com' }}</code>
+                    Not: <code>{{ getBaseUrlExample() }}</code>
                     (base URL only)
                 </small>
             </div>
@@ -1034,7 +1058,7 @@
                 </c-input-group>
                 <small class="text-muted d-flex align-items-center mt-1">
                     <svg cIcon name="cil-info" class="me-1" size="sm"></svg>
-                    {{ selectedRepo === 'GitLab' ? 'Create token at GitLab > Settings > Access Tokens' : 'Create token at GitHub > Settings > Developer settings > Personal access tokens' }}
+                    {{ getTokenInstructions() }}
                 </small>
             </div>
 
@@ -1170,12 +1194,21 @@
                            value="GITHUB">
                     <label class="form-check-label" for="githubRadio">GitHub</label>
                 </div>
+                <div class="form-check">
+                    <input class="form-check-input"
+                           type="radio"
+                           id="giteaRadio"
+                           name="providerType"
+                           formControlName="providerType"
+                           value="GITEA">
+                    <label class="form-check-label" for="giteaRadio">Gitea</label>
+                </div>
             </div>
 
             <div class="mb-3">
                 <label for="apiUrl" class="form-label">API URL</label>
                 <input cFormControl type="url" id="apiUrl" formControlName="apiUrl"
-                       placeholder="e.g., https://api.github.com or https://gitlab.com" required />
+                       placeholder="e.g., https://api.github.com, https://gitlab.com, or https://gitea.example.com" required />
             </div>
 
             <div class="mb-3">

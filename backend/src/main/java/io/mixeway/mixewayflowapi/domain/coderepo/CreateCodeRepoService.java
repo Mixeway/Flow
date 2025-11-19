@@ -12,6 +12,7 @@ import io.mixeway.mixewayflowapi.domain.organization.OrganizationService;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
 import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoGitHubResponseDto;
+import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoGiteaResponseDto;
 import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoResponseDto;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GetCodeRepoInfoService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.service.SCAService;
@@ -129,6 +130,10 @@ public class CreateCodeRepoService {
             ImportCodeRepoGitHubResponseDto githubRepo = (ImportCodeRepoGitHubResponseDto) projectDetails;
             name = githubRepo.getPathWithNamespace(); // 'pathWithNamespace' from GitHub DTO is typically 'full_name'
             remoteId = githubRepo.getId();
+        } else if (repoType == CodeRepo.RepoType.GITEA && projectDetails instanceof ImportCodeRepoGiteaResponseDto) {
+            ImportCodeRepoGiteaResponseDto giteaRepo = (ImportCodeRepoGiteaResponseDto) projectDetails;
+            name = giteaRepo.getPathWithNamespace();
+            remoteId = giteaRepo.getId();
         } else {
             log.warn("Skipping import due to mismatched project details type or unsupported repo type.");
             return Mono.empty(); // Return an empty Mono for unsupported cases.
