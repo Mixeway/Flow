@@ -14,6 +14,7 @@ import io.mixeway.mixewayflowapi.exceptions.CloudSubscriptionNotFoundException;
 import io.mixeway.mixewayflowapi.exceptions.DuplicateCloudSubscriptionException;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
 import io.mixeway.mixewayflowapi.exceptions.UnauthorizedException;
+import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import io.mixeway.mixewayflowapi.utils.PermissionFactory;
 import io.mixeway.mixewayflowapi.utils.Role;
 import org.apache.catalina.User;
@@ -75,6 +76,8 @@ class CloudSubscriptionDomainServicesTest {
 
     private Team team;
     private CloudSubscription subscription;
+    @Autowired
+    private ScanManagerService scanManagerService;
 
     @BeforeEach
     void setUp() {
@@ -149,7 +152,7 @@ class CloudSubscriptionDomainServicesTest {
         Principal principal = mock(Principal.class);
         when(principal.getName()).thenReturn(username);
 
-        CreateCloudSubscriptionService createCloudSubscriptionService = new CreateCloudSubscriptionService(cloudSubscriptionRepository, findTeamService, permissionFactory, findUserService);
+        CreateCloudSubscriptionService createCloudSubscriptionService = new CreateCloudSubscriptionService(cloudSubscriptionRepository, findTeamService, permissionFactory, findUserService, scanManagerService);
 
         assertThrows(UnauthorizedException.class, () -> {
             createCloudSubscriptionService.create("test-subscription", teamId, principal, "ext-test-subscription");
