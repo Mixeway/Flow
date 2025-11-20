@@ -85,7 +85,6 @@ public class CloudScannerService {
             hasNextPage = pageInfo.path("hasNextPage").asBoolean(false);
             endCursor = pageInfo.path("endCursor").asText(null);
         }
-
         return allNodes;
     }
 }
