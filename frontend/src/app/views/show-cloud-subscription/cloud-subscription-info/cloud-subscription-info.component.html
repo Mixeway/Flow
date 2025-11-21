@@ -52,15 +52,13 @@
                                 {{ cloudSubscriptionData?.team.name }}
                             </div>
                         </div>
-
-                        <div class="metadata-item" style="margin-left: -120px;">
+                        <div class="metadata-item">
                             <div class="metadata-label">Project ID</div>
                             <div class="metadata-value">
                                 <svg cIcon name="cil-fingerprint" class="metadata-icon me-2"></svg>
                                 {{ cloudSubscriptionData?.name }}
                             </div>
                         </div>
-
                         <div class="metadata-item" *ngIf="cloudSubscriptionData?.provider">
                             <div class="metadata-label">Cloud Provider</div>
                             <div class="metadata-value">
@@ -68,7 +66,6 @@
                                 {{ getFormattedProvider() }}
                             </div>
                         </div>
-
                         <div class="metadata-item" *ngIf="cloudSubscriptionData?.insertedDate">
                             <div class="metadata-label">Added on</div>
                             <div class="metadata-value">

@@ -598,7 +598,7 @@ public class ScanManagerService {
                 List<Finding> findings = createFindingService.mapCloudScannerReportToFindings(cloudScannerReport, cloudSubscription);
                 List<Finding> issues = createFindingService.mapCloudIssueReportToFindings(cloudIssueReport, cloudSubscription);
 
-                if (findings == null || findings.isEmpty()) {
+                if (findings.isEmpty() && issues.isEmpty()) {
                     log.info("[CloudScannerService] No findings for subscription: {}", cloudSubscription.getExternal_project_name());
                     updateCloudSubscriptionService.updateCloudSubscriptionScanStatus(cloudSubscription);
                     findings = new ArrayList<>();
@@ -637,7 +637,7 @@ public class ScanManagerService {
             List<Finding> findings = createFindingService.mapCloudScannerReportToFindings(cloudScannerReport, cloudSubscription);
             List<Finding> issues = createFindingService.mapCloudIssueReportToFindings(cloudIssueReport, cloudSubscription);
 
-            if (findings == null || findings.isEmpty()) {
+            if (findings.isEmpty() && issues.isEmpty()) {
                 log.info("[CloudScannerService] No findings for subscription: {}", cloudSubscription.getExternal_project_name());
                 updateCloudSubscriptionService.updateCloudSubscriptionScanStatus(cloudSubscription);
                 findings = new ArrayList<>();
