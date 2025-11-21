@@ -152,6 +152,7 @@ if [ "$(echo $SSL | tr '[:upper:]' '[:lower:]')" = "true" ]; then
     fi
 else
     echo "SSL is not enabled. Running the application without SSL..."
+    SPRING_PROFILE=prodhttp
     if [ -n "$PROXY_HOST" ] && [ -n "$PROXY_PORT" ]; then
         java -Dspring.profiles.active=$SPRING_PROFILE -Dproxy.host=$PROXY_HOST -Dproxy.port=$PROXY_PORT -jar /app/flowapi.jar
     else
