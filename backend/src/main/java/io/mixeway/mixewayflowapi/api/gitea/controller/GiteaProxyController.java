@@ -2,6 +2,7 @@ package io.mixeway.mixewayflowapi.api.gitea.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -46,7 +47,20 @@ public class GiteaProxyController {
                     .onErrorResume(error -> Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()))
                     .block();
 
-            return response != null ? response : ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            if (response == null) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            }
+
+            // Copy headers except Transfer-Encoding
+            HttpHeaders headers = new HttpHeaders();
+            response.getHeaders().forEach((key, values) -> {
+                if (!HttpHeaders.TRANSFER_ENCODING.equalsIgnoreCase(key)) {
+                    headers.put(key, values);
+                }
+            });
+
+            return new ResponseEntity<>(response.getBody(), headers, response.getStatusCode());
+
         } catch (Exception e) {
             log.error("Error proxying Gitea repos request", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -82,7 +96,20 @@ public class GiteaProxyController {
                     .onErrorResume(error -> Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error.getMessage())))
                     .block();
 
-            return response != null ? response : ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            if (response == null) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            }
+
+            // Copy headers except Transfer-Encoding
+            HttpHeaders headers = new HttpHeaders();
+            response.getHeaders().forEach((key, values) -> {
+                if (!HttpHeaders.TRANSFER_ENCODING.equalsIgnoreCase(key)) {
+                    headers.put(key, values);
+                }
+            });
+
+            return new ResponseEntity<>(response.getBody(), headers, response.getStatusCode());
+
         } catch (Exception e) {
             log.error("Error proxying Gitea repo request", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
