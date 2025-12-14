@@ -9,5 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class SendBomRequestDto {
     String project;
+    String projectName;
     String bom;
+    String projectVersion;
 }

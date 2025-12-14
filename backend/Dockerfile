@@ -112,7 +112,7 @@ RUN rm -rf /opt/tools/kics/assets/queries/openAPI
 RUN rm -rf /opt/tools/kics/assets/queries/common/passwords_and_secrets
 
 # Setup Dependency-Track
-RUN wget https://github.com/DependencyTrack/dependency-track/releases/download/4.11.6/dependency-track-bundled.jar -P /opt/dtrack/
+RUN wget https://github.com/DependencyTrack/dependency-track/releases/download/4.13.6/dependency-track-bundled.jar -P /opt/dtrack/
 
 # Download and install the appropriate gitleaks for the architecture
 RUN ARCH=$(uname -m) && \
