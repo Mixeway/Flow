@@ -105,7 +105,7 @@ RUN wget https://github.com/zaproxy/zaproxy/releases/download/v2.16.1/ZAP_2.16.1
 
 # Rest of the Dockerfile remains unchanged
 RUN mkdir /opt/kics
-#RUN mkdir /opt/dtrack
+RUN mkdir /opt/dtrack
 COPY --from=kics /app/bin/kics /usr/local/bin/kics
 COPY --from=kics /app/bin/assets /opt/tools/kics/assets
 RUN rm -rf /opt/tools/kics/assets/queries/openAPI
