@@ -105,14 +105,17 @@ RUN wget https://github.com/zaproxy/zaproxy/releases/download/v2.16.1/ZAP_2.16.1
 
 # Rest of the Dockerfile remains unchanged
 RUN mkdir /opt/kics
-RUN mkdir /opt/dtrack
+#RUN mkdir /opt/dtrack
 COPY --from=kics /app/bin/kics /usr/local/bin/kics
 COPY --from=kics /app/bin/assets /opt/tools/kics/assets
 RUN rm -rf /opt/tools/kics/assets/queries/openAPI
 RUN rm -rf /opt/tools/kics/assets/queries/common/passwords_and_secrets
 
-# Setup Dependency-Track
-RUN wget https://github.com/DependencyTrack/dependency-track/releases/download/4.13.6/dependency-track-bundled.jar -P /opt/dtrack/
+## Setup Dependency-Track
+#RUN wget https://github.com/DependencyTrack/dependency-track/releases/download/4.13.6/dependency-track-bundled.jar -P /opt/dtrack/
+
+# Setup Grype
+RUN curl -sSfL https://get.anchore.io/grype | sh -s -- -b /usr/local/bin
 
 # Download and install the appropriate gitleaks for the architecture
 RUN ARCH=$(uname -m) && \

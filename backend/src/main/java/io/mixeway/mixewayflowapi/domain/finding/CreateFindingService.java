@@ -9,12 +9,14 @@ import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.dto.CloudSca
 import io.mixeway.mixewayflowapi.integrations.scanner.iac.dto.KicsReport;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.BearerScanSecurity;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.Item;
+import io.mixeway.mixewayflowapi.integrations.scanner.sca.dto.GrypeReport;
 import io.mixeway.mixewayflowapi.integrations.scanner.secrets.dto.Secret;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -287,6 +289,36 @@ public class CreateFindingService {
         }
 
         return findings;
+    }
+
+    public List<Finding> mapGrypeReportToFindings(GrypeReport grypeReport, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
+        return grypeReport.getMatches().stream()
+                .flatMap(match -> {GrypeReport.Vulnerability vuln = match.getVulnerability();
+                    GrypeReport.Artifact artifact = match.getArtifact();
+
+                    Vulnerability vulnerability = getOrCreateVulnerabilityService.getOrCreate(
+                            vuln.getId(),
+                            vuln.getDescription(),
+                            vuln.getDataSource(),
+                            "Update package to version " + vuln.getFix().getVersions(),
+                            Finding.Severity.valueOf(vuln.getSeverity()),
+                            BigDecimal.valueOf(vuln.getEpss().get(0).getEpss()),
+                            BigDecimal.valueOf(vuln.getEpss().get(0).getPercentile()),
+                            null
+                            );
+                            return new Finding(
+                                    vulnerability,
+                                    null,
+                                    codeRepoBranch,
+                                    codeRepo,
+                                    null,
+                                    fileIssue.getSearchKey() + " - expected: " + fileIssue.getExpectedValue(),
+                                    fileIssue.getFileName() + ":" + fileIssue.getLine(),
+                                    mapSeverity(query.getSeverity()),
+                                    Finding.Source.IAC
+                            );
+                        })
+                ).collect(Collectors.toList());
     }
 
     private List<Finding> mapItemsToFindings(List<Item> items, CodeRepoBranch codeRepoBranch, CodeRepo codeRepo, Finding.Severity severity) {

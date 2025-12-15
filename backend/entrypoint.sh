@@ -30,16 +30,16 @@ else
     SPRING_PROFILE="prod"
 fi
 
-# Start Dependency-Track in the background with 4GB of memory and log output to a file
-LOG_FILE="/var/log/dtrack.log"
-echo "Starting Dependency-Track..."
-if [ -n "$PROXY_HOST" ] && [ -n "$PROXY_PORT" ]; then
-    java -Xmx4g -Dhttp.proxyHost=$PROXY_HOST -Dhttp.proxyPort=$PROXY_PORT -Dhttps.proxyHost=$PROXY_HOST -Dhttps.proxyPort=$PROXY_PORT -Dcom.sun.net.ssl.checkRevocation=false -Djavax.net.ssl.trustAll=true -Djavax.net.ssl.trustStore=/dev/null -Djavax.net.ssl.trustAll=true -Djavax.net.ssl.verifyHostname=false -jar /opt/dtrack/dependency-track-bundled.jar >> $LOG_FILE 2>&1 &
-else
-    java -Xmx4g -jar /opt/dtrack/dependency-track-bundled.jar >> $LOG_FILE 2>&1 &
-fi
-
-sleep 30
+## Start Dependency-Track in the background with 4GB of memory and log output to a file
+#LOG_FILE="/var/log/dtrack.log"
+#echo "Starting Dependency-Track..."
+#if [ -n "$PROXY_HOST" ] && [ -n "$PROXY_PORT" ]; then
+#    java -Xmx4g -Dhttp.proxyHost=$PROXY_HOST -Dhttp.proxyPort=$PROXY_PORT -Dhttps.proxyHost=$PROXY_HOST -Dhttps.proxyPort=$PROXY_PORT -Dcom.sun.net.ssl.checkRevocation=false -Djavax.net.ssl.trustAll=true -Djavax.net.ssl.trustStore=/dev/null -Djavax.net.ssl.trustAll=true -Djavax.net.ssl.verifyHostname=false -jar /opt/dtrack/dependency-track-bundled.jar >> $LOG_FILE 2>&1 &
+#else
+#    java -Xmx4g -jar /opt/dtrack/dependency-track-bundled.jar >> $LOG_FILE 2>&1 &
+#fi
+#
+#sleep 30
 
 # Start ZAP daemon
 ZAP_LOG_FILE="/var/log/zap.log"

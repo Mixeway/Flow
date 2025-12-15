@@ -24,6 +24,7 @@ public class CloudIssueService {
         ObjectMapper objectMapper = new ObjectMapper();
         String cloudIssueJSONReport = fetchCloudIssues(projectId, wizAuthToken);
         CloudIssueReport cloudIssueReport = objectMapper.readValue(cloudIssueJSONReport, CloudIssueReport.class);
+
         return cloudIssueReport;
     }
 
