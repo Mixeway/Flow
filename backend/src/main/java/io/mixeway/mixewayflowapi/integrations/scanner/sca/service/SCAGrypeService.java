@@ -6,7 +6,7 @@ import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.db.entity.Finding;
 import io.mixeway.mixewayflowapi.domain.finding.CreateFindingService;
-import io.mixeway.mixewayflowapi.integrations.scanner.iac.dto.KicsReport;
+import io.mixeway.mixewayflowapi.integrations.scanner.sca.dto.GrypeReport;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 @Service
 @Log4j2
@@ -123,5 +122,4 @@ public class SCAGrypeService {
             log.warn("[GrypeService] Error with running scan for repository - [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
         }
     }
-
 }

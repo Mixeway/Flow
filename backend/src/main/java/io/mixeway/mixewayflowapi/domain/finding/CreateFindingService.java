@@ -2,6 +2,7 @@ package io.mixeway.mixewayflowapi.domain.finding;
 
 import io.mixeway.mixewayflowapi.db.entity.*;
 import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
+import io.mixeway.mixewayflowapi.domain.component.GetOrCreateComponentService;
 import io.mixeway.mixewayflowapi.domain.suppressrule.CheckSuppressRuleService;
 import io.mixeway.mixewayflowapi.domain.vulnerability.GetOrCreateVulnerabilityService;
 import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.dto.CloudIssueReport;
@@ -30,6 +31,7 @@ public class CreateFindingService {
     private final FindingRepository findingRepository;
     private final GetOrCreateVulnerabilityService getOrCreateVulnerabilityService;
     private final CheckSuppressRuleService checkSuppressRuleService;
+    private final GetOrCreateComponentService getOrCreateComponentService;
 
     @Transactional
     public void saveFindings(List<Finding> newFindings, CodeRepoBranch repoWhereFindingWasFound, CodeRepo repoInWhichFindingWasFound, Finding.Source source, CloudSubscription cloudSubscription) {
@@ -292,33 +294,63 @@ public class CreateFindingService {
     }
 
     public List<Finding> mapGrypeReportToFindings(GrypeReport grypeReport, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
-        return grypeReport.getMatches().stream()
-                .flatMap(match -> {GrypeReport.Vulnerability vuln = match.getVulnerability();
-                    GrypeReport.Artifact artifact = match.getArtifact();
+        List<Finding> findings = new ArrayList<>();
 
-                    Vulnerability vulnerability = getOrCreateVulnerabilityService.getOrCreate(
-                            vuln.getId(),
-                            vuln.getDescription(),
-                            vuln.getDataSource(),
-                            "Update package to version " + vuln.getFix().getVersions(),
-                            Finding.Severity.valueOf(vuln.getSeverity()),
-                            BigDecimal.valueOf(vuln.getEpss().get(0).getEpss()),
-                            BigDecimal.valueOf(vuln.getEpss().get(0).getPercentile()),
-                            null
-                            );
-                            return new Finding(
-                                    vulnerability,
-                                    null,
-                                    codeRepoBranch,
-                                    codeRepo,
-                                    null,
-                                    fileIssue.getSearchKey() + " - expected: " + fileIssue.getExpectedValue(),
-                                    fileIssue.getFileName() + ":" + fileIssue.getLine(),
-                                    mapSeverity(query.getSeverity()),
-                                    Finding.Source.IAC
-                            );
-                        })
-                ).collect(Collectors.toList());
+        for (GrypeReport.Match match : grypeReport.getMatches()) {
+            GrypeReport.Vulnerability vuln = match.getVulnerability();
+            GrypeReport.Artifact artifact = match.getArtifact();
+
+            Component component = getOrCreateComponentService.getOrCreate(
+                    artifact.getName(),
+                    artifact.getType(),
+                    artifact.getVersion(),
+                    "nvd"
+            );
+
+            BigDecimal epssProbability = null;
+            BigDecimal epssPercentile = null;
+            if (vuln.getEpss() != null && !vuln.getEpss().isEmpty()) {
+                epssProbability = BigDecimal.valueOf(vuln.getEpss().get(0).getEpss());
+                epssPercentile = BigDecimal.valueOf(vuln.getEpss().get(0).getPercentile());
+            }
+
+            String recommendation = null;
+            if (vuln.getFix() != null && vuln.getFix().getVersions() != null && !vuln.getFix().getVersions().isEmpty()) {
+                recommendation = "Update package to version " + vuln.getFix().getVersions().get(0);
+            }
+
+            Vulnerability vulnerability = getOrCreateVulnerabilityService.getOrCreate(
+                    vuln.getId(),
+                    vuln.getDescription(),
+                    vuln.getDataSource(),
+                    recommendation,
+                    mapSeverity(vuln.getSeverity()),
+                    epssProbability,
+                    epssPercentile,
+                    null
+            );
+
+            if (!vulnerability.getComponents().contains(component)) {
+                vulnerability.getComponents().add(component);
+            }
+
+            String location = (artifact.getName() != null ? artifact.getName() : "") +
+                    (artifact.getVersion() != null ? ":" + artifact.getVersion() : "");
+
+            Finding finding = new Finding(
+                    vulnerability,
+                    component,
+                    codeRepoBranch,
+                    codeRepo,
+                    null,
+                    vuln.getDescription(),
+                    location,
+                    mapSeverity(vuln.getSeverity()),
+                    Finding.Source.SCA
+            );
+            findings.add(finding);
+        }
+        return findings;
     }
 
     private List<Finding> mapItemsToFindings(List<Item> items, CodeRepoBranch codeRepoBranch, CodeRepo codeRepo, Finding.Severity severity) {
