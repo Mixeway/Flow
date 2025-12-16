@@ -114,7 +114,7 @@ class UpdateCodeRepoServiceTest {
 
         CodeRepo codeRepo = findCodeRepoService.findByRemoteId(9999L);
 
-        updateCodeRepoService.updateCodeRepoStatus(codeRepo, codeRepo.getDefaultBranch(),true,"123");
+        updateCodeRepoService.updateCodeRepoStatus(codeRepo, codeRepo.getDefaultBranch(),"123");
         codeRepo = findCodeRepoService.findByRemoteId(9999L);
 
         assertFalse(codeRepo.getIacScan().equals(CodeRepo.ScanStatus.NOT_PERFORMED));

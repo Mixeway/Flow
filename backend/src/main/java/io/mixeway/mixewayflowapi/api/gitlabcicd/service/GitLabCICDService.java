@@ -9,6 +9,7 @@ import io.mixeway.mixewayflowapi.db.entity.*;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoBranchRepository;
 import io.mixeway.mixewayflowapi.db.repository.UserRepository;
 import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
+import io.mixeway.mixewayflowapi.domain.coderepobranch.GetOrCreateCodeRepoBranchService;
 import io.mixeway.mixewayflowapi.domain.finding.FindFindingService;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
@@ -30,6 +31,7 @@ public class GitLabCICDService {
     private final CodeRepoBranchRepository codeRepoBranchRepository;
     private final ScanManagerService scanManagerService;
     private final FindingService findingService;
+    GetOrCreateCodeRepoBranchService getOrCreateCodeRepoBranchService;
 
     public Boolean isValidApiKey(String apiKey, String repoUrl) {
         Optional<UserInfo> userOptional = userRepository.findByApiKey(apiKey);
@@ -54,7 +56,7 @@ public class GitLabCICDService {
     }
 
     public CodeRepoBranch getCodeRepoBranch(String branch, CodeRepo codeRepo) {
-        return codeRepoBranchRepository.findByNameAndCodeRepo(branch, codeRepo).get();
+        return getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(branch, codeRepo);
     }
 
     public void runCodeRepoScan(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
