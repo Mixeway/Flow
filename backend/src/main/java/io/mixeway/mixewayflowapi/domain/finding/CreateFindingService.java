@@ -1,7 +1,9 @@
 package io.mixeway.mixewayflowapi.domain.finding;
 
 import io.mixeway.mixewayflowapi.db.entity.*;
+import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
 import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
+import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.component.GetOrCreateComponentService;
 import io.mixeway.mixewayflowapi.domain.suppressrule.CheckSuppressRuleService;
 import io.mixeway.mixewayflowapi.domain.vulnerability.GetOrCreateVulnerabilityService;
@@ -15,6 +17,7 @@ import io.mixeway.mixewayflowapi.integrations.scanner.secrets.dto.Secret;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -32,6 +35,8 @@ public class CreateFindingService {
     private final GetOrCreateVulnerabilityService getOrCreateVulnerabilityService;
     private final CheckSuppressRuleService checkSuppressRuleService;
     private final GetOrCreateComponentService getOrCreateComponentService;
+    private final UpdateCodeRepoService updateCodeRepoService;
+    private final CodeRepoRepository codeRepoRepository;
 
     @Transactional
     public void saveFindings(List<Finding> newFindings, CodeRepoBranch repoWhereFindingWasFound, CodeRepo repoInWhichFindingWasFound, Finding.Source source, CloudSubscription cloudSubscription) {
@@ -293,6 +298,26 @@ public class CreateFindingService {
         return findings;
     }
 
+    @Transactional
+    public void processGrypeComponents(GrypeReport grypeReport, CodeRepo codeRepo) {
+        CodeRepo managedRepo = codeRepoRepository.findById(codeRepo.getId())
+                .orElseThrow(() -> new IllegalArgumentException("CodeRepo not found"));
+
+        List<Component> components = grypeReport.getMatches().stream()
+                .map(match -> getOrCreateComponentService.getOrCreate(
+                        match.getArtifact().getName(),
+                        match.getArtifact().getType(),
+                        match.getArtifact().getVersion(),
+                        "nvd"
+                ))
+                .distinct()
+                .toList();
+
+        updateCodeRepoService.updateComponents(components, managedRepo);
+    }
+
+
+    @Transactional
     public List<Finding> mapGrypeReportToFindings(GrypeReport grypeReport, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
         List<Finding> findings = new ArrayList<>();
 
@@ -330,6 +355,7 @@ public class CreateFindingService {
                     null
             );
 
+            Hibernate.initialize(vulnerability.getComponents());
             if (!vulnerability.getComponents().contains(component)) {
                 vulnerability.getComponents().add(component);
             }
@@ -350,6 +376,7 @@ public class CreateFindingService {
             );
             findings.add(finding);
         }
+
         return findings;
     }
 

@@ -49,10 +49,10 @@ public class ScanScheduler {
      * This method is executed automatically after the bean's properties have been set.
      *
      */
-    @PostConstruct
-    public void runAfterStartup() {
-        scaService.initialize();
-    }
+//    @PostConstruct
+//    public void runAfterStartup() {
+//        scaService.initialize();
+//    }
 
 
     @Scheduled(cron = "0 0 1 * * ?") // Every day at 1:00 AM

@@ -50,6 +50,7 @@ public class SCAGrypeService {
         File sbomFile = findSbom(repoDir);
         if (sbomFile == null) {
             cdxGenService.generateBom(repoDir,codeRepo,codeRepoBranch);
+            sbomFile = findSbom(repoDir);
         }
 
         log.info("[GrypeService] Starting Grype scan for repository: {} branch: {}", codeRepo.getName(), codeRepoBranch.getName());
@@ -113,6 +114,9 @@ public class SCAGrypeService {
 
         try {
             GrypeReport grypeReport = objectMapper.readValue(grypeReportFile, GrypeReport.class);
+
+            createFindingService.processGrypeComponents(grypeReport, codeRepo);
+
             List<Finding> findings = createFindingService.mapGrypeReportToFindings(grypeReport, codeRepo, codeRepoBranch);
 
             createFindingService.saveFindings(findings, codeRepoBranch, codeRepo, Finding.Source.SCA, null);
