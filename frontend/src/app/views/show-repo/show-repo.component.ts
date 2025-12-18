@@ -554,6 +554,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                                 '#3eabb7',
                                 '#FFCE12',
                                 '#FF8929D8',
+                                '#C34E75F4'
                             ],
                             hoverBackgroundColor: [
                                 '#FF6384',
@@ -561,6 +562,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                                 '#449a77',
                                 '#FFCE12',
                                 '#FF8929D8',
+                                '#C34E75F4'
                             ],
                         },
                     ],

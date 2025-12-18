@@ -29,6 +29,7 @@ public class UpdateCodeRepoService {
     private final FindingRepository findingRepository;
     private final CreateScanInfoService createScanInfoService;
     private final FindCodeRepoService findCodeRepoService;
+    private boolean scaScanPerformed;
 
     /**
      * Updates the SCA UUID for a given {@link CodeRepo}.
@@ -59,11 +60,10 @@ public class UpdateCodeRepoService {
      *
      * @param codeRepo          the {@link CodeRepo} entity to update
      * @param codeRepoBranch    the {@link CodeRepoBranch} entity associated with the code repository
-     * @param scaScanPerformed  a boolean indicating if an SCA scan was performed
      * @param commitId          the commit ID associated with the scan
      */
     @Transactional
-    public void updateCodeRepoStatus(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, boolean scaScanPerformed, String commitId) {
+    public void updateCodeRepoStatus(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId) {
         codeRepo = findCodeRepoService.findById(codeRepo.getId()).get();
         if (codeRepoBranch == null) {
             codeRepoBranch = codeRepo.getDefaultBranch();
@@ -117,6 +117,63 @@ public class UpdateCodeRepoService {
                 countCriticalFindings(Finding.Source.DAST, codeRepo, codeRepoBranch)
         );
     }
+// Dependency Track version
+//    @Transactional
+//    public void updateCodeRepoStatus(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, boolean scaScanPerformed, String commitId) {
+//        this.scaScanPerformed = scaScanPerformed;
+//        codeRepo = findCodeRepoService.findById(codeRepo.getId()).get();
+//        if (codeRepoBranch == null) {
+//            codeRepoBranch = codeRepo.getDefaultBranch();
+//        }
+//        // Update status for SECRETS
+//        int secretsHigh = updateStatusForSource(Finding.Source.SECRETS, codeRepo, codeRepoBranch, false);
+//
+//        // Update status for SAST
+//        int sastHigh = updateStatusForSource(Finding.Source.SAST, codeRepo, codeRepoBranch, false);
+//
+//        // Update status for IaC
+//        int iacHigh = updateStatusForSource(Finding.Source.IAC, codeRepo, codeRepoBranch, false);
+//
+//        int gitlabHigh = updateStatusForSource(Finding.Source.GITLAB_SCANNER, codeRepo, codeRepoBranch, false);
+//        int dastHigh = updateStatusForSource(Finding.Source.DAST, codeRepo, codeRepoBranch, false);
+//
+//        // Initialize SCA counts
+//        int scaHigh = 0;
+//        int scaCritical = 0;
+//
+//        // Update status for SCA if the scan was performed
+//        if (!codeRepo.getComponents().isEmpty()) {
+//            scaHigh = updateStatusForSource(Finding.Source.SCA, codeRepo, codeRepoBranch, false);
+//            scaCritical = countCriticalFindings(Finding.Source.SCA, codeRepo, codeRepoBranch);
+//        } else {
+//            scaHigh = updateStatusForSource(Finding.Source.SCA, codeRepo, codeRepoBranch, true);
+//            scaCritical = countCriticalFindings(Finding.Source.SCA, codeRepo, codeRepoBranch);
+//        }
+//
+//        // Create or update ScanInfo snapshot
+//        createScanInfoService.createOrUpdateScanInfo(
+//                codeRepo,
+//                codeRepoBranch,
+//                commitId,
+//                codeRepo.getScaScan(),
+//                codeRepo.getSastScan(),
+//                codeRepo.getIacScan(),
+//                codeRepo.getSecretsScan(),
+//                codeRepo.getGitlabScan(),
+//                scaHigh,
+//                scaCritical,
+//                sastHigh,
+//                countCriticalFindings(Finding.Source.SAST, codeRepo, codeRepoBranch),
+//                iacHigh,
+//                countCriticalFindings(Finding.Source.IAC, codeRepo, codeRepoBranch),
+//                secretsHigh,
+//                countCriticalFindings(Finding.Source.SECRETS, codeRepo, codeRepoBranch),
+//                gitlabHigh,
+//                countCriticalFindings(Finding.Source.GITLAB_SCANNER, codeRepo, codeRepo.getDefaultBranch()),
+//                dastHigh,
+//                countCriticalFindings(Finding.Source.DAST, codeRepo, codeRepoBranch)
+//        );
+//    }
 
     /**
      * Updates the scan status for a specific source (SAST, SCA, IaC, Secrets) based on findings.

@@ -116,7 +116,7 @@ public class AuthController {
             profile = activeProfiles[0];
         }
         try {
-            return new ResponseEntity<>(new ServiceStatusDTO(profile, appConfigService.isSaasMode() ? "SAAS":"SANDALONE"), HttpStatus.OK);
+            return new ResponseEntity<>(new ServiceStatusDTO(profile, appConfigService.isSaasMode() ? "SAAS":"STANDALONE"), HttpStatus.OK);
         } catch (Exception e){
             throw new RuntimeException(e);
         }
