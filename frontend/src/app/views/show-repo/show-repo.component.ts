@@ -554,7 +554,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                                 '#3eabb7',
                                 '#FFCE12',
                                 '#FF8929D8',
-pie                                '#C34E75F4'
+                                '#C34E75F4'
                             ],
                             hoverBackgroundColor: [
                                 '#FF6384',
