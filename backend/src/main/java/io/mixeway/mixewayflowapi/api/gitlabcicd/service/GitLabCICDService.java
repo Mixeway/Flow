@@ -31,7 +31,7 @@ public class GitLabCICDService {
     private final CodeRepoBranchRepository codeRepoBranchRepository;
     private final ScanManagerService scanManagerService;
     private final FindingService findingService;
-    GetOrCreateCodeRepoBranchService getOrCreateCodeRepoBranchService;
+    private final GetOrCreateCodeRepoBranchService getOrCreateCodeRepoBranchService;
 
     public Boolean isValidApiKey(String apiKey, String repoUrl) {
         Optional<UserInfo> userOptional = userRepository.findByApiKey(apiKey);
@@ -47,6 +47,7 @@ public class GitLabCICDService {
             log.info("[Team Service] User's {} API key validation succeeded", userOptional.get().getUsername());
             return true;
         } else {
+            log.info("[Team Service] User's {} API key validation failed", userOptional.get().getUsername());
             return false;
         }
     }

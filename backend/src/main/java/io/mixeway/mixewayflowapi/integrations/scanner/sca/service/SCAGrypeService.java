@@ -25,9 +25,9 @@ import java.util.concurrent.TimeUnit;
 @Log4j2
 @RequiredArgsConstructor
 public class SCAGrypeService {
-    private final CdxGenService cdxGenService;
     private final ObjectMapper objectMapper;
     private final CreateFindingService createFindingService;
+    private final CdxGenService cdxGenService;
 
     private File findSbom(String dir) {
         File directory = new File(dir);
