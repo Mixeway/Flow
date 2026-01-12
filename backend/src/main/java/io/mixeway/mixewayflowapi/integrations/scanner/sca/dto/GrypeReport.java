@@ -41,6 +41,9 @@ public class GrypeReport {
         @JsonProperty("cvss")
         private List<Cvss> cvss;
 
+        @JsonProperty("knownExploited")
+        private List<KnownExploited> knownExploited;
+
         @JsonProperty("epss")
         private List<Epss> epss;
 
@@ -79,6 +82,36 @@ public class GrypeReport {
             @JsonProperty("impactScore")
             private double impactScore;
         }
+    }
+
+    @Data
+    public static class KnownExploited {
+        @JsonProperty("cve")
+        private String cve;
+
+        @JsonProperty("vendorProject")
+        private String vendorProject;
+
+        @JsonProperty("product")
+        private String product;
+
+        @JsonProperty("dateAdded")
+        private String dateAdded;
+
+        @JsonProperty("requiredAction")
+        private String requiredAction;
+
+        @JsonProperty("dueDate")
+        private String dueDate;
+
+        @JsonProperty("knownRansomwareCampaignUse")
+        private String knownRansomwareCampaignUse;
+
+        @JsonProperty("urls")
+        private List<String> urls;
+
+        @JsonProperty("cwes")
+        private List<String> cwes;
     }
 
     @Data

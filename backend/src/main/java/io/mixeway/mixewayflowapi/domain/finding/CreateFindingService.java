@@ -344,6 +344,8 @@ public class CreateFindingService {
                 recommendation = "Update package to version " + vuln.getFix().getVersions().get(0);
             }
 
+            Boolean hasExploit = (vuln.getKnownExploited() != null && !vuln.getKnownExploited().isEmpty());
+
             Vulnerability vulnerability = getOrCreateVulnerabilityService.getOrCreate(
                     vuln.getId(),
                     vuln.getDescription(),
@@ -352,7 +354,7 @@ public class CreateFindingService {
                     mapSeverity(vuln.getSeverity()),
                     epssProbability,
                     epssPercentile,
-                    null
+                    hasExploit
             );
 
             Hibernate.initialize(vulnerability.getComponents());
