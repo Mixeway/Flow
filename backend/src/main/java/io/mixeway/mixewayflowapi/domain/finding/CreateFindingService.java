@@ -299,25 +299,6 @@ public class CreateFindingService {
     }
 
     @Transactional
-    public void processGrypeComponents(GrypeReport grypeReport, CodeRepo codeRepo) {
-        CodeRepo managedRepo = codeRepoRepository.findById(codeRepo.getId())
-                .orElseThrow(() -> new IllegalArgumentException("CodeRepo not found"));
-
-        List<Component> components = grypeReport.getMatches().stream()
-                .map(match -> getOrCreateComponentService.getOrCreate(
-                        match.getArtifact().getName(),
-                        match.getArtifact().getType(),
-                        match.getArtifact().getVersion(),
-                        "nvd"
-                ))
-                .distinct()
-                .toList();
-
-        updateCodeRepoService.updateComponents(components, managedRepo);
-    }
-
-
-    @Transactional
     public List<Finding> mapGrypeReportToFindings(GrypeReport grypeReport, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
         List<Finding> findings = new ArrayList<>();
 

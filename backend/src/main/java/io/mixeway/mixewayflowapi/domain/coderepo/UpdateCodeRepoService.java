@@ -2,11 +2,13 @@ package io.mixeway.mixewayflowapi.domain.coderepo;
 
 import io.mixeway.mixewayflowapi.db.entity.*;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
+import io.mixeway.mixewayflowapi.db.repository.ComponentRepository;
 import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
 import io.mixeway.mixewayflowapi.domain.scaninfo.CreateScanInfoService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.checkerframework.checker.units.qual.C;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -29,7 +31,7 @@ public class UpdateCodeRepoService {
     private final FindingRepository findingRepository;
     private final CreateScanInfoService createScanInfoService;
     private final FindCodeRepoService findCodeRepoService;
-    private boolean scaScanPerformed;
+    private final ComponentRepository componentRepository;
 
     /**
      * Updates the SCA UUID for a given {@link CodeRepo}.
@@ -54,6 +56,16 @@ public class UpdateCodeRepoService {
         codeRepoRepository.save(codeRepo);
     }
 
+    @Transactional
+    public void updateSBOMComponents(List<Long> componentIds, Long codeRepoId) {
+        CodeRepo repo = codeRepoRepository.findById(codeRepoId)
+                .orElseThrow();
+
+        List<Component> managedComponents =
+                componentRepository.findAllById(componentIds);
+
+        repo.setComponents(managedComponents);
+    }
     /**
      * Updates the status of a {@link CodeRepo} based on findings for different sources (SAST, SCA, IaC, Secrets).
      * If a scan was performed, it also creates or updates a {@link io.mixeway.mixewayflowapi.db.entity.ScanInfo} snapshot.
