@@ -69,4 +69,10 @@ export class RepoService {
             { withCredentials: true }
         );
     }
+    deleteRepo(repoId: number): Observable<any> {
+        return this.http.delete<any>(
+            `${this.loginUrl}/api/v1/coderepo/${repoId}`,
+            { withCredentials: true }
+        );
+    }
 }

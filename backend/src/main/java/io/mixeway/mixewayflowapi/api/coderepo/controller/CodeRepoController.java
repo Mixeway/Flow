@@ -4,6 +4,7 @@ import io.mixeway.mixewayflowapi.api.coderepo.dto.*;
 import io.mixeway.mixewayflowapi.api.coderepo.service.CodeRepoApiService;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.domain.coderepo.CreateCodeRepoService;
+import io.mixeway.mixewayflowapi.domain.coderepo.DeleteCodeRepoService;
 import io.mixeway.mixewayflowapi.exceptions.CodeRepoNotFoundException;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
 import io.mixeway.mixewayflowapi.exceptions.UnauthorizedException;
@@ -27,6 +28,7 @@ import java.util.List;
 public class CodeRepoController {
     private final CreateCodeRepoService createCodeRepoService;
     private final CodeRepoApiService codeRepoApiService;
+    private final DeleteCodeRepoService deleteCodeRepoService;
 
     @PreAuthorize("hasAuthority('USER')")
     @PostMapping(value= "/api/v1/coderepo/create/gitlab")
@@ -158,6 +160,24 @@ public class CodeRepoController {
         } catch (Exception e) {
             log.error("[CodeRepo] Rename failed for id {} by {}: {}", id, principal.getName(), e.getMessage());
             return new ResponseEntity<>(new StatusDTO(e.getMessage()), HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @DeleteMapping(value = "/api/v1/coderepo/{id}")
+    public ResponseEntity<StatusDTO> deleteCodeRepo(@PathVariable("id") Long id, Principal principal) {
+        try {
+            deleteCodeRepoService.deleteRepo(id, principal);
+            return ResponseEntity.ok(new StatusDTO("Repository deleted."));
+        } catch (UnauthorizedException e) {
+            log.error("[CodeRepo] Unauthorized delete attempt for {} by {}", id, principal.getName());
+            return new ResponseEntity<>(new StatusDTO("Unauthorized"), HttpStatus.FORBIDDEN);
+        } catch (CodeRepoNotFoundException e) {
+            log.error("[CodeRepo] Repository not found for delete {} by {}", id, principal.getName());
+            return new ResponseEntity<>(new StatusDTO(e.getMessage()), HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            log.error("[CodeRepo] Delete failed for id {} by {}: {}", id, principal.getName(), e.getMessage());
+            return new ResponseEntity<>(new StatusDTO("Internal server error"), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }

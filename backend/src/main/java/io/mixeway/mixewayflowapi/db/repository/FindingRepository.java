@@ -140,6 +140,8 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
                                                                     String location,
                                                                     Finding.Status status);
 
+    void deleteByCodeRepo(CodeRepo codeRepo);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
     update Finding f

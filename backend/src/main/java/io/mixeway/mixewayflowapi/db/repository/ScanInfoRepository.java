@@ -14,4 +14,5 @@ public interface ScanInfoRepository extends CrudRepository<ScanInfo, Long> {
 
     Optional<ScanInfo> findByCodeRepoAndCodeRepoBranchAndCommitId(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId);
     List<ScanInfo> findByCodeRepo(CodeRepo repo);
+    void deleteByCodeRepo(CodeRepo codeRepo);
 }
