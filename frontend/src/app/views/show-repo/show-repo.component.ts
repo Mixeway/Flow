@@ -374,6 +374,10 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
     availableTeams: Team[] = [];
     selectedNewTeamId: number | null = null;
 
+    // Delete repo confirmation modal
+    deleteRepoConfirmationVisible: boolean = false;
+    deleteConfirmationText: string = '';
+
     // Comment properties
     newComment: string = '';
     isAddingComment: boolean = false;
@@ -1028,6 +1032,37 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                 this.toggleToast();
                 this.loadRepoInfo();
             },
+        });
+    }
+
+    openDeleteRepoModal(): void {
+        this.deleteConfirmationText = '';
+        this.deleteRepoConfirmationVisible = true;
+    }
+
+    closeDeleteRepoModal(): void {
+        this.deleteRepoConfirmationVisible = false;
+        this.deleteConfirmationText = '';
+    }
+
+    executeDeleteRepo(): void {
+        const repoId = this.repoData?.id || (this.repoId ? +this.repoId : null);
+        if (!repoId || this.deleteConfirmationText !== 'accept') {
+            return;
+        }
+        this.repoService.deleteRepo(repoId).subscribe({
+            next: () => {
+                this.toastStatus = 'success';
+                this.toastMessage = 'Repository deleted successfully';
+                this.toggleToast();
+                this.closeDeleteRepoModal();
+                this.router.navigate(['/dashboard']);
+            },
+            error: (error: any) => {
+                this.toastStatus = 'danger';
+                this.toastMessage = error?.error?.message || 'Error deleting repository';
+                this.toggleToast();
+            }
         });
     }
 

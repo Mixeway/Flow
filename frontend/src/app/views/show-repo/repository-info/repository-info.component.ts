@@ -86,6 +86,7 @@ export class RepositoryInfoComponent implements OnInit {
 
   @Output() runScanEvent = new EventEmitter<void>();
   @Output() openChangeTeamModalEvent = new EventEmitter<void>();
+  @Output() deleteRepoEvent = new EventEmitter<void>();
 
   ngOnInit(): void {
     // Enhance chart options with better defaults
@@ -123,6 +124,9 @@ export class RepositoryInfoComponent implements OnInit {
         this.renameError = null;
         this.renameForm.name = this.repoData?.name ?? '';
         this.renameModalVisible = true;
+    }
+    requestDeleteRepo(): void {
+        this.deleteRepoEvent.emit();
     }
     confirmRename() {
         const id = this.repoData?.id;
