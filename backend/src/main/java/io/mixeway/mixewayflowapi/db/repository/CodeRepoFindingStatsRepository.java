@@ -83,4 +83,6 @@ public interface CodeRepoFindingStatsRepository extends CrudRepository<CodeRepoF
      */
     List<CodeRepoFindingStats> findByCodeRepoOrderByDateInsertedDesc(CodeRepo codeRepo);
 
+    void deleteByCodeRepo(CodeRepo codeRepo);
+
 }

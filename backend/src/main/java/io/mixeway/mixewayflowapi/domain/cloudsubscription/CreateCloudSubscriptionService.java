@@ -9,6 +9,7 @@ import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import io.mixeway.mixewayflowapi.domain.user.FindUserService;
 import io.mixeway.mixewayflowapi.exceptions.DuplicateCloudSubscriptionException;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
+import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import io.mixeway.mixewayflowapi.utils.PermissionFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -25,6 +26,7 @@ public class CreateCloudSubscriptionService {
     private final FindTeamService findTeamService;
     private final PermissionFactory permissionFactory;
     private final FindUserService findUserService;
+    private final ScanManagerService scanManagerService;
 
 
     @Transactional
@@ -48,6 +50,7 @@ public class CreateCloudSubscriptionService {
         CloudSubscription subscription = new CloudSubscription(name, team, externalProjectName);
         CloudSubscription saved = cloudSubscriptionRepository.save(subscription);
         log.info("Created new cloud subscription: {} for team: {}", externalProjectName, team.getName());
+        scanManagerService.runCloudScan(subscription);
         return saved;
     }
 }

@@ -49,10 +49,10 @@ public class ScanScheduler {
      * This method is executed automatically after the bean's properties have been set.
      *
      */
-    @PostConstruct
-    public void runAfterStartup() {
-        scaService.initialize();
-    }
+//    @PostConstruct
+//    public void runAfterStartup() {
+//        scaService.initialize();
+//    }
 
 
     @Scheduled(cron = "0 0 1 * * ?") // Every day at 1:00 AM
@@ -63,7 +63,7 @@ public class ScanScheduler {
      * Scheduled task that runs every day at 1 AM.
      * This method fetches cloud vulnerability findings from Cloud Scanner.
      */
-    @Scheduled(cron = "0 0 1 * * ?")
+    @Scheduled(cron = "0 0 2 * * ?")
     public void runEveryDayAt1AM() {
         scanManagerService.runCloudScansForAllSubscriptions();
         log.info("[Scheduler] Fetched cloud vulnerability findings.");

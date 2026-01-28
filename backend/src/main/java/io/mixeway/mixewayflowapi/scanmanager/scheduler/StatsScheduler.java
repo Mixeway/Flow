@@ -41,7 +41,7 @@ public class StatsScheduler {
         log.info("[StatusService] Starting generation of stats for Cloud Subscriptions...");
 
         for (CloudSubscription cloudSubscription : findCloudSubscriptionService.findAll()) {
-            List<Finding> findings = findFindingService.getCloudSubscriptionFindings(cloudSubscription);
+            List<Finding> findings = findFindingService.getCloudSubscriptionFindings(cloudSubscription, Finding.Source.CLOUD_SCANNER);
 
             int criticalFindings = countFindings(findings, Finding.Source.CLOUD_SCANNER, Finding.Severity.CRITICAL, Finding.Status.EXISTING, Finding.Status.NEW);
             int highFindings = countFindings(findings, Finding.Source.CLOUD_SCANNER, Finding.Severity.HIGH, Finding.Status.EXISTING, Finding.Status.NEW);

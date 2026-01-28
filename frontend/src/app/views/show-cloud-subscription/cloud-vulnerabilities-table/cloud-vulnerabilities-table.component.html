@@ -3,24 +3,30 @@
     <c-card-header class="cloud-vuln-table-header">
         <div class="filter-controls">
             <!-- Toggle Controls -->
-            <div class="toggle-controls">
-                <div class="toggle-group">
-                    <c-form-check class="toggle-check" switch>
-                        <input
-                                cFormCheckInput
-                                id="showRemoved"
-                                type="checkbox"
-                                (change)="toggleShowRemoved($event)"
-                        />
-                        <label cFormCheckLabel for="showRemoved">Show Removed</label>
-                    </c-form-check>
-                </div>
+            <div class="toggle-controls d-flex align-items-center">
+                <!-- Show for vulnerabilities (cloud_scanner) -->
+                <c-form-check *ngIf="sourceType === 'CLOUD_SCANNER'" class="toggle-check" switch>
+                    <input cFormCheckInput id="showRemoved" type="checkbox"
+                           [checked]="showRemoved"
+                           [disabled]="statusFilter === 'NEW' || statusFilter === 'EXISTING'"
+                           (change)="toggleShowRemoved($event)" />
+                    <label cFormCheckLabel for="showRemoved">Show Removed</label>
+                </c-form-check>
+
+                <!-- Show for issues (cloud_issue) -->
+                <c-form-check *ngIf="sourceType === 'CLOUD_ISSUE'" class="toggle-check" switch>
+                    <input cFormCheckInput id="showIssuesRemoved" type="checkbox"
+                           [checked]="showIssuesRemoved"
+                           [disabled]="statusIssuesFilter === 'NEW' || statusIssuesFilter === 'EXISTING'"
+                           (change)="toggleShowIssuesRemoved($event)" />
+                    <label cFormCheckLabel for="showIssuesRemoved">Show Removed</label>
+                </c-form-check>
             </div>
 
+
             <!-- Action Controls -->
-            <div class="action-controls">
-                <div class="page-size-control">
-                    <label class="form-label">Page Size</label>
+            <div class="action-controls d-flex align-items-center gap-2">
+                <label class="form-label mb-0">Page Size</label>
                     <select class="form-select" [(ngModel)]="vulnerabilitiesLimit">
                         <option [value]="10">10</option>
                         <option [value]="20">20</option>
@@ -29,7 +35,6 @@
                         <option [value]="200">200</option>
                     </select>
                 </div>
-            </div>
         </div>
     </c-card-header>
 
@@ -49,7 +54,7 @@
         <div *ngIf="!vulnerabilitiesLoading" class="table-container">
             <ngx-datatable
                     class="bootstrap vuln-datatable"
-                    [rows]="filteredVulns"
+                    [rows]="tableRows"
                     [columnMode]="'force'"
                     [footerHeight]="50"
                     [headerHeight]="50"
@@ -99,7 +104,8 @@
                         <div class="column-header header-centered">
                             <span>Severity</span>
                             <div class="filter-container">
-                                <select class="form-select form-select-sm" (change)="updateFilterSeverity($event)">
+                                <select class="form-select form-select-sm"
+                                        (change)="sourceType === 'CLOUD_SCANNER' ? updateFilterSeverity($event) : updateIssuesFilterSeverity($event)">
                                     <option value="">All</option>
                                     <option value="Critical">Critical</option>
                                     <option value="High">High</option>
@@ -134,17 +140,16 @@
                                             type="text"
                                             class="form-control form-control-sm"
                                             placeholder="Search name"
-                                            (input)="updateFilterName($event)"
+                                            (input)="sourceType === 'CLOUD_SCANNER' ? updateFilterName($event) : updateIssuesFilterName($event)"
                                     />
                                     <svg cIcon name="cil-magnifying-glass" class="search-icon"></svg>
                                 </div>
                                 <!-- Include status filter -->
-                                <select class="form-select form-select-sm mt-1" (change)="updateFilterStatus($event)">
-                                    <option value="">All Statuses</option>
+                                <select class="form-select form-select-sm mt-1"
+                                        (change)="sourceType === 'CLOUD_SCANNER' ? updateFilterStatus($event) : updateIssuesFilterStatus($event)">                                    <option value="">All Statuses</option>
                                     <option value="New">New</option>
                                     <option value="Existing">Existing</option>
                                     <option value="Removed">Removed</option>
-                                    <option value="Supressed">Suppressed</option>
                                 </select>
                             </div>
                         </div>
@@ -200,7 +205,7 @@
                     >
                         <div class="source-cell">
                             <div [ngClass]="'source-badge source-' + row?.source?.toLowerCase()">
-                                {{ row?.source }}
+                                {{ row?.source?.replace("_", ' ') }}
                             </div>
                         </div>
                     </ng-template>
@@ -230,7 +235,7 @@
                                             type="text"
                                             class="form-control form-control-sm"
                                             placeholder="Search"
-                                            (input)="updateFilterLocation($event)"
+                                            (input)="sourceType === 'CLOUD_SCANNER' ? updateFilterLocation($event) : updateIssuesFilterLocation($event)"
                                     />
                                     <svg cIcon name="cil-magnifying-glass" class="search-icon"></svg>
                                 </div>
@@ -253,12 +258,17 @@
             </ngx-datatable>
 
             <!-- Empty state message -->
-            <div *ngIf="filteredVulns.length === 0" class="empty-state">
+            <div *ngIf="tableRows.length === 0" class="empty-state">
                 <svg cIcon name="cil-check-circle" width="48" height="48"></svg>
-                <h4>No vulnerabilities found</h4>
-                <p>No vulnerabilities match your current filter criteria.</p>
+                <h4>
+                    No {{ sourceType === 'CLOUD_SCANNER' ? 'vulnerabilities' : 'issues' }} found
+                </h4>
+                <p>
+                    No {{ sourceType === 'CLOUD_SCANNER' ? 'vulnerabilities' : 'issues' }} match your current filter criteria.
+                </p>
                 <button cButton color="primary" (click)="clearFilters()">Clear filters</button>
             </div>
+
         </div>
     </c-card-body>
 </c-card>

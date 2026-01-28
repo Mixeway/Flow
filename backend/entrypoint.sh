@@ -30,16 +30,16 @@ else
     SPRING_PROFILE="prod"
 fi
 
-# Start Dependency-Track in the background with 4GB of memory and log output to a file
-LOG_FILE="/var/log/dtrack.log"
-echo "Starting Dependency-Track..."
-if [ -n "$PROXY_HOST" ] && [ -n "$PROXY_PORT" ]; then
-    java -Xmx4g -Dhttp.proxyHost=$PROXY_HOST -Dhttp.proxyPort=$PROXY_PORT -Dhttps.proxyHost=$PROXY_HOST -Dhttps.proxyPort=$PROXY_PORT -Dcom.sun.net.ssl.checkRevocation=false -Djavax.net.ssl.trustAll=true -Djavax.net.ssl.trustStore=/dev/null -Djavax.net.ssl.trustAll=true -Djavax.net.ssl.verifyHostname=false -jar /opt/dtrack/dependency-track-bundled.jar >> $LOG_FILE 2>&1 &
-else
-    java -Xmx4g -jar /opt/dtrack/dependency-track-bundled.jar >> $LOG_FILE 2>&1 &
-fi
-
-sleep 30
+## Start Dependency-Track in the background with 4GB of memory and log output to a file
+#LOG_FILE="/var/log/dtrack.log"
+#echo "Starting Dependency-Track..."
+#if [ -n "$PROXY_HOST" ] && [ -n "$PROXY_PORT" ]; then
+#    java -Xmx4g -Dhttp.proxyHost=$PROXY_HOST -Dhttp.proxyPort=$PROXY_PORT -Dhttps.proxyHost=$PROXY_HOST -Dhttps.proxyPort=$PROXY_PORT -Dcom.sun.net.ssl.checkRevocation=false -Djavax.net.ssl.trustAll=true -Djavax.net.ssl.trustStore=/dev/null -Djavax.net.ssl.trustAll=true -Djavax.net.ssl.verifyHostname=false -jar /opt/dtrack/dependency-track-bundled.jar >> $LOG_FILE 2>&1 &
+#else
+#    java -Xmx4g -jar /opt/dtrack/dependency-track-bundled.jar >> $LOG_FILE 2>&1 &
+#fi
+#
+#sleep 30
 
 # Start ZAP daemon
 ZAP_LOG_FILE="/var/log/zap.log"
@@ -152,6 +152,7 @@ if [ "$(echo $SSL | tr '[:upper:]' '[:lower:]')" = "true" ]; then
     fi
 else
     echo "SSL is not enabled. Running the application without SSL..."
+    SPRING_PROFILE=prodhttp
     if [ -n "$PROXY_HOST" ] && [ -n "$PROXY_PORT" ]; then
         java -Dspring.profiles.active=$SPRING_PROFILE -Dproxy.host=$PROXY_HOST -Dproxy.port=$PROXY_PORT -jar /app/flowapi.jar
     else

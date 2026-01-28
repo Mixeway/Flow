@@ -49,8 +49,8 @@ public class FindFindingService {
         return findingRepository.findById(id);
     }
 
-    public List<Finding> getCloudSubscriptionFindings(CloudSubscription cloudSubscription) {
-        return findingRepository.findByCloudSubscription(cloudSubscription);
+    public List<Finding> getCloudSubscriptionFindings(CloudSubscription cloudSubscription, Finding.Source source) {
+        return findingRepository.findByCloudSubscriptionAndSource(cloudSubscription, source);
     }
 
 

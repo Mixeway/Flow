@@ -48,6 +48,13 @@
                         <svg cIcon name="cil-pencil" class="me-1"></svg>
                         Rename
                     </button>
+                    <button *ngIf="userRole === 'ADMIN'"
+                            cButton color="danger" variant="ghost" size="sm"
+                            [cTooltip]="'Delete repository'"
+                            (click)="requestDeleteRepo()">
+                        <svg cIcon name="cil-trash" class="me-1"></svg>
+                        Delete
+                    </button>
                 </div>
             </c-card-header>
 

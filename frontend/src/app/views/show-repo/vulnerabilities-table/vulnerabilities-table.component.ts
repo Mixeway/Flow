@@ -277,7 +277,7 @@ export class VulnerabilitiesTableComponent implements OnInit, OnChanges {
    * @param source The vulnerability source (e.g., 'SAST', 'SCA').
    */
   isLinkableSource(source: string): boolean {
-    const linkableSources = ['SAST', 'IAC', 'SECRETS', 'DAST'];
+    const linkableSources = ['SAST', 'IAC', 'DAST'];
     return linkableSources.includes(source);
   }
 
@@ -288,27 +288,30 @@ export class VulnerabilitiesTableComponent implements OnInit, OnChanges {
     if (!row?.location) {
       return '#';
     }
-    // For DAST, the location is a full URL and can be used directly.
     if (row.source === 'DAST') {
       return row.location.startsWith('http') ? row.location : `//${row.location}`;
     }
 
-    if (!this.repoData?.repourl) {
+    if (!this.repoData?.repourl || !this.repoData?.type) {
       return '#';
     }
+
     const location = row.location;
     const repoUrl = this.repoData.repourl;
+    const repoType = this.repoData.type.toUpperCase(); // Use the type property
     const branch = this.selectedBranch || this.repoData?.defaultBranch?.name;
 
     const match = location.match(/(.*):(\d+)/);
-    if (!match) return repoUrl;
+    if (!match) {
+      return repoUrl;
+    }
 
     const [, filePath, lineNumber] = match;
+    const baseUrl = repoUrl.replace(/\/$/, '');
 
-    if (repoUrl.includes('github.com')) {
-      return `${repoUrl}/blob/${branch}/${filePath}#L${lineNumber}`;
-    } else if (repoUrl.includes('gitlab.com')) {
-      const baseUrl = repoUrl.replace(/\/?$/, '');
+    if (repoType === 'GITHUB') {
+      return `${baseUrl}/blob/${branch}/${filePath}#L${lineNumber}`;
+    } else if (repoType === 'GITLAB') {
       return `${baseUrl}/-/blob/${branch}/${filePath}#L${lineNumber}`;
     }
 
@@ -316,25 +319,48 @@ export class VulnerabilitiesTableComponent implements OnInit, OnChanges {
   }
 
   /**
-   * Get formatted location for a vulnerability row
+   * NEW: Gets the shortened display text for the location column.
+   */
+  getShortenedLocationText(row: any): string {
+    if (!row?.location) {
+      return 'Location not available';
+    }
+
+    const fullLocation = row.location;
+
+    // For these sources, don't shorten the path, just display it.
+    if (['DAST', 'SCA', 'GITLAB_SCANNER', 'SECRETS'].includes(row.source)) {
+      return fullLocation;
+    }
+
+    // For other sources, shorten the path if it is too long.
+    const pathParts = fullLocation.split('/');
+    if (pathParts.length > 4) {
+      // e.g., ".../path/to/file.txt:1"
+      return '...' + pathParts.slice(-3).join('/');
+    }
+
+    return fullLocation;
+  }
+
+  /**
+   * UNCHANGED: Get formatted location for a vulnerability row.
+   * This is still used by the Excel export and should return the full path.
    */
   getFormattedLocationForRow(row: any): string {
     if (!row?.location) {
       return 'Location not available';
     }
-    // For these types, display the raw location string.
-    if (row.source === 'DAST' || row.source === 'SCA' || row.source === 'GITLAB_SCANNER') {
+    if (['DAST', 'SCA', 'GITLAB_SCANNER', 'SECRETS'].includes(row.source)) {
       return row.location;
     }
-
-    // For SAST, IaC, Secrets, format it as path:line.
     const location = row.location;
     const match = location.match(/(.*):(\d+)/);
     if (!match) return location;
-
     const [, filePath, lineNumber] = match;
     return `${filePath}:${lineNumber}`;
   }
+
   // === XLSX Export ===
   private formatDateForXlsx(d?: string | Date | null) {
     if (!d) return '';

@@ -316,7 +316,7 @@ public class DependencyTrackApiClientService {
                 .build();
 
         Mono<ResponseEntity<String>> responseMono = webClient.method(HttpMethod.PUT)
-                .bodyValue(new SendBomRequestDto(codeRepo.getScaUUID(), encodeFileToBase64Binary(bomPath)))
+                .bodyValue(new SendBomRequestDto(codeRepo.getScaUUID(),codeRepo.getTeam().getName() + "-" + codeRepo.getName(), encodeFileToBase64Binary(bomPath), "1.0.0"))
                 .retrieve()
                 .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(), clientResponse ->
                         clientResponse.bodyToMono(String.class)

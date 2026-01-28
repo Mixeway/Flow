@@ -105,23 +105,25 @@ RUN wget https://github.com/zaproxy/zaproxy/releases/download/v2.16.1/ZAP_2.16.1
 
 # Rest of the Dockerfile remains unchanged
 RUN mkdir /opt/kics
-RUN mkdir /opt/dtrack
+#RUN mkdir /opt/dtrack
 COPY --from=kics /app/bin/kics /usr/local/bin/kics
 COPY --from=kics /app/bin/assets /opt/tools/kics/assets
 RUN rm -rf /opt/tools/kics/assets/queries/openAPI
 RUN rm -rf /opt/tools/kics/assets/queries/common/passwords_and_secrets
 
-# Setup Dependency-Track
-RUN wget https://github.com/DependencyTrack/dependency-track/releases/download/4.11.6/dependency-track-bundled.jar -P /opt/dtrack/
+## Setup Dependency-Track
+#RUN wget https://github.com/DependencyTrack/dependency-track/releases/download/4.13.6/dependency-track-bundled.jar -P /opt/dtrack/
 
 # Download and install the appropriate gitleaks for the architecture
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then \
         wget -O gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.12.0/gitleaks_8.12.0_linux_x64.tar.gz; \
         wget -O bearer.tar.gz https://github.com/Bearer/bearer/releases/download/v1.50.2/bearer_1.50.2_linux_amd64.tar.gz; \
+        wget -O grype.tar.gz https://github.com/anchore/grype/releases/download/v0.104.2/grype_0.104.2_linux_amd64.tar.gz; \
     elif [ "$ARCH" = "aarch64" ]; then \
         wget -O gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.12.0/gitleaks_8.12.0_linux_arm64.tar.gz; \
         wget -O bearer.tar.gz https://github.com/Bearer/bearer/releases/download/v1.50.2/bearer_1.50.2_linux_arm64.tar.gz; \
+        wget -O grype.tar.gz https://github.com/anchore/grype/releases/download/v0.104.2/grype_0.104.2_linux_arm64.tar.gz; \
     else \
         echo "Unsupported architecture: $ARCH"; \
         exit 1; \
@@ -131,7 +133,10 @@ RUN ARCH=$(uname -m) && \
     rm gitleaks.tar.gz && \
     tar -xzf bearer.tar.gz && \
     mv bearer /usr/local/bin/bearer && \
-    rm bearer.tar.gz
+    rm bearer.tar.gz && \
+    tar -xzf grype.tar.gz && \
+    mv grype /usr/local/bin/grype && \
+    rm grype.tar.gz
 
 # Create directory for Bearer rules
 RUN mkdir -p /opt/bearer

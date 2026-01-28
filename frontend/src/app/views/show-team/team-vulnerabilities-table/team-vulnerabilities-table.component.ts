@@ -264,6 +264,7 @@ export class TeamVulnerabilitiesTableComponent implements OnInit, OnChanges {
       'Last Seen': this.formatDateForXlsx(row?.last_seen),
       Source: row?.source ?? '',
       Location: this.getFormattedLocationForRow(row),
+      RepoUrl: row?.repoUrl ?? '',
     };
   }
 

@@ -48,6 +48,8 @@ services:
     container_name: flow_frontend
     ports:
       - "443:443"
+    environment:
+      SSL: "TRUE"
     volumes:
       - flow_data:/etc/nginx/ssl
     depends_on:

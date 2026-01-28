@@ -15,7 +15,9 @@ import io.mixeway.mixewayflowapi.domain.vulnerability.UpdateVulnerabilityService
 import io.mixeway.mixewayflowapi.exceptions.GitException;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GitCommentService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GitService;
+import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.dto.CloudIssueReport;
 import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.dto.CloudScannerReport;
+import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.service.CloudIssueService;
 import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.service.CloudScannerService;
 import io.mixeway.mixewayflowapi.integrations.scanner.gitlab_scanner.service.GitLabScannerService;
 import io.mixeway.mixewayflowapi.integrations.scanner.iac.service.IaCService;
@@ -23,12 +25,12 @@ import io.mixeway.mixewayflowapi.integrations.scanner.sast.service.SASTService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.apiclient.KEVApiClient;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.dto.CatalogDto;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.dto.VulnerabilityDto;
+import io.mixeway.mixewayflowapi.integrations.scanner.sca.service.SCAGrypeService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.service.SCAService;
 import io.mixeway.mixewayflowapi.integrations.scanner.secrets.service.SecretsService;
 import io.mixeway.mixewayflowapi.integrations.scanner.zap.service.ZAPService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -42,8 +44,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -67,6 +67,7 @@ public class ScanManagerService {
     private final KEVApiClient kevApiClient;
     private final UpdateVulnerabilityService updateVulnerabilityService;
     private final CloudScannerService cloudScannerService;
+    private final CloudIssueService cloudIssueService;
     private final UpdateCloudSubscriptionService updateCloudSubscriptionService;
     private final CreateFindingService createFindingService;
     private final CloudSubscriptionRepository cloudSubscriptionRepository;
@@ -99,6 +100,7 @@ public class ScanManagerService {
             .expireAfterWrite(10, TimeUnit.MINUTES)
             .build();
     private final GitLabScannerService gitLabScannerService;
+    private final SCAGrypeService sCAGrypeService;
 
 
     /**
@@ -145,7 +147,7 @@ public class ScanManagerService {
 
                 String repoDir = "/tmp/" + codeRepo.getName();
                 String commit = "";
-                AtomicBoolean scaScanPerformed = new AtomicBoolean(false);
+//                AtomicBoolean scaScanPerformed = new AtomicBoolean(false);
                 Future<?> timeoutFuture = null;
 
                 try {
@@ -162,7 +164,8 @@ public class ScanManagerService {
 
                     // Run scans in parallel
                     Future<Void> secretScanFuture = runSecretScan(repoDir, codeRepo, codeRepoBranch);
-                    Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo, codeRepoBranch, scaScanPerformed);
+//                    Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo, codeRepoBranch, scaScanPerformed); Dependency Track version
+                    Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> sastScanFuture = runSASTScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> iacScanFuture = runIACScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> gitlabScanFuture = null;
@@ -212,7 +215,8 @@ public class ScanManagerService {
                 } finally {
                     // Update status
                     try {
-                        updateCodeRepoService.updateCodeRepoStatus(codeRepo, codeRepoBranch, scaScanPerformed.get(), commit);
+//                        updateCodeRepoService.updateCodeRepoStatus(codeRepo, codeRepoBranch, scaScanPerformed.get(), commit);
+                        updateCodeRepoService.updateCodeRepoStatus(codeRepo, codeRepoBranch, commit);
                     } catch (Exception updateEx) {
                         log.error("[ScanManagerService] Failed to update CodeRepo status for {}: {}", codeRepo.getName(), updateEx.getMessage(), updateEx);
                     }
@@ -272,7 +276,7 @@ public class ScanManagerService {
 
                 String repoDir = "/tmp/" + codeRepo.getName();
                 String commit = "";
-                AtomicBoolean scaScanPerformed = new AtomicBoolean(false);
+//                AtomicBoolean scaScanPerformed = new AtomicBoolean(false);
                 Future<?> timeoutFuture = null;
 
                 try {
@@ -289,7 +293,8 @@ public class ScanManagerService {
 
                     // Run scans in parallel
                     Future<Void> secretScanFuture = runSecretScan(repoDir, codeRepo, codeRepoBranch);
-                    Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo, codeRepoBranch, scaScanPerformed);
+//                    Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo, codeRepoBranch, scaScanPerformed); Dependency Track version
+                    Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> sastScanFuture = runSASTScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> iacScanFuture = runIACScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> gitlabScanFuture = null;
@@ -339,7 +344,8 @@ public class ScanManagerService {
                 } finally {
                     // Update status
                     try {
-                        updateCodeRepoService.updateCodeRepoStatus(codeRepo, codeRepoBranch, scaScanPerformed.get(), commit);
+//                        updateCodeRepoService.updateCodeRepoStatus(codeRepo, codeRepoBranch, scaScanPerformed.get(), commit); Dependency Track version
+                         updateCodeRepoService.updateCodeRepoStatus(codeRepo, codeRepoBranch, commit);
                     } catch (Exception updateEx) {
                         log.error("[ScanManagerService] Failed to update CodeRepo status for {}: {}", codeRepo.getName(), updateEx.getMessage(), updateEx);
                     }
@@ -389,14 +395,40 @@ public class ScanManagerService {
         return scanExecutorService.submit(task);
     }
 
-    private Future<Void> runSCAScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, AtomicBoolean scaScanPerformed) {
+// Dependency Track version
+//    private Future<Void> runSCAScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, AtomicBoolean scaScanPerformed) {
+//        Callable<Void> task = () -> {
+//            int currentScaScans = scaScansRunning.incrementAndGet();
+//            log.info("[ScanManagerService] Starting new SCA scan, parallel SCA scans running {}", currentScaScans);
+//
+//            try {
+//                log.info("[ScanManagerService] Starting SCA scan... [for: {}]", repoDir);
+//                scaScanPerformed.set(scaService.runScan(repoDir, codeRepo, codeRepoBranch));
+//            } catch (Exception e) {
+//                if (Thread.currentThread().isInterrupted()) {
+//                    log.warn("[ScanManagerService] SCA scan interrupted for {}.", codeRepo.getRepourl());
+//                    Thread.currentThread().interrupt();
+//                } else {
+//                    log.error("[ScanManagerService] An error occurred during SCA scan for {} - {}.", codeRepo.getRepourl(), e.getLocalizedMessage());
+//                    e.printStackTrace();
+//                }
+//            } finally {
+//                int remainingScaScans = scaScansRunning.decrementAndGet();
+//                log.debug("[ScanManagerService] SCA scan completed, parallel SCA scans running {}", remainingScaScans);
+//            }
+//            return null;
+//        };
+//        return scanExecutorService.submit(task);
+//    }
+
+    private Future<Void> runSCAScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
         Callable<Void> task = () -> {
             int currentScaScans = scaScansRunning.incrementAndGet();
             log.info("[ScanManagerService] Starting new SCA scan, parallel SCA scans running {}", currentScaScans);
 
             try {
                 log.info("[ScanManagerService] Starting SCA scan... [for: {}]", repoDir);
-                scaScanPerformed.set(scaService.runScan(repoDir, codeRepo, codeRepoBranch));
+                sCAGrypeService.runGrype(repoDir, codeRepo, codeRepoBranch);
             } catch (Exception e) {
                 if (Thread.currentThread().isInterrupted()) {
                     log.warn("[ScanManagerService] SCA scan interrupted for {}.", codeRepo.getRepourl());
@@ -593,15 +625,19 @@ public class ScanManagerService {
                 cloudSubscription.updateCloudSubscriptionScanStatus(CloudSubscription.ScanStatus.RUNNING);
                 cloudSubscriptionRepository.save(cloudSubscription);
                 CloudScannerReport cloudScannerReport = cloudScannerService.runCloudScanner(cloudSubscription.getName(), wizAuthToken);
+                CloudIssueReport cloudIssueReport = cloudIssueService.runCloudIssueScanner(cloudSubscription.getName(), wizAuthToken);
                 List<Finding> findings = createFindingService.mapCloudScannerReportToFindings(cloudScannerReport, cloudSubscription);
+                List<Finding> issues = createFindingService.mapCloudIssueReportToFindings(cloudIssueReport, cloudSubscription);
 
-                if (findings == null || findings.isEmpty()) {
+                if (findings.isEmpty() && issues.isEmpty()) {
                     log.info("[CloudScannerService] No findings for subscription: {}", cloudSubscription.getExternal_project_name());
                     updateCloudSubscriptionService.updateCloudSubscriptionScanStatus(cloudSubscription);
                     findings = new ArrayList<>();
+                    issues = new ArrayList<>();
                 }
 
                 createFindingService.saveFindings(findings, null, null, Finding.Source.CLOUD_SCANNER, cloudSubscription);
+                createFindingService.saveFindings(issues, null, null, Finding.Source.CLOUD_ISSUE, cloudSubscription);
                 updateCloudSubscriptionService.updateCloudSubscriptionScanStatus(cloudSubscription);
             } catch (Exception e) {
                 log.error("Error running cloud scan for project ID {}: {}", cloudSubscription.getName(), e.getMessage(), e);
@@ -625,19 +661,23 @@ public class ScanManagerService {
 
         try {
             log.info("[CloudScannerService] Scanning {}", cloudSubscription.getExternal_project_name());
-            CloudScannerReport cloudScannerReport = cloudScannerService.runCloudScanner(cloudSubscription.getName(), wizAuthToken);
             cloudSubscription.updateCloudSubscriptionScanStatus(CloudSubscription.ScanStatus.RUNNING);
             cloudSubscriptionRepository.save(cloudSubscription);
+            CloudScannerReport cloudScannerReport = cloudScannerService.runCloudScanner(cloudSubscription.getName(), wizAuthToken);
+            CloudIssueReport cloudIssueReport = cloudIssueService.runCloudIssueScanner(cloudSubscription.getName(), wizAuthToken);
             List<Finding> findings = createFindingService.mapCloudScannerReportToFindings(cloudScannerReport, cloudSubscription);
+            List<Finding> issues = createFindingService.mapCloudIssueReportToFindings(cloudIssueReport, cloudSubscription);
 
-            if (findings == null || findings.isEmpty()) {
+            if (findings.isEmpty() && issues.isEmpty()) {
                 log.info("[CloudScannerService] No findings for subscription: {}", cloudSubscription.getExternal_project_name());
                 updateCloudSubscriptionService.updateCloudSubscriptionScanStatus(cloudSubscription);
                 findings = new ArrayList<>();
+                issues = new ArrayList<>();
             }
 
 
             createFindingService.saveFindings(findings, null, null, Finding.Source.CLOUD_SCANNER, cloudSubscription);
+            createFindingService.saveFindings(issues, null, null, Finding.Source.CLOUD_ISSUE, cloudSubscription);
             updateCloudSubscriptionService.updateCloudSubscriptionScanStatus(cloudSubscription);
         } catch (Exception e) {
             log.error("Error running cloud scan for project ID {}: {}", cloudSubscription.getName(), e.getMessage(), e);
@@ -659,7 +699,6 @@ public class ScanManagerService {
         if (!jsonResponse.has("access_token")) {
             throw new IllegalStateException("Failed to fetch Wiz auth token.");
         }
-
         return jsonResponse.get("access_token").getAsString();
     }
 

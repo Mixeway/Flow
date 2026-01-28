@@ -1,5 +1,7 @@
 package io.mixeway.mixewayflowapi.api.threatintel.controller;
 
+import io.mixeway.mixewayflowapi.api.teamfindings.controller.FindingsByTeamController;
+import io.mixeway.mixewayflowapi.api.teamfindings.service.FindingsByTeamService;
 import io.mixeway.mixewayflowapi.api.threatintel.dto.ItemListResponse;
 import io.mixeway.mixewayflowapi.api.threatintel.dto.RemovedVulnerabilityDTO;
 import io.mixeway.mixewayflowapi.api.threatintel.dto.ReviewedVulnerabilityDTO;
@@ -15,6 +17,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
@@ -27,6 +30,7 @@ import java.util.List;
 public class ThreatIntelController {
 
     private final ThreatIntelService threatIntelService;
+    private final FindingsByTeamService findingsByTeamService;
 
     @PreAuthorize("hasAuthority('USER')")
     @GetMapping(value= "/api/v1/threat-intel/findings")
@@ -36,8 +40,11 @@ public class ThreatIntelController {
 
     @PreAuthorize("hasAuthority('USER')")
     @GetMapping(value= "/api/v1/threat-intel/findings/{remoteId}")
-    public ResponseEntity<ItemListResponse> getThreatsForTeam(Principal principal, @PathVariable("remoteId") String remoteId){
+    public ResponseEntity<ItemListResponse> getThreatsForTeam(@RequestHeader("X-API-KEY") String apiKey, Principal principal, @PathVariable("remoteId") String remoteId){
         try {
+            if (!findingsByTeamService.isValidApiKey(apiKey)) {
+                return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+            }
             return threatIntelService.getThreatsForTeam(principal, remoteId);
         } catch (TeamNotFoundException e){
             log.warn(e.getLocalizedMessage());

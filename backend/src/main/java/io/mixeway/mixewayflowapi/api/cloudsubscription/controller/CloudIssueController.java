@@ -1,6 +1,6 @@
 package io.mixeway.mixewayflowapi.api.cloudsubscription.controller;
 
-import io.mixeway.mixewayflowapi.api.cloudsubscription.service.CloudFindingService;
+import io.mixeway.mixewayflowapi.api.cloudsubscription.service.CloudIssuesService;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.CreateCommentRequestDto;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.GetFindingResponseDto;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.VulnsResponseDto;
@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
 import java.security.Principal;
 import java.util.List;
 
@@ -21,15 +22,15 @@ import java.util.List;
 @Validated
 @RequiredArgsConstructor
 @Log4j2
-public class CloudFindingController {
-    private final CloudFindingService cloudFindingService;
+public class CloudIssueController {
+    private final CloudIssuesService cloudIssueService;
     private final CreateCommentService createCommentService;
 
     @PreAuthorize("hasAuthority('USER')")
-    @GetMapping(value = "/api/v1/cloudsubscription/{id}/findings")
-    public ResponseEntity<List<VulnsResponseDto>> getCloudSubscriptionFindings(@PathVariable("id") Long id, Principal principal) {
+    @GetMapping(value = "/api/v1/cloudsubscription/{id}/issues")
+    public ResponseEntity<List<VulnsResponseDto>> getCloudSubscriptionIssues(@PathVariable("id") Long id, Principal principal) {
         try {
-            return new ResponseEntity<>(cloudFindingService.getCloudSubscriptionFindings(id, principal), HttpStatus.OK);
+            return new ResponseEntity<>(cloudIssueService.getCloudSubscriptionIssues(id, principal), HttpStatus.OK);
         } catch (Exception e) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
@@ -37,28 +38,28 @@ public class CloudFindingController {
 
 
     @PreAuthorize("hasAuthority('USER')")
-    @GetMapping(value= "/api/v1/cloudsubscription/{id}/finding/{findingId}")
-    public ResponseEntity<GetFindingResponseDto> getFinding(@PathVariable("id") Long id,@PathVariable("findingId") Long findingId, Principal principal){
+    @GetMapping(value= "/api/v1/cloudsubscription/{id}/issue/{issueId}")
+    public ResponseEntity<GetFindingResponseDto> getIssue(@PathVariable("id") Long id,@PathVariable("issueId") Long issueId, Principal principal){
         try {
-            return new ResponseEntity<>(cloudFindingService.getFinding(id,findingId,principal), HttpStatus.OK);
+            return new ResponseEntity<>(cloudIssueService.getIssue(id,issueId,principal), HttpStatus.OK);
         } catch (Exception e){
             return new ResponseEntity<>( HttpStatus.BAD_REQUEST);
         }
     }
 
     @PreAuthorize("hasAuthority('USER')")
-    @PostMapping("/api/v1/cloudsubscription/{id}/finding/{findingId}/comment")
+    @PostMapping("/api/v1/cloudsubscription/{id}/issue/{issueId}/comment")
     public ResponseEntity<StatusDTO> createComment(
             @PathVariable("id") Long id,
-            @PathVariable("findingId") Long findingId,
+            @PathVariable("issueId") Long issueId,
             @Valid @RequestBody CreateCommentRequestDto request,
             Principal principal) {
         try {
-            createCommentService.createCloudComment(id, findingId, request.getMessage(), principal);
+            createCommentService.createCloudComment(id, issueId, request.getMessage(), principal);
             return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.OK);
         } catch (Exception e) {
             log.error("[Comment] Error creating comment for finding {} in cloud subscription {} by user {}",
-                    findingId, id, principal.getName(), e);
+                    issueId, id, principal.getName(), e);
             return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
         }
     }

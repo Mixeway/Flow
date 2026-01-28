@@ -20,29 +20,30 @@ import java.util.Optional;
 @Service
 @Log4j2
 @RequiredArgsConstructor
-public class CloudFindingService {
+public class CloudIssuesService {
 
     private final FindCloudSubscriptionService findCloudSubscriptionService;
     private final FindFindingService findFindingService;
+    private final UpdateFindingService updateFindingService;
 
-    public List<VulnsResponseDto> getCloudSubscriptionFindings(Long id, Principal principal) {
+    public List<VulnsResponseDto> getCloudSubscriptionIssues(Long id, Principal principal) {
         CloudSubscription cloudSubscription = findCloudSubscriptionService.findById(id, principal);
-        List<Finding> findings = findFindingService.getCloudSubscriptionFindings(cloudSubscription, Finding.Source.valueOf("CLOUD_SCANNER"));
-        return FindingMapper.mapToDtoList(findings);
+        List<Finding> issues = findFindingService.getCloudSubscriptionFindings(cloudSubscription, Finding.Source.valueOf("CLOUD_ISSUE"));
+        return FindingMapper.mapToDtoList(issues);
     }
 
-    public GetFindingResponseDto getFinding(Long id, Long findingId, Principal principal) {
+    public GetFindingResponseDto getIssue(Long id, Long findingId, Principal principal) {
         CloudSubscription cloudSubscription = findCloudSubscriptionService.findById(id, principal);
-        Optional<Finding> finding = findFindingService.findById(findingId);
-        if (finding.isPresent() && finding.get().getCloudSubscription().equals(cloudSubscription)){
+        Optional<Finding> issue = findFindingService.findById(findingId);
+        if (issue.isPresent() && issue.get().getCloudSubscription().equals(cloudSubscription)){
             GetFindingResponseDto getFindingResponseDto = new GetFindingResponseDto();
-            VulnsResponseDto vulnsResponseDto = FindingMapper.mapToDto(finding.get());
+            VulnsResponseDto vulnsResponseDto = FindingMapper.mapToDto(issue.get());
             getFindingResponseDto.setVulnsResponseDto(vulnsResponseDto);
-            getFindingResponseDto.setDescription(finding.get().getVulnerability().getDescription());
-            getFindingResponseDto.setRecommendation(finding.get().getVulnerability().getRecommendation());
-            getFindingResponseDto.setRefs(finding.get().getVulnerability().getRef());
-            getFindingResponseDto.setExplanation(finding.get().getExplanation());
-            getFindingResponseDto.setComments(finding.get().getComments().stream()
+            getFindingResponseDto.setDescription(issue.get().getVulnerability().getDescription());
+            getFindingResponseDto.setRecommendation(issue.get().getVulnerability().getRecommendation());
+            getFindingResponseDto.setRefs(issue.get().getVulnerability().getRef());
+            getFindingResponseDto.setExplanation(issue.get().getExplanation());
+            getFindingResponseDto.setComments(issue.get().getComments().stream()
                     .map(comment -> new CommentDto(comment.getCreatedDate(), comment.getUser().getUsername(), comment.getMessage()))
                     .toList());
             return getFindingResponseDto;

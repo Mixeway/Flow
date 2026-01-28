@@ -7,6 +7,7 @@
         [options]="options"
         (runScanEvent)="runScan()"
         (openChangeTeamModalEvent)="openChangeTeamModal()"
+        (deleteRepoEvent)="openDeleteRepoModal()"
 ></app-repository-info>
 
 <div class="mt-4">
@@ -652,6 +653,42 @@
                 color="primary"
                 [disabled]="!selectedNewTeamId">
             Change Team
+        </button>
+    </c-modal-footer>
+</c-modal>
+
+<c-modal size="lg"
+         id="deleteRepoConfirmationModal"
+         alignment="center"
+         [visible]="deleteRepoConfirmationVisible"
+         (visibleChange)="deleteRepoConfirmationVisible = $event">
+    <c-modal-header>
+        <h5 cModalTitle>Confirm Repository Deletion</h5>
+    </c-modal-header>
+    <c-modal-body>
+        <div class="alert alert-warning">
+            <h4 class="alert-heading">Warning!</h4>
+            <p>You are about to delete this repository. This action cannot be undone.</p>
+            <p>Please type "accept" to confirm this change:</p>
+        </div>
+        <div class="mb-3">
+            <input type="text"
+                   class="form-control"
+                   [(ngModel)]="deleteConfirmationText"
+                   placeholder="Type 'accept' to confirm">
+        </div>
+    </c-modal-body>
+    <c-modal-footer>
+        <button (click)="closeDeleteRepoModal()"
+                cButton
+                color="secondary">
+            Cancel
+        </button>
+        <button (click)="executeDeleteRepo()"
+                cButton
+                color="danger"
+                [disabled]="deleteConfirmationText !== 'accept'">
+            Delete Repository
         </button>
     </c-modal-footer>
 </c-modal>
