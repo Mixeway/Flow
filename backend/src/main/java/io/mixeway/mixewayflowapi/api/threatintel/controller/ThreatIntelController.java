@@ -42,7 +42,7 @@ public class ThreatIntelController {
     @GetMapping(value= "/api/v1/threat-intel/findings/{remoteId}")
     public ResponseEntity<ItemListResponse> getThreatsForTeam(@RequestHeader("X-API-KEY") String apiKey, Principal principal, @PathVariable("remoteId") String remoteId){
         try {
-            if (!findingsByTeamService.isValidApiKey(apiKey)) {
+            if (!threatIntelService.isValidApiKey(apiKey, remoteId)) {
                 return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
             }
             return threatIntelService.getThreatsForTeam(principal, remoteId);
