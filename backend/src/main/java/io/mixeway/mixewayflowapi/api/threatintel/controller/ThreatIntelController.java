@@ -30,6 +30,7 @@ import java.util.List;
 public class ThreatIntelController {
 
     private final ThreatIntelService threatIntelService;
+    private final FindingsByTeamService findingsByTeamService;
 
     @PreAuthorize("hasAuthority('USER')")
     @GetMapping(value= "/api/v1/threat-intel/findings")
