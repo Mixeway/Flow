@@ -136,13 +136,13 @@ public class SCAGrypeService {
             createFindingService.saveFindings(findings, codeRepoBranch, codeRepo, Finding.Source.SCA, null);
 
             log.info("[GrypeService] Scan results processed successfully - [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
-        } catch (JsonParseException | MalformedPackageURLException e) {
-            log.warn("[GrypeService] Error with running scan for repository - [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
+        } catch (JsonParseException e) {
+            log.warn("[GrypeService] Error with running scan for repository - [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName(), e);
         }
     }
 
     @Transactional
-    public void processSBOMComponents(File sbomFile, CodeRepo codeRepo) throws IOException, MalformedPackageURLException {
+    public void processSBOMComponents(File sbomFile, CodeRepo codeRepo) throws IOException {
 
         log.info("[GrypeService] Started processing SBOM components.");
 
@@ -158,7 +158,13 @@ public class SCAGrypeService {
                     continue;
                 }
 
-                PackageURL pkg = new PackageURL(purl);
+                PackageURL pkg;
+                try {
+                    pkg = new PackageURL(purl);
+                } catch (MalformedPackageURLException e) {
+                    log.warn("[GrypeService] Skipping invalid component purl: {}", purl, e);
+                    continue;
+                }
 
                 String type = pkg.getType();
                 String version = pkg.getVersion();
