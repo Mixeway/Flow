@@ -190,7 +190,13 @@ public class SCAGrypeService {
 
                 if (d.getRef() != null && !componentsByPurl.containsKey(d.getRef())) {
 
-                    PackageURL pkg = new PackageURL(d.getRef());
+                    PackageURL pkg;
+                    try {
+                        pkg = new PackageURL(d.getRef());
+                    } catch (MalformedPackageURLException e) {
+                        log.warn("[GrypeService] Skipping invalid dependency purl: {}", d.getRef(), e);
+                        continue;
+                    }
 
                     String type = pkg.getType();
                     String version = pkg.getVersion();
@@ -216,7 +222,13 @@ public class SCAGrypeService {
                             continue;
                         }
 
-                        PackageURL pkg = new PackageURL(depPurl);
+                        PackageURL pkg;
+                        try {
+                            pkg = new PackageURL(depPurl);
+                        } catch (MalformedPackageURLException e) {
+                            log.warn("[GrypeService] Skipping invalid dependency purl: {}", depPurl, e);
+                            continue;
+                        }
 
                         String type = pkg.getType();
                         String version = pkg.getVersion();
