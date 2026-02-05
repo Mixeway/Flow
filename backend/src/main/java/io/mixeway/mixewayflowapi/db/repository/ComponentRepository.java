@@ -15,7 +15,7 @@ import java.util.Optional;
 @Repository
 public interface ComponentRepository extends JpaRepository<Component, Long> {
     Optional<Component> findByNameAndVersion(String name, String version);
-    Optional<Component> findByNameAndVersionAndGroupid(String name, String version, String groupid);
+    Optional<Component> findFirstByNameAndVersionAndGroupidOrderByIdAsc(String name, String version, String groupid);
 
     @Query("SELECT new io.mixeway.mixewayflowapi.api.components.dto.ComponentRawDataDto(c.id, c.name, c.version, c.groupid, v.name, cr.repourl) " +
             "FROM Component c " +
