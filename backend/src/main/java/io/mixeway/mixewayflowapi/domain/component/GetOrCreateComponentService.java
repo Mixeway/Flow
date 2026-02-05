@@ -25,7 +25,8 @@ public class GetOrCreateComponentService {
         group = group != null ? group : "";
 
         // Attempt to find the existing component
-        Optional<Component> existingComponent = componentRepository.findByNameAndVersionAndGroupid(name, version, group);
+        Optional<Component> existingComponent = componentRepository
+                .findFirstByNameAndVersionAndGroupidOrderByIdAsc(name, version, group);
         if (existingComponent.isPresent()) {
             return existingComponent.get();
         }
@@ -36,7 +37,7 @@ public class GetOrCreateComponentService {
         } catch (DataIntegrityViolationException e) {
             // This exception occurs if another thread created the component concurrently
             // Fetch the existing component after the exception
-            return componentRepository.findByNameAndVersionAndGroupid(name, version, group)
+            return componentRepository.findFirstByNameAndVersionAndGroupidOrderByIdAsc(name, version, group)
                     .orElseThrow(() -> new ComponentException("Component not found after DataIntegrityViolationException"));
         }
     }
