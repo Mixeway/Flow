@@ -32,6 +32,8 @@ public class CloudIssueReport {
     @JsonIgnoreProperties(ignoreUnknown = true)
     @Data
     public static class Node {
+        @JsonProperty("id")
+        private String id;
 
         @JsonProperty("severity")
         private String severity;
