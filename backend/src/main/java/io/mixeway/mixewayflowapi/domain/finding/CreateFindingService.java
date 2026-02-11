@@ -199,6 +199,9 @@ public class CreateFindingService {
                             null,
                             node.getValidatedAsExploitable()
                     );
+                    String baseUrl = "https://app.wiz.io/issues#~(issue~'";
+                    String nodeId = node.getId();
+
                     return new Finding(
                             vulnerability,
                             null,
@@ -207,7 +210,8 @@ public class CreateFindingService {
                             cloudSubscription,
                             "Vulnerable Asset: " + node.getEntitySnapshot().getName() +
                                     ", Vulnerable Asset Type: " + node.getEntitySnapshot().getType() +
-                                    ", Issue Type: " + node.getType(),
+                                    ", Issue Type: " + node.getType() +
+                                    ", (Details: " + baseUrl + nodeId + "))",
                             node.getEntitySnapshot().getName(),
                             mapSeverity(node.getSeverity()),
                             Finding.Source.CLOUD_ISSUE
