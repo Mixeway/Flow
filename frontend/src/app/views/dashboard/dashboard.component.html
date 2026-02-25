@@ -702,6 +702,8 @@
                                     <div class="d-flex align-items-center">
                                         <svg cIcon *ngIf="row.providerType === 'GITLAB'" name="cib-gitlab" size="xl" class="me-2"></svg>
                                         <svg cIcon *ngIf="row.providerType === 'GITHUB'" name="cib-github" size="xl" class="me-2"></svg>
+                                        <svg cIcon *ngIf="row.providerType === 'GITEA'" name="cib-gitea" size="xl" class="me-2"></svg>
+                                        <svg cIcon *ngIf="row.providerType === 'BITBUCKET'" name="cib-bitbucket" size="xl" class="me-2"></svg>
                                         <span class="fw-bold">{{ row.providerType }}</span>
                                     </div>
                                 </ng-template>
@@ -834,6 +836,18 @@
                 >
                     <svg cIcon name="cib-gitea" size="3xl"></svg>
                     <span class="repo-type-label">Gitea</span>
+                </button>
+                <button
+                        cButton
+                        type="button"
+                        class="repo-type-btn"
+                        [class.active]="selectedRepo === 'Bitbucket'"
+                        (click)="selectRepoType('Bitbucket')"
+                        cTooltip="Import from Bitbucket"
+                        cTooltipPlacement="top"
+                >
+                    <svg cIcon name="cib-bitbucket" size="3xl"></svg>
+                    <span class="repo-type-label">Bitbucket</span>
                 </button>
             </div>
         </div>
@@ -989,6 +1003,18 @@
                 >
                     <svg cIcon name="cib-gitea" size="3xl"></svg>
                     <span class="repo-type-label">Gitea</span>
+                </button>
+                <button
+                        cButton
+                        type="button"
+                        class="repo-type-btn"
+                        [class.active]="selectedRepo === 'Bitbucket'"
+                        (click)="selectRepoType('Bitbucket')"
+                        cTooltip="Import from Bitbucket"
+                        cTooltipPlacement="top"
+                >
+                    <svg cIcon name="cib-bitbucket" size="3xl"></svg>
+                    <span class="repo-type-label">Bitbucket</span>
                 </button>
             </div>
         </div>
@@ -1203,12 +1229,21 @@
                            value="GITEA">
                     <label class="form-check-label" for="giteaRadio">Gitea</label>
                 </div>
+                <div class="form-check">
+                    <input class="form-check-input"
+                           type="radio"
+                           id="bitbucketRadio"
+                           name="providerType"
+                           formControlName="providerType"
+                           value="BITBUCKET">
+                    <label class="form-check-label" for="bitbucketRadio">Bitbucket</label>
+                </div>
             </div>
 
             <div class="mb-3">
                 <label for="apiUrl" class="form-label">API URL</label>
                 <input cFormControl type="url" id="apiUrl" formControlName="apiUrl"
-                       placeholder="e.g., https://api.github.com, https://gitlab.com, or https://gitea.example.com" required />
+                       placeholder="e.g., https://api.github.com, https://gitlab.com, https://gitea.example.com, or https://api.bitbucket.org" required />
             </div>
 
             <div class="mb-3">

@@ -4,6 +4,7 @@ import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.db.entity.Finding;
 import io.mixeway.mixewayflowapi.domain.finding.FindFindingService;
+import io.mixeway.mixewayflowapi.integrations.repo.apiclient.BitbucketApiClientService;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GitHubApiClientService;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GitLabApiClientService;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class GitCommentService {
     String frontendUrl;
     private final GitLabApiClientService gitLabApiClientService;
     private final GitHubApiClientService gitHubApiClientService;
+    private final BitbucketApiClientService bitbucketApiClientService;
 
 
 
@@ -63,6 +65,9 @@ public class GitCommentService {
         } else if (codeRepo.getType().equals(CodeRepo.RepoType.GITHUB)){
             log.info("[Git Comment Service] About to put comment for Pull Request for {}", codeRepo.getName());
             gitHubApiClientService.commentMergeRequest(codeRepo, iid, message).block();
+        } else if (codeRepo.getType().equals(CodeRepo.RepoType.BITBUCKET)){
+            log.info("[Git Comment Service] About to put comment for Pull Request for {}", codeRepo.getName());
+            bitbucketApiClientService.commentPullRequest(codeRepo, iid, message).block();
         }
 
     }

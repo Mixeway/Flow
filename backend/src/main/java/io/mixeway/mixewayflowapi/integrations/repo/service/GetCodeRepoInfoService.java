@@ -2,11 +2,10 @@ package io.mixeway.mixewayflowapi.integrations.repo.service;
 
 import io.mixeway.mixewayflowapi.api.coderepo.dto.CreateCodeRepoRequestDto;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
+import io.mixeway.mixewayflowapi.integrations.repo.apiclient.BitbucketApiClientService;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GitHubApiClientService;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GitLabApiClientService;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GiteaApiClientService;
-import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoGitHubResponseDto;
-import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoGiteaResponseDto;
 import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -23,6 +22,7 @@ public class GetCodeRepoInfoService {
     private final GitLabApiClientService gitLabApiClientService;
     private final GitHubApiClientService gitHubApiClientService;
     private final GiteaApiClientService giteaApiClientService;
+    private final BitbucketApiClientService bitbucketApiClientService;
 
     /**
      * Reactively fetches repository information without blocking.
@@ -65,8 +65,22 @@ public class GetCodeRepoInfoService {
                 commonDto.setWebUrl(giteaDto.getWebUrl()); // This maps html_url to webUrl
                 return commonDto;
             });
+        } else if (repoType.equals(CodeRepo.RepoType.BITBUCKET)) {
+            return bitbucketApiClientService.getProjectInfo(
+                    createCodeRepoRequestDto.getName(),
+                    createCodeRepoRequestDto.getRepoUrl(),
+                    createCodeRepoRequestDto.getAccessToken()
+            ).map(bitbucketDto -> {
+                ImportCodeRepoResponseDto commonDto = new ImportCodeRepoResponseDto();
+                commonDto.setDefaultBranch(bitbucketDto.getDefaultBranch());
+                commonDto.setId(bitbucketDto.getId());
+                commonDto.setDescription(bitbucketDto.getDescription());
+                commonDto.setPathWithNamespace(bitbucketDto.getPathWithNamespace());
+                commonDto.setWebUrl(bitbucketDto.getWebUrl());
+                return commonDto;
+            });
         } else {
-            log.error("[CodeRepo Import Service] Only GitLab, GitHub, and Gitea are supported.");
+            log.error("[CodeRepo Import Service] Only GitLab, GitHub, Gitea, and Bitbucket are supported.");
             return Mono.error(new UnsupportedOperationException("Unsupported repository type."));
         }
     }
@@ -87,6 +101,15 @@ public class GetCodeRepoInfoService {
             return giteaApiClientService
                     .getProjectLanguages(codeRepo.getName(),
                             codeRepo.getGitHostUrl(),
+                            codeRepo.getAccessToken());
+        } else if (codeRepo.getType().equals(CodeRepo.RepoType.BITBUCKET)){
+            String bitbucketApiUrl = codeRepo.getGitHostUrl();
+            if (bitbucketApiUrl.contains("bitbucket.org") && !bitbucketApiUrl.contains("api.bitbucket.org")) {
+                bitbucketApiUrl = bitbucketApiUrl.replace("bitbucket.org", "api.bitbucket.org");
+            }
+            return bitbucketApiClientService
+                    .getProjectLanguages(codeRepo.getName(),
+                            bitbucketApiUrl,
                             codeRepo.getAccessToken());
         } else {
             log.error("[CodeRepoImportService] not recognized option for repo type during languages load...");

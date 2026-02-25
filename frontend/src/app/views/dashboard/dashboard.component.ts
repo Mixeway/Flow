@@ -47,6 +47,7 @@ import {TeamService} from "../../service/TeamService";
 import {gitRepoUrlValidator} from "../../utils/GitRepoUrlValidator";
 import {GitHubService} from "../../service/GitHubService";
 import {GiteaService} from "../../service/GiteaService";
+import {BitbucketService} from "../../service/BitbucketService";
 import {CloudService} from "../../service/CloudService";
 import {StatsService} from "../../service/StatsService";
 import {VulnerabilitySummary, VulnerabilityTrendDataPoint} from "../../model/stats.models";
@@ -310,6 +311,7 @@ export class DashboardComponent implements OnInit {
         private teamService: TeamService,
         private gitHubService: GitHubService,
         private giteaService: GiteaService,
+        private bitbucketService: BitbucketService,
         private cloudService: CloudService,
         private statsService: StatsService,
         private appInfoService: AppConfigService
@@ -1066,9 +1068,8 @@ export class DashboardComponent implements OnInit {
                             namespace: proj.path_with_namespace,
                             imported: false
                         }));
-                        this.tempRepos = [...this.repoRows];  // Update the temp array with the new data
+                        this.tempRepos = [...this.repoRows];
 
-                        // Check if any repo in rows matches the URL and set imported to true
                         this.repoRows.forEach(repoRow => {
                             repoRow.imported = this.rows.some(row => row.repo_url === repoRow.repo_url);
                         });
@@ -1077,7 +1078,31 @@ export class DashboardComponent implements OnInit {
                         console.error('Error fetching repositories:', error);
                     },
                     complete: () => {
-                        this.isLoading = false;  // Hide the spinner
+                        this.isLoading = false;
+                    }
+                });
+            } else if (this.selectedRepo === 'Bitbucket') {
+                this.bitbucketService.setApiUrl(this.repoUrl);
+                this.bitbucketService.getAllRepositories(this.accessToken).subscribe({
+                    next: (projects) => {
+                        this.repoRows = projects.map(proj => ({
+                            id: proj.id,
+                            name: proj.name,
+                            repo_url: proj.web_url,
+                            namespace: proj.path_with_namespace,
+                            imported: false
+                        }));
+                        this.tempRepos = [...this.repoRows];
+
+                        this.repoRows.forEach(repoRow => {
+                            repoRow.imported = this.rows.some(row => row.repo_url === repoRow.repo_url);
+                        });
+                    },
+                    error: (error) => {
+                        console.error('Error fetching repositories:', error);
+                    },
+                    complete: () => {
+                        this.isLoading = false;
                     }
                 });
             } else {
@@ -1103,8 +1128,9 @@ export class DashboardComponent implements OnInit {
         if (this.selectedRepo === 'GitHub') {
             repoObject.repoUrl = this.gitHubService.gitHubApiUrl
         } else if (this.selectedRepo === 'Gitea') {
-            // Gitea uses the same repoUrl format as GitLab
             repoObject.repoUrl = this.repoUrl
+        } else if (this.selectedRepo === 'Bitbucket') {
+            repoObject.repoUrl = 'https://api.bitbucket.org'
         }
         row.imported = true;
         this.dashboardService.createRepo(repoObject, this.selectedRepo.toLowerCase()).subscribe({
@@ -1258,9 +1284,7 @@ export class DashboardComponent implements OnInit {
                 }
             });
         } else if (this.selectedRepo === 'GitHub') {
-            // Set the base API URL based on the repo URL
             this.gitHubService.setApiUrl(repoUrl);
-            // Get the project details
             this.gitHubService.getRepositoryDetailsFromUrl(repoUrl, accessToken).subscribe({
                 next: (response) => {
                     if (!response || !response.id) {
@@ -1281,7 +1305,7 @@ export class DashboardComponent implements OnInit {
                         next: () => {
                             this.showToast("success", `Successfully imported repo: ${repoUrl}`);
                             this.loadCodeRepos();
-                            this.loadSecurityData(); // Reload security data after adding a repository
+                            this.loadSecurityData();
                             this.visibleSingleRepoModal = false;
                         },
                         error: () => {
@@ -1291,6 +1315,39 @@ export class DashboardComponent implements OnInit {
                 },
                 error: () => {
                     this.showToast("danger", "Problem loading Git repo details. Make sure that both URL to repo and AccessToken are correct.");
+                }
+            });
+        } else if (this.selectedRepo === 'Bitbucket') {
+            this.bitbucketService.setApiUrl(repoUrl);
+            this.bitbucketService.getRepositoryDetailsFromUrl(repoUrl, accessToken).subscribe({
+                next: (response) => {
+                    if (!response || !response.id) {
+                        this.showToast("danger", "Problem loading Bitbucket repo details. Make sure that both URL to repo and AccessToken are correct.");
+                        return;
+                    }
+
+                    const repoObject: CreateRepo = {
+                        name: response.full_name,
+                        remoteId: response.id,
+                        repoUrl: 'https://api.bitbucket.org',
+                        accessToken,
+                        team,
+                    };
+
+                    this.dashboardService.createRepo(repoObject, this.selectedRepo.toLowerCase()).subscribe({
+                        next: () => {
+                            this.showToast("success", `Successfully imported repo: ${repoUrl}`);
+                            this.loadCodeRepos();
+                            this.loadSecurityData();
+                            this.visibleSingleRepoModal = false;
+                        },
+                        error: () => {
+                            this.showToast("danger", "Problem during repo import. If it will keep occurring contact system administrator.");
+                        },
+                    });
+                },
+                error: () => {
+                    this.showToast("danger", "Problem loading Bitbucket repo details. Make sure that both URL to repo and AccessToken are correct.");
                 }
             });
         }
@@ -1322,6 +1379,8 @@ export class DashboardComponent implements OnInit {
             return 'https://github.com/username/repo';
         } else if (this.selectedRepo === 'Gitea') {
             return 'https://gitea.example.com/username/repo';
+        } else if (this.selectedRepo === 'Bitbucket') {
+            return 'https://bitbucket.org/workspace/repo';
         }
         return 'https://example.com/username/repo';
     }
@@ -1333,6 +1392,8 @@ export class DashboardComponent implements OnInit {
             return 'https://github.com/username/repo';
         } else if (this.selectedRepo === 'Gitea') {
             return 'https://gitea.example.com/username/repo';
+        } else if (this.selectedRepo === 'Bitbucket') {
+            return 'https://bitbucket.org/workspace/repo';
         }
         return 'https://example.com/username/repo';
     }
@@ -1344,6 +1405,8 @@ export class DashboardComponent implements OnInit {
             return 'https://github.com';
         } else if (this.selectedRepo === 'Gitea') {
             return 'https://gitea.example.com';
+        } else if (this.selectedRepo === 'Bitbucket') {
+            return 'https://bitbucket.org';
         }
         return 'https://example.com';
     }
@@ -1355,6 +1418,8 @@ export class DashboardComponent implements OnInit {
             return 'https://github.com';
         } else if (this.selectedRepo === 'Gitea') {
             return 'https://gitea.example.com';
+        } else if (this.selectedRepo === 'Bitbucket') {
+            return 'https://bitbucket.org';
         }
         return 'https://example.com';
     }
@@ -1366,6 +1431,8 @@ export class DashboardComponent implements OnInit {
             return 'Create token at GitHub > Settings > Developer settings > Personal access tokens';
         } else if (this.selectedRepo === 'Gitea') {
             return 'Create token at Gitea > Settings > Applications > Generate New Token';
+        } else if (this.selectedRepo === 'Bitbucket') {
+            return 'For App Password use format username:app_password. For OAuth/Access Token paste the token directly.';
         }
         return 'Create a personal access token';
     }

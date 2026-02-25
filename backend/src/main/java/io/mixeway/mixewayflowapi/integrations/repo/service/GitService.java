@@ -1,6 +1,5 @@
 package io.mixeway.mixewayflowapi.integrations.repo.service;
 
-import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.exceptions.GitException;
 import lombok.extern.log4j.Log4j2;
@@ -33,7 +32,7 @@ public class GitService {
      * @throws InterruptedException if the process is interrupted
      */
     public void cloneRepo(String repoUrl, String accessToken, String repoDir) throws IOException, InterruptedException {
-        String authenticatedUrl = repoUrl.replace("https://", "https://OAUTH2:" + accessToken + "@");
+        String authenticatedUrl = buildAuthenticatedUrl(repoUrl, accessToken);
         ProcessBuilder pb = new ProcessBuilder("git", "clone", authenticatedUrl, repoDir);
         executeCommand(pb);
     }
@@ -50,7 +49,7 @@ public class GitService {
      * @throws InterruptedException if the process is interrupted
      */
     public String fetchBranch(String repoUrl, String accessToken, CodeRepoBranch branch, String repoDir) throws IOException, InterruptedException {
-        String authenticatedUrl = repoUrl.replace("https://", "https://OAUTH2:" + accessToken + "@");
+        String authenticatedUrl = buildAuthenticatedUrl(repoUrl, accessToken);
         ProcessBuilder pb = new ProcessBuilder("git", "clone", "--branch", branch.getName(), authenticatedUrl, repoDir);
         pb.environment().put("GIT_ASKPASS", "echo");
         pb.environment().put("GIT_TOKEN", accessToken);
@@ -77,7 +76,7 @@ public class GitService {
      * @throws InterruptedException if the process is interrupted
      */
     public void fetchCommit(String repoUrl, String accessToken, String commitId, String repoDir) throws IOException, InterruptedException {
-        String authenticatedUrl = repoUrl.replace("https://", "https://OAUTH2:" + accessToken + "@");
+        String authenticatedUrl = buildAuthenticatedUrl(repoUrl, accessToken);
 
         File dir = new File(repoDir);
         if (!dir.exists()) {
@@ -140,6 +139,15 @@ public class GitService {
         ProcessBuilder pb = new ProcessBuilder("git", "checkout", commitId);
         pb.directory(new File(repoDir));
         executeCommand(pb);
+    }
+
+    /**
+     * Builds an authenticated git clone URL. Bitbucket Cloud uses {@code x-token-auth}
+     * as the username for bearer/access tokens, while GitLab/GitHub/Gitea use {@code OAUTH2}.
+     */
+    private String buildAuthenticatedUrl(String repoUrl, String accessToken) {
+        String gitUsername = repoUrl.contains("bitbucket.org") ? "x-token-auth" : "OAUTH2";
+        return repoUrl.replace("https://", "https://" + gitUsername + ":" + accessToken + "@");
     }
 
     /**

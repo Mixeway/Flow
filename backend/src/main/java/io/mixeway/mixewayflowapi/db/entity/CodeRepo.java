@@ -20,7 +20,7 @@ public final class CodeRepo {
         SUCCESS, DANGER, WARNING, NOT_PERFORMED, RUNNING
     }
     public enum RepoType {
-        GITLAB, GITHUB, GITEA
+        GITLAB, GITHUB, GITEA, BITBUCKET
     }
 
 
@@ -39,7 +39,7 @@ public final class CodeRepo {
     private final String repourl;
 
     @NotBlank
-    @Pattern(regexp = "^[a-zA-Z0-9._-]+$", message = "Invalid access token format")
+    @Pattern(regexp = "^\\S+$", message = "Invalid access token format")
     @Column(name = "access_token", nullable = false)
     @JsonIgnore
     private final String accessToken;

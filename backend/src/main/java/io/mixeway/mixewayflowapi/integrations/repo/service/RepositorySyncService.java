@@ -4,9 +4,11 @@ import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.RepositoryProvider;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
 import io.mixeway.mixewayflowapi.domain.coderepo.CreateCodeRepoService;
+import io.mixeway.mixewayflowapi.integrations.repo.apiclient.BitbucketApiClientService;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GitHubApiClientService;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GitLabApiClientService;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GiteaApiClientService;
+import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoBitbucketResponseDto;
 import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoGitHubResponseDto;
 import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoGiteaResponseDto;
 import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoResponseDto;
@@ -29,6 +31,7 @@ public class RepositorySyncService {
     private final GitLabApiClientService gitLabApiClientService;
     private final GitHubApiClientService gitHubApiClientService;
     private final GiteaApiClientService giteaApiClientService;
+    private final BitbucketApiClientService bitbucketApiClientService;
 
     @Async
     public void syncProvider(RepositoryProvider provider) {
@@ -47,6 +50,8 @@ public class RepositorySyncService {
             repositoryFlux = gitHubApiClientService.fetchAllRepositories(provider.getApiUrl(), provider.getEncryptedAccessToken());
         } else if (provider.getProviderType().equals(CodeRepo.RepoType.GITEA)) {
             repositoryFlux = giteaApiClientService.fetchAllRepositories(provider.getApiUrl(), provider.getEncryptedAccessToken());
+        } else if (provider.getProviderType().equals(CodeRepo.RepoType.BITBUCKET)) {
+            repositoryFlux = bitbucketApiClientService.fetchAllRepositories(provider.getApiUrl(), provider.getEncryptedAccessToken());
         } else {
             return;
         }
@@ -60,6 +65,8 @@ public class RepositorySyncService {
                         remoteId = ((ImportCodeRepoGitHubResponseDto) project).getId();
                     } else if (project instanceof ImportCodeRepoGiteaResponseDto) {
                         remoteId = ((ImportCodeRepoGiteaResponseDto) project).getId();
+                    } else if (project instanceof ImportCodeRepoBitbucketResponseDto) {
+                        remoteId = ((ImportCodeRepoBitbucketResponseDto) project).getId();
                     } else {
                         return false;
                     }

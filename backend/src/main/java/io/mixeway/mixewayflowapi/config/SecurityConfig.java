@@ -49,8 +49,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/v1/login").permitAll()
                         .requestMatchers("/api/v1/status").permitAll() // Ensure the SSO endpoint is public
-                        .requestMatchers("/api/v1/webhook/gitlab/push").permitAll()
-                        .requestMatchers("/api/v1/webhook/gitlab/merge").permitAll()
+                        .requestMatchers("/api/v1/webhook/**").permitAll()
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
