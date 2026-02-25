@@ -10,17 +10,10 @@ import {
 } from "../../model/stats.models";
 import {StatsService} from "../../service/StatsService";
 import {IconDirective} from "@coreui/icons-angular";
-import {DecimalPipe, NgClass, NgForOf, NgIf} from "@angular/common";
-import {
-  ButtonDirective,
-  CardBodyComponent,
-  CardComponent,
-  CardHeaderComponent,
-  SpinnerComponent,
-  TableDirective,
-  TooltipDirective
-} from "@coreui/angular";
+import {NgClass, NgForOf, NgIf} from "@angular/common";
+import {SpinnerComponent} from "@coreui/angular";
 import {ChartjsComponent} from "@coreui/angular-chartjs";
+import {FormsModule} from "@angular/forms";
 
 
 @Component({
@@ -30,17 +23,11 @@ import {ChartjsComponent} from "@coreui/angular-chartjs";
   imports: [
     IconDirective,
     NgIf,
-    CardComponent,
-    CardHeaderComponent,
-    CardBodyComponent,
-    TableDirective,
     NgForOf,
-    ChartjsComponent,
-    DecimalPipe,
     NgClass,
+    ChartjsComponent,
     SpinnerComponent,
-    TooltipDirective,
-    ButtonDirective
+    FormsModule
   ],
   styleUrls: ['./security-dashboard.component.scss']
 })
@@ -50,6 +37,7 @@ export class SecurityDashboardComponent implements OnInit {
   trendData: VulnerabilityTrendDataPoint[] = [];
   topRepos: RepositoryStats[] = [];
   teamsSummary: TeamStats[] = [];
+  availableTeams: TeamStats[] = [];
 
   // Chart data
   vulnerabilityTrendChartData: LineChartData | null = null;
@@ -63,7 +51,8 @@ export class SecurityDashboardComponent implements OnInit {
 
   // Filter states
   selectedTeamId: number | null = null;
-  timeRange = 30; // Default to 30 days
+  selectedTeamValue = '';
+  timeRange = 30;
 
   // Chart options
   lineChartOptions = {
@@ -125,12 +114,23 @@ export class SecurityDashboardComponent implements OnInit {
   constructor(private statsService: StatsService) { }
 
   ngOnInit(): void {
-    this.loadData();
+    this.loadTeamsAndData();
   }
 
-  /**
-   * Clear chart data before reloading to prevent rendering artifacts
-   */
+  private loadTeamsAndData(): void {
+    this.isLoading = true;
+    this.statsService.getTeamsSummary().subscribe({
+      next: (teams) => {
+        this.availableTeams = teams;
+        this.teamsSummary = teams;
+        this.loadFilteredData();
+      },
+      error: () => {
+        this.loadFilteredData();
+      }
+    });
+  }
+
   private clearChartData(): void {
     this.vulnerabilityTrendChartData = null;
     this.severityDistributionChartData = null;
@@ -139,14 +139,10 @@ export class SecurityDashboardComponent implements OnInit {
     this.fixProgressChartData = null;
   }
 
-  /**
-   * Load all dashboard data from the API
-   */
-  loadData(): void {
+  loadFilteredData(): void {
     this.isLoading = true;
-    this.clearChartData(); // Clear existing charts to prevent artifacts
+    this.clearChartData();
 
-    // Load all data in parallel for better performance
     forkJoin({
       summary: this.statsService.getVulnerabilitySummary(this.selectedTeamId),
       trend: this.statsService.getVulnerabilityTrend(this.selectedTeamId, this.timeRange),
@@ -415,28 +411,18 @@ export class SecurityDashboardComponent implements OnInit {
     };
   }
 
-  /**
-   * Refresh all dashboard data
-   */
   refreshData(): void {
-    this.loadData();
+    this.loadFilteredData();
   }
 
-  /**
-   * Handle team selection change
-   */
-  onTeamChange(event: any): void {
-    const value = event.target.value;
+  onTeamChange(value: string): void {
     this.selectedTeamId = value === '' ? null : parseInt(value, 10);
-    this.loadData();
+    this.loadFilteredData();
   }
 
-  /**
-   * Handle time range selection change
-   */
   onTimeRangeChange(days: number): void {
     this.timeRange = days;
-    this.loadData();
+    this.loadFilteredData();
   }
 
   /**
