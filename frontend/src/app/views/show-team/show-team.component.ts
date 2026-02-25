@@ -74,6 +74,7 @@ import {FindingDTO, SingleFindingDTO} from '../../model/FindingDTO';
 import {FormsModule} from '@angular/forms';
 import {TeamService} from "../../service/TeamService";
 import {TeamFindingsService} from "../../service/TeamFindingsService";
+import {JiraService} from "../../service/JiraService";
 import {TeamFindingSourceStatDTO} from "../../model/TeamFindingSourceStatDTO";
 import {TeamVulnerabilityDetailsComponent} from "./team-vulnerability-details/team-vulnerability-details.component";
 import {TeamInfoComponent} from "./team-info/team-info.component";
@@ -433,6 +434,9 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
     availableTeams: Team[] = [];
     selectedNewTeamId: number | null = null;
 
+    jiraEnabled: boolean = false;
+    teamIdForJira: number | null = null;
+
     constructor(
         public iconSet: IconSetService,
         private repoService: RepoService,
@@ -443,7 +447,8 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
         private cdr: ChangeDetectorRef,
         private datePipe: DatePipe,
         private teamService: TeamService,
-        private teamFindingsService: TeamFindingsService
+        private teamFindingsService: TeamFindingsService,
+        private jiraService: JiraService
     ) {
         iconSet.icons = {...brandSet, ...freeSet};
 
@@ -461,6 +466,8 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
 
         this.route.paramMap.subscribe((params) => {
             this.teamId = params.get('id') || '';
+            this.teamIdForJira = +this.teamId || null;
+            this.checkJiraConfig();
         });
         this.authService.hc().subscribe({
             next: () => {
@@ -1477,4 +1484,54 @@ export class ShowTeamComponent implements OnInit, AfterViewInit {
     //     this.confirmationText = '';
     // }
 
+    // ============ JIRA Integration ============
+
+    private checkJiraConfig(): void {
+        if (this.teamIdForJira) {
+            this.jiraService.getConfiguration(this.teamIdForJira).subscribe({
+                next: (config) => {
+                    this.jiraEnabled = config?.configured || false;
+                },
+                error: () => {
+                    this.jiraEnabled = false;
+                }
+            });
+        }
+    }
+
+    createJiraTicket(findingId: number): void {
+        if (!this.teamIdForJira) return;
+        this.jiraService.createTicket(this.teamIdForJira, findingId).subscribe({
+            next: (response) => {
+                this.toastStatus = 'success';
+                this.toastMessage = 'JIRA ticket created: ' + (response?.message || '');
+                this.visible = true;
+                this.loadFindings();
+            },
+            error: (error) => {
+                this.toastStatus = 'danger';
+                this.toastMessage = error?.error?.message || 'Error creating JIRA ticket';
+                this.visible = true;
+            }
+        });
+    }
+
+    createJiraTicketsBulk(findingIds: number[]): void {
+        if (!this.teamIdForJira || findingIds.length === 0) return;
+        this.jiraService.createTicketsBulk(this.teamIdForJira, findingIds).subscribe({
+            next: (response) => {
+                this.toastStatus = 'success';
+                this.toastMessage = response.message;
+                this.visible = true;
+                this.loadFindings();
+                this.bulkActionMode = false;
+                this.selectedFindings = [];
+            },
+            error: () => {
+                this.toastStatus = 'danger';
+                this.toastMessage = 'Error creating JIRA tickets';
+                this.visible = true;
+            }
+        });
+    }
 }

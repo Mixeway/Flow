@@ -52,6 +52,8 @@
                                 [selectedFindings]="selectedFindings"
                                 [vulnerabilitiesLoading]="vulnerabilitiesLoading"
                                 [vulnerabilitiesLimit]="vulnerabilitiesLimit"
+                                [jiraEnabled]="jiraEnabled"
+                                [teamId]="teamIdForJira"
                                 (updateFilterNameEvent)="updateFilterName($event)"
                                 (updateFilterLocationEvent)="updateFilterLocation($event)"
                                 (updateFilterComponentEvent)="updateFilterComponent($event)"
@@ -68,7 +70,8 @@
                                 (viewVulnerabilityDetailsEvent)="click($event)"
                                 (toggleShowNotableEvent)="toggleShowNotable($event)"
                                 (toggleShowUrgentEvent)="toggleShowUrgent($event)"
-
+                                (createJiraTicketEvent)="createJiraTicket($event)"
+                                (createJiraTicketsBulkEvent)="createJiraTicketsBulk($event)"
                                 (clearFiltersEvent)="clearVulnerabilityFilters()">
                         </app-team-vulnerabilities-table>
                     </c-tab-panel>

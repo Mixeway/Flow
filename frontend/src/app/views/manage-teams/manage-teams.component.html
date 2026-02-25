@@ -203,6 +203,21 @@
                                 </ng-template>
                             </ngx-datatable-column>
 
+                            <ngx-datatable-column name="JIRA" [width]="160">
+                                <ng-template ngx-datatable-cell-template let-row="row">
+                                    <button
+                                            cButton
+                                            [color]="getJiraConfigStatus(row.id) ? 'success' : 'info'"
+                                            variant="ghost"
+                                            size="sm"
+                                            class="cloud-subs-btn"
+                                            (click)="openJiraConfigModal(row)">
+                                        <svg cIcon name="cil-task" class="me-2 small-icon"></svg>
+                                        {{ getJiraConfigStatus(row.id) ? 'JIRA Configured' : 'Configure JIRA' }}
+                                    </button>
+                                </ng-template>
+                            </ngx-datatable-column>
+
                             <ngx-datatable-column name="Actions" [width]="150">
                                 <ng-template ngx-datatable-cell-template let-row="row">
                                     <div class="d-flex gap-2 action-buttons">
@@ -498,6 +513,147 @@
         <button (click)="visibleCloudSubscriptions = false" cButton color="secondary" variant="ghost">
             Close
         </button>
+    </c-modal-footer>
+</c-modal>
+
+<!-- JIRA Configuration Modal -->
+<c-modal size="lg"
+         id="jiraConfigModal"
+         alignment="center"
+         [visible]="visibleJiraConfig"
+         (visibleChange)="visibleJiraConfig = $event">
+    <c-modal-header>
+        <h5 cModalTitle>
+            <svg cIcon name="cil-task" class="me-2"></svg>
+            JIRA Integration - {{ selectedTeam?.name }}
+        </h5>
+    </c-modal-header>
+    <c-modal-body>
+        <form [formGroup]="jiraConfigForm" class="modal-form">
+            <div class="form-section">
+                <h6 class="section-title">Connection Settings</h6>
+                <c-input-group class="mb-3">
+                    <span cInputGroupText class="input-icon">
+                        <svg cIcon name="cil-link"></svg>
+                    </span>
+                    <input type="text" cFormControl formControlName="jiraUrl"
+                           placeholder="JIRA URL (e.g., https://yourcompany.atlassian.net)">
+                </c-input-group>
+                <div *ngIf="jiraConfigForm.get('jiraUrl')?.invalid && jiraConfigForm.get('jiraUrl')?.touched"
+                     class="invalid-feedback d-block">JIRA URL is required</div>
+
+                <c-input-group class="mb-3">
+                    <span cInputGroupText class="input-icon">
+                        <svg cIcon name="cil-user"></svg>
+                    </span>
+                    <input type="text" cFormControl formControlName="jiraUsername"
+                           placeholder="Email (required for Atlassian Cloud, e.g. user@company.com)">
+                </c-input-group>
+
+                <c-input-group class="mb-3">
+                    <span cInputGroupText class="input-icon">
+                        <svg cIcon name="cil-lock-locked"></svg>
+                    </span>
+                    <input type="password" cFormControl formControlName="jiraToken"
+                           [placeholder]="jiraConfigEditMode ? 'Leave empty to keep current token' : 'API Token / Personal Access Token'">
+                </c-input-group>
+                <div *ngIf="!jiraConfigEditMode && jiraConfigForm.get('jiraToken')?.invalid && jiraConfigForm.get('jiraToken')?.touched"
+                     class="invalid-feedback d-block">API Token is required</div>
+            </div>
+
+            <div class="form-section mt-4">
+                <h6 class="section-title">Project Settings</h6>
+                <div class="d-flex align-items-center mb-2">
+                    <small class="text-muted">Fill in connection settings above, then click "Load Projects" to fetch available projects and issue types from JIRA.</small>
+                </div>
+                <c-input-group class="mb-3">
+                    <span cInputGroupText class="input-icon">
+                        <svg cIcon name="cil-folder"></svg>
+                    </span>
+                    <select *ngIf="jiraProjects.length > 0" cFormControl formControlName="jiraProjectKey" class="form-select"
+                            (change)="fetchJiraIssueTypes()">
+                        <option *ngFor="let proj of jiraProjects" [value]="proj.key">{{ proj.key }} - {{ proj.name }}</option>
+                    </select>
+                    <input *ngIf="jiraProjects.length === 0" type="text" cFormControl formControlName="jiraProjectKey"
+                           placeholder="Project Key (click Load Projects or type manually)">
+                    <button cButton color="info" variant="outline" type="button"
+                            [disabled]="jiraLoadingProjects"
+                            (click)="fetchJiraProjects()">
+                        <span *ngIf="jiraLoadingProjects" class="spinner-border spinner-border-sm me-1"></span>
+                        Load Projects
+                    </button>
+                </c-input-group>
+                <div *ngIf="jiraConfigForm.get('jiraProjectKey')?.invalid && jiraConfigForm.get('jiraProjectKey')?.touched"
+                     class="invalid-feedback d-block">Project key is required</div>
+
+                <c-input-group class="mb-3">
+                    <span cInputGroupText class="input-icon">
+                        <svg cIcon name="cil-list-rich"></svg>
+                    </span>
+                    <select *ngIf="jiraIssueTypes.length > 0" cFormControl formControlName="jiraIssueType" class="form-select">
+                        <option *ngFor="let type of jiraIssueTypes" [value]="type">{{ type }}</option>
+                    </select>
+                    <input *ngIf="jiraIssueTypes.length === 0" type="text" cFormControl formControlName="jiraIssueType"
+                           placeholder="Issue Type (loaded automatically with project)">
+                </c-input-group>
+            </div>
+
+            <div class="form-section mt-4">
+                <h6 class="section-title">Automatic Ticket Creation</h6>
+                <div class="d-flex align-items-center mb-3">
+                    <c-form-check switch>
+                        <input cFormCheckInput type="checkbox" id="autoCreateEnabled"
+                               formControlName="autoCreateEnabled" />
+                        <label cFormCheckLabel for="autoCreateEnabled">
+                            Enable automatic ticket creation for new findings
+                        </label>
+                    </c-form-check>
+                </div>
+
+                <div *ngIf="jiraConfigForm.get('autoCreateEnabled')?.value">
+                    <label class="form-label">Minimum severity for auto-creation:</label>
+                    <c-input-group class="mb-3">
+                        <span cInputGroupText class="input-icon">
+                            <svg cIcon name="cil-warning"></svg>
+                        </span>
+                        <select cFormControl formControlName="autoSeverityThreshold" class="form-select">
+                            <option value="CRITICAL">Critical only</option>
+                            <option value="HIGH">High and above</option>
+                            <option value="MEDIUM">Medium and above</option>
+                            <option value="LOW">Low and above</option>
+                        </select>
+                    </c-input-group>
+                    <small class="text-muted">
+                        Tickets will be automatically created (with intelligent grouping) for findings at or above the selected severity.
+                    </small>
+                </div>
+            </div>
+        </form>
+    </c-modal-body>
+    <c-modal-footer>
+        <div class="d-flex justify-content-between w-100">
+            <div>
+                <button *ngIf="jiraConfigEditMode" cButton color="danger" variant="ghost"
+                        (click)="deleteJiraConfig()">
+                    Delete Configuration
+                </button>
+            </div>
+            <div class="d-flex gap-2">
+                <button *ngIf="jiraConfigEditMode" cButton color="info" variant="outline"
+                        [disabled]="jiraConfigForm.invalid || jiraTestingConnection"
+                        (click)="testJiraConnection()">
+                    {{ jiraTestingConnection ? 'Testing...' : 'Test Connection' }}
+                </button>
+                <button (click)="visibleJiraConfig = false" cButton color="secondary" variant="ghost">
+                    Cancel
+                </button>
+                <button cButton color="primary"
+                        [disabled]="jiraConfigForm.invalid"
+                        (click)="saveJiraConfig()">
+                    {{ jiraConfigEditMode ? 'Update' : 'Save' }} Configuration
+                </button>
+            </div>
+        </div>
     </c-modal-footer>
 </c-modal>
 

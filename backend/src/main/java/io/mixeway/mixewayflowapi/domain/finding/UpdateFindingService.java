@@ -4,6 +4,7 @@ import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.db.entity.Finding;
 import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
+import io.mixeway.mixewayflowapi.domain.jira.JiraTicketLifecycleService;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -18,11 +19,13 @@ import java.util.List;
 public class UpdateFindingService {
     private final FindingRepository findingRepository;
     private final EntityManager entityManager;
+    private final JiraTicketLifecycleService jiraTicketLifecycleService;
 
 
     public void suppressFinding(Finding finding, String reason) {
         finding.suppress(reason);
         findingRepository.save(finding);
+        jiraTicketLifecycleService.onFindingSuppressed(finding);
         log.info("[UpdateFinding] Suppressed finding {} in {} reason {}", finding.getVulnerability().getName(), finding.getCodeRepo().getRepourl(), reason);
     }
 

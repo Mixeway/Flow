@@ -18,6 +18,7 @@ public class FindingMapper {
         dto.setStatus(finding.getStatus().name());
         dto.setInserted(finding.getInsertedDate().toString());
         dto.setLastSeen(finding.getUpdatedDate().toString());
+        dto.setJiraTicketKey(finding.getJiraTicketKey());
         return dto;
     }
 

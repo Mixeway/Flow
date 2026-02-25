@@ -15,5 +15,7 @@ public class VulnsResponseDto {
     @JsonProperty("last_seen")
     String lastSeen;
     String urgency;
+    @JsonProperty("jira_ticket_key")
+    String jiraTicketKey;
 
 }

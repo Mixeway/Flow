@@ -25,6 +25,8 @@ public class TeamFindingMapper {
                 dto.setComponentName(finding.getCloudSubscription().getExternal_project_name());
             }
 
+            dto.setJiraTicketKey(finding.getJiraTicketKey());
+
             return dto;
         }).collect(Collectors.toList());
     }

@@ -101,6 +101,9 @@ public final class Finding {
     @Column(name = "updated_date", nullable = false)
     private LocalDateTime updatedDate;
 
+    @Column(name = "jira_ticket_key", length = 50)
+    private String jiraTicketKey;
+
     @OneToMany(mappedBy = "finding", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
     private final List<Comment> comments = new ArrayList<>();
@@ -174,6 +177,10 @@ public final class Finding {
     }
     public void noteFindingDetected() {
         this.updatedDate = LocalDateTime.now();
+    }
+
+    public void setJiraTicketKey(String jiraTicketKey) {
+        this.jiraTicketKey = jiraTicketKey;
     }
 
 }

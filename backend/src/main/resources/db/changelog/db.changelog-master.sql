@@ -786,3 +786,23 @@ alter table settings add column gemini_api_key VARCHAR(255);
 
 --changeset siewer:comment
 alter table suppress_rule add column if not exists comment text;
+
+--changeset siewer:add_jira_configuration
+CREATE TABLE jira_configuration (
+    id BIGSERIAL PRIMARY KEY,
+    team_id BIGINT NOT NULL REFERENCES team(id) UNIQUE,
+    jira_url TEXT NOT NULL,
+    jira_token TEXT NOT NULL,
+    jira_project_key VARCHAR(50) NOT NULL,
+    jira_issue_type VARCHAR(50) NOT NULL DEFAULT 'Bug',
+    jira_username TEXT,
+    auto_create_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    auto_severity_threshold VARCHAR(20) DEFAULT 'HIGH',
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_jira_configuration_team_id ON jira_configuration(team_id);
+
+--changeset siewer:add_jira_ticket_key_to_finding
+ALTER TABLE finding ADD COLUMN jira_ticket_key VARCHAR(50);

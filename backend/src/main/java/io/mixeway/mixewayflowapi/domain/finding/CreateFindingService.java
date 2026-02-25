@@ -5,6 +5,7 @@ import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
 import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
 import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.component.GetOrCreateComponentService;
+import io.mixeway.mixewayflowapi.domain.jira.JiraTicketLifecycleService;
 import io.mixeway.mixewayflowapi.domain.suppressrule.CheckSuppressRuleService;
 import io.mixeway.mixewayflowapi.domain.vulnerability.GetOrCreateVulnerabilityService;
 import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.dto.CloudIssueReport;
@@ -37,6 +38,7 @@ public class CreateFindingService {
     private final GetOrCreateComponentService getOrCreateComponentService;
     private final UpdateCodeRepoService updateCodeRepoService;
     private final CodeRepoRepository codeRepoRepository;
+    private final JiraTicketLifecycleService jiraTicketLifecycleService;
 
     @Transactional
     public void saveFindings(List<Finding> newFindings, CodeRepoBranch repoWhereFindingWasFound, CodeRepo repoInWhichFindingWasFound, Finding.Source source, CloudSubscription cloudSubscription) {
@@ -92,6 +94,7 @@ public class CreateFindingService {
             if (remainingFinding.getStatus() != Finding.Status.SUPRESSED) {
                 remainingFinding.updateStatus(Finding.Status.REMOVED, null);
                 findingRepository.saveAndFlush(remainingFinding);
+                jiraTicketLifecycleService.onFindingRemoved(remainingFinding);
             }
         }
         if (repoInWhichFindingWasFound != null) {

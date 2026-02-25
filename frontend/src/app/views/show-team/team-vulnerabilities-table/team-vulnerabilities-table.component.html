@@ -110,6 +110,17 @@
                         Suppress Selected ({{ selectedFindings.length }})
                     </button>
 
+                    <button *ngIf="jiraEnabled"
+                            cButton
+                            color="info"
+                            [disabled]="selectedFindings.length === 0"
+                            (click)="createJiraTicketsBulk()"
+                            class="bulk-suppress-btn ms-2"
+                    >
+                        <svg cIcon name="cil-task" class="me-1"></svg>
+                        Create JIRA Tickets ({{ selectedFindings.length }})
+                    </button>
+
                     <div class="selection-info" *ngIf="selectedFindings.length > 0">
                         <span>{{ selectedFindings.length }} items selected</span>
                     </div>
@@ -180,7 +191,7 @@
 
                 <ngx-datatable-column
                         name="Actions"
-                        [width]="60"
+                        [width]="jiraEnabled ? 100 : 60"
                         [sortable]="false"
                         [resizeable]="false"
                         [draggable]="false"
@@ -191,7 +202,7 @@
                             ngx-datatable-cell-template
                             let-row="row"
                     >
-                        <div class="details-action-container">
+                        <div class="details-action-container d-flex gap-1">
                             <button
                                     cButton
                                     color="primary"
@@ -203,6 +214,22 @@
                             >
                                 <svg cIcon name="cil-magnifying-glass"></svg>
                             </button>
+                            <button *ngIf="jiraEnabled && !hasJiraTicket(row)"
+                                    cButton
+                                    color="info"
+                                    variant="ghost"
+                                    size="sm"
+                                    class="details-btn"
+                                    [cTooltip]="'Create JIRA ticket'"
+                                    (click)="createJiraTicket(row.id)"
+                            >
+                                <svg cIcon name="cil-task"></svg>
+                            </button>
+                            <span *ngIf="jiraEnabled && hasJiraTicket(row)"
+                                  class="badge bg-success-subtle text-success"
+                                  [cTooltip]="'JIRA: ' + row.jira_ticket_key">
+                                {{ row.jira_ticket_key }}
+                            </span>
                         </div>
                     </ng-template>
                 </ngx-datatable-column>

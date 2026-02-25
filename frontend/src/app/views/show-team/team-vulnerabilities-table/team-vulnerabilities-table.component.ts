@@ -34,6 +34,7 @@ interface Vulnerability {
   urgency?: string;
   component_name: string;
   repoUrl: string;
+  jira_ticket_key?: string;
 }
 
 @Component({
@@ -86,6 +87,8 @@ export class TeamVulnerabilitiesTableComponent implements OnInit, OnChanges {
   @Input() hasUrgentFindings: boolean = false;
   @Input() hasNotableFindings: boolean = false;
   @Input() currentFilters: { [key: string]: string } | null = null;
+  @Input() jiraEnabled: boolean = false;
+  @Input() teamId: number | null = null;
 
   @Output() updateFilterNameEvent = new EventEmitter<any>();
   @Output() updateFilterComponentEvent = new EventEmitter<any>();
@@ -101,6 +104,8 @@ export class TeamVulnerabilitiesTableComponent implements OnInit, OnChanges {
   @Output() vulnerabilitiesLimitChange = new EventEmitter<number>();
   @Output() viewVulnerabilityDetailsEvent = new EventEmitter<Vulnerability>();
   @Output() clearFiltersEvent = new EventEmitter<void>();
+  @Output() createJiraTicketEvent = new EventEmitter<number>();
+  @Output() createJiraTicketsBulkEvent = new EventEmitter<number[]>();
   // Parity outputs
   @Output() updateFilterLocationEvent = new EventEmitter<any>();
   @Output() toggleShowUrgentEvent = new EventEmitter<any>();
@@ -360,6 +365,18 @@ export class TeamVulnerabilitiesTableComponent implements OnInit, OnChanges {
 
   clearFilters(): void {
     this.clearFiltersEvent.emit();
+  }
+
+  createJiraTicket(findingId: number): void {
+    this.createJiraTicketEvent.emit(findingId);
+  }
+
+  createJiraTicketsBulk(): void {
+    this.createJiraTicketsBulkEvent.emit(this.selectedFindings);
+  }
+
+  hasJiraTicket(row: any): boolean {
+    return row?.jira_ticket_key != null && row?.jira_ticket_key !== '';
   }
 
   ngOnInit(): void {}

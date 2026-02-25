@@ -74,6 +74,7 @@ import { FindingSourceStatDTO } from '../../model/FindingSourceStatDTO';
 import { FindingDTO, SingleFindingDTO } from '../../model/FindingDTO';
 import { FormsModule } from '@angular/forms';
 import { TeamService } from "../../service/TeamService";
+import { JiraService } from "../../service/JiraService";
 import {RepositoryInfoComponent} from "./repository-info/repository-info.component";
 import {VulnerabilitySummaryComponent} from "./vulnerability-summary/vulnerability-summary.component";
 import {VulnerabilitiesTableComponent} from "./vulnerabilities-table/vulnerabilities-table.component";
@@ -395,6 +396,9 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         statusFilter: string;
     } | null = null;
 
+    jiraEnabled: boolean = false;
+    teamId: number | null = null;
+
     constructor(
         public iconSet: IconSetService,
         private repoService: RepoService,
@@ -403,7 +407,8 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         private route: ActivatedRoute,
         private cdr: ChangeDetectorRef,
         private datePipe: DatePipe,
-        private teamService: TeamService
+        private teamService: TeamService,
+        private jiraService: JiraService
     ) {
         iconSet.icons = { ...brandSet, ...freeSet };
 
@@ -487,8 +492,9 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                 this.topLanguages = this.getTopLanguages(this.repoData.languages);
                 this.filteredComponents = [...this.repoData?.components];
                 this.scanInfos = response.scanInfos;
-                this.applyScanInfoFilter(); // Apply filter after data is loaded
+                this.applyScanInfoFilter();
                 this.scanInfoLoading = false;
+                this.checkJiraConfig(response);
                 if (
                     response.sastScan === 'RUNNING' ||
                     response.scaScan === 'RUNNING' ||
@@ -1314,5 +1320,57 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                 this.cdr.detectChanges();
             }
         } catch {}
+    }
+
+    // ============ JIRA Integration ============
+
+    private checkJiraConfig(repoData: any): void {
+        if (repoData?.team?.id) {
+            this.teamId = repoData.team.id;
+            this.jiraService.getConfiguration(repoData.team.id).subscribe({
+                next: (config) => {
+                    this.jiraEnabled = config?.configured || false;
+                },
+                error: () => {
+                    this.jiraEnabled = false;
+                }
+            });
+        }
+    }
+
+    createJiraTicket(findingId: number): void {
+        if (!this.teamId) return;
+        this.jiraService.createTicket(this.teamId, findingId).subscribe({
+            next: (response) => {
+                this.toastStatus = 'success';
+                this.toastMessage = 'JIRA ticket created: ' + (response?.message || '');
+                this.visible = true;
+                this.loadFindings();
+            },
+            error: (error) => {
+                this.toastStatus = 'danger';
+                this.toastMessage = error?.error?.message || 'Error creating JIRA ticket';
+                this.visible = true;
+            }
+        });
+    }
+
+    createJiraTicketsBulk(findingIds: number[]): void {
+        if (!this.teamId || findingIds.length === 0) return;
+        this.jiraService.createTicketsBulk(this.teamId, findingIds).subscribe({
+            next: (response) => {
+                this.toastStatus = 'success';
+                this.toastMessage = response.message;
+                this.visible = true;
+                this.loadFindings();
+                this.bulkActionMode = false;
+                this.selectedFindings = [];
+            },
+            error: (error) => {
+                this.toastStatus = 'danger';
+                this.toastMessage = 'Error creating JIRA tickets';
+                this.visible = true;
+            }
+        });
     }
 }

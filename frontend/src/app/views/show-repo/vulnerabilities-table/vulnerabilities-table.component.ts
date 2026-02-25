@@ -33,6 +33,7 @@ interface Vulnerability {
   last_seen: string;
   status: string;
   urgency: string;
+  jira_ticket_key?: string;
 }
 
 @Component({
@@ -82,6 +83,8 @@ export class VulnerabilitiesTableComponent implements OnInit, OnChanges {
   @Input() vulnerabilitiesLoading: boolean = false;
   @Input() vulnerabilitiesLimit: number = 20;
   @Input() currentFilters: { [key: string]: string } | null = null;
+  @Input() jiraEnabled: boolean = false;
+  @Input() teamId: number | null = null;
 
   @Output() updateFilterNameEvent = new EventEmitter<any>();
   @Output() updateFilterLocationEvent = new EventEmitter<any>();
@@ -99,6 +102,8 @@ export class VulnerabilitiesTableComponent implements OnInit, OnChanges {
   @Output() onBranchSelectEvent = new EventEmitter<any>();
   @Output() viewVulnerabilityDetailsEvent = new EventEmitter<Vulnerability>();
   @Output() clearFiltersEvent = new EventEmitter<void>();
+  @Output() createJiraTicketEvent = new EventEmitter<number>();
+  @Output() createJiraTicketsBulkEvent = new EventEmitter<number[]>();
   statusFilter: string = '';
 
 
@@ -270,6 +275,18 @@ export class VulnerabilitiesTableComponent implements OnInit, OnChanges {
    */
   clearFilters(): void {
     this.clearFiltersEvent.emit();
+  }
+
+  createJiraTicket(findingId: number): void {
+    this.createJiraTicketEvent.emit(findingId);
+  }
+
+  createJiraTicketsBulk(): void {
+    this.createJiraTicketsBulkEvent.emit(this.selectedFindings);
+  }
+
+  hasJiraTicket(row: any): boolean {
+    return row?.jira_ticket_key != null && row?.jira_ticket_key !== '';
   }
 
   /**

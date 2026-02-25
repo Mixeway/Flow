@@ -68,6 +68,8 @@
                             [selectedFindings]="selectedFindings"
                             [vulnerabilitiesLoading]="vulnerabilitiesLoading"
                             [vulnerabilitiesLimit]="vulnerabilitiesLimit"
+                            [jiraEnabled]="jiraEnabled"
+                            [teamId]="teamId"
                             (updateFilterNameEvent)="updateFilterName($event)"
                             (updateFilterLocationEvent)="updateFilterLocation($event)"
                             (updateFilterSourceEvent)="updateFilterSource($event)"
@@ -84,6 +86,8 @@
                             (onBranchSelectEvent)="onBranchSelect($event)"
                             (viewVulnerabilityDetailsEvent)="viewVulnerabilityDetails($event)"
                             (clearFiltersEvent)="clearVulnerabilityFilters()"
+                            (createJiraTicketEvent)="createJiraTicket($event)"
+                            (createJiraTicketsBulkEvent)="createJiraTicketsBulk($event)"
                     ></app-vulnerabilities-table>
                 </c-tab-panel>
 

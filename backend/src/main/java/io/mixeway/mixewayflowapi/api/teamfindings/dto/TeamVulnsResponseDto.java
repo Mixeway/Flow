@@ -18,6 +18,8 @@ public class TeamVulnsResponseDto {
     String componentName;
     String urgency;
     String repoUrl;
+    @JsonProperty("jira_ticket_key")
+    String jiraTicketKey;
 
 
 }

@@ -20,6 +20,11 @@ import {
   ToastBodyComponent,
   ToastHeaderComponent,
   FormControlDirective,
+  FormCheckComponent,
+  FormCheckInputDirective,
+  FormCheckLabelDirective,
+  FormSelectDirective,
+  FormLabelDirective,
 } from "@coreui/angular";
 import {NgxDatatableModule} from "@swimlane/ngx-datatable";
 import {IconDirective, IconSetService} from "@coreui/icons-angular";
@@ -34,6 +39,7 @@ import {TeamService} from "../../service/TeamService";
 import {UserService} from "../../service/UserService";
 import {SettingsService} from "../../service/SettingsService";
 import {CloudSubscriptionService} from "../../service/CloudSubscriptionService";
+import {JiraService, JiraConfigRequest, JiraConfigResponse} from "../../service/JiraService";
 
 interface User {
   id: number;
@@ -98,6 +104,11 @@ interface ChangeTeamDto {
     ToastBodyComponent,
     ToastHeaderComponent,
     FormControlDirective,
+    FormCheckComponent,
+    FormCheckInputDirective,
+    FormCheckLabelDirective,
+    FormSelectDirective,
+    FormLabelDirective,
   ],
   templateUrl: './manage-teams.component.html',
   styleUrls: ['./manage-teams.component.scss']
@@ -134,11 +145,32 @@ export class ManageTeamsComponent implements OnInit {
   cloudSubscriptions: any[] = [];
   newSubscriptionName: string = '';
 
+  // JIRA integration
+  visibleJiraConfig = false;
+  jiraConfigEditMode = false;
+  jiraTestingConnection = false;
+  jiraConfigs: Map<number, JiraConfigResponse> = new Map();
+  jiraIssueTypes: string[] = [];
+  jiraLoadingIssueTypes = false;
+  jiraProjects: {key: string, name: string}[] = [];
+  jiraLoadingProjects = false;
+
+  jiraConfigForm = this.fb.group({
+    jiraUrl: ['', Validators.required],
+    jiraToken: ['', Validators.required],
+    jiraProjectKey: ['', Validators.required],
+    jiraIssueType: ['Bug'],
+    jiraUsername: [''],
+    autoCreateEnabled: [false],
+    autoSeverityThreshold: ['HIGH'],
+  });
+
 
   constructor(public iconSet: IconSetService, private fb: FormBuilder, private router: Router,
               private authService: AuthService, private teamService: TeamService,
               private userService: UserService, private settingsService: SettingsService,
-              private cloudSubscriptionService: CloudSubscriptionService) {
+              private cloudSubscriptionService: CloudSubscriptionService,
+              private jiraService: JiraService) {
     // iconSet singleton
     iconSet.icons = { ...freeSet, ...iconSet };
   }
@@ -146,12 +178,12 @@ export class ManageTeamsComponent implements OnInit {
   loadTeams() {
     this.teamService.get().subscribe({
       next: (response: Team[]) => {
-        // Add showMembers flag to each team
         this.teams = response.map((team: Team) => ({
           ...team,
           showMembers: false
         }));
-        this.filteredTeams = [...this.teams]; // Initialize filtered teams with a new array
+        this.filteredTeams = [...this.teams];
+        this.loadJiraConfigs();
       },
       error: (error) => {
         this.showToast('danger', 'Error loading teams. Please try again.');
@@ -504,5 +536,213 @@ export class ManageTeamsComponent implements OnInit {
         }
       });
     }
+  }
+
+  // ============ JIRA Integration ============
+
+  loadJiraConfigs() {
+    this.teams.forEach(team => {
+      this.jiraService.getConfiguration(team.id).subscribe({
+        next: (config) => {
+          if (config && config.configured) {
+            this.jiraConfigs.set(team.id, config);
+          }
+        },
+        error: () => {}
+      });
+    });
+  }
+
+  getJiraConfigStatus(teamId: number): boolean {
+    return this.jiraConfigs.has(teamId);
+  }
+
+  openJiraConfigModal(team: Team) {
+    this.selectedTeam = team;
+    this.jiraConfigEditMode = false;
+    this.jiraProjects = [];
+    this.jiraIssueTypes = [];
+
+    const existing = this.jiraConfigs.get(team.id);
+    if (existing) {
+      this.jiraConfigEditMode = true;
+      this.jiraConfigForm.patchValue({
+        jiraUrl: existing.jiraUrl,
+        jiraToken: '',
+        jiraProjectKey: existing.jiraProjectKey,
+        jiraIssueType: existing.jiraIssueType || 'Bug',
+        jiraUsername: existing.jiraUsername || '',
+        autoCreateEnabled: existing.autoCreateEnabled,
+        autoSeverityThreshold: existing.autoSeverityThreshold || 'HIGH',
+      });
+      this.jiraConfigForm.get('jiraToken')?.clearValidators();
+      this.jiraConfigForm.get('jiraToken')?.updateValueAndValidity();
+    } else {
+      this.jiraConfigForm.reset({
+        jiraUrl: '',
+        jiraToken: '',
+        jiraProjectKey: '',
+        jiraIssueType: 'Bug',
+        jiraUsername: '',
+        autoCreateEnabled: false,
+        autoSeverityThreshold: 'HIGH',
+      });
+      this.jiraConfigForm.get('jiraToken')?.setValidators(Validators.required);
+      this.jiraConfigForm.get('jiraToken')?.updateValueAndValidity();
+    }
+    this.visibleJiraConfig = true;
+  }
+
+  saveJiraConfig() {
+    if (!this.selectedTeam || this.jiraConfigForm.invalid) return;
+
+    const config = {
+      jiraUrl: this.jiraConfigForm.value.jiraUrl || '',
+      jiraToken: this.jiraConfigForm.value.jiraToken || '',
+      jiraProjectKey: this.jiraConfigForm.value.jiraProjectKey || '',
+      jiraIssueType: this.jiraConfigForm.value.jiraIssueType || 'Bug',
+      jiraUsername: this.jiraConfigForm.value.jiraUsername || '',
+      autoCreateEnabled: this.jiraConfigForm.value.autoCreateEnabled || false,
+      autoSeverityThreshold: this.jiraConfigForm.value.autoSeverityThreshold || 'HIGH',
+    };
+
+    const teamId = this.selectedTeam.id;
+    const operation = this.jiraConfigEditMode
+        ? this.jiraService.updateConfiguration(teamId, config)
+        : this.jiraService.createConfiguration(teamId, config);
+
+    operation.subscribe({
+      next: (response) => {
+        this.jiraConfigs.set(teamId, response);
+        this.showToast('success', `JIRA configuration ${this.jiraConfigEditMode ? 'updated' : 'created'} successfully`);
+        this.visibleJiraConfig = false;
+      },
+      error: (error) => {
+        this.showToast('danger', 'Error saving JIRA configuration. Please check your settings.');
+      }
+    });
+  }
+
+  deleteJiraConfig() {
+    if (!this.selectedTeam) return;
+    if (!confirm('Are you sure you want to delete the JIRA configuration? This will not affect existing tickets.')) return;
+
+    const teamId = this.selectedTeam.id;
+    this.jiraService.deleteConfiguration(teamId).subscribe({
+      next: () => {
+        this.jiraConfigs.delete(teamId);
+        this.showToast('success', 'JIRA configuration deleted successfully');
+        this.visibleJiraConfig = false;
+      },
+      error: () => {
+        this.showToast('danger', 'Error deleting JIRA configuration');
+      }
+    });
+  }
+
+  testJiraConnection() {
+    if (!this.selectedTeam) return;
+    this.jiraTestingConnection = true;
+
+    this.jiraService.testConnection(this.selectedTeam.id).subscribe({
+      next: () => {
+        this.jiraTestingConnection = false;
+        this.showToast('success', 'JIRA connection test successful!');
+      },
+      error: () => {
+        this.jiraTestingConnection = false;
+        this.showToast('danger', 'JIRA connection test failed. Please verify your settings.');
+      }
+    });
+  }
+
+  private getJiraRequestPayload(): Partial<JiraConfigRequest> | null {
+    const form = this.jiraConfigForm.value;
+    const token = form.jiraToken;
+
+    if (!form.jiraUrl) {
+      this.showToast('warning', 'Please fill in JIRA URL first');
+      return null;
+    }
+
+    if (!token && !this.jiraConfigEditMode) {
+      this.showToast('warning', 'Please fill in API Token first');
+      return null;
+    }
+
+    if (!token && this.jiraConfigEditMode) {
+      this.showToast('warning', 'In edit mode, please re-enter the API Token to fetch data from JIRA');
+      return null;
+    }
+
+    return {
+      jiraUrl: form.jiraUrl || '',
+      jiraToken: token || '',
+      jiraProjectKey: form.jiraProjectKey || '',
+      jiraUsername: form.jiraUsername || '',
+    };
+  }
+
+  fetchJiraProjects() {
+    const payload = this.getJiraRequestPayload();
+    if (!payload) return;
+
+    this.jiraLoadingProjects = true;
+    this.jiraProjects = [];
+    this.jiraIssueTypes = [];
+
+    this.jiraService.fetchProjects(payload).subscribe({
+      next: (projects) => {
+        this.jiraLoadingProjects = false;
+        this.jiraProjects = projects;
+        if (projects.length > 0) {
+          const currentKey = this.jiraConfigForm.get('jiraProjectKey')?.value;
+          if (!currentKey || !projects.some(p => p.key === currentKey)) {
+            this.jiraConfigForm.patchValue({ jiraProjectKey: projects[0].key });
+          }
+          this.showToast('success', `Found ${projects.length} project(s)`);
+          this.fetchJiraIssueTypes();
+        } else {
+          this.showToast('warning', 'No projects found. Check your credentials.');
+        }
+      },
+      error: () => {
+        this.jiraLoadingProjects = false;
+        this.showToast('danger', 'Failed to fetch projects. Check connection settings.');
+      }
+    });
+  }
+
+  fetchJiraIssueTypes() {
+    const payload = this.getJiraRequestPayload();
+    if (!payload) return;
+
+    if (!this.jiraConfigForm.value.jiraProjectKey) {
+      this.showToast('warning', 'Please select a project first');
+      return;
+    }
+    payload.jiraProjectKey = this.jiraConfigForm.value.jiraProjectKey || '';
+
+    this.jiraLoadingIssueTypes = true;
+    this.jiraIssueTypes = [];
+
+    this.jiraService.fetchIssueTypes(payload).subscribe({
+      next: (types) => {
+        this.jiraLoadingIssueTypes = false;
+        this.jiraIssueTypes = types;
+        if (types.length > 0) {
+          const currentValue = this.jiraConfigForm.get('jiraIssueType')?.value;
+          if (!currentValue || !types.includes(currentValue)) {
+            this.jiraConfigForm.patchValue({ jiraIssueType: types[0] });
+          }
+        } else {
+          this.showToast('warning', 'No issue types found for this project.');
+        }
+      },
+      error: () => {
+        this.jiraLoadingIssueTypes = false;
+        this.showToast('danger', 'Failed to fetch issue types.');
+      }
+    });
   }
 }
