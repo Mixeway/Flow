@@ -13,7 +13,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.net.MalformedURLException;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,82 +28,138 @@ public class GitCommentService {
     private final GitHubApiClientService gitHubApiClientService;
     private final BitbucketApiClientService bitbucketApiClientService;
 
-
+    private static final int TOP_FINDINGS_LIMIT = 5;
 
     public void processMergeComment(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, Long iid) throws MalformedURLException {
         List<Finding> findings = findFindingService.getCodeRepoFindings(codeRepo, codeRepoBranch);
 
         int sastCritical = countFindings(findings, Finding.Source.SAST, Finding.Severity.CRITICAL, Finding.Status.EXISTING, Finding.Status.NEW);
         int sastHigh = countFindings(findings, Finding.Source.SAST, Finding.Severity.HIGH, Finding.Status.EXISTING, Finding.Status.NEW);
-        int sastRest = countRestFindings(findings, Finding.Source.SAST, Finding.Status.EXISTING, Finding.Status.NEW);
+        int sastMedium = countFindings(findings, Finding.Source.SAST, Finding.Severity.MEDIUM, Finding.Status.EXISTING, Finding.Status.NEW);
+        int sastLow = countFindings(findings, Finding.Source.SAST, Finding.Severity.LOW, Finding.Status.EXISTING, Finding.Status.NEW);
 
         int scaCritical = countFindings(findings, Finding.Source.SCA, Finding.Severity.CRITICAL, Finding.Status.EXISTING, Finding.Status.NEW);
         int scaHigh = countFindings(findings, Finding.Source.SCA, Finding.Severity.HIGH, Finding.Status.EXISTING, Finding.Status.NEW);
-        int scaRest = countRestFindings(findings, Finding.Source.SCA, Finding.Status.EXISTING, Finding.Status.NEW);
+        int scaMedium = countFindings(findings, Finding.Source.SCA, Finding.Severity.MEDIUM, Finding.Status.EXISTING, Finding.Status.NEW);
+        int scaLow = countFindings(findings, Finding.Source.SCA, Finding.Severity.LOW, Finding.Status.EXISTING, Finding.Status.NEW);
 
         int iacCritical = countFindings(findings, Finding.Source.IAC, Finding.Severity.CRITICAL, Finding.Status.EXISTING, Finding.Status.NEW);
         int iacHigh = countFindings(findings, Finding.Source.IAC, Finding.Severity.HIGH, Finding.Status.EXISTING, Finding.Status.NEW);
-        int iacRest = countRestFindings(findings, Finding.Source.IAC, Finding.Status.EXISTING, Finding.Status.NEW);
+        int iacMedium = countFindings(findings, Finding.Source.IAC, Finding.Severity.MEDIUM, Finding.Status.EXISTING, Finding.Status.NEW);
+        int iacLow = countFindings(findings, Finding.Source.IAC, Finding.Severity.LOW, Finding.Status.EXISTING, Finding.Status.NEW);
 
         int secretsCritical = countFindings(findings, Finding.Source.SECRETS, Finding.Severity.CRITICAL, Finding.Status.EXISTING, Finding.Status.NEW);
         int secretsHigh = countFindings(findings, Finding.Source.SECRETS, Finding.Severity.HIGH, Finding.Status.EXISTING, Finding.Status.NEW);
-        int secretsRest = countRestFindings(findings, Finding.Source.SECRETS, Finding.Status.EXISTING, Finding.Status.NEW);
-        String status ="";
-        int critAndHigh = sastCritical + sastHigh + scaCritical + scaHigh + iacCritical + iacHigh + secretsCritical + secretsHigh;
+        int secretsMedium = countFindings(findings, Finding.Source.SECRETS, Finding.Severity.MEDIUM, Finding.Status.EXISTING, Finding.Status.NEW);
+        int secretsLow = countFindings(findings, Finding.Source.SECRETS, Finding.Severity.LOW, Finding.Status.EXISTING, Finding.Status.NEW);
+
+        int totalCritical = sastCritical + scaCritical + iacCritical + secretsCritical;
+        int totalHigh = sastHigh + scaHigh + iacHigh + secretsHigh;
+        int critAndHigh = totalCritical + totalHigh;
+
+        String status;
         if (critAndHigh > 5) {
-            status = "Danger 🚨🚨";
-        } else if (critAndHigh > 0 && critAndHigh < 5) {
-            status = "Warning ⚠ ⚠";
+            status = "🚨 Danger";
+        } else if (critAndHigh > 0) {
+            status = "⚠️ Warning";
         } else {
-            status = "OK ✅✅";
+            status = "✅ Passed";
         }
-        String message = generateSecurityReport(status, sastCritical, sastHigh, sastRest,
-                secretsCritical, secretsHigh, secretsRest, iacCritical, iacHigh, iacRest,
-                !codeRepo.getIacScan().equals(CodeRepo.ScanStatus.NOT_PERFORMED),scaCritical, scaHigh, scaRest,
-                (frontendUrl.startsWith("http") ? "":"https://") + frontendUrl+"#/show-repo/"+codeRepo.getId());
-        if (codeRepo.getType().equals(CodeRepo.RepoType.GITLAB)){
+
+        List<Finding> topCriticalFindings = getTopCriticalFindings(findings);
+        boolean scaEnabled = !codeRepo.getIacScan().equals(CodeRepo.ScanStatus.NOT_PERFORMED);
+        String detailsLink = (frontendUrl.startsWith("http") ? "" : "https://") + frontendUrl + "#/show-repo/" + codeRepo.getId();
+
+        String message = generateSecurityReport(
+                status, critAndHigh,
+                sastCritical, sastHigh, sastMedium, sastLow,
+                secretsCritical, secretsHigh, secretsMedium, secretsLow,
+                iacCritical, iacHigh, iacMedium, iacLow,
+                scaEnabled, scaCritical, scaHigh, scaMedium, scaLow,
+                topCriticalFindings, detailsLink);
+
+        if (codeRepo.getType().equals(CodeRepo.RepoType.GITLAB)) {
             log.info("[Git Comment Service] About to put comment for Merge Request for {}", codeRepo.getName());
             gitLabApiClientService.commentMergeRequest(codeRepo, iid, message).block();
-        } else if (codeRepo.getType().equals(CodeRepo.RepoType.GITHUB)){
+        } else if (codeRepo.getType().equals(CodeRepo.RepoType.GITHUB)) {
             log.info("[Git Comment Service] About to put comment for Pull Request for {}", codeRepo.getName());
             gitHubApiClientService.commentMergeRequest(codeRepo, iid, message).block();
-        } else if (codeRepo.getType().equals(CodeRepo.RepoType.BITBUCKET)){
+        } else if (codeRepo.getType().equals(CodeRepo.RepoType.BITBUCKET)) {
             log.info("[Git Comment Service] About to put comment for Pull Request for {}", codeRepo.getName());
             bitbucketApiClientService.commentPullRequest(codeRepo, iid, message).block();
         }
-
     }
 
+    private List<Finding> getTopCriticalFindings(List<Finding> findings) {
+        Comparator<Finding> severityOrder = Comparator.comparingInt(f -> {
+            switch (f.getSeverity()) {
+                case CRITICAL: return 0;
+                case HIGH: return 1;
+                default: return 2;
+            }
+        });
 
-    private String generateSecurityReport(String status, int sastCrit, int sastHigh, int sastRest,
-                                          int secretsCrit, int secretsHigh, int secretsRest,
-                                          int iacCrit, int iacHigh, int iacRest,
-                                          boolean scaEnabled, Integer scaCrit, Integer scaHigh, Integer scaRest, String detailsLink) {
-        // Conditional SCA Section
-        String scaSection;
+        return findings.stream()
+                .filter(f -> f.getStatus() == Finding.Status.NEW || f.getStatus() == Finding.Status.EXISTING)
+                .filter(f -> f.getSeverity() == Finding.Severity.CRITICAL || f.getSeverity() == Finding.Severity.HIGH)
+                .sorted(severityOrder)
+                .limit(TOP_FINDINGS_LIMIT)
+                .collect(Collectors.toList());
+    }
+
+    private String generateSecurityReport(String status, int critAndHigh,
+                                          int sastCrit, int sastHigh, int sastMedium, int sastLow,
+                                          int secretsCrit, int secretsHigh, int secretsMedium, int secretsLow,
+                                          int iacCrit, int iacHigh, int iacMedium, int iacLow,
+                                          boolean scaEnabled, int scaCrit, int scaHigh, int scaMedium, int scaLow,
+                                          List<Finding> topCriticalFindings, String detailsLink) {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("## 🔒 Flow Security Scan\n\n");
+        sb.append(String.format("**Status:** %s", status));
+        if (critAndHigh > 0) {
+            sb.append(String.format(" — **%d** critical/high issue%s found", critAndHigh, critAndHigh == 1 ? "" : "s"));
+        }
+        sb.append("\n\n---\n\n");
+
+        sb.append("### Findings Overview\n\n");
+        sb.append("| Scanner | 🔴 Critical | 🟠 High | 🟡 Medium | 🔵 Low |\n");
+        sb.append("|---------|:-----------:|:-------:|:---------:|:------:|\n");
+        sb.append(String.format("| 🛡️ SAST | %d | %d | %d | %d |\n", sastCrit, sastHigh, sastMedium, sastLow));
+        sb.append(String.format("| 🔑 Secrets | %d | %d | %d | %d |\n", secretsCrit, secretsHigh, secretsMedium, secretsLow));
+        sb.append(String.format("| 🏗️ IaC | %d | %d | %d | %d |\n", iacCrit, iacHigh, iacMedium, iacLow));
         if (scaEnabled) {
-            scaSection = String.format(
-                    "📦 **SCA**: Critical: %d, High: %d\n",
-                    scaCrit, scaHigh);
+            sb.append(String.format("| 📦 SCA | %d | %d | %d | %d |\n", scaCrit, scaHigh, scaMedium, scaLow));
         } else {
-            scaSection = "📦 **SCA**: Scan not performed.\n";
+            sb.append("| 📦 SCA | — | — | — | — |\n");
         }
 
-        // Build the report
-        return String.format(
-                "# 🔒 Security Bot Report\n" +
-                        "**Outcome**: %s\n\n" +
-                        "## Scan Summary:\n" +
-                        "🛡️ **SAST**: Critical: %d, High: %d\n" +
-                        "🔑 **Secrets**: Critical: %d, High: %d\n" +
-                        "🏗️ **IAC**: Critical: %d, High: %d\n" +
-                        scaSection +
-                        "\n[🔍 View Detailed Report](%s)",
-                status,
-                sastCrit, sastHigh,
-                secretsCrit, secretsHigh,
-                iacCrit, iacHigh,
-                detailsLink);
+        if (!topCriticalFindings.isEmpty()) {
+            sb.append("\n---\n\n");
+            sb.append("### 🚨 Top Critical & High Findings\n\n");
+            sb.append("| # | Severity | Vulnerability | Location |\n");
+            sb.append("|:-:|:--------:|---------------|----------|\n");
+            for (int i = 0; i < topCriticalFindings.size(); i++) {
+                Finding f = topCriticalFindings.get(i);
+                String sevIcon = f.getSeverity() == Finding.Severity.CRITICAL ? "🔴 Critical" : "🟠 High";
+                String vulnName = f.getVulnerability() != null ? f.getVulnerability().getName() : "Unknown";
+                String location = f.getLocation() != null ? truncate(f.getLocation(), 60) : "—";
+                sb.append(String.format("| %d | %s | `%s` | `%s` |\n", i + 1, sevIcon, vulnName, location));
+            }
+        }
+
+        sb.append("\n---\n\n");
+        sb.append(String.format("> 🔍 [**View Full Report**](%s)", detailsLink));
+        sb.append("\n\n<sub>🤖 Automated by Flow Security Bot</sub>\n");
+
+        return sb.toString();
+    }
+
+    private String truncate(String value, int maxLen) {
+        if (value.length() <= maxLen) {
+            return value;
+        }
+        return value.substring(0, maxLen - 3) + "...";
     }
 
     private int countFindings(List<Finding> findings, Finding.Source source, Finding.Severity severity, Finding.Status... statuses) {
@@ -109,14 +167,6 @@ public class GitCommentService {
                 .filter(f -> (source == null || f.getSource() == source) &&
                         (severity == null || f.getSeverity() == severity) &&
                         (statuses.length == 0 || java.util.Arrays.asList(statuses).contains(f.getStatus())))
-                .count();
-    }
-    private int countRestFindings(List<Finding> findings, Finding.Source source, Finding.Status... statuses) {
-        return (int) findings.stream()
-                .filter(f -> f.getSource() == source &&
-                        f.getSeverity() != Finding.Severity.CRITICAL &&
-                        f.getSeverity() != Finding.Severity.HIGH &&
-                        java.util.Arrays.asList(statuses).contains(f.getStatus()))
                 .count();
     }
 
