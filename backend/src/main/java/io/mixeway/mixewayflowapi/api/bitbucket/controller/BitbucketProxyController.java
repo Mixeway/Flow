@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -83,14 +84,16 @@ public class BitbucketProxyController {
                 requestSpec = requestSpec.header("Authorization", "Bearer " + bitbucketToken);
             }
 
-            ResponseEntity<Object> response = requestSpec
+            Map<String, Object> body = requestSpec
                     .retrieve()
-                    .toEntity(Object.class)
+                    .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                    .timeout(Duration.ofSeconds(15))
+                    .doOnNext(b -> log.info("Bitbucket single repo response keys: {}", b.keySet()))
                     .doOnError(error -> log.error("Error proxying Bitbucket repo request to {}: {}", fullUrl, error.getMessage()))
-                    .onErrorResume(error -> Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error.getMessage())))
+                    .onErrorResume(error -> Mono.just(Collections.emptyMap()))
                     .block();
 
-            return response != null ? response : ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.ok(body != null ? body : Collections.emptyMap());
         } catch (Exception e) {
             log.error("Error proxying Bitbucket repo request", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

@@ -29,7 +29,7 @@ public class BitbucketApiClientService {
      * @return A Flux emitting all found repositories across all pages.
      */
     public Flux<ImportCodeRepoBitbucketResponseDto> fetchAllRepositories(String repoUrl, String accessToken) {
-        String initialUri = UriComponentsBuilder.fromHttpUrl(repoUrl)
+        String initialUri = UriComponentsBuilder.fromHttpUrl(normalizeToApiUrl(repoUrl))
                 .path("/2.0/repositories")
                 .queryParam("role", "member")
                 .queryParam("pagelen", 100)
@@ -102,7 +102,7 @@ public class BitbucketApiClientService {
             return Mono.error(new IllegalArgumentException("Invalid Bitbucket repository path: " + fullName));
         }
 
-        String apiUrl = UriComponentsBuilder.fromHttpUrl(repoUrl)
+        String apiUrl = UriComponentsBuilder.fromHttpUrl(normalizeToApiUrl(repoUrl))
                 .pathSegment("2.0", "repositories", parts[0], parts[1])
                 .toUriString();
 

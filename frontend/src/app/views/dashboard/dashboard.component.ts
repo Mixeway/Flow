@@ -863,27 +863,24 @@ export class DashboardComponent implements OnInit {
     updateFilter(event: any) {
         const val = event.target.value.toLowerCase();
 
-        // If there's no filter value, reset rows to full list
         if (!val) {
             this.rows = [...this.temp];
             return;
         }
 
-        // Filter our data based on multiple columns
         const temp = this.temp.filter(row => {
-            // Ensure you filter based on all the relevant columns
             return (
-                row.target.toLowerCase().includes(val) ||
-                row.team.toLowerCase().includes(val) ||
-                row.sast.toLowerCase().includes(val) ||
-                row.sca.toLowerCase().includes(val) ||
-                row.secrets.toLowerCase().includes(val) ||
-                row.iac.toLowerCase().includes(val) ||
-                row.gitlab.toLowerCase().includes(val)
+                (row.target?.toLowerCase().includes(val)) ||
+                (row.team?.toLowerCase().includes(val)) ||
+                (row.repo_url?.toLowerCase().includes(val)) ||
+                (row.sast?.toLowerCase().includes(val)) ||
+                (row.sca?.toLowerCase().includes(val)) ||
+                (row.secrets?.toLowerCase().includes(val)) ||
+                (row.iac?.toLowerCase().includes(val)) ||
+                (row.gitlab?.toLowerCase().includes(val))
             );
         });
 
-        // Update the rows with the filtered data
         this.rows = temp;
     }
 
