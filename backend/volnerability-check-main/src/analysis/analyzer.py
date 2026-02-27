@@ -99,6 +99,7 @@ async def analyze_vulnerability(
         
         logger.info(f"Sending synthesis request (prompt length: {len(synthesis_prompt)} chars)")
         logger.info(f"Using model: {settings.OPENAI_MODEL}")
+        logger.info(f"Synthesis_Prompt: {synthesis_prompt}")
         await rate_limiter.wait_if_needed()
 
         completion = client.chat.completions.create(
@@ -109,6 +110,7 @@ async def analyze_vulnerability(
             ],
             timeout=settings.OPENAI_TIMEOUT_SECONDS,
             stream=True,
+            response_format={"type": "json_object"},
         )
 
         chunks = []
@@ -181,7 +183,8 @@ async def _run_code_triage(vuln: VulnerabilityInput, chunks: List[CodeChunk]) ->
                 {"role": "user", "content": f"{triage_prompt}\n\nCRITICAL: Output must be valid JSON only, no other text."}
             ],
             timeout=settings.OPENAI_TIMEOUT_SECONDS,
-            stream=True
+            stream=True,
+            response_format={"type": "json_object"},
         )
 
         chunks = []
