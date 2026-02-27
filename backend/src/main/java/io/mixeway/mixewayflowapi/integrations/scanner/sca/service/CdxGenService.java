@@ -99,13 +99,13 @@ public class CdxGenService {
         String command;
 
         if (proxyHost != null && proxyPort != null) {
-            // Construct the command with environment variables inline
-            command = "HTTP_PROXY=http://" + proxyHost + ":" + proxyPort + " "
+            command = "CDXGEN_DEBUG_MODE=debug "
+                    + "HTTP_PROXY=http://" + proxyHost + ":" + proxyPort + " "
                     + "HTTPS_PROXY=http://" + proxyHost + ":" + proxyPort + " "
-                    + "cdxgen -o sbom.json";
+                    + "cdxgen --recurse --output sbom.json .";
             log.info("[CdxGen] Proxy settings applied: {}:{}", proxyHost, proxyPort);
         } else {
-            command = "cdxgen -o sbom.json";
+            command = "CDXGEN_DEBUG_MODE=debug cdxgen --recurse --output sbom.json .";
         }
 
         // Use 'sh -c' to execute the command in a shell
@@ -119,24 +119,22 @@ public class CdxGenService {
         ExecutorService executorService = Executors.newFixedThreadPool(2);
 
         try {
-            // Stream Gobbler for Standard Output
             executorService.submit(() -> {
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                     String line;
                     while (!Thread.currentThread().isInterrupted() && (line = reader.readLine()) != null) {
-                        // Optionally process the output
+                        log.debug("[CdxGen] stdout: {}", line);
                     }
                 } catch (IOException e) {
                     log.error("[CdxGen] Error reading standard output stream", e);
                 }
             });
 
-            // Stream Gobbler for Error Output
             executorService.submit(() -> {
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
                     String line;
                     while (!Thread.currentThread().isInterrupted() && (line = reader.readLine()) != null) {
-                        // Optionally process the error output
+                        log.debug("[CdxGen] stderr: {}", line);
                     }
                 } catch (IOException e) {
                     log.error("[CdxGen] Error reading error output stream", e);

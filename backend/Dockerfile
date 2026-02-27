@@ -55,7 +55,7 @@ RUN apt-get update && \
     && apt-get clean
 
 # Install cdxgen globally
-RUN npm install -g @cyclonedx/cdxgen
+RUN npm install -g @cyclonedx/cdxgen@latest
 
 ## Download and install JDK 22 based on architecture
 RUN ARCH=$(uname -m) && \
