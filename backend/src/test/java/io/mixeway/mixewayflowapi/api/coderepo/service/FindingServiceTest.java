@@ -1,7 +1,10 @@
 package io.mixeway.mixewayflowapi.api.coderepo.service;
 
 import io.mixeway.mixewayflowapi.api.coderepo.dto.GetFindingResponseDto;
-import io.mixeway.mixewayflowapi.db.entity.*;
+import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
+import io.mixeway.mixewayflowapi.db.entity.Constraint;
+import io.mixeway.mixewayflowapi.db.entity.Finding;
+import io.mixeway.mixewayflowapi.db.entity.Vulnerability;
 import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.finding.FindFindingService;
 import org.junit.jupiter.api.Test;
@@ -16,11 +19,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class FindingServiceTest {
@@ -38,9 +41,10 @@ class FindingServiceTest {
         Long repoId = 1L;
         Long findingId = 2L;
         Principal principal = mock(Principal.class);
+
         // Use reflection to create CodeRepo since constructor is protected
         CodeRepo codeRepo = mock(CodeRepo.class);
-        when(codeRepo.getId()).thenReturn(repoId);
+        lenient().when(codeRepo.getId()).thenReturn(repoId);
 
         Vulnerability vulnerability = new Vulnerability("CVE-2023-1234", "Desc", "Ref", "Rec", Finding.Severity.HIGH,
                 BigDecimal.ONE, BigDecimal.TEN, true);
