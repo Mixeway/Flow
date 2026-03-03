@@ -59,8 +59,14 @@ public class DownloaderLogService {
     }
 
     public void saveDownloaderDataFile(String id, String data) throws IOException {
+        createDirectoryIfNotExists();
         deleteOldDataFiles();
         Files.writeString(Path.of(System.getProperty("user.dir") + File.separator + downloaderDataFilePath + File.separator + id + ".json"), data);
+    }
+
+    private void createDirectoryIfNotExists() throws IOException {
+        Path path = Path.of(System.getProperty("user.dir") + File.separator + downloaderDataFilePath);
+        Files.createDirectories(path);
     }
 
     private long countDataFiles() throws IOException {
