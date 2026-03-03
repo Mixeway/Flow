@@ -65,3 +65,10 @@
 .font-600 {
   font-weight: 600;
 }
+
+button:disabled,
+.btn:disabled {
+  cursor: not-allowed !important;
+  pointer-events: all;
+  opacity: 0.65;
+}

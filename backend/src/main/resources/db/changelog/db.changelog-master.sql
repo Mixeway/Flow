@@ -949,3 +949,22 @@ INSERT INTO settings_exploitability (
     4,
     true
 );
+
+--changeset bondtom:update_vulnerability_alter_datatypes
+ALTER TABLE vulnerability ALTER COLUMN exploitability_score TYPE DECIMAL(5,2) USING exploitability_score::numeric(5,2);
+ALTER TABLE vulnerability ALTER COLUMN impact_score TYPE DECIMAL(5,2) USING impact_score::numeric(5,2);
+ALTER TABLE vulnerability ALTER COLUMN base_score TYPE DECIMAL(5,2) USING base_score::numeric(5,2);
+ALTER TABLE vulnerability ALTER COLUMN metric_version TYPE DECIMAL(5,2) USING metric_version::numeric(5,2);
+
+--changeset bondtom:update_vulnerable_configurations_add_columns
+ALTER TABLE vulnerable_configurations ADD COLUMN version_start_excluding VARCHAR(50);
+ALTER TABLE vulnerable_configurations ADD COLUMN version_end_including VARCHAR(50);
+
+--changeset bondtom:create_downloader_log_table
+CREATE TABLE downloader_log (
+                            id SERIAL PRIMARY KEY,
+                            status VARCHAR(15),
+                            processed VARCHAR(255),
+                            error VARCHAR(255),
+                            created_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+)

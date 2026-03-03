@@ -2,11 +2,13 @@ package io.mixeway.mixewayflowapi.integrations.nist.dto;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
+
 @Data
 public class NistCveCvssMetricV31 {
     private String source;
     private String type;
     private NistCveCvssData cvssData;
-    private String exploitabilityScore;
-    private String impactScore;
+    private BigDecimal exploitabilityScore;
+    private BigDecimal impactScore;
 }

@@ -1,0 +1,36 @@
+<!-- Main Dashboard Container -->
+<div class="dashboard-container">
+    <!-- Header area with summary stats -->
+    <c-row>
+        <c-col xs="12">
+            <div class="header-container mb-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h1 class="page-title">Data Update Panel</h1>
+                </div>
+            </div>
+        </c-col>
+    </c-row>
+
+    <app-foldable-container
+            [title]="'Provide data to upload'"
+            [isFoldable]="true">
+        <app-data-provision
+            (dataUploaded)="onDataUploaded($event)"></app-data-provision>
+    </app-foldable-container>
+
+    <app-foldable-container
+            [title]="'Last upload'"
+            [isFoldable]="true">
+        <app-last-data-upload></app-last-data-upload>
+    </app-foldable-container>
+
+    <app-foldable-container
+            [title]="'Last Data Imports'"
+            [isFoldable]="true">
+        <app-data-update-log-table
+            [logs]="logs"
+            (downloadFileEvent)="onDownloadFile($event)"></app-data-update-log-table>
+    </app-foldable-container>
+</div>
+
+<app-toast-application></app-toast-application>
