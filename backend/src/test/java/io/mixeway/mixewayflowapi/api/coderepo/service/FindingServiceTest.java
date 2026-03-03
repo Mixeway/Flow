@@ -49,7 +49,7 @@ class FindingServiceTest {
         Vulnerability vulnerability = new Vulnerability("CVE-2023-1234", "Desc", "Ref", "Rec", Finding.Severity.HIGH,
                 BigDecimal.ONE, BigDecimal.TEN, true);
         vulnerability.setVector("CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H");
-        vulnerability.setBaseScore("9.8");
+        vulnerability.setBaseScore(new BigDecimal("9.8"));
 
         List<Constraint> constraints = new ArrayList<>();
         constraints.add(new Constraint("Constraint 1"));
@@ -74,7 +74,7 @@ class FindingServiceTest {
         assertNotNull(result);
         assertNotNull(result.getVulnerabilityDetails());
         assertEquals("CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H", result.getVulnerabilityDetails().getVector());
-        assertEquals("9.8", result.getVulnerabilityDetails().getBaseScore());
+        assertEquals(new BigDecimal("9.8"), result.getVulnerabilityDetails().getBaseScore());
         assertNotNull(result.getVulnerabilityDetails().getConstraints());
         assertEquals(1, result.getVulnerabilityDetails().getConstraints().size());
         assertEquals("Constraint 1", result.getVulnerabilityDetails().getConstraints().get(0).getText());
