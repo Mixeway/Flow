@@ -972,3 +972,6 @@ CREATE TABLE downloader_log (
 --changeset bondluk:add_cf_access_credentials
 ALTER TABLE settings_exploitability ADD COLUMN cf_access_client_id VARCHAR(255);
 ALTER TABLE settings_exploitability ADD COLUMN cf_access_client_secret VARCHAR(255);
+ALTER TABLE settings_exploitability ADD COLUMN searxng_base_url VARCHAR(255);
+ALTER TABLE settings_exploitability ADD COLUMN searxng_top_k_query INTEGER;
+ALTER TABLE settings_exploitability ADD COLUMN searxng_top_k_context INTEGER;

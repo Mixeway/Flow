@@ -16,6 +16,9 @@ def parse_llm_json(llm_output: str, context: str = "") -> Optional[Dict[str, Any
     Returns:
         Parsed JSON dictionary or None if parsing fails
     """
+
+    logger.info(f"Trying to parse for context: {context} - {llm_output}")
+
     if not llm_output or not llm_output.strip():
         logger.warning(f"Empty LLM output for context: {context}")
         return None
