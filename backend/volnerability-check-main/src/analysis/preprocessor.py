@@ -318,6 +318,8 @@ def check_and_organize_chunks(
                 {"role": "system", "content": CHUNK_ORGANIZER_SYSTEM_PROMPT},
                 {"role": "user", "content": f"{prompt}\n\nCRITICAL: Return valid JSON only in the specified format."}
             ],
+            temperature=0,
+            seed=42,
             timeout=settings.OPENAI_TIMEOUT_SECONDS,
         )
         

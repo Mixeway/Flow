@@ -46,7 +46,10 @@ def expand_query_with_llm(vulnerability: VulnerabilityInput) -> str:
             messages=[
                 {"role": "system", "content": QUERY_GENERATION_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt}
-            ]
+            ],
+            temperature=0,
+            seed=42,
+            timeout=settings.OPENAI_TIMEOUT_SECONDS,
         )
         api_time = time.time() - api_start_time
         

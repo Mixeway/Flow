@@ -108,6 +108,8 @@ async def analyze_vulnerability(
                 {"role": "system", "content": SYNTHESIS_ANALYSIS_SYSTEM_PROMPT},
                 {"role": "user", "content": f"{synthesis_prompt}\n\nIMPORTANT: Respond with valid JSON only."}
             ],
+            temperature=0,
+            seed=42,
             timeout=settings.OPENAI_TIMEOUT_SECONDS,
             stream=True,
             response_format={"type": "json_object"},
@@ -182,6 +184,8 @@ async def _run_code_triage(vuln: VulnerabilityInput, chunks: List[CodeChunk]) ->
                 {"role": "system", "content": CODE_TRIAGE_SYSTEM_PROMPT},
                 {"role": "user", "content": f"{triage_prompt}\n\nCRITICAL: Output must be valid JSON only, no other text."}
             ],
+            temperature=0,
+            seed=42,
             timeout=settings.OPENAI_TIMEOUT_SECONDS,
             stream=True,
             response_format={"type": "json_object"},

@@ -132,6 +132,8 @@ async def conduct_web_research(vuln_name: str, vuln_constraints: str) -> Dict[st
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": research_prompt}
             ],
+            temperature=0,
+            seed=42,
             timeout=settings.OPENAI_TIMEOUT_SECONDS,
         )
         

@@ -119,6 +119,9 @@ def run_quality_assessment(prompt: str) -> dict:
                 {"role": "user", "content": f"{prompt}\n\nCRITICAL: Return valid JSON only in the specified format."}
             ],
             response_format={"type": "json_object"},
+            temperature=0,
+            seed=42,
+            timeout=settings.OPENAI_TIMEOUT_SECONDS,
         )
         api_time = time.time() - api_start_time
         
