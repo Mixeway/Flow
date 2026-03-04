@@ -1,5 +1,5 @@
-import { Routes } from '@angular/router';
-import { DefaultLayoutComponent } from './layout';
+import {Routes} from '@angular/router';
+import {DefaultLayoutComponent} from './layout';
 
 export const routes: Routes = [
   {
@@ -45,6 +45,10 @@ export const routes: Routes = [
       {
         path: 'admin/users',
         loadChildren: () => import('./views/admin-users/routes').then((m) => m.routes)
+      },
+      {
+        path: 'admin/data-update',
+        loadChildren: () => import('./views/admin-data-update/routes').then((m) => m.routes)
       },
       {
         path: 'manage-teams',

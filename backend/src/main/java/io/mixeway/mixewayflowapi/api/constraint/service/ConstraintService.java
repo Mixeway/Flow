@@ -35,6 +35,12 @@ public class ConstraintService {
         return new ConstraintDto(saved.getId(), saved.getText(), saved.getVulnerability().getId());
     }
 
+    public Constraint createConstraint(Vulnerability vulnerability, String text) {
+        Constraint constraint = new Constraint(text);
+        constraint.setVulnerability(vulnerability);
+        return constraintRepository.save(constraint);
+    }
+
     public void deleteConstraint(Long id) {
         constraintRepository.deleteById(id);
     }

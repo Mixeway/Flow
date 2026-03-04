@@ -1,0 +1,44 @@
+<ngx-datatable
+        class="bootstrap security-table"
+        [rows]="logs()"
+        [columns]="columns"
+        [columnMode]="'force'"
+        [footerHeight]="50"
+        [headerHeight]="50"
+        [rowHeight]="'auto'"
+        [sorts]="[{prop: 'createdDate', dir: 'desc'}]"
+        [limit]="10">
+
+    <ngx-datatable-column name="Import Date" prop="createdDate" [width]="150">
+        <ng-template ngx-datatable-cell-template let-row="row">
+            <span class="team-badge">{{ row.createdDate | date:'medium' }}</span>
+        </ng-template>
+    </ngx-datatable-column>
+
+    <ngx-datatable-column name="Status" prop="status" [width]="150">
+        <ng-template ngx-datatable-cell-template let-row="row">
+            <span class="team-badge">{{ row.status }}</span>
+        </ng-template>
+    </ngx-datatable-column>
+
+    <ngx-datatable-column name="Successfully processed" prop="processed" [width]="150">
+        <ng-template ngx-datatable-cell-template let-row="row">
+            <span class="team-badge">{{ row.processed }}</span>
+        </ng-template>
+    </ngx-datatable-column>
+
+    <ngx-datatable-column name="Not processed" prop="error" [width]="150">
+        <ng-template ngx-datatable-cell-template let-row="row">
+            <span class="team-badge">{{ row.error }}</span>
+        </ng-template>
+    </ngx-datatable-column>
+
+    <ngx-datatable-column [sortable]="false" [width]="150">
+        <ng-template ngx-datatable-cell-template let-row="row">
+            <button type="button" class="btn btn-sm btn-primary" (click)="downloadFile(row.id)" [disabled]="row.fileExists === false">
+                <svg cIcon name="cil-cloud-download"></svg>
+            </button>
+        </ng-template>
+    </ngx-datatable-column>
+
+</ngx-datatable>

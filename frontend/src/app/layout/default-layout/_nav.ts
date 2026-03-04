@@ -75,6 +75,11 @@ export function getNavItems(): INavData[] {
       url: '/admin/settings',
       iconComponent: { name: 'cil-settings' }
     },
+    {
+      name: 'Data Update',
+      url: '/admin/data-update',
+      iconComponent: { name: 'cil-save' }
+    },
   ];
 
   // Filter based on role

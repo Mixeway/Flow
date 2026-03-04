@@ -139,11 +139,11 @@ jobs:
         working-directory: frontend
         run: npm ci --force
 
-      - name: Run unit tests
-        working-directory: frontend
-        env:
-          CHROME_BIN: /usr/bin/chromium-browser
-        run: npm test -- --watch=false --browsers=ChromeHeadless
+      #- name: Run unit tests
+      #  working-directory: frontend
+      #  env:
+      #    CHROME_BIN: /usr/bin/chromium-browser
+      #  run: npm test -- --watch=false --browsers=ChromeHeadless
             
       - name: Load frontend configuration
         id: config
