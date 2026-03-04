@@ -12,6 +12,8 @@ ALLOWED_SETTINGS = {
     "openai_org_id",
     "openai_timeout_seconds",
     "openai_max_retries",
+    "cf_access_client_id",
+    "cf_access_client_secret",
     "max_concurrent_api_calls",
     "api_call_delay_seconds",
     "default_top_k",

@@ -968,3 +968,7 @@ CREATE TABLE downloader_log (
                             error VARCHAR(255),
                             created_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 )
+
+--changeset bondluk:add_cf_access_credentials
+ALTER TABLE settings_exploitability ADD COLUMN cf_access_client_id VARCHAR(255);
+ALTER TABLE settings_exploitability ADD COLUMN cf_access_client_secret VARCHAR(255);

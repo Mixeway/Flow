@@ -1,0 +1,47 @@
+services:
+  llm-engine:
+    image: ollama/ollama:rocm
+    restart: always
+    privileged: true
+    network_mode: host
+    shm_size: 32g
+    environment:
+      - OLLAMA_HOST=0.0.0.0:${OLLAMA_PORT}
+      - OLLAMA_MAX_LOADED_MODELS=${OLLAMA_MAX_LOADED_MODELS}
+      - OLLAMA_CONTEXT_LENGTH=${OLLAMA_CONTEXT_LENGTH}
+      - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL}
+      - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE}
+      - HIP_VISIBLE_DEVICES=${OLLAMA_HIP_VISIBLE_DEVICES}
+    devices:
+      - /dev/kfd:/dev/kfd
+      - /dev/dri:/dev/dri
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 60s
+      start_interval: 1s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  llm-init:
+    image: curlimages/curl:latest
+    network_mode: host
+    depends_on:
+      llm-engine:
+        condition: service_healthy
+    entrypoint: |
+      sh -c "
+      echo 'Pulling ${OPENAI_EMBEDDING_MODEL}...';
+      curl -X POST http://0.0.0.0:${OLLAMA_PORT}/api/pull -H 'Content-Type: application/json' -d \"{\\\"name\\\": \\\"$OPENAI_EMBEDDING_MODEL\\\"}\";
+
+      echo 'Pulling ${OPENAI_MODEL}...';
+      curl -X POST http://0.0.0.0:${OLLAMA_PORT}/api/pull -H 'Content-Type: application/json' -d \"{\\\"name\\\": \\\"$OPENAI_MODEL\\\"}\";
+
+      echo 'Init sequence finished. Closing container...';
+      "
+
+volumes:
+  ollama_data:
+    name: ollama_local_llm_storage

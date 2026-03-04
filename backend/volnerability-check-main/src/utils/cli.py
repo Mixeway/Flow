@@ -12,7 +12,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),  # Explicitly use stdout
-        logging.FileHandler("vulnerability_analysis.log", mode="w"),
+        logging.FileHandler("vulnerability_analysis.log", mode="w", encoding='utf-8'),
     ],
     force=True,
 )

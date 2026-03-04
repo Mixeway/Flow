@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     # =============================================================================
     # OpenAI API Configuration (REQUIRED)
     # =============================================================================
-    OPENAI_API_KEY: str = load_setting("openai_api_key", "settings")
+    OPENAI_API_KEY: Optional[str] = load_setting("openai_api_key", "settings")
     OPENAI_BASE_URL: str = load_setting("openai_base_url")
     OPENAI_MODEL: str = load_setting("openai_model")
     OPENAI_WEB_SEARCH_MODEL: str = load_setting("openai_web_search_model")
@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     # NVD_API_KEY is no longer used during analysis
     # NVD data should be pre-fetched and provided in the NVD_Data column of Excel input
     # See README "NVD Data Format" section for details
+
+    # ===============================================================================
+    # Cloudflare Access
+    # ===============================================================================
+    CF_ACCESS_CLIENT_ID: Optional[str] = load_setting("cf_access_client_id")
+    CF_ACCESS_CLIENT_SECRET: Optional[str] = load_setting("cf_access_client_secret")
 
     # =============================================================================
     # OpenAI Timeout & Retry Configuration

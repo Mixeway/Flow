@@ -100,7 +100,7 @@ async def analyze_vulnerability(
         logger.info(f"Sending synthesis request (prompt length: {len(synthesis_prompt)} chars)")
         logger.info(f"Using model: {settings.OPENAI_MODEL}")
         await rate_limiter.wait_if_needed()
-        
+
         completion = client.chat.completions.create(
             model=settings.OPENAI_MODEL,
             messages=[
@@ -108,9 +108,16 @@ async def analyze_vulnerability(
                 {"role": "user", "content": f"{synthesis_prompt}\n\nIMPORTANT: Respond with valid JSON only."}
             ],
             timeout=settings.OPENAI_TIMEOUT_SECONDS,
+            stream=True,
         )
-        
-        llm_output = completion.choices[0].message.content.strip()
+
+        chunks = []
+        for chunk in completion:
+            content = chunk.choices[0].delta.content
+            if content:
+                chunks.append(content)
+                logger.debug(f"Synthesis chunk: {content}")
+        llm_output = "".join(chunks).strip()
         logger.info("Synthesis analysis completed.")
         
     except Exception as e:
@@ -167,7 +174,6 @@ async def _run_code_triage(vuln: VulnerabilityInput, chunks: List[CodeChunk]) ->
     logger.info(f"Using model: {settings.OPENAI_MODEL}")
     
     try:
-        await rate_limiter.wait_if_needed()  # Rate limiting
         completion = client.chat.completions.create(
             model=settings.OPENAI_MODEL,
             messages=[
@@ -175,9 +181,17 @@ async def _run_code_triage(vuln: VulnerabilityInput, chunks: List[CodeChunk]) ->
                 {"role": "user", "content": f"{triage_prompt}\n\nCRITICAL: Output must be valid JSON only, no other text."}
             ],
             timeout=settings.OPENAI_TIMEOUT_SECONDS,
+            stream=True
         )
-        
-        report = completion.choices[0].message.content.strip()
+
+        chunks = []
+        for chunk in completion:
+            content = chunk.choices[0].delta.content
+            if content:
+                chunks.append(content)
+                logger.debug(f"Code triage chunk: {content}")
+        report = "".join(chunks).strip()
+
         logger.info("Code triage completed successfully.")
         return report
         

@@ -117,7 +117,8 @@ def run_quality_assessment(prompt: str) -> dict:
             messages=[
                 {"role": "system", "content": QUALITY_CHECKER_SYSTEM_PROMPT},
                 {"role": "user", "content": f"{prompt}\n\nCRITICAL: Return valid JSON only in the specified format."}
-            ]
+            ],
+            response_format={"type": "json_object"},
         )
         api_time = time.time() - api_start_time
         
