@@ -11,6 +11,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableAsync
 @Log4j2
 public class MixewayFlowApiApplication {
+
     public static void main(String[] args) {
         SpringApplication.run(MixewayFlowApiApplication.class, args);
     }

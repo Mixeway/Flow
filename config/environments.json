@@ -18,8 +18,8 @@
       "port_https": "8443",
       "ssl_enabled": "TRUE",
       "sso_enabled": "FALSE",
-      "spring_profiles": "prod, raven-prod",
-      "db_host": "raven-prod-db",
+      "spring_profiles": "prod,ravenprod",
+      "db_host": "flowdb",
       "db_port": "5432",
       "volumes": {
         "pki_data": "pki_data"
@@ -33,7 +33,7 @@
       "image_tag": "latest",
       "port": "443",
       "ssl_enabled": "TRUE",
-      "backend_url": "http://flowapi_backend:8888",
+      "backend_url": "https://flowapi_backend:8443",
       "volumes": {
         "ssl_certs": "flow_data"
       },
@@ -62,7 +62,7 @@
       "sso_enabled": "FALSE",
       "spring_profiles": "prod,raventest",
       "db_host": "raven-test-db",
-      "db_port": "15432",
+      "db_port": "5432",
       "volumes": {
         "pki_data": "pki_data_test",
         "dependency_track_data": "dependency_track_data_test"
@@ -76,11 +76,11 @@
       "image_tag": "test",
       "port": "1443",
       "ssl_enabled": "TRUE",
-      "backend_url": "http://flowapi_backend_test:18888",
+      "backend_url": "https://flowapi_backend_test:18443",
       "volumes": {
         "ssl_certs": "flow_data_test"
       },
-      "health_check_url": "http://localhost:1443",
+      "health_check_url": "http://localhost:443",
       "depends_on": "flowapi_backend_test"
     }
   }

@@ -608,3 +608,13 @@ c-toast {
     box-shadow: 0 0 0 10px rgba(51, 153, 255, 0);
   }
 }
+
+.selection-filter-style {
+  display: contents;
+}
+.selection-filter-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+}

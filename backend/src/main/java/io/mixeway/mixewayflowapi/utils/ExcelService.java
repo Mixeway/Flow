@@ -42,6 +42,8 @@ public class ExcelService {
             // Write to file
             try (FileOutputStream out = new FileOutputStream(path + ".xlsx")) {
                 workbook.write(out);
+            } catch (IOException e) {
+                throw new IOException(e);
             }
         return null;
         } catch (IOException e) {

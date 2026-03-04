@@ -224,9 +224,13 @@
                     <svg cIcon class="me-2" name="cil-sync"></svg>
                     Connect Repository Provider
                 </button>
-                <button *ngIf="selectedRepos.length > 0 && isAdmin" cButton color="primary" (click)="openChangeTeamModal()">
+                <button *ngIf="selectedRepos().length > 0 && isAdmin" cButton color="primary" (click)="openChangeTeamModal()">
                     <svg cIcon name="cil-pencil" class="me-2"></svg>
-                    Edit Selected ({{ selectedRepos.length }})
+                    Edit Selected ({{ selectedRepos().length }})
+                </button>
+                <button *ngIf="selectedRepos().length > 0 && isAdmin" cButton color="primary" (click)="analyzeSelectedExploitability()">
+                    <svg cIcon name="cil-magnifying-glass" class="me-2"></svg>
+                    Analyze Exploitability Selected ({{ selectedRepos().length }})
                 </button>
             </c-card-body>
         </c-card>
@@ -260,7 +264,7 @@
                     <c-tabs-content>
                         <c-tab-panel class="p-3" [itemKey]="0">
                             <c-row class="mb-4">
-                                <c-col>
+                                <c-col xs="10">
                                     <c-input-group class="dashboard-search-box">
                                         <span cInputGroupText>
                                           <svg cIcon name="cil-magnifying-glass"></svg>
@@ -274,57 +278,39 @@
                                         />
                                     </c-input-group>
                                 </c-col>
-                            </c-row>
-
-                            <c-row class="mb-3">
-                                <c-col>
+                                <c-col xs="2">
                                     <button
                                             cButton
-                                            color="light"
-                                            size="sm"
-                                            variant="ghost"
-                                            class="mb-2"
-                                            (click)="toggleStatusLegend()"
+                                            class="left-align"
+                                            [color]="'light-gradient'"
+                                            variant="outline"
+                                            (click)="toggleAdvancedOptions()"
                                     >
-                                        <svg cIcon name="cil-info" class="me-1"></svg>
-                                        {{ showStatusLegend ? 'Hide Status Legend' : 'View Status Legend' }}
+                                        <svg cIcon [name]="advancedOptionsVisible ? 'cil-caret-top' : 'cil-caret-bottom'" class="me-1"></svg>
+                                        Show Advanced Options
                                     </button>
-
-                                    <div class="status-legend d-flex gap-4 align-items-center flex-wrap"
-                                         *ngIf="showStatusLegend">
-                                        <div class="legend-item d-flex align-items-center">
-                                            <span class="status-indicator danger"></span>
-                                            <small>Critical Issues</small>
-                                        </div>
-                                        <div class="legend-item d-flex align-items-center">
-                                            <span class="status-indicator warning"></span>
-                                            <small>Warnings</small>
-                                        </div>
-                                        <div class="legend-item d-flex align-items-center">
-                                            <span class="status-indicator success"></span>
-                                            <small>No Issues</small>
-                                        </div>
-                                        <div class="legend-item d-flex align-items-center">
-                                            <span class="status-indicator neutral"></span>
-                                            <small>Not Scanned</small>
-                                        </div>
-                                        <div class="legend-item d-flex align-items-center">
-                                            <c-spinner size="sm"></c-spinner>
-                                            <small class="ms-2">Running</small>
-                                        </div>
-                                    </div>
                                 </c-col>
                             </c-row>
 
+                            <div *ngIf="advancedOptionsVisible">
+                                <c-row class="selection-filter-container">
+                                    <app-selection-filter   class="selection-filter-style"
+                                                            [title]="'Exploitability:'"
+                                                            [values]="exploitabilityStatusOptions"
+                                                            [selectedValues]="selectedExploitabilityStatus"
+                                                            (onValueChange)="updateFilterExploitabilityStatus($event)"></app-selection-filter>
+                                </c-row>
+                            </div>
+
                             <ngx-datatable
                                     class="bootstrap security-table"
-                                    [rows]="rows"
+                                    [rows]="codeRepos()"
                                     [columns]="columns"
                                     [selectionType]="selectionType.multiClick"
                                     (select)="onSelect($event)"
-                                    [selected]="selectedRepos"
+                                    [selected]="selectedRepos()"
                                     [rowIdentity]="rowIdentity"
-                                    [selectAllRowsOnPage]="false"
+                                    [selectAllRowsOnPage]="true"
                                     [columnMode]="'force'"
                                     [footerHeight]="50"
                                     [headerHeight]="50"
@@ -375,6 +361,7 @@
                                                 <div class="scan-block" [cTooltip]="'Secrets: ' + row.secrets" [ngClass]="getScanStatusClass(row.secrets)">SECR</div>
                                                 <div class="scan-block" [cTooltip]="'IaC: ' + row.iac" [ngClass]="getScanStatusClass(row.iac)">IAC</div>
                                                 <div class="scan-block" [cTooltip]="'GitLab: ' + row.gitlab" [ngClass]="getScanStatusClass(row.gitlab)">GIT</div>
+                                                <div class="scan-block" [cTooltip]="'Exploitability: ' + row.exploitability" [ngClass]="getScanStatusClass(row.exploitability)">Exploit</div>
                                             </div>
                                         </div>
                                     </ng-template>
@@ -1240,12 +1227,12 @@
         <h5 cModalTitle>Change Team for Selected Repositories</h5>
     </c-modal-header>
     <c-modal-body>
-        <p>You are about to change the team for <strong>{{ selectedRepos.length }}</strong> selected repositories.</p>
+        <p>You are about to change the team for <strong>{{ selectedRepos().length }}</strong> selected repositories.</p>
 
         <div class="mb-3">
             <small>Repositories:</small>
             <ul class="list-group list-group-flush" style="max-height: 150px; overflow-y: auto;">
-                <li *ngFor="let repo of selectedRepos" class="list-group-item py-1 px-0">{{ repo.target }}</li>
+                <li *ngFor="let repo of selectedRepos()" class="list-group-item py-1 px-0">{{ repo.target }}</li>
             </ul>
         </div>
 

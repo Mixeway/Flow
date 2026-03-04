@@ -1,6 +1,9 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import {ComponentFixture, TestBed} from '@angular/core/testing';
 
-import { RepositoryInfoComponent } from './repository-info.component';
+import {RepositoryInfoComponent} from './repository-info.component';
+import {provideHttpClient} from "@angular/common/http";
+import {provideHttpClientTesting} from "@angular/common/http/testing";
+import {provideNoopAnimations} from "@angular/platform-browser/animations";
 
 describe('RepositoryInfoComponent', () => {
   let component: RepositoryInfoComponent;
@@ -8,7 +11,12 @@ describe('RepositoryInfoComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [RepositoryInfoComponent]
+      imports: [RepositoryInfoComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideNoopAnimations()
+      ]
     })
     .compileComponents();
 

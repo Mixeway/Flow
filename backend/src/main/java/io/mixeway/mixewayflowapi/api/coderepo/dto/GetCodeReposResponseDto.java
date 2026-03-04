@@ -6,6 +6,7 @@ import lombok.Data;
 
 import java.util.List;
 
+//TODO: convert to mapper
 @Data
 public class GetCodeReposResponseDto {
     Long id;
@@ -18,6 +19,7 @@ public class GetCodeReposResponseDto {
     String secrets;
     String gitlab;
     String dast;
+    String exploitability;
     List<ScanInfo> scanInfos;
 
     public GetCodeReposResponseDto(CodeRepo codeRepo){
@@ -31,9 +33,10 @@ public class GetCodeReposResponseDto {
         this.sca = codeRepo.getScaScan().name();
         this.gitlab = codeRepo.getGitlabScan().name();
         this.dast = codeRepo.getDastScan().name();
+        this.exploitability = codeRepo.getExploitabilityScan().name();
         this.scanInfos = codeRepo.getScanInfos();
     }
-    public GetCodeReposResponseDto(Long id, String target, String repoUrl, String team, CodeRepo.ScanStatus sast, CodeRepo.ScanStatus iac, CodeRepo.ScanStatus secrets, CodeRepo.ScanStatus sca, CodeRepo.ScanStatus gitlab, CodeRepo.ScanStatus dast) {
+    public GetCodeReposResponseDto(Long id, String target, String repoUrl, String team, CodeRepo.ScanStatus sast, CodeRepo.ScanStatus iac, CodeRepo.ScanStatus secrets, CodeRepo.ScanStatus sca, CodeRepo.ScanStatus gitlab, CodeRepo.ScanStatus dast, CodeRepo.ScanStatus exploitability) {
         this.id = id;
         this.target = target;
         this.repo_url = repoUrl;
@@ -44,5 +47,6 @@ public class GetCodeReposResponseDto {
         this.sca = sca.toString();
         this.gitlab = gitlab.toString();
         this.dast = dast.toString();
+        this.exploitability = exploitability.toString();
     }
 }

@@ -8,6 +8,7 @@
 /frontend/package-lock.json
 /frontend/src/.DS_Store
 /frontend/src/assets/.DS_Store
+/frontend/coverage
 #frontend/src/environments
 
 /backend/volnerability-check-main/poetry.lock

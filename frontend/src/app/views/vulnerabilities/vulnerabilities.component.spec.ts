@@ -1,6 +1,9 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import {ComponentFixture, TestBed} from '@angular/core/testing';
 
-import { VulnerabilitiesComponent } from './vulnerabilities.component';
+import {VulnerabilitiesComponent} from './vulnerabilities.component';
+import {provideHttpClient} from "@angular/common/http";
+import {provideHttpClientTesting} from "@angular/common/http/testing";
+import {provideNoopAnimations} from "@angular/platform-browser/animations";
 
 describe('VulnerabilitiesComponent', () => {
   let component: VulnerabilitiesComponent;
@@ -8,7 +11,12 @@ describe('VulnerabilitiesComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [VulnerabilitiesComponent]
+      imports: [VulnerabilitiesComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideNoopAnimations()
+      ]
     })
     .compileComponents();
 

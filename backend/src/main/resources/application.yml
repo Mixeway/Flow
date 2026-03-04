@@ -1,0 +1,3 @@
+downloader:
+  path-name: downloader
+  file-limit: 10

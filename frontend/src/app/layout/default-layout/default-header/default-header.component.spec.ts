@@ -1,6 +1,6 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ReactiveFormsModule } from '@angular/forms';
-import { RouterTestingModule } from '@angular/router/testing';
+import {ComponentFixture, TestBed} from '@angular/core/testing';
+import {ReactiveFormsModule} from '@angular/forms';
+import {RouterTestingModule} from '@angular/router/testing';
 import {
   AvatarModule,
   BadgeModule,
@@ -13,9 +13,12 @@ import {
   ProgressModule,
   SidebarModule
 } from '@coreui/angular';
-import { IconModule, IconSetService } from '@coreui/icons-angular';
-import { iconSubset } from '../../../icons/icon-subset';
-import { DefaultHeaderComponent } from './default-header.component';
+import {IconModule, IconSetService} from '@coreui/icons-angular';
+import {iconSubset} from '../../../icons/icon-subset';
+import {DefaultHeaderComponent} from './default-header.component';
+import {provideHttpClient} from "@angular/common/http";
+import {provideHttpClientTesting} from "@angular/common/http/testing";
+import {provideNoopAnimations} from "@angular/platform-browser/animations";
 
 describe('DefaultHeaderComponent', () => {
   let component: DefaultHeaderComponent;
@@ -25,7 +28,11 @@ describe('DefaultHeaderComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
     imports: [GridModule, HeaderModule, IconModule, NavModule, BadgeModule, AvatarModule, DropdownModule, BreadcrumbModule, RouterTestingModule, SidebarModule, ProgressModule, ButtonGroupModule, ReactiveFormsModule, DefaultHeaderComponent],
-    providers: [IconSetService]
+    providers: [IconSetService,
+      provideHttpClient(),
+      provideHttpClientTesting(),
+      provideNoopAnimations()
+    ],
 })
       .compileComponents();
   });

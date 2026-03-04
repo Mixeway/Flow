@@ -1,6 +1,9 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import {ComponentFixture, TestBed} from '@angular/core/testing';
 
-import { ThreatListComponent } from './threat-list.component';
+import {ThreatListComponent} from './threat-list.component';
+import {provideHttpClient} from "@angular/common/http";
+import {provideHttpClientTesting} from "@angular/common/http/testing";
+import {provideNoopAnimations} from "@angular/platform-browser/animations";
 
 describe('ThreatListComponent', () => {
   let component: ThreatListComponent;
@@ -8,7 +11,12 @@ describe('ThreatListComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ThreatListComponent]
+      imports: [ThreatListComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideNoopAnimations()
+      ]
     })
     .compileComponents();
 

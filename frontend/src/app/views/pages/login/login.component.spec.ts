@@ -1,10 +1,12 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import {ComponentFixture, TestBed} from '@angular/core/testing';
 
-import { ButtonModule, CardModule, FormModule, GridModule } from '@coreui/angular';
-import { LoginComponent } from './login.component';
-import { IconModule } from '@coreui/icons-angular';
-import { IconSetService } from '@coreui/icons-angular';
-import { iconSubset } from '../../../icons/icon-subset';
+import {ButtonModule, CardModule, FormModule, GridModule} from '@coreui/angular';
+import {LoginComponent} from './login.component';
+import {IconModule, IconSetService} from '@coreui/icons-angular';
+import {iconSubset} from '../../../icons/icon-subset';
+import {provideHttpClient} from "@angular/common/http";
+import {provideHttpClientTesting} from "@angular/common/http/testing";
+import {provideNoopAnimations} from "@angular/platform-browser/animations";
 
 describe('LoginComponent', () => {
   let component: LoginComponent;
@@ -14,7 +16,12 @@ describe('LoginComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
     imports: [FormModule, CardModule, GridModule, ButtonModule, IconModule, LoginComponent],
-    providers: [IconSetService]
+    providers: [
+      IconSetService,
+      provideHttpClient(),
+      provideHttpClientTesting(),
+      provideNoopAnimations()
+    ]
 })
     .compileComponents();
   });

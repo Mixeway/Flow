@@ -1,12 +1,6 @@
 name: Deploy Database
 
 on:
-  push:
-    branches:
-      - main
-      - feature/*
-    paths:
-      - 'backend/**'
   workflow_dispatch:
     inputs:
       environment:
@@ -20,7 +14,7 @@ on:
         description: 'Load database dump?'
         required: true
         type: boolean
-        default: true
+        default: false
 
 jobs:
   deploy-prod:
@@ -75,8 +69,18 @@ jobs:
             --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
           echo ""
           docker volume inspect ${{ steps.config.outputs.volume }}
+      - name: Notify Slack
+        if: always()
+        uses: ./.github/actions/slack-notify
+        with:
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          status: ${{ job.status }}
+          workflow: ${{ github.workflow }}
+          branch: ${{ github.ref_name }}
+          actor: ${{ github.actor }}
+          custom_message: "Environment: PROD"
   deploy-test:
-# come back when test deployment will be done    if: inputs.environment == 'prod'
+    if: inputs.environment == 'test'
     runs-on: self-hosted
     
     steps:
@@ -127,3 +131,13 @@ jobs:
             --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
           echo ""
           docker volume inspect ${{ steps.config.outputs.volume }}
+      - name: Notify Slack
+        if: always()
+        uses: ./.github/actions/slack-notify
+        with:
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          status: ${{ job.status }}
+          workflow: ${{ github.workflow }}
+          branch: ${{ github.ref_name }}
+          actor: ${{ github.actor }}
+          custom_message: "Environment: TEST"

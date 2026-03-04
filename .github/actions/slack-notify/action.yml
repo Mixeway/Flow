@@ -1,0 +1,46 @@
+name: "Slack Notify"
+description: "Send Slack notification via webhook"
+
+inputs:
+  webhook_url:
+    description: "Slack Incoming Webhook URL"
+    required: true
+  status:
+    description: "Job status"
+    required: true
+  workflow:
+    description: "Workflow name"
+    required: true
+  branch:
+    description: "Branch name"
+    required: true
+  actor:
+    description: "Triggered by"
+    required: true
+  custom_message:
+    description: "Optional custom message"
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: |
+        STATUS="${{ inputs.status }}"
+
+        if [ "$STATUS" = "success" ]; then
+          EMOJI="✅"
+        elif [ "$STATUS" = "failure" ]; then
+          EMOJI="❌"
+        else
+          EMOJI="⚠️"
+        fi
+
+        MESSAGE="${EMOJI} Workflow *${{ inputs.workflow }}* completed with status: *${STATUS}*
+        Branch: \`${{ inputs.branch }}\`
+        Actor: ${{ inputs.actor }}
+        ${{ inputs.custom_message }}"
+
+        curl -X POST -H 'Content-type: application/json' \
+          --data "{\"text\":\"${MESSAGE}\"}" \
+          ${{ inputs.webhook_url }}

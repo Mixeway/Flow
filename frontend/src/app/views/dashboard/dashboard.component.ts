@@ -1,44 +1,54 @@
 import {
     Component,
     DestroyRef,
+    EventEmitter,
     inject,
     OnInit,
+    Output,
     Renderer2,
-    ViewChild,
-    TemplateRef,
     signal,
-    WritableSignal,
-    effect, Output, EventEmitter
+    TemplateRef,
+    ViewChild,
+    WritableSignal
 } from '@angular/core';
-import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
+import {FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {ChartOptions} from 'chart.js';
 import {NgxDatatableModule, SelectionType} from '@swimlane/ngx-datatable';
 import {
-    AvatarComponent,
     ButtonDirective,
-    ButtonGroupComponent,
     CardBodyComponent,
     CardComponent,
-    CardFooterComponent,
     CardHeaderComponent,
     ColComponent,
-    FormCheckLabelDirective, FormControlDirective, FormDirective, FormSelectDirective,
-    GutterDirective, InputGroupComponent, InputGroupTextDirective, ModalBodyComponent,
-    ModalComponent, ModalFooterComponent, ModalHeaderComponent, ModalTitleDirective,
-    ProgressBarDirective,
-    ProgressComponent,
-    RowComponent, RowDirective, SpinnerComponent, TabContentComponent, TabDirective,
-    TableDirective, TabPanelComponent, TabsComponent, TabsContentComponent, TabsListComponent,
-    TextColorDirective, ToastBodyComponent, ToastComponent, ToasterComponent, ToastHeaderComponent, TooltipDirective
+    FormControlDirective,
+    FormDirective,
+    FormSelectDirective,
+    InputGroupComponent,
+    InputGroupTextDirective,
+    ModalBodyComponent,
+    ModalComponent,
+    ModalFooterComponent,
+    ModalHeaderComponent,
+    ModalTitleDirective,
+    RowComponent,
+    SpinnerComponent,
+    TabDirective,
+    TabPanelComponent,
+    TabsComponent,
+    TabsContentComponent,
+    TabsListComponent,
+    ToastBodyComponent,
+    ToastComponent,
+    ToasterComponent,
+    ToastHeaderComponent,
+    TooltipDirective
 } from '@coreui/angular';
 import {ChartjsComponent} from '@coreui/angular-chartjs';
-import {IconDirective} from '@coreui/icons-angular';
-import {WidgetsBrandComponent} from '../widgets/widgets-brand/widgets-brand.component';
+import {IconDirective, IconSetService} from '@coreui/icons-angular';
 import {WidgetsDropdownComponent} from '../widgets/widgets-dropdown/widgets-dropdown.component';
 import {DashboardChartsData, IChartProps} from './dashboard-charts-data';
-import {DatePipe, DOCUMENT, NgClass, NgForOf, NgIf, NgStyle} from "@angular/common";
-import {IconSetService, IconSetModule} from "@coreui/icons-angular";
-import {brandSet, cilEnvelopeOpen, flagSet, freeSet} from "@coreui/icons";
+import {DatePipe, DOCUMENT, NgClass, NgForOf, NgIf} from "@angular/common";
+import {brandSet, freeSet} from "@coreui/icons";
 import {Router, RouterLink} from "@angular/router";
 import {AuthService} from "../../service/AuthService";
 import {GitLabService} from "../../service/GitLabService";
@@ -51,6 +61,11 @@ import {CloudService} from "../../service/CloudService";
 import {StatsService} from "../../service/StatsService";
 import {VulnerabilitySummary, VulnerabilityTrendDataPoint} from "../../model/stats.models";
 import {AppConfigService} from "../../service/AppConfigService";
+import {SharedModule} from "../../shared/shared.module";
+import {ScanStatus} from "../../model/enums/scan-status";
+import {CodeRepo} from "../../model/CodeRepo";
+import {CodeRepoTableService} from "../../service/code-repo-table/code-repo-table.service";
+import {ExploitService} from "../../service/exploit/exploit.service";
 
 interface RepoRow {
     id: number;
@@ -58,19 +73,6 @@ interface RepoRow {
     namespace: string;
     repo_url: string;
     imported: boolean;
-}
-
-interface CodeRepo {
-    id: number;
-    target: string;
-    repo_url: string;
-    team: string;
-    sast: string;
-    iac: string;
-    secrets: string;
-    sca: string;
-    dast: string;
-    gitlab: string;
 }
 
 interface CreateRepo {
@@ -116,10 +118,9 @@ interface CloudSubscription {
         CardHeaderComponent,
         NgxDatatableModule, ModalComponent, ModalHeaderComponent, ModalBodyComponent,
         ModalFooterComponent, InputGroupComponent, InputGroupTextDirective,
-        FormControlDirective, NgIf, FormSelectDirective, FormDirective, RowDirective,
-        ModalTitleDirective, SpinnerComponent, TooltipDirective, NgForOf, ToasterComponent,
+        FormControlDirective, NgIf, FormSelectDirective, FormDirective, ModalTitleDirective, SpinnerComponent, TooltipDirective, NgForOf, ToasterComponent,
         ToastComponent, ToastHeaderComponent, ToastBodyComponent, TabDirective, TabsComponent,
-        TabsListComponent, TabsContentComponent, TabPanelComponent, NgClass, RouterLink, DatePipe
+        TabsListComponent, TabsContentComponent, TabPanelComponent, NgClass, RouterLink, DatePipe, SharedModule
     ]
 })
 export class DashboardComponent implements OnInit {
@@ -151,16 +152,12 @@ export class DashboardComponent implements OnInit {
         { prop: 'lastSyncDate', name: 'Last Sync' },
         { prop: 'syncedRepoCount', name: 'Synced Repositories' }
     ];
-    selectedRepos: any[] = [];
     visibleChangeTeamModal = false;
     changeTeamForm: FormGroup;
     selectionType = SelectionType;
     public rowIdentity = (row: any): any => {
         return row.id;
     };
-
-
-
 
     // Security overview section properties
     showSecurityOverview: boolean = true;
@@ -286,6 +283,8 @@ export class DashboardComponent implements OnInit {
     };
 
     rows: CodeRepo[] = [];
+    rowsFiltered: CodeRepo[] = [];
+
     repoRows: RepoRow[] = []
     columns: any[] = [];
 
@@ -299,6 +298,14 @@ export class DashboardComponent implements OnInit {
     readonly #renderer: Renderer2 = inject(Renderer2);
     readonly #chartsData: DashboardChartsData = inject(DashboardChartsData);
 
+    selectedExploitabilityStatus: string[] = [];
+    readonly exploitabilityStatusOptions = Object.values(ScanStatus) as string[];
+
+    readonly codeRepoTableService = inject(CodeRepoTableService);
+    codeRepos = this.codeRepoTableService.filteredCodeRepos;
+    selectedRepos = this.codeRepoTableService.selectedRepos;
+
+    readonly exploitService = inject(ExploitService);
 
     constructor(
         public iconSet: IconSetService,
@@ -342,14 +349,14 @@ export class DashboardComponent implements OnInit {
             newTeamId: ['', Validators.required]
         });
     }
-    onSelect({ selected }: { selected: any[] }) {
-        // This creates a new array reference, which is a clearer signal to Angular
-        // that the data has changed.
-        console.log('Select event fired:', selected);
 
-        this.selectedRepos = [...selected];
+    updateFilterExploitabilityStatus(selected: string) {
+        this.codeRepoTableService.updateFilters({ exploitabilityStatus: Object.entries(ScanStatus).find(([k, v]) => v === selected)?.[0] });
     }
 
+    onSelect({ selected }: { selected: any[] }) {
+        this.codeRepoTableService.setSelectedRepos([...selected]);
+    }
 
     openChangeTeamModal() {
         this.visibleChangeTeamModal = true;
@@ -369,14 +376,14 @@ export class DashboardComponent implements OnInit {
             return;
         }
 
-        const repoIds = this.selectedRepos.map(repo => repo.id);
+        const repoIds = this.selectedRepos().map(repo => repo.id);
         const { newTeamId } = this.changeTeamForm.value;
 
         this.dashboardService.changeTeamForRepos(repoIds, newTeamId).subscribe({
             next: () => {
                 this.showToast('success', 'Teams changed successfully for selected repositories.');
                 this.visibleChangeTeamModal = false;
-                this.selectedRepos = []; // Clear selection
+                this.codeRepoTableService.clearSelection();
                 this.loadCodeRepos(); // Refresh the repository list
             },
             error: (err) => {
@@ -674,17 +681,7 @@ export class DashboardComponent implements OnInit {
     }
 
     loadCodeRepos() {
-        this.dashboardService.getRepos().subscribe({
-            next: (response) => {
-                this.rows = response;
-                this.temp = [...this.rows]; // Keep a backup of the original rows for filtering
-                this.loadTeams();
-            },
-            error: (error) => {
-                // Handle error
-                console.error('Error loading code repos:', error);
-            }
-        });
+        this.codeRepoTableService.loadCodeRepos();
     }
 
     loadCloudSubscriptions() {
@@ -1457,4 +1454,15 @@ export class DashboardComponent implements OnInit {
         }
     }
 
+    advancedOptionsVisible: boolean = false;
+    protected toggleAdvancedOptions() {
+        this.advancedOptionsVisible = !this.advancedOptionsVisible;
+    }
+
+    protected analyzeSelectedExploitability() {
+        this.selectedRepos().forEach(repo => {
+            this.exploitService.analyzeRepository(repo.id).subscribe({});
+        })
+        
+    }
 }
