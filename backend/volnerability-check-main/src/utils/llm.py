@@ -1,8 +1,10 @@
 import json
 import logging
-from typing import Dict, Any, Optional
+from pydantic import BaseModel
+from typing import Dict, Any, Optional, Type, TypeVar
 
 logger = logging.getLogger(__name__)
+T = TypeVar('T', bound=BaseModel)
 
 def parse_llm_json(llm_output: str, context: str = "") -> Optional[Dict[str, Any]]:
     """
@@ -39,3 +41,44 @@ def parse_llm_json(llm_output: str, context: str = "") -> Optional[Dict[str, Any
         logger.error(f"Failed to parse LLM JSON for context '{context}': {e}")
         logger.error(f"Raw output: {llm_output[:500]}...")
         return None
+
+
+def ask_llm_for_structured_data_stream(
+        client,
+        model_name: str,
+        system_prompt: str,
+        user_prompt: str,
+        response_model: Type[T]
+) -> T:
+    """Universal function to get guaranteed structured data from an LLM by streaming."""
+
+    schema = response_model.model_json_schema()
+
+    completion = client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ],
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": response_model.__name__,
+                "schema": schema,
+                "strict": True
+            }
+        },
+        temperature=0,
+        seed=42,
+        stream=True,
+    )
+
+    chunks = []
+    for chunk in completion:
+        content = chunk.choices[0].delta.content
+        if content:
+            chunks.append(content)
+            logger.debug(f"Stream chunk: {content}")
+
+    raw_json = "".join(chunks).strip()
+    return response_model.model_validate_json(raw_json)

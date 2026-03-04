@@ -1,8 +1,8 @@
+import json
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional, Dict, Any
-
-from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any, Literal
+from pydantic import BaseModel, Field, field_validator
 
 
 class VulnerabilityInput(BaseModel):
@@ -66,6 +66,55 @@ class VulnerabilityResult(BaseModel):
     ground_truth_probability: Optional[float] = None  # From the dataset
     ground_truth_exploitable: Optional[bool] = None   # From the dataset
 
+
+    @field_validator('suggested_next_steps', mode='before')
+    @classmethod
+    def dump_to_string(cls, v: Any) -> str:
+        if isinstance(v, (list, dict)):
+            return json.dumps(v)
+        return str(v)
+
+# ==========================================
+# CHUNK ORGANIZER MODELS
+# ==========================================
+
+class OrganizedChunk(BaseModel):
+    """Details for a specific organized code chunk."""
+    index: int = Field(...,
+        description="The original index of the chunk."
+    )
+    priority: int = Field(...,
+        ge=1, le=10,
+        description="Priority ranking from 1 (lowest) to 10 (highest relevance)."
+    )
+    relevance: Literal["high", "medium", "low"] = Field(...,
+        description="Categorical relevance of the chunk."
+    )
+    focus_areas: List[str] = Field(...,
+        description="Specific functions, variables, or logic paths to examine."
+    )
+    notes: str = Field(...,
+        description="Explanation of why this chunk is important for the vulnerability."
+    )
+
+class ChunkOrganizerResult(BaseModel):
+    """Final output schema for the Chunk Organizer LLM."""
+    organized_chunks: List[OrganizedChunk] = Field(...,
+        description="List of chunks ranked by likelihood of containing the vulnerability."
+    )
+    strategy: str = Field(...,
+        description="Overall step-by-step analysis approach for the Code Agent."
+    )
+    key_patterns: List[str] = Field(...,
+        description="Specific vulnerable code patterns or API misuses to watch for."
+    )
+    security_context: str = Field(...,
+        description="Overall assessment of the codebase's security context based on the summaries."
+    )
+
+# ==========================================
+# METRIC RESULTS MODELS
+# ==========================================
 
 class MetricsResult(BaseModel):
     """Metrics comparing LLM predictions with ground truth."""

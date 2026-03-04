@@ -1,21 +1,20 @@
-import json
 import logging
 from typing import List, Dict, Any
 from pathlib import Path
-import time
 
 from tenacity import retry, stop_after_attempt, wait_random_exponential, RetryError
 from openai import BadRequestError, APITimeoutError
 
 from ..core.client import client
 from ..core.config import settings
-from ..core.models import VulnerabilityInput
+from ..core.models import (
+    VulnerabilityInput,
+    OrganizedChunk,
+    ChunkOrganizerResult
+)
 from ..core.chunk import CodeChunk
+from ..utils.llm import ask_llm_for_structured_data_stream
 from .prompts import (
-    CODE_PREPROCESSOR_SYSTEM_PROMPT, 
-    CODE_PREPROCESSOR_USER_PROMPT,
-    CODE_TRIAGE_SYSTEM_PROMPT,
-    CODE_TRIAGE_USER_PROMPT,
     SYNTHESIS_ANALYSIS_SYSTEM_PROMPT,
     SYNTHESIS_ANALYSIS_USER_PROMPT,
     CHUNK_ORGANIZER_SYSTEM_PROMPT,
@@ -276,13 +275,59 @@ def preprocess_code_chunks(
     
     return structured_code
 
+def return_fallback_organization(retry_state) -> ChunkOrganizerResult:
+    logger.error("All retry attempts exhausted for chunk organization.")
 
-@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(3))
+    e = retry_state.outcome.exception()
+    if isinstance(e, APITimeoutError):
+        logger.error("API TIMEOUT ERROR in chunk organization - Request took too long")
+        logger.error("This may be due to large input size or API server load")
+
+    elif isinstance(e, RetryError):
+        logger.error("RetryError detected in chunk organization - all retry attempts exhausted")
+        if hasattr(e, 'last_attempt') and e.last_attempt and e.last_attempt.exception():
+            underlying_error = e.last_attempt.exception()
+            logger.error(f"Underlying organization error: {type(underlying_error).__name__}: {str(underlying_error)}")
+
+            # Check for specific error types
+            if isinstance(underlying_error, APITimeoutError):
+                logger.error("TIMEOUT ERROR in organization retry - Consider reducing input size")
+            elif isinstance(underlying_error, BadRequestError):
+                underlying_msg = str(underlying_error)
+                if "tokens exceed" in underlying_msg or "context_length_exceeded" in underlying_msg:
+                    logger.error("TOKEN LIMIT EXCEEDED in chunk organization")
+
+    logger.warning("Using fallback chunk organization.")
+
+    original_chunks = retry_state.args[1]
+    fallback_chunks = [
+        OrganizedChunk(
+            index=i,
+            priority=5,
+            relevance="medium",
+            focus_areas=["general analysis"],
+            notes="fallback organization due to API failure"
+        )
+        for i in range(len(original_chunks))
+    ]
+
+    return ChunkOrganizerResult(
+        organized_chunks=fallback_chunks,
+        strategy="fallback_due_to_error",
+        key_patterns=[],
+        security_context="analysis_failed"
+    )
+
+@retry(
+    wait=wait_random_exponential(min=1, max=60),
+    stop=stop_after_attempt(3),
+    retry_error_callback=return_fallback_organization,
+)
 def check_and_organize_chunks(
     vulnerability: VulnerabilityInput, 
     chunks: List[CodeChunk],
     repository_info: Dict[str, Any] = None
-) -> Dict[str, Any]:
+) -> ChunkOrganizerResult:
     """Organize and prioritize code chunks for analysis (simplified version)."""
     logger.info("ORGANIZING CODE CHUNKS")
     logger.info("=" * 30)
@@ -300,74 +345,24 @@ def check_and_organize_chunks(
     
     chunks_text = "\n".join(chunks_summary)
     
-    prompt = CHUNK_ORGANIZER_USER_PROMPT.format(
+    user_prompt = CHUNK_ORGANIZER_USER_PROMPT.format(
         vuln_name=vulnerability.name,
         vuln_constraints=vulnerability.constraints,
         chunks_summary=chunks_text
     )
-    
-    # Check input size before sending
-    if len(prompt) > settings.MAX_ORGANIZATION_CHARS:
-        logger.warning(f"Organization prompt too large ({len(prompt)} chars > {settings.MAX_ORGANIZATION_CHARS}), truncating...")
-        prompt = prompt[:settings.MAX_ORGANIZATION_CHARS] + "\n[TRUNCATED DUE TO SIZE LIMIT]"
-    
-    try:
-        completion = client.chat.completions.create(
-            model=settings.OPENAI_MODEL,
-            messages=[
-                {"role": "system", "content": CHUNK_ORGANIZER_SYSTEM_PROMPT},
-                {"role": "user", "content": f"{prompt}\n\nCRITICAL: Return valid JSON only in the specified format."}
-            ],
-            temperature=0,
-            seed=42,
-            timeout=settings.OPENAI_TIMEOUT_SECONDS,
-        )
-        
-        result = json.loads(completion.choices[0].message.content)
-        logger.info("Chunk organization completed successfully")
-        
-        return result
-        
-    except Exception as e:
-        logger.error(f"Chunk organization failed: {e}")
-        
-        # Enhanced error handling for specific error types
-        if isinstance(e, APITimeoutError):
-            logger.error("API TIMEOUT ERROR in chunk organization - Request took too long")
-            logger.error("This may be due to large input size or API server load")
-            
-        elif isinstance(e, RetryError):
-            logger.error("RetryError detected in chunk organization - all retry attempts exhausted")
-            if hasattr(e, 'last_attempt') and e.last_attempt and e.last_attempt.exception():
-                underlying_error = e.last_attempt.exception()
-                logger.error(f"Underlying organization error: {type(underlying_error).__name__}: {str(underlying_error)}")
-                
-                # Check for specific error types
-                if isinstance(underlying_error, APITimeoutError):
-                    logger.error("TIMEOUT ERROR in organization retry - Consider reducing input size")
-                elif isinstance(underlying_error, BadRequestError):
-                    underlying_msg = str(underlying_error)
-                    if "tokens exceed" in underlying_msg or "context_length_exceeded" in underlying_msg:
-                        logger.error("TOKEN LIMIT EXCEEDED in chunk organization")
-        
-        logger.warning("Using fallback chunk organization")
-        
-        # Return fallback organization
-        return {
-            "organized_chunks": [
-                {
-                    "index": i,
-                    "priority": 5,
-                    "relevance": "medium",
-                    "focus_areas": ["general analysis"],
-                    "notes": "fallback organization"
-                }
-                for i in range(len(chunks))
-            ],
-            "strategy": "fallback_due_to_error",
-            "key_patterns": [],
-            "security_context": "analysis_failed"
-        }
+    logger.info(f"Asking LLM to organize {len(chunks)} chunks...")
+
+    result = ask_llm_for_structured_data_stream(
+        client=client,
+        model_name=settings.OPENAI_MODEL,
+        system_prompt=CHUNK_ORGANIZER_SYSTEM_PROMPT,
+        user_prompt=user_prompt,
+        response_model=ChunkOrganizerResult,
+    )
+
+    logger.info("Chunk organization completed successfully")
+
+    return result
 
 
 def reorder_chunks_by_priority(chunks: List[CodeChunk], organization_result: Dict[str, Any]) -> List[CodeChunk]:

@@ -519,36 +519,20 @@ Query: "SQL injection authentication login database query string concatenation e
 
 # CHUNK ORGANIZATION PROMPT
 
-CHUNK_ORGANIZER_SYSTEM_PROMPT = """You organize code chunks by security relevance for vulnerability analysis.
+CHUNK_ORGANIZER_SYSTEM_PROMPT = """You are an Expert Security Engineer organizing code chunks for vulnerability analysis.
 
-Prioritize chunks that are most likely to contain the target vulnerability.
-Provide analysis strategy and focus areas."""
+**YOUR ROLE:**
+- Analyze the provided summaries of code chunks.
+- Rank and prioritize the chunks based on their likelihood of containing the target vulnerability.
+- Develop a clear analysis strategy and highlight specific focus areas for the next stage of triage."""
 
 CHUNK_ORGANIZER_USER_PROMPT = """**Vulnerability:** {vuln_name}
 **Constraints:** {vuln_constraints}
 
-**Code Chunks:**
+**Code Chunks to Organize:**
 {chunks_summary}
 
-**Output JSON:**
-```json
-{
-  "organized_chunks": [
-    {
-      "index": 0,
-      "priority": 1-10,
-      "relevance": "high|medium|low",
-      "focus_areas": ["specific functions to examine"],
-      "notes": "why this chunk is important"
-    }
-  ],
-  "strategy": "overall analysis approach",
-  "key_patterns": ["patterns to watch for"],
-  "security_context": "codebase security assessment"
-}
-```
-
-Rank by likelihood of containing the vulnerability."""
+Rank the chunks by likelihood of containing the vulnerability. Pay special attention to the provided Constraints."""
 
 # WEB RESEARCH PROMPTS
 
