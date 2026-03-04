@@ -4,19 +4,48 @@ from collections import Counter
 import logging
 import time
 
-from tenacity import RetryError
-from openai import BadRequestError, APITimeoutError
+from tenacity import RetryError, retry, wait_random_exponential, stop_after_attempt
+from openai import BadRequestError
 
-from ..core.config import settings
 from ..core.client import client
-from ..core.models import VulnerabilityInput
-from .prompts import QUERY_GENERATION_PROMPT_TEMPLATE, QUERY_GENERATION_SYSTEM_PROMPT
+from ..core.config import settings
+from ..core.models import VulnerabilityInput, ExpandedQuery
 from ..core.vectorstore import VectorStore
 from ..core.chunk import CodeChunk
+from ..utils.llm import ask_llm_for_structured_data_stream
+from .prompts import QUERY_GENERATION_PROMPT_TEMPLATE, QUERY_GENERATION_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
+def return_fallback_query_expansion(retry_state) -> str:
+    logger.error("All retry attempts exhausted for query expansion.")
 
+    e = retry_state.outcome.exception()
+    if isinstance(e, RetryError):
+        logger.error("RetryError detected in query expansion - all retry attempts exhausted")
+        if hasattr(e, 'last_attempt') and e.last_attempt and e.last_attempt.exception():
+            underlying_error = e.last_attempt.exception()
+            logger.error(f"Underlying query expansion error: {type(underlying_error).__name__}: {str(underlying_error)}")
+
+            if isinstance(underlying_error, BadRequestError):
+                underlying_msg = str(underlying_error)
+                if "tokens exceed" in underlying_msg or "context_length_exceeded" in underlying_msg:
+                    logger.error("TOKEN LIMIT EXCEEDED in query expansion")
+
+    logger.warning("Falling back to basic query construction.")
+
+    vulnerability = retry_state.args[0]
+    fallback_query = f"{vulnerability.name}\n{vulnerability.constraints}"
+
+    logger.info(f"Using fallback query: {fallback_query}")
+
+    return fallback_query
+
+@retry(
+    wait=wait_random_exponential(min=1, max=60),
+    stop=stop_after_attempt(3),
+    retry_error_callback=return_fallback_query_expansion
+)
 def expand_query_with_llm(vulnerability: VulnerabilityInput) -> str:
     """
     Uses an LLM to expand a vulnerability name and constraints into a targeted search query.
@@ -24,75 +53,39 @@ def expand_query_with_llm(vulnerability: VulnerabilityInput) -> str:
     logger.info("EXPANDING VULNERABILITY TO SEARCH QUERY")
     logger.info("=" * 40)
 
-    prompt = QUERY_GENERATION_PROMPT_TEMPLATE.format(
+    user_prompt = QUERY_GENERATION_PROMPT_TEMPLATE.format(
         vuln_name=vulnerability.name,
         vuln_constraints=vulnerability.constraints,
     )
 
-    logger.info(f"Using model: {settings.OPENAI_MODEL}")
     logger.info("Sending query expansion request to LLM...")
     
     logger.info("FULL QUERY EXPANSION PROMPT:")
     logger.info("-" * 40)
-    logger.info(f"System: {QUERY_GENERATION_SYSTEM_PROMPT}")
-    logger.info(f"User: {prompt}")
+    logger.info(f"User: {user_prompt}")
     logger.info("-" * 40)
 
-    try:
-        logger.info(f"Query expansion using model: {settings.OPENAI_MODEL}")
-        api_start_time = time.time()
-        completion = client.chat.completions.create(
-            model=settings.OPENAI_MODEL,
-            messages=[
-                {"role": "system", "content": QUERY_GENERATION_SYSTEM_PROMPT},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0,
-            seed=42,
-            timeout=settings.OPENAI_TIMEOUT_SECONDS,
-        )
-        api_time = time.time() - api_start_time
-        
-        expanded_query = completion.choices[0].message.content.strip()
-        
-        logger.info(f"Query expansion completed in {api_time:.2f} seconds")
-        logger.info(f"Original query length: {len(prompt)} characters")
-        logger.info(f"Expanded query length: {len(expanded_query)} characters")
-        
-        try:
-            if hasattr(completion, 'usage') and completion.usage:
-                usage = completion.usage
-                logger.info(f"Token usage - Prompt: {usage.prompt_tokens}, Completion: {usage.completion_tokens}, Total: {usage.total_tokens}")
-        except Exception as e:
-            logger.debug(f"Unable to log usage info: {e}")
-        
-        logger.info("FULL EXPANDED QUERY:")
-        logger.info("=" * 40)
-        logger.info(expanded_query)
-        logger.info("=" * 40)
-        
-        logger.info(f"Successfully generated expanded query: '{expanded_query[:100]}...'")
-        return expanded_query
-    except Exception as e:
-        logger.error(f"LLM query expansion failed: {e}")
-        logger.exception("Full error details:")
-        
-        if isinstance(e, RetryError):
-            logger.error("RetryError detected in query expansion - all retry attempts exhausted")
-            if hasattr(e, 'last_attempt') and e.last_attempt and e.last_attempt.exception():
-                underlying_error = e.last_attempt.exception()
-                logger.error(f"Underlying query expansion error: {type(underlying_error).__name__}: {str(underlying_error)}")
-                
-                if isinstance(underlying_error, BadRequestError):
-                    underlying_msg = str(underlying_error)
-                    if "tokens exceed" in underlying_msg or "context_length_exceeded" in underlying_msg:
-                        logger.error("TOKEN LIMIT EXCEEDED in query expansion")
-        
-        logger.warning("Falling back to basic query construction.")
-        fallback_query = f"{vulnerability.name}\n{vulnerability.constraints}"
-        logger.info(f"Using fallback query: {fallback_query}")
-        return fallback_query
+    api_start_time = time.time()
 
+    result = ask_llm_for_structured_data_stream(
+        client=client,
+        model_name=settings.OPENAI_MODEL,
+        system_prompt=QUERY_GENERATION_SYSTEM_PROMPT,
+        user_prompt=user_prompt,
+        response_model=ExpandedQuery
+    )
+
+    api_time = time.time() - api_start_time
+    logger.info(f"Query expansion completed in {api_time:.2f} seconds")
+
+    expanded_query = result.expanded_query.strip()
+
+    logger.info("FULL EXPANDED QUERY:")
+    logger.info("=" * 40)
+    logger.info(expanded_query)
+    logger.info("=" * 40)
+
+    return expanded_query
 
 def _extract_function_patterns(constraints: str) -> List[str]:
     """Extract function/API patterns from vulnerability constraints for hybrid search."""

@@ -98,7 +98,7 @@ class OrganizedChunk(BaseModel):
     )
 
 class ChunkOrganizerResult(BaseModel):
-    """Final output schema for the Chunk Organizer LLM."""
+    """Output schema for the Chunk Organizer LLM."""
     organized_chunks: List[OrganizedChunk] = Field(...,
         description="List of chunks ranked by likelihood of containing the vulnerability."
     )
@@ -110,6 +110,16 @@ class ChunkOrganizerResult(BaseModel):
     )
     security_context: str = Field(...,
         description="Overall assessment of the codebase's security context based on the summaries."
+    )
+
+# ==========================================
+# QUERY EXPANSION MODELS
+# ==========================================
+
+class ExpandedQuery(BaseModel):
+    """Output schema for the Query Expansion LLM."""
+    expanded_query: str = Field(...,
+        description="The highly optimized, raw search query combining the vulnerability name and constraints. Do not include conversational text."
     )
 
 # ==========================================

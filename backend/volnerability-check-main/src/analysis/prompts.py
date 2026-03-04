@@ -492,30 +492,27 @@ Provide thorough JSON response following the required format."""
 
 # QUERY GENERATION PROMPT
 
-QUERY_GENERATION_SYSTEM_PROMPT = """You generate search queries for vulnerability detection in code.
+QUERY_GENERATION_SYSTEM_PROMPT = """You are an Expert Security Engineer generating semantic search queries for vulnerability detection in source code.
 
-Create comprehensive queries that capture:
-- Technical terms and function names
-- Vulnerability patterns and variations
-- Related security concepts
-- Programming language specifics
+**YOUR ROLE:**
+Create comprehensive, keyword-rich queries that capture:
+- Technical terms and specific API/function names
+- Known vulnerability patterns and code variations
+- Related security concepts and potential mitigations
+- Programming language-specific constructs
 
-Make queries rich enough for semantic vector search."""
+Make the query highly optimized for a vector database semantic search."""
 
 QUERY_GENERATION_PROMPT_TEMPLATE = """**Vulnerability:** {vuln_name}
 **Constraints:** {vuln_constraints}
 
-Generate a comprehensive search query for semantic code search. Include:
-- Core vulnerability terms
-- Related function names and patterns
-- Programming language constructs
-- Security concepts and mitigations
+**Instructions:**
+Expand the vulnerability and constraints above into a single, comprehensive search query. Include core terms, related function names, programming language constructs, and security concepts. 
 
-**Example:**
+**Example of desired output style:**
 Vulnerability: "SQL injection in authentication"
-Query: "SQL injection authentication login database query string concatenation executeQuery prepared statement parameterized query user input validation WHERE clause username password bypass"
-
-**Generate search query:**"""
+Expanded Query: "SQL injection authentication login database query string concatenation executeQuery prepared statement parameterized query user input validation WHERE clause username password bypass"
+"""
 
 # CHUNK ORGANIZATION PROMPT
 
