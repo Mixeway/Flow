@@ -275,7 +275,7 @@ def preprocess_code_chunks(
     
     return structured_code
 
-def return_fallback_organization(retry_state) -> ChunkOrganizerResult:
+def return_fallback_chunk_organization(retry_state) -> ChunkOrganizerResult:
     logger.error("All retry attempts exhausted for chunk organization.")
 
     e = retry_state.outcome.exception()
@@ -321,7 +321,7 @@ def return_fallback_organization(retry_state) -> ChunkOrganizerResult:
 @retry(
     wait=wait_random_exponential(min=1, max=60),
     stop=stop_after_attempt(3),
-    retry_error_callback=return_fallback_organization,
+    retry_error_callback=return_fallback_chunk_organization,
 )
 def check_and_organize_chunks(
     vulnerability: VulnerabilityInput, 
