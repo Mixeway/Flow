@@ -1,6 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List, Union, Optional
-from pydantic import Field
+from typing import List, Optional
 import logging
 from ..utils.load_setting import load_setting
 
@@ -28,6 +27,13 @@ class Settings(BaseSettings):
     # NVD_API_KEY is no longer used during analysis
     # NVD data should be pre-fetched and provided in the NVD_Data column of Excel input
     # See README "NVD Data Format" section for details
+
+    # ===============================================================================
+    # SearxNG Configuration
+    # ===============================================================================
+    SEARXNG_BASE_URL: Optional[str] = load_setting("searxng_base_url")
+    SEARXNG_TOP_K_QUERY: Optional[int] = load_setting("searxng_top_k_query")
+    SEARXNG_TOP_K_CONTEXT: Optional[int] = load_setting("searxng_top_k_context")
 
     # ===============================================================================
     # Cloudflare Access
