@@ -123,6 +123,64 @@ class ExpandedQuery(BaseModel):
     )
 
 # ==========================================
+# WEB RESEARCH MODELS
+# ==========================================
+
+class VulnerabilityDetails(BaseModel):
+    title: str = Field(description="Official vulnerability title")
+    description: str = Field(description="Detailed technical description")
+    impact: str = Field(description="Potential impact and severity")
+    attack_vector: str = Field(description="How the vulnerability can be exploited")
+    root_cause: str = Field(description="Technical root cause analysis")
+
+class VersionIntelligence(BaseModel):
+    affected_versions: List[str] = Field(description="List of affected version ranges")
+    patched_versions: List[str] = Field(description="List of versions with fixes")
+    version_details: str = Field(description="Additional version-specific information")
+    upgrade_recommendations: str = Field(description="Recommended upgrade path")
+
+class ExploitIntelligence(BaseModel):
+    public_exploits: List[str] = Field(description="List of known public exploits with sources")
+    poc_available: bool = Field(description="Whether a proof of concept (PoC) is available (true/false)")
+    exploit_complexity: Literal["low", "medium", "high"] = Field(description="low|medium|high")
+    attack_scenarios: List[str] = Field(description="List of realistic attack scenarios")
+    exploitation_requirements: List[str] = Field(description="Prerequisites for successful exploitation")
+
+class MitigationIntelligence(BaseModel):
+    vendor_patches: List[str] = Field(description="Official patches with release info")
+    workarounds: List[str] = Field(description="Temporary mitigation strategies")
+    configuration_fixes: List[str] = Field(description="Configuration changes to prevent exploitation")
+    defensive_measures: List[str] = Field(description="Additional security controls")
+
+class SecurityAdvisory(BaseModel):
+    source: str = Field(description="Advisory source (e.g., Snyk, GitHub, vendor)")
+    url: str = Field(description="Direct URL to advisory")
+    date: str = Field(description="Advisory publication date")
+    severity: str = Field(description="Severity rating from this source")
+    key_points: List[str] = Field(description="Important points from this advisory")
+
+class RealWorldContext(BaseModel):
+    known_incidents: List[str] = Field(description="Documented security incidents using this vulnerability")
+    industry_impact: str = Field(description="Impact on specific industries or use cases")
+    timeline: str = Field(description="Key dates in vulnerability lifecycle")
+    vendor_response: str = Field(description="How vendors/maintainers have responded")
+
+class ResearchQuality(BaseModel):
+    sources_consulted: List[str] = Field(description="List of sources checked")
+    information_confidence: Literal["high", "medium", "low"] = Field(description="high|medium|low")
+    gaps_identified: List[str] = Field(description="Areas where information is limited")
+    last_updated: str = Field(description="When this research was conducted")
+
+class WebResearchResult(BaseModel):
+    vulnerability_details: VulnerabilityDetails
+    version_intelligence: VersionIntelligence
+    exploit_intelligence: ExploitIntelligence
+    mitigation_intelligence: MitigationIntelligence
+    security_advisories: List[SecurityAdvisory]
+    real_world_context: RealWorldContext
+    research_quality: ResearchQuality
+
+# ==========================================
 # METRIC RESULTS MODELS
 # ==========================================
 

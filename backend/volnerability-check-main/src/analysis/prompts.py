@@ -533,7 +533,7 @@ Rank the chunks by likelihood of containing the vulnerability. Pay special atten
 
 # WEB RESEARCH PROMPTS
 
-WEB_RESEARCH_AGENT_SYSTEM_PROMPT = """You are a security research specialist with web search capabilities. Use web search to gather comprehensive information about vulnerabilities from online sources.
+WEB_RESEARCH_AGENT_SYSTEM_PROMPT = """You are a Security Research Specialist with web search capabilities. Use web search to gather comprehensive information about vulnerabilities from online sources.
 
 **YOUR ROLE:**
 - Use web search to find and analyze public security databases, advisories, and research
@@ -553,10 +553,7 @@ WEB_RESEARCH_AGENT_SYSTEM_PROMPT = """You are a security research specialist wit
 - Security advisory platforms (Snyk, GitHub Security Advisories)
 - Exploit databases and security research
 - Vendor security bulletins and patch notes
-- Security blogs and whitepapers
-
-**OUTPUT FORMAT:**
-Always provide structured JSON with comprehensive research findings including source URLs."""
+- Security blogs and whitepapers"""
 
 WEB_RESEARCH_SYSTEM_PROMPT = """You are an Expert Security Intelligence Synthesizer. You do not have active web browsing capabilities. Instead, you analyze raw, scraped web search results provided to you.
 
@@ -569,76 +566,19 @@ WEB_RESEARCH_SYSTEM_PROMPT = """You are an Expert Security Intelligence Synthesi
 **DATA PROCESSING RULES (CRITICAL):**
 1. **Grounding:** Base your answers heavily on the provided search context. If the search context is empty or lacks specific details (like real-world incidents), rely on your base knowledge if you know the CVE, OR explicitly state "Information not found in provided sources".
 2. **No Hallucinations:** Do not invent version numbers or patch dates. If they are not in the text and you don't confidently know them, use "Unknown".
-3. **Source Tracking:** Pay attention to the URLs provided in the context (e.g., github.com, snyk.io, nvd.nist.gov) and map them to your findings.
+3. **Source Tracking:** Pay attention to the URLs provided in the context (e.g., github.com, snyk.io, nvd.nist.gov) and map them to your findings."""
 
-**OUTPUT FORMAT:**
-Always provide structured JSON with comprehensive research findings."""
-
-
-WEB_RESEARCH_AGENT_USER_PROMPT = """Use web search to research comprehensive information about this vulnerability:
+WEB_RESEARCH_AGENT_USER_PROMPT = """Use web search to research comprehensive information about this vulnerability.
 
 **Vulnerability**: {vuln_name}
 **Context**: {vuln_constraints}
 
-**SEARCH TASKS:**
+**SEARCH TASKS (Internal Thought Process):**
 1. Search for "{vuln_name}" + "security advisory" + "Snyk GitHub" 
 2. Search for "{vuln_name}" + "exploit" + "proof of concept"
 3. Search for "{vuln_name}" + "patch" + "fix" + "version"
 4. Search for "{vuln_name}" + "vendor response" + "security bulletin"
 5. Search for "{vuln_name}" + "real world" + "incident" + "attack"
-
-**REQUIRED JSON OUTPUT:**
-```json
-{{
-  "vulnerability_details": {{
-    "title": "Official vulnerability title",
-    "description": "Detailed technical description",
-    "impact": "Potential impact and severity",
-    "attack_vector": "How the vulnerability can be exploited",
-    "root_cause": "Technical root cause analysis"
-  }},
-  "version_intelligence": {{
-    "affected_versions": ["list of affected version ranges"],
-    "patched_versions": ["list of versions with fixes"],
-    "version_details": "Additional version-specific information",
-    "upgrade_recommendations": "Recommended upgrade path"
-  }},
-  "exploit_intelligence": {{
-    "public_exploits": ["list of known public exploits with sources"],
-    "poc_available": true/false,
-    "exploit_complexity": "low|medium|high",
-    "attack_scenarios": ["list of realistic attack scenarios"],
-    "exploitation_requirements": ["prerequisites for successful exploitation"]
-  }},
-  "mitigation_intelligence": {{
-    "vendor_patches": ["official patches with release info"],
-    "workarounds": ["temporary mitigation strategies"],
-    "configuration_fixes": ["configuration changes to prevent exploitation"],
-    "defensive_measures": ["additional security controls"]
-  }},
-  "security_advisories": [
-    {{
-      "source": "Advisory source (e.g., Snyk, GitHub, vendor)",
-      "url": "Direct URL to advisory",
-      "date": "Advisory publication date",
-      "severity": "Severity rating from this source",
-      "key_points": ["Important points from this advisory"]
-    }}
-  ],
-  "real_world_context": {{
-    "known_incidents": ["documented security incidents using this vulnerability"],
-    "industry_impact": "Impact on specific industries or use cases",
-    "timeline": "Key dates in vulnerability lifecycle",
-    "vendor_response": "How vendors/maintainers have responded"
-  }},
-  "research_quality": {{
-    "sources_consulted": ["list of sources checked"],
-    "information_confidence": "high|medium|low",
-    "gaps_identified": ["areas where information is limited"],
-    "last_updated": "when this research was conducted"
-  }}
-}}
-```
 
 **RESEARCH PRIORITIES:**
 - Prioritize authoritative sources (vendors, NVD, major security firms)
@@ -646,9 +586,7 @@ WEB_RESEARCH_AGENT_USER_PROMPT = """Use web search to research comprehensive inf
 - Focus on practical exploitation and mitigation information
 - Gather context that helps assess real-world risk
 
-Conduct thorough research and provide comprehensive findings.
-
-CRITICAL: Return valid JSON only as specified in the output format"""
+Conduct thorough research and populate the required data structure accurately."""
 
 WEB_RESEARCH_USER_PROMPT = """Analyze the provided web search intelligence for the following vulnerability:
 
@@ -660,63 +598,12 @@ WEB_RESEARCH_USER_PROMPT = """Analyze the provided web search intelligence for t
 2. **Extract Version Intelligence:** Pinpoint exact affected versions and patched versions mentioned in the sources.
 3. **Assess Exploitability:** Look for mentions of "PoC", "exploit", or "weaponized" in the text to determine exploit availability.
 4. **Identify Mitigations:** Extract workarounds, patches, or configuration fixes.
-5. **Track Sources:** Use the URLs provided in the source blocks to fill out the `security_advisories` and `research_quality` arrays.
-
-**REQUIRED JSON OUTPUT:**
-```json
-{{
-  "vulnerability_details": {{
-    "title": "Official vulnerability title",
-    "description": "Detailed technical description",
-    "impact": "Potential impact and severity",
-    "attack_vector": "How the vulnerability can be exploited",
-    "root_cause": "Technical root cause analysis"
-  }},
-  "version_intelligence": {{
-    "affected_versions": ["list of affected version ranges"],
-    "patched_versions": ["list of versions with fixes"],
-    "version_details": "Additional version-specific information",
-    "upgrade_recommendations": "Recommended upgrade path"
-  }},
-  "exploit_intelligence": {{
-    "public_exploits": ["list of known public exploits with URLs if found"],
-    "poc_available": true/false,
-    "exploit_complexity": "low|medium|high",
-    "attack_scenarios": ["list of realistic attack scenarios based on text"],
-    "exploitation_requirements": ["prerequisites for successful exploitation"]
-  }},
-  "mitigation_intelligence": {{
-    "vendor_patches": ["official patches with release info"],
-    "workarounds": ["temporary mitigation strategies"],
-    "configuration_fixes": ["configuration changes to prevent exploitation"],
-    "defensive_measures": ["additional security controls"]
-  }},
-  "security_advisories": [
-    {{
-      "source": "Name of source (e.g., Snyk, GitHub, Vendor) derived from URL",
-      "url": "Exact URL from the provided SOURCE block",
-      "date": "Advisory publication date (if found)",
-      "severity": "Severity rating (if found)",
-      "key_points": ["Important points from this specific source"]
-    }}
-  ],
-  "real_world_context": {{
-    "known_incidents": ["documented security incidents found in text"],
-    "industry_impact": "Impact on specific industries or use cases",
-    "timeline": "Key dates in vulnerability lifecycle",
-    "vendor_response": "How vendors/maintainers have responded"
-  }},
-  "research_quality": {{
-    "sources_consulted": ["List the domains/URLs you successfully extracted data from"],
-    "information_confidence": "high|medium|low (based on quality of provided text)",
-    "gaps_identified": ["What critical information was MISSING from the search results?"],
-    "last_updated": "Current processing time"
-  }}
-}}
+5. **Track Sources:** Use the URLs provided in the source blocks to fill out the security advisories and research quality data.
 
 === SEARCH ENGINE RESULTS ===
 Use the following scraped web intelligence to answer the prompt.
 If the information is not in these sources, state that it is unknown.
+
 {web_context}
 """
 
