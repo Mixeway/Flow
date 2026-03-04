@@ -1,3 +1,77 @@
 downloader:
   path-name: downloader
   file-limit: 10
+
+exploitability:
+  path-name:
+    main: volnerability-check-main
+    data: data
+    results: results
+
+server:
+  port: 8888
+
+spring:
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.sql
+  datasource:
+    username: ${DB_USER:flow_user}
+    password: ${DB_PASS:flow_pass}
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://flowdb:5432/flow
+    hikari:
+      connection-timeout: 20000
+      minimum-idle: 5
+      maximum-pool-size: 12
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      auto-commit: true
+  jpa:
+    generate-ddl: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        hbm2ddl:
+          auto: none
+      jakarta:
+        persistence:
+          schema-generation:
+            database:
+              action: none
+  jackson:
+    write-nesting-depth: 2000
+  codec:
+    max-in-memory-size: 30MB
+  jmx:
+    enabled: false
+
+management:
+  endpoints:
+    jmx:
+      exposure:
+        exclude: "*"
+
+kics:
+  queries:
+    dir: /opt/tools/kics/assets/queries
+bearer:
+  queries:
+    dir: /opt/bearer/rules
+dependency-track:
+  url: http://127.0.0.1:8080
+
+logging:
+  file:
+    name: logs/app.log
+  level:
+    root: ERROR
+    sun:
+      rmi:
+        transport:
+          tcp: ERROR
+
+frontend:
+  url: "localhost"
