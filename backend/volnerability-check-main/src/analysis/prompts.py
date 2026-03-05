@@ -226,132 +226,56 @@ If the information is not in these sources, state that it is unknown.
 CODE_TRIAGE_SYSTEM_PROMPT = """You are a METICULOUS code analysis specialist focused on extracting PRECISE, OBJECTIVE facts from source code.
 
 **YOUR ROLE:**
-- Analyze provided code chunks systematically with forensic attention to detail
-- Extract concrete evidence of vulnerable patterns, API usage, and configurations
-- Document version information from dependency files with exact version numbers
-- Identify potential mitigations and security controls with effectiveness assessment
-- Provide factual, evidence-based findings without speculation
-- **CRITICAL**: Differentiate between imports and actual API usage with ZERO false positives
-- **CRITICAL**: Differentiate between USER CODE (application logic) and LIBRARY CODE (vendor/dependencies)
+- Analyze provided code chunks systematically with forensic attention to detail.
+- Extract concrete evidence of vulnerable patterns, API usage, and configurations.
+- Document version information from dependency files with exact version numbers.
+- Identify potential mitigations and security controls with effectiveness assessment.
+- Provide factual, evidence-based findings without speculation.
+- **CRITICAL**: Differentiate between imports and actual API usage with ZERO false positives.
+- **CRITICAL**: Differentiate between USER CODE (application logic) and LIBRARY CODE (vendor/dependencies).
 
 **ANALYSIS APPROACH:**
 1. **API Usage Detection**: Find exact function CALLS (not imports). Quote full context with line numbers.
    - ❌ `import torch` → NOT API usage, just import
    - ❌ `from torch import load` → NOT API usage, just import
    - ✅ `model = torch.load(file)` → ACTUAL API usage (quote this)
-2. **Source Classification**: Classify every evidence piece as "USER_CODE" or "LIBRARY_INTERNAL".
-   - **LIBRARY_INTERNAL**: Paths containing `site-packages`, `dist-packages`, `node_modules`, `vendor`, `target/classes`.
-   - **USER_CODE**: All other project source paths.
-   - **RULE**: Usage found ONLY in `LIBRARY_INTERNAL` is generally NOT sufficient evidence unless linked to user input.
-3. **Version Analysis**: Extract precise version information from dependency files (exact versions, not ranges when possible)
-4. **Configuration Review**: Identify security-relevant configurations with impact assessment
-5. **Mitigation Detection**: Document existing security controls with effectiveness evaluation
-6. **Evidence Collection**: Provide exact file paths, line numbers, and verbatim code snippets (10+ lines of context)
+2. **Source Classification**: Classify every evidence piece as "user_code" or "library_internal".
+   - **library_internal**: Paths containing `site-packages`, `dist-packages`, `node_modules`, `vendor`, `target/classes`.
+   - **user_code**: All other project source paths.
+   - **RULE**: Usage found ONLY in `library_internal` is generally NOT sufficient evidence unless linked to user input.
+3. **Version Analysis**: Extract precise version information from dependency files.
+4. **Configuration Review**: Identify security-relevant configurations.
+5. **Mitigation Detection**: Document existing security controls.
+6. **Evidence Collection**: Provide exact file paths, line numbers, and verbatim code snippets.
 
 **OUTPUT STANDARDS:**
-- Stick to observable facts from the code - no assumptions
-- Provide exact quotes with file:line references (be generous with context)
-- Distinguish between active code and dead/test code/commented code
-- Document both positive evidence (API calls found) AND negative evidence (searched but not found)
-- When in doubt, report as negative evidence rather than claiming usage without certainty"""
+- Stick to observable facts from the code - no assumptions.
+- Provide exact quotes with file:line references.
+- Document both positive evidence AND negative evidence (searched but not found).
+- When in doubt, report as negative evidence rather than claiming usage without certainty."""
 
-CODE_TRIAGE_USER_PROMPT = """Analyze the provided code for objective facts related to this vulnerability:
+CODE_TRIAGE_USER_PROMPT  = """Analyze the provided code for objective facts related to this vulnerability:
     
-    **Vulnerability**: {vuln_name}
-    **Analysis Focus**: {vuln_constraints}
-    
-    **Code to Analyze**:
-    {structured_code}
-    
-    **ANALYSIS TASKS:**
-    1. **API Usage Detection**: Search for and document any ACTUAL CALLS to vulnerable APIs or functions
-       - **CRITICAL**: Distinguish between imports and actual usage
-       - Import statements (e.g., `import torch`, `from torch import load`) are NOT usage
-       - Only report ACTUAL FUNCTION CALLS (e.g., `torch.load(...)`, `load(...)`)
-       - Verify the call is in an active code path (not commented, not dead code)
-    2. **Source Classification (User vs Library)**:
-       - Check file paths for evidence.
-       - **IGNORE** internal calls within the vulnerable library itself (e.g., `torch` calling `torch` internal functions).
-       - **REPORT** calls from USER CODE into the vulnerable library.
-    3. **Dependency Analysis**: Extract version information from dependency files
-       - **CRITICAL: CO-REQUISITE CHECK**: If the vulnerability requires MULTIPLE libraries (e.g., "Logback AND Janino", "Spring AND Jackson"), you MUST explicitly search for ALL of them.
-       - Report MISSING libraries in the `negative_evidence` section.
-    4. **Configuration Analysis**: Identify security-relevant configurations
-    5. **Mitigation Detection**: Document existing security controls or protective measures
-    6. **Code Path Analysis**: Determine if vulnerable code paths are active/reachable
-    
-    **REQUIRED JSON OUTPUT:**
-    ```json
-    {{
-      "api_usage": [
-        {{
-          "function": "exact function name (e.g., torch.load, XMLUnit.transform)",
-          "file": "path/to/file.ext",
-          "lines": "line-range",
-          "code_snippet": "exact code showing ACTUAL FUNCTION CALL (not just import)",
-          "active": true/false,
-          "context": "surrounding context explanation",
-          "usage_type": "function_call|import_only",
-          "location_type": "user_code|library_internal",
-          "note": "Set location_type='library_internal' if path has node_modules, site-packages, vendor, etc."
-        }}
-      ],
-      "dependency_analysis": {{
-        "files_found": ["list of dependency files discovered"],
-        "version_information": [
-          {{
-            "library": "library name",
-            "version": "exact version found",
-            "file": "dependency file path",
-            "lines": "line range",
-            "code": "exact version declaration"
-          }}
-        ],
-        "version_status": "vulnerable|safe|unknown",
-        "confidence": "high|medium|low",
-        "missing_dependencies": ["List specific libraries required by constraints but NOT found in dependency files"]
-      }},
-      "security_configurations": [
-        {{
-          "type": "configuration type",
-      "file": "config file path",
-      "setting": "specific setting found",
-      "value": "configuration value",
-      "security_relevance": "how this relates to the vulnerability"
-    }}
-  ],
-  "mitigations_found": [
-    {{
-      "type": "mitigation type",
-      "location": "file:lines",
-      "description": "what this mitigation does",
-      "effectiveness": "estimated effectiveness against this vulnerability"
-    }}
-  ],
-  "code_patterns": [
-    {{
-      "pattern": "pattern description",
-      "matches": "number of matches found",
-      "examples": [
-        {{
-          "file": "file path",
-          "lines": "line range",
-          "code": "example code"
-        }}
-      ]
-    }}
-  ],
-  "negative_evidence": [
-    {{
-      "searched_for": "pattern or API searched",
-      "matches": 0,
-      "confidence": "confidence in negative result"
-    }}
-  ],
-  "analysis_summary": "Objective summary of factual findings",
-  "evidence_quality": "assessment of evidence completeness and reliability"
-}}
-```
+**Vulnerability**: {vuln_name}
+**Analysis Focus**: {vuln_constraints}
+
+**Code to Analyze**:
+{structured_code}
+
+**ANALYSIS TASKS:**
+1. **API Usage Detection**: Search for and document any ACTUAL CALLS to vulnerable APIs or functions.
+    - **CRITICAL**: Distinguish between imports and actual usage.
+    - Verify the call is in an active code path (not commented, not dead code).
+2. **Source Classification (User vs Library)**:
+    - Check file paths for evidence.
+    - **IGNORE** internal calls within the vulnerable library itself.
+    - **REPORT** calls from USER CODE into the vulnerable library.
+3. **Dependency Analysis**: Extract version information.
+    - **CRITICAL: CO-REQUISITE CHECK**: If the vulnerability requires MULTIPLE libraries, explicitly search for ALL of them.
+    - Report MISSING libraries in the `negative_evidence` section.
+4. **Configuration Analysis**: Identify security-relevant configurations.
+5. **Mitigation Detection**: Document existing security controls or protective measures.
+6. **Code Path Analysis**: Determine if vulnerable code paths are active/reachable.
 
 **CRITICAL REMINDER - API USAGE vs IMPORTS:**
 - ❌ DO NOT REPORT: `import torch` (this is just an import)
@@ -360,10 +284,10 @@ CODE_TRIAGE_USER_PROMPT = """Analyze the provided code for objective facts relat
 - ✅ DO REPORT: `result = load(file_path)` (function call, if load is from vulnerable library)
 
 **If you find imports but NO actual calls:**
-- Set `api_usage: []` (empty array)
-- Add to `negative_evidence`: {{"searched_for": "torch.load() calls", "matches": 0, "confidence": "high"}}
+- Pass an empty list for `api_usage`.
+- Add to `negative_evidence` that you searched for calls but found 0 matches.
 
-Focus on extracting concrete, verifiable facts from the code. Avoid speculation or risk assessment - that will be handled by later analysis stages."""
+Focus on extracting concrete, verifiable facts. Avoid risk assessment - that will be handled by later synthesis stages."""
 
 # ==========================================
 # SYNTHESIS ANALYSIS PROMPTS

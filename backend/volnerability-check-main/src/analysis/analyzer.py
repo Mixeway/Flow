@@ -1,17 +1,20 @@
 import json
-import re
 import time
 import logging
-from pathlib import Path
+from tenacity import retry, wait_random_exponential, stop_after_attempt
+from openai import APITimeoutError, BadRequestError
 from typing import List, Dict, Any
 
-from tenacity import retry, stop_after_attempt, wait_random_exponential, RetryError
-from openai import BadRequestError
-
+from .preprocessor import preprocess_code_chunks
 from ..core.client import client
 from ..core.config import settings
-from ..core.models import VulnerabilityInput, VulnerabilityResult
-from ..utils.llm import parse_llm_json
+from ..core.models import (
+    VulnerabilityInput,
+    VulnerabilityResult,
+    DependencyAnalysis,
+    CodeTriageResult,
+)
+from ..utils.llm import parse_llm_json, ask_llm_for_structured_data
 from ..utils.web_research import conduct_web_research
 from ..utils.rate_limiter import rate_limiter
 from .prompts import (
@@ -19,11 +22,8 @@ from .prompts import (
     CODE_TRIAGE_USER_PROMPT,
     SYNTHESIS_ANALYSIS_SYSTEM_PROMPT,
     SYNTHESIS_ANALYSIS_USER_PROMPT,
-    VULNERABILITY_ANALYSIS_SYSTEM_PROMPT,
 )
 from ..core.chunk import CodeChunk
-from .preprocessor import check_and_organize_chunks, reorder_chunks_by_priority, preprocess_code_chunks
-from ..utils.progress import tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +44,9 @@ async def analyze_vulnerability(
     
     logger.info("STAGE 1: CODE TRIAGE")
     logger.info("-" * 20)
-    
-    code_triage_report_str = await _run_code_triage(vuln, chunks_for_analysis)
-    code_triage_report = parse_llm_json(code_triage_report_str, "code_triage_report")
+
+    code_triage_report = await _run_code_triage(vuln, chunks_for_analysis)
+
     if not code_triage_report:
         return _create_fallback_result(vuln, chunks_for_analysis, "Failed to parse Code Triage Agent response.")
 
@@ -157,55 +157,72 @@ async def analyze_vulnerability(
         logger.exception("Full error details:")
         return _create_fallback_result(vuln, chunks_for_analysis, f"Result construction failed: {e}")
 
+def _get_empty_triage_result(reason: str) -> str:
+    """Helper to generate a type-safe empty result when things fail."""
+    empty_result = CodeTriageResult(
+        api_usage=[],
+        dependency_analysis=DependencyAnalysis(
+            files_found=[],
+            version_information=[],
+            version_status="unknown",
+            confidence="low",
+            missing_dependencies=[]
+        ),
+        security_configurations=[],
+        mitigations_found=[],
+        code_patterns=[],
+        negative_evidence=[],
+        analysis_summary=f"Code triage aborted: {reason}",
+        evidence_quality="low"
+    )
+    return empty_result.model_dump_json(indent=2)
+
+def return_fallback_code_triage(retry_state) -> str:
+    """Tenacity callback triggered if the API fails 3 times."""
+    logger.error("All retries failed for Code Triage.")
+    e = retry_state.outcome.exception()
+
+    if isinstance(e, APITimeoutError):
+        logger.error("TIMEOUT ERROR: Code Triage took too long. The code chunk might be too large.")
+    elif isinstance(e, BadRequestError) and ("tokens exceed" in str(e) or "context_length" in str(e)):
+        logger.error("TOKEN LIMIT EXCEEDED: Code chunk is too large for the context window.")
+    else:
+        logger.error(f"Reason: {type(e).__name__}: {str(e)}")
+
+    return _get_empty_triage_result("API Failure after retries")
+
+@retry(
+    wait=wait_random_exponential(min=1, max=60),
+    stop=stop_after_attempt(3),
+    retry_error_callback=return_fallback_code_triage
+)
 async def _run_code_triage(vuln: VulnerabilityInput, chunks: List[CodeChunk]) -> str:
     """Runs the Code Triage agent to extract facts from code."""
-    
-    # This reuses the existing `preprocess_code_chunks` which already prepares
-    # the code and dependency info in a text format.
+
     structured_code = preprocess_code_chunks(vuln, chunks)
-    
+
     if not structured_code.strip():
         logger.error("Preprocessing returned empty code, cannot run triage.")
-        return "{}"
+        # Safely return our empty Pydantic structure instead of "{}"
+        return _get_empty_triage_result("No code chunks provided after preprocessing")
 
-    triage_prompt = CODE_TRIAGE_USER_PROMPT.format(
+    user_prompt = CODE_TRIAGE_USER_PROMPT.format(
         vuln_name=vuln.name,
         vuln_constraints=vuln.constraints,
         structured_code=structured_code
     )
-    
-    logger.info(f"Sending code triage request (prompt length: {len(triage_prompt)} chars)")
-    logger.info(f"Using model: {settings.OPENAI_MODEL}")
-    
-    try:
-        completion = client.chat.completions.create(
-            model=settings.OPENAI_MODEL,
-            messages=[
-                {"role": "system", "content": CODE_TRIAGE_SYSTEM_PROMPT},
-                {"role": "user", "content": f"{triage_prompt}\n\nCRITICAL: Output must be valid JSON only, no other text."}
-            ],
-            temperature=0,
-            seed=42,
-            timeout=settings.OPENAI_TIMEOUT_SECONDS,
-            stream=True,
-            response_format={"type": "json_object"},
-        )
+    result_obj = ask_llm_for_structured_data(
+        client=client,
+        model_name=settings.OPENAI_MODEL,
+        system_prompt=CODE_TRIAGE_SYSTEM_PROMPT,
+        user_prompt=user_prompt,
+        response_model=CodeTriageResult
+    )
 
-        chunks = []
-        for chunk in completion:
-            content = chunk.choices[0].delta.content
-            if content:
-                chunks.append(content)
-                logger.debug(f"Code triage chunk: {content}")
-        report = "".join(chunks).strip()
+    logger.info("Code triage completed successfully.")
 
-        logger.info("Code triage completed successfully.")
-        return report
-        
-    except Exception as e:
-        logger.error(f"Code Triage Agent failed: {e}")
-        logger.exception("Full error details:")
-        return "{}"
+    return result_obj.model_dump_json(indent=2)
+
 
 def _normalize_llm_output(llm_json: Dict[str, Any], vuln_name: str, chunks_for_analysis: List[CodeChunk]) -> Dict[str, Any]:
     """Normalize LLM output to ensure required fields exist with correct types."""
@@ -502,8 +519,3 @@ def _create_fallback_result(
         ground_truth_exploitable=vulnerability.exploitable,
     )
 
-def _truncate_text(text: str, max_length: int) -> str:
-    """Truncates text to a maximum length without breaking words."""
-    if len(text) <= max_length:
-        return text
-    return text[:max_length].rsplit(' ', 1)[0] + "..."

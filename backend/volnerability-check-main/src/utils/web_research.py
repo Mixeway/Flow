@@ -10,7 +10,7 @@ from typing import Any, Dict, List
 from ..core.config import settings
 from ..core.client import client
 from ..core.models import WebResearchResult
-from ..utils.llm import parse_llm_json, ask_llm_for_structured_data
+from ..utils.llm import ask_llm_for_structured_data
 from ..analysis.prompts import (
     WEB_RESEARCH_AGENT_SYSTEM_PROMPT,
     WEB_RESEARCH_AGENT_USER_PROMPT,
