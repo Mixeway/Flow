@@ -13,10 +13,8 @@ from ..core.models import (
     ChunkOrganizerResult
 )
 from ..core.chunk import CodeChunk
-from ..utils.llm import ask_llm_for_structured_data_stream
+from ..utils.llm import ask_llm_for_structured_data
 from .prompts import (
-    SYNTHESIS_ANALYSIS_SYSTEM_PROMPT,
-    SYNTHESIS_ANALYSIS_USER_PROMPT,
     CHUNK_ORGANIZER_SYSTEM_PROMPT,
     CHUNK_ORGANIZER_USER_PROMPT
 )
@@ -352,7 +350,7 @@ def check_and_organize_chunks(
     )
     logger.info(f"Asking LLM to organize {len(chunks)} chunks...")
 
-    result = ask_llm_for_structured_data_stream(
+    result_obj = ask_llm_for_structured_data(
         client=client,
         model_name=settings.OPENAI_MODEL,
         system_prompt=CHUNK_ORGANIZER_SYSTEM_PROMPT,
@@ -362,7 +360,7 @@ def check_and_organize_chunks(
 
     logger.info("Chunk organization completed successfully")
 
-    return result
+    return result_obj
 
 
 def reorder_chunks_by_priority(chunks: List[CodeChunk], organization_result: Dict[str, Any]) -> List[CodeChunk]:
@@ -390,12 +388,6 @@ def reorder_chunks_by_priority(chunks: List[CodeChunk], organization_result: Dic
     except Exception as e:
         logger.warning(f"Failed to reorder chunks by priority: {e}")
         return chunks
-
-
-# Aliases for backward compatibility during refactoring
-VULNERABILITY_ANALYSIS_SYSTEM_PROMPT = SYNTHESIS_ANALYSIS_SYSTEM_PROMPT
-VULNERABILITY_ANALYSIS_USER_PROMPT = SYNTHESIS_ANALYSIS_USER_PROMPT
-
 
 def _extract_version_info(content: str, vulnerability_name: str) -> str:
     """Extract ALL version information from dependency file content - ENHANCED UNIVERSAL approach."""

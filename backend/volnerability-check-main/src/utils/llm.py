@@ -43,7 +43,7 @@ def parse_llm_json(llm_output: str, context: str = "") -> Optional[Dict[str, Any
         return None
 
 
-def ask_llm_for_structured_data_stream(
+def ask_llm_for_structured_data(
         client,
         model_name: str,
         system_prompt: str,

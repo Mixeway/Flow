@@ -10,7 +10,7 @@ from typing import Any, Dict, List
 from ..core.config import settings
 from ..core.client import client
 from ..core.models import WebResearchResult
-from ..utils.llm import parse_llm_json, ask_llm_for_structured_data_stream
+from ..utils.llm import parse_llm_json, ask_llm_for_structured_data
 from ..analysis.prompts import (
     WEB_RESEARCH_AGENT_SYSTEM_PROMPT,
     WEB_RESEARCH_AGENT_USER_PROMPT,
@@ -126,7 +126,7 @@ async def conduct_web_research(vuln_name: str, vuln_constraints: str) -> Dict[st
 
     await rate_limiter.wait_if_needed()
 
-    result = ask_llm_for_structured_data_stream(
+    result_obj = ask_llm_for_structured_data(
         client=client,
         model_name=settings.OPENAI_WEB_SEARCH_MODEL,
         system_prompt=system_prompt,
@@ -135,7 +135,7 @@ async def conduct_web_research(vuln_name: str, vuln_constraints: str) -> Dict[st
     )
     logger.info("Web research LLM generation completed.")
 
-    websearch_data = result.model_dump()
+    websearch_data = result_obj.model_dump()
 
     websearch_data["research_metadata"] = {
         "vuln_name": vuln_name,

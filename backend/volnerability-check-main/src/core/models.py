@@ -80,37 +80,23 @@ class VulnerabilityResult(BaseModel):
 
 class OrganizedChunk(BaseModel):
     """Details for a specific organized code chunk."""
-    index: int = Field(...,
-        description="The original index of the chunk."
-    )
-    priority: int = Field(...,
+    index: int = Field(description="The original index of the chunk.")
+    priority: int = Field(
         ge=1, le=10,
         description="Priority ranking from 1 (lowest) to 10 (highest relevance)."
     )
-    relevance: Literal["high", "medium", "low"] = Field(...,
-        description="Categorical relevance of the chunk."
-    )
-    focus_areas: List[str] = Field(...,
-        description="Specific functions, variables, or logic paths to examine."
-    )
-    notes: str = Field(...,
-        description="Explanation of why this chunk is important for the vulnerability."
-    )
+    relevance: Literal["high", "medium", "low"] = Field(description="Categorical relevance of the chunk.")
+    focus_areas: List[str] = Field(description="Specific functions, variables, or logic paths to examine.")
+    notes: str = Field(description="Explanation of why this chunk is important for the vulnerability.")
 
 class ChunkOrganizerResult(BaseModel):
     """Output schema for the Chunk Organizer LLM."""
-    organized_chunks: List[OrganizedChunk] = Field(...,
-        description="List of chunks ranked by likelihood of containing the vulnerability."
-    )
-    strategy: str = Field(...,
-        description="Overall step-by-step analysis approach for the Code Agent."
-    )
+    organized_chunks: List[OrganizedChunk] = Field(description="List of chunks ranked by likelihood of containing the vulnerability.")
+    strategy: str = Field(description="Overall step-by-step analysis approach for the Code Agent.")
     key_patterns: List[str] = Field(...,
         description="Specific vulnerable code patterns or API misuses to watch for."
     )
-    security_context: str = Field(...,
-        description="Overall assessment of the codebase's security context based on the summaries."
-    )
+    security_context: str = Field(description="Overall assessment of the codebase's security context based on the summaries.")
 
 # ==========================================
 # QUERY EXPANSION MODELS
@@ -118,9 +104,7 @@ class ChunkOrganizerResult(BaseModel):
 
 class ExpandedQuery(BaseModel):
     """Output schema for the Query Expansion LLM."""
-    expanded_query: str = Field(...,
-        description="The highly optimized, raw search query combining the vulnerability name and constraints. Do not include conversational text."
-    )
+    expanded_query: str = Field(description="The highly optimized, raw search query combining the vulnerability name and constraints. Do not include conversational text.")
 
 # ==========================================
 # WEB RESEARCH MODELS
@@ -181,8 +165,36 @@ class WebResearchResult(BaseModel):
     research_quality: ResearchQuality
 
 # ==========================================
-# METRIC RESULTS MODELS
+# QUALITY ASSESSMENT MODELS
 # ==========================================
+
+class QualityAssessmentResult(BaseModel):
+    """Evaluation of the vulnerability analysis quality."""
+    quality_score: int = Field(
+        ge=1, le=5,
+        description="Overall quality score from 1 (Poor) to 5 (Excellent)."
+    )
+    accuracy_assessment: str = Field(description="Detailed assessment of how accurately the analysis identifies or rules out the vulnerability.")
+    completeness_assessment: str = Field(description="Assessment of whether the analysis addressed all aspects mentioned in the constraints.")
+    evidence_quality: str = Field(description="Evaluation of whether the provided evidence snippets are relevant and convincing.")
+    reasoning_quality: str = Field(description="Assessment of whether the analysis summary is logical and well-reasoned.")
+    consistency_check: str = Field(description="Evaluation of internal consistency (e.g., do the status, probability, and exploitability match?).")
+    strengths: List[str] = Field( description="List of specific strengths in the analysis.")
+    weaknesses: List[str] = Field(description="List of specific weaknesses, errors, or omissions in the analysis.")
+    overall_feedback: str = Field(description="Comprehensive, final feedback on the analysis quality.")
+
+class BatchQualityDistribution(BaseModel):
+    excellent: int = 0
+    good: int = 0
+    average: int = 0
+    below_average: int = 0
+    poor: int = 0
+
+class BatchQualityAssessmentResult(BaseModel):
+    average_quality_score: float = Field(description="The mean quality score across the batch.")
+    quality_distribution: BatchQualityDistribution
+    individual_assessments: List[Dict[str, Any]] = Field(description="List of all individual quality assessments.")
+    total_assessed: int = Field(description="Total number of vulnerability results assessed.")
 
 class MetricsResult(BaseModel):
     """Metrics comparing LLM predictions with ground truth."""
