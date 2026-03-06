@@ -10,7 +10,7 @@ from typing import Any, Dict, List
 from ..core.config import settings
 from ..core.client import client
 from ..core.models import WebResearchResult
-from ..utils.llm import ask_llm_for_structured_data
+from ..utils.llm import ask_llm_for_structured_data, create_llm_fallback
 from ..analysis.prompts import (
     WEB_RESEARCH_AGENT_SYSTEM_PROMPT,
     WEB_RESEARCH_AGENT_USER_PROMPT,
@@ -34,7 +34,6 @@ async def _fetch_searxng_query(http_client: httpx.AsyncClient, query: str) -> Li
         data = response.json()
 
         results = []
-        print(data)
         for item in data.get("results", []):
             content = item.get("content", "") or item.get("snippet", "")
             if content:
@@ -100,18 +99,13 @@ async def _gather_web_context(vuln_name: str) -> str:
         )
     return "\n".join(context_blocks)
 
-def return_fallback_web_research(retry_state) -> Dict[str, Any]:
-    """All retry attempts exhausted for web research"""
-    vuln_name = retry_state.args[0]
-    e = retry_state.outcome.exception()
-
-    logger.error(f"All retries failed for web research on {vuln_name}: {e}")
-    return _create_fallback_research_report(vuln_name, str(e))
-
 @retry(
     wait=wait_random_exponential(min=1, max=60),
     stop=stop_after_attempt(3),
-    retry_error_callback=return_fallback_web_research
+    retry_error_callback=create_llm_fallback(
+            "WEB RESEARCH",
+            lambda rs, e: WebResearchResult.create_fallback(rs.args[0], str(e)).model_dump()
+    )
 )
 async def conduct_web_research(vuln_name: str, vuln_constraints: str) -> Dict[str, Any]:
     """Conducts comprehensive web research about a vulnerability using LLM with web search capability."""
@@ -161,53 +155,3 @@ async def conduct_web_research(vuln_name: str, vuln_constraints: str) -> Dict[st
 
     logger.info(f"Web research successful for {vuln_name}")
     return websearch_data
-
-def _create_fallback_research_report(vuln_name: str, error_message: str) -> Dict[str, Any]:
-    """Creates a type-safe fallback research report when web research fails."""
-    return {
-        "vulnerability_details": {
-            "title": f"Research unavailable for {vuln_name}",
-            "description": f"Web research could not be completed: {error_message}",
-            "impact": "Unknown - research failed",
-            "attack_vector": "Unknown - research failed",
-            "root_cause": "Unknown - research failed"
-        },
-        "version_intelligence": {
-            "affected_versions": [],
-            "patched_versions": [],
-            "version_details": "Version information unavailable",
-            "upgrade_recommendations": "Consult official sources"
-        },
-        "exploit_intelligence": {
-            "public_exploits": [],
-            "poc_available": False,
-            "exploit_complexity": "unknown",
-            "attack_scenarios": [],
-            "exploitation_requirements": []
-        },
-        "mitigation_intelligence": {
-            "vendor_patches": [],
-            "workarounds": [],
-            "configuration_fixes": [],
-            "defensive_measures": []
-        },
-        "security_advisories": [],
-        "real_world_context": {
-            "known_incidents": [],
-            "industry_impact": "Unknown due to research failure",
-            "timeline": ["Timeline unavailable"],
-            "vendor_response": "Vendor response information unavailable"
-        },
-        "research_quality": {
-            "sources_consulted": [],
-            "information_confidence": "low",
-            "gaps_identified": ["All information unavailable due to research failure"],
-            "last_updated": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
-        },
-        "research_metadata": {
-            "vuln_name": vuln_name,
-            "research_timestamp": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
-            "research_agent": "LLM Web Research Agent (Fallback)",
-            "error": error_message
-        }
-    }

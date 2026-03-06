@@ -2,18 +2,16 @@ import logging
 from typing import List, Dict, Any
 from pathlib import Path
 
-from tenacity import retry, stop_after_attempt, wait_random_exponential, RetryError
-from openai import BadRequestError, APITimeoutError
+from tenacity import retry, stop_after_attempt, wait_random_exponential
 
 from ..core.client import client
 from ..core.config import settings
 from ..core.models import (
     VulnerabilityInput,
-    OrganizedChunk,
     ChunkOrganizerResult
 )
 from ..core.chunk import CodeChunk
-from ..utils.llm import ask_llm_for_structured_data
+from ..utils.llm import ask_llm_for_structured_data, create_llm_fallback
 from .prompts import (
     CHUNK_ORGANIZER_SYSTEM_PROMPT,
     CHUNK_ORGANIZER_USER_PROMPT
@@ -273,53 +271,13 @@ def preprocess_code_chunks(
     
     return structured_code
 
-def return_fallback_chunk_organization(retry_state) -> ChunkOrganizerResult:
-    logger.error("All retry attempts exhausted for chunk organization.")
-
-    e = retry_state.outcome.exception()
-    if isinstance(e, APITimeoutError):
-        logger.error("API TIMEOUT ERROR in chunk organization - Request took too long")
-        logger.error("This may be due to large input size or API server load")
-
-    elif isinstance(e, RetryError):
-        logger.error("RetryError detected in chunk organization - all retry attempts exhausted")
-        if hasattr(e, 'last_attempt') and e.last_attempt and e.last_attempt.exception():
-            underlying_error = e.last_attempt.exception()
-            logger.error(f"Underlying organization error: {type(underlying_error).__name__}: {str(underlying_error)}")
-
-            # Check for specific error types
-            if isinstance(underlying_error, APITimeoutError):
-                logger.error("TIMEOUT ERROR in organization retry - Consider reducing input size")
-            elif isinstance(underlying_error, BadRequestError):
-                underlying_msg = str(underlying_error)
-                if "tokens exceed" in underlying_msg or "context_length_exceeded" in underlying_msg:
-                    logger.error("TOKEN LIMIT EXCEEDED in chunk organization")
-
-    logger.warning("Using fallback chunk organization.")
-
-    original_chunks = retry_state.args[1]
-    fallback_chunks = [
-        OrganizedChunk(
-            index=i,
-            priority=5,
-            relevance="medium",
-            focus_areas=["general analysis"],
-            notes="fallback organization due to API failure"
-        )
-        for i in range(len(original_chunks))
-    ]
-
-    return ChunkOrganizerResult(
-        organized_chunks=fallback_chunks,
-        strategy="fallback_due_to_error",
-        key_patterns=[],
-        security_context="analysis_failed"
-    )
-
 @retry(
     wait=wait_random_exponential(min=1, max=60),
     stop=stop_after_attempt(3),
-    retry_error_callback=return_fallback_chunk_organization,
+    retry_error_callback=create_llm_fallback(
+        "CHUNK ORGANIZATION",
+        lambda rs, e: ChunkOrganizerResult.create_fallback(rs.args[1], str(e))
+    ),
 )
 def check_and_organize_chunks(
     vulnerability: VulnerabilityInput, 
@@ -496,8 +454,7 @@ def _extract_version_info(content: str, vulnerability_name: str) -> str:
 def _simple_repository_search(temp_repo_dir: Path, vulnerability: "VulnerabilityInput") -> str:
     """UNIVERSAL repository-wide search for constraint patterns - works with any language/framework."""
     import re
-    from pathlib import Path
-    
+
     logger.info("Starting UNIVERSAL repository-wide search for constraint patterns")
     
     # UNIVERSAL PATTERN EXTRACTION - works for any vulnerability/language

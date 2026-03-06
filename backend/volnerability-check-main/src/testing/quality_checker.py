@@ -13,34 +13,20 @@ from ..core.models import (
     BatchQualityDistribution,
     BatchQualityAssessmentResult,
 )
-from ..utils.llm import ask_llm_for_structured_data
+from ..utils.llm import ask_llm_for_structured_data, create_llm_fallback
 
 logger = logging.getLogger(__name__)
 
-def return_fallback_quality_assessment(retry_state) -> Dict[str, Any]:
-    """Fallback triggered by Tenacity if the API fails 3 times."""
-    logger.error("All retries failed for Quality Assessment.")
-    e = retry_state.outcome.exception()
-    logger.error(f"Reason: {type(e).__name__}: {str(e)}")
-
-    return {
-        "quality_score": 3,
-        "accuracy_assessment": "Unable to assess due to quality checker failure",
-        "completeness_assessment": "Unable to assess due to quality checker failure",
-        "evidence_quality": "Unable to assess due to quality checker failure",
-        "reasoning_quality": "Unable to assess due to quality checker failure",
-        "consistency_check": "Unable to assess due to quality checker failure",
-        "strengths": ["Quality assessment failed"],
-        "weaknesses": ["Quality assessment failed"],
-        "overall_feedback": "Quality assessment could not be completed due to technical issues"
-    }
 
 @retry(
     wait=wait_random_exponential(min=1, max=60),
     stop=stop_after_attempt(3),
-    retry_error_callback=return_fallback_quality_assessment
+    retry_error_callback=create_llm_fallback(
+        "QUALITY ASSESSMENT",
+        lambda rs, e: QualityAssessmentResult.create_fallback(str(e))
+    )
 )
-def assess_analysis_quality(vulnerability, result) -> Dict[str, Any]:
+def assess_analysis_quality(vulnerability, result) -> QualityAssessmentResult:
     """Use LLM to assess the quality of a vulnerability analysis result."""
     logger.info("STARTING ANALYSIS QUALITY ASSESSMENT")
     logger.info(f"Assessing quality for vulnerability: {vulnerability.name}")
@@ -88,7 +74,7 @@ def assess_analysis_quality(vulnerability, result) -> Dict[str, Any]:
     logger.info("Quality assessment completed successfully")
     logger.info(f"Quality Score: {result_obj.quality_score}/5")
 
-    return result_obj.model_dump()
+    return result_obj
 
 def assess_batch_quality(
     vulnerabilities: List[VulnerabilityInput],
@@ -97,42 +83,45 @@ def assess_batch_quality(
     """Assess quality for a batch of vulnerability analysis results."""
     logger.info(f"STARTING BATCH QUALITY ASSESSMENT FOR {len(results)} RESULTS")
 
-    quality_scores = []
-    detailed_assessments = []
-    
+    assessments: List[QualityAssessmentResult] = []
+
     for vuln, result in zip(vulnerabilities, results):
         try:
             assessment = assess_analysis_quality(vuln, result)
-            quality_scores.append(assessment.get('quality_score', 3))
-            detailed_assessments.append(assessment)
+            assessments.append(assessment)
         except Exception as e:
             logger.error(f"Failed to assess quality for {vuln.name}: {e}")
-            quality_scores.append(3)  # Default score
-            detailed_assessments.append({
-                "quality_score": 3,
-                "overall_feedback": f"Assessment failed: {str(e)}"
-            })
+            fallback = QualityAssessmentResult.create_fallback(error_message=str(e))
+            assessments.append(fallback)
 
-    total_assessed = len(quality_scores)
-    avg_quality_score = sum(quality_scores) / total_assessed if total_assessed > 0 else 0
+    total = len(assessments)
+    if total == 0:
+        return BatchQualityAssessmentResult(
+            average_quality_score=0.0,
+            quality_distribution=BatchQualityDistribution(),
+            individual_assessments=[],
+            total_assessed=0
+        ).model_dump()
 
-    distribution = BatchQualityDistribution(
-        excellent=sum(1 for score in quality_scores if score == 5),
-        good=sum(1 for score in quality_scores if score == 4),
-        average=sum(1 for score in quality_scores if score == 3),
-        below_average=sum(1 for score in quality_scores if score == 2),
-        poor=sum(1 for score in quality_scores if score == 1)
-    )
+    avg_score = sum(a.quality_score for a in assessments) / total
+
+    dist = BatchQualityDistribution()
+    for a in assessments:
+        if a.quality_score == 5: dist.excellent += 1
+        elif a.quality_score == 4: dist.good += 1
+        elif a.quality_score == 3: dist.average += 1
+        elif a.quality_score == 2: dist.below_average += 1
+        elif a.quality_score == 1: dist.poor += 1
 
     batch_result = BatchQualityAssessmentResult(
-        average_quality_score=avg_quality_score,
-        quality_distribution=distribution,
-        individual_assessments=detailed_assessments,
-        total_assessed=total_assessed
+        average_quality_score=round(avg_score, 2),
+        quality_distribution=dist,
+        individual_assessments=assessments,
+        total_assessed=total
     )
 
     logger.info(f"Batch quality assessment completed")
-    logger.info(f"Average quality score: {avg_quality_score:.2f}/5")
-    logger.info(f"Quality distribution: {batch_result.quality_distribution.model_dump()}")
+    logger.info(f"Average quality score: {avg_score:.2f}/5")
+    logger.info(f"Quality distribution: {dist.model_dump()}")
 
     return batch_result.model_dump()

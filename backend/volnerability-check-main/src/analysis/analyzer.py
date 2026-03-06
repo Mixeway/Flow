@@ -2,7 +2,6 @@ import json
 import time
 import logging
 from tenacity import retry, wait_random_exponential, stop_after_attempt
-from openai import APITimeoutError, BadRequestError
 from typing import List, Dict, Any
 
 from .preprocessor import preprocess_code_chunks
@@ -12,13 +11,9 @@ from ..core.models import (
     VulnerabilityInput,
     VulnerabilitySynthesisResult,
     VulnerabilityAnalysis,
-    DependencyAnalysis,
     CodeTriageResult,
-    SourceCorrelation,
-    VersionAssessment,
-    ExploitAssessment,
 )
-from ..utils.llm import ask_llm_for_structured_data
+from ..utils.llm import ask_llm_for_structured_data, create_llm_fallback
 from ..utils.web_research import conduct_web_research
 from ..utils.rate_limiter import rate_limiter
 from .prompts import (
@@ -31,95 +26,13 @@ from ..core.chunk import CodeChunk
 
 logger = logging.getLogger(__name__)
 
-def _create_fallback_result(
-        vulnerability, # VulnerabilityInput
-        chunks_to_analyze, # List[CodeChunk]
-        error_message: str,
-        confidence: int = 1
-) -> VulnerabilitySynthesisResult:
-    """Create a strictly typed, informative fallback result when analysis fails."""
-
-    enhanced_summary = (
-        f"Analysis failed for {vulnerability.name}: {error_message}. "
-        f"Affects {len(chunks_to_analyze)} code files. "
-        f"Expected exploitability: {getattr(vulnerability, 'exploitable', 'Unknown')}, "
-        f"Expected probability: {getattr(vulnerability, 'probability', 0.0)}. "
-        "Manual analysis required."
-    )
-
-    detailed_reasoning = f"ANALYSIS FAILURE REPORT:\n\n"
-    detailed_reasoning += f"Error: {error_message}\n\n"
-    detailed_reasoning += f"Context: Analysis pipeline encountered an error while processing {vulnerability.name}.\n"
-    detailed_reasoning += f"Chunks available: {len(chunks_to_analyze)}\n"
-    detailed_reasoning += f"Constraints: {vulnerability.constraints}\n\n"
-    detailed_reasoning += "Manual review is required as automated analysis could not complete successfully.\n\n"
-
-    if len(detailed_reasoning) < 1500:
-        padding = "--- [SYSTEM LOG: AUTOMATED ANALYSIS ABORTED] ---\n"
-        multiplier = (1500 - len(detailed_reasoning)) // len(padding) + 1
-        detailed_reasoning += padding * multiplier
-
-    enhanced_next_steps = (
-        f"1. Review {vulnerability.name} constraints: {vulnerability.constraints}\n"
-        "2. Check system logs for specific API or parsing error details.\n"
-        "3. Verify code chunks contain relevant patterns.\n"
-        "4. Consider manual code review focusing on constraint areas."
-    )
-
-    return VulnerabilitySynthesisResult(
-        status="uncertain",
-        confidence=confidence,
-        probability=0.5,
-        predicted_probability=0.5,
-        exploitable=False,
-        predicted_exploitable=False,
-        analysis_summary=enhanced_summary,
-        detailed_reasoning=detailed_reasoning,
-        evidence_snippets=[],
-        source_correlation=SourceCorrelation(
-            agreements=[],
-            contradictions=[],
-            confidence_factors=[],
-            uncertainty_factors=[f"Critical system failure: {error_message}"]
-        ),
-        mitigations_detected=[],
-        version_assessment=VersionAssessment(
-            code_analysis="Failed",
-            nvd_data="Failed",
-            web_research="Failed",
-            final_determination="Unknown due to error",
-            confidence="low"
-        ),
-        exploit_assessment=ExploitAssessment(
-            technical_feasibility="Unknown",
-            attack_scenarios=[],
-            exploitation_barriers=[f"Analysis aborted: {error_message}"],
-            real_world_context="Unknown"
-        ),
-        suggested_next_steps=enhanced_next_steps
-    )
-
-def return_fallback_synthesis(retry_state) -> VulnerabilitySynthesisResult:
-    """Fallback triggered by Tenacity if the Synthesis API fails."""
-    logger.error("All retries failed for Final Synthesis.")
-    e = retry_state.outcome.exception()
-
-    if isinstance(e, APITimeoutError):
-        logger.error("TIMEOUT ERROR: Synthesis took too long. The combined context is likely massive.")
-    elif isinstance(e, BadRequestError) and ("tokens exceed" in str(e) or "context_length" in str(e)):
-        logger.error("TOKEN LIMIT EXCEEDED: Combined Code + NVD + Web reports exceed context window.")
-    else:
-        logger.error(f"Synthesis failed due to: {type(e).__name__}: {str(e)}")
-
-    vuln = retry_state.args[1]
-    chunks = retry_state.args[2]
-
-    return _create_fallback_result(vuln, chunks, str(e))
-
 @retry(
     wait=wait_random_exponential(min=1, max=60),
     stop=stop_after_attempt(3),
-    retry_error_callback=return_fallback_synthesis
+    retry_error_callback=create_llm_fallback(
+        "SYNTHESIS ANALYSIS",
+        lambda rs, e: VulnerabilitySynthesisResult.create_fallback(rs.args[1], rs.args[2], str(e))
+    )
 )
 def _run_synthesis_agent(
         vuln: VulnerabilityInput,
@@ -214,7 +127,7 @@ async def analyze_vulnerability(
         base_data = _validate_evidence_files(synthesis_dict, chunks_for_analysis)
     except Exception as e:
         logger.error(f"Failed to construct final result object: {e}")
-        fallback = _create_fallback_result(vuln, chunks_for_analysis, f"Result construction failed: {e}")
+        fallback = VulnerabilitySynthesisResult.create_fallback(vuln, chunks_for_analysis, f"Result construction failed: {e}")
         base_data = fallback.model_dump()
 
     result = VulnerabilityAnalysis(**base_data, **system_metadata)
@@ -226,44 +139,13 @@ async def analyze_vulnerability(
 
     return result
 
-def _get_empty_code_triage_result(reason: str) -> CodeTriageResult:
-    """Helper to generate a type-safe empty result when things fail."""
-    empty_result = CodeTriageResult(
-        api_usage=[],
-        dependency_analysis=DependencyAnalysis(
-            files_found=[],
-            version_information=[],
-            version_status="unknown",
-            confidence="low",
-            missing_dependencies=[]
-        ),
-        security_configurations=[],
-        mitigations_found=[],
-        code_patterns=[],
-        negative_evidence=[],
-        analysis_summary=f"Code triage aborted: {reason}",
-        evidence_quality="low"
-    )
-    return empty_result
-
-def return_fallback_code_triage(retry_state) -> CodeTriageResult:
-    """Tenacity callback triggered if the API fails 3 times."""
-    logger.error("All retries failed for Code Triage.")
-    e = retry_state.outcome.exception()
-
-    if isinstance(e, APITimeoutError):
-        logger.error("TIMEOUT ERROR: Code Triage took too long. The code chunk might be too large.")
-    elif isinstance(e, BadRequestError) and ("tokens exceed" in str(e) or "context_length" in str(e)):
-        logger.error("TOKEN LIMIT EXCEEDED: Code chunk is too large for the context window.")
-    else:
-        logger.error(f"Reason: {type(e).__name__}: {str(e)}")
-
-    return _get_empty_code_triage_result("API Failure after retries")
-
 @retry(
     wait=wait_random_exponential(min=1, max=60),
     stop=stop_after_attempt(3),
-    retry_error_callback=return_fallback_code_triage
+    retry_error_callback=create_llm_fallback(
+        "CODE TRIAGE",
+        lambda rs, e: CodeTriageResult.create_fallback(f"API Failure after retries {e}")
+    )
 )
 async def _run_code_triage(vuln: VulnerabilityInput, chunks: List[CodeChunk]) -> CodeTriageResult:
     """Runs the Code Triage agent to extract facts from code."""
@@ -272,7 +154,7 @@ async def _run_code_triage(vuln: VulnerabilityInput, chunks: List[CodeChunk]) ->
 
     if not structured_code.strip():
         logger.error("Preprocessing returned empty code, cannot run triage.")
-        return _get_empty_code_triage_result("No code chunks provided after preprocessing")
+        return CodeTriageResult.create_fallback("No code chunks provided after preprocessing")
 
     user_prompt = CODE_TRIAGE_USER_PROMPT.format(
         vuln_name=vuln.name,

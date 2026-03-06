@@ -4,47 +4,25 @@ from collections import Counter
 import logging
 import time
 
-from tenacity import RetryError, retry, wait_random_exponential, stop_after_attempt
-from openai import BadRequestError
+from tenacity import retry, wait_random_exponential, stop_after_attempt
 
 from ..core.client import client
 from ..core.config import settings
 from ..core.models import VulnerabilityInput, ExpandedQuery
 from ..core.vectorstore import VectorStore
 from ..core.chunk import CodeChunk
-from ..utils.llm import ask_llm_for_structured_data
+from ..utils.llm import ask_llm_for_structured_data, create_llm_fallback
 from .prompts import QUERY_GENERATION_PROMPT_TEMPLATE, QUERY_GENERATION_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
-def return_fallback_query_expansion(retry_state) -> str:
-    logger.error("All retry attempts exhausted for query expansion.")
-
-    e = retry_state.outcome.exception()
-    if isinstance(e, RetryError):
-        logger.error("RetryError detected in query expansion - all retry attempts exhausted")
-        if hasattr(e, 'last_attempt') and e.last_attempt and e.last_attempt.exception():
-            underlying_error = e.last_attempt.exception()
-            logger.error(f"Underlying query expansion error: {type(underlying_error).__name__}: {str(underlying_error)}")
-
-            if isinstance(underlying_error, BadRequestError):
-                underlying_msg = str(underlying_error)
-                if "tokens exceed" in underlying_msg or "context_length_exceeded" in underlying_msg:
-                    logger.error("TOKEN LIMIT EXCEEDED in query expansion")
-
-    logger.warning("Falling back to basic query construction.")
-
-    vulnerability = retry_state.args[0]
-    fallback_query = f"{vulnerability.name}\n{vulnerability.constraints}"
-
-    logger.info(f"Using fallback query: {fallback_query}")
-
-    return fallback_query
-
 @retry(
     wait=wait_random_exponential(min=1, max=60),
     stop=stop_after_attempt(3),
-    retry_error_callback=return_fallback_query_expansion
+    retry_error_callback=create_llm_fallback(
+        "QUERY EXPANSION",
+        lambda rs, e: ExpandedQuery.create_fallback(rs.args[0], str(e)).expanded_query
+    )
 )
 def expand_query_with_llm(vulnerability: VulnerabilityInput) -> str:
     """
