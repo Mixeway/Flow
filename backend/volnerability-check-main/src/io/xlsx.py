@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import List, Dict, Any
 import pandas as pd
 import numpy as np
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +48,7 @@ except ImportError:
         fn = sum(1 for t, p in zip(y_true, y_pred) if t and not p)
         return tp / (tp + fn) if (tp + fn) > 0 else 0.0
 
-from ..core.models import VulnerabilityInput, VulnerabilityResult
+from ..core.models import VulnerabilityInput, VulnerabilityAnalysis
 
 
 def read_vulnerabilities_from_xlsx(xlsx_path: Path) -> List[VulnerabilityInput]:
@@ -119,7 +118,7 @@ def read_vulnerabilities_from_xlsx(xlsx_path: Path) -> List[VulnerabilityInput]:
     return vulnerabilities
 
 
-def write_results_to_xlsx(results: List[VulnerabilityResult], output_path: Path):
+def write_results_to_xlsx(results: List[VulnerabilityAnalysis], output_path: Path):
     """Write analysis results to XLSX file."""
     # Convert results to DataFrame
     data = [result.model_dump() for result in results]
@@ -127,7 +126,7 @@ def write_results_to_xlsx(results: List[VulnerabilityResult], output_path: Path)
     df.to_excel(output_path, index=False)
 
 
-def calculate_metrics(results: List[VulnerabilityResult]) -> Dict[str, Any]:
+def calculate_metrics(results: List[VulnerabilityAnalysis]) -> Dict[str, Any]:
     """Calculate comprehensive metrics comparing LLM predictions with ground truth."""
     if not results:
         raise ValueError("No results provided for metrics calculation")

@@ -8,7 +8,7 @@ from ..core.client import client
 from ..core.config import settings
 from ..core.models import (
     VulnerabilityInput,
-    VulnerabilityResult,
+    VulnerabilitySynthesisResult,
     QualityAssessmentResult,
     BatchQualityDistribution,
     BatchQualityAssessmentResult,
@@ -92,7 +92,7 @@ def assess_analysis_quality(vulnerability, result) -> Dict[str, Any]:
 
 def assess_batch_quality(
     vulnerabilities: List[VulnerabilityInput],
-    results: List[VulnerabilityResult]
+    results: List[VulnerabilitySynthesisResult]
 ) -> Dict[str, Any]:
     """Assess quality for a batch of vulnerability analysis results."""
     logger.info(f"STARTING BATCH QUALITY ASSESSMENT FOR {len(results)} RESULTS")

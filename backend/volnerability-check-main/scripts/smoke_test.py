@@ -3,13 +3,12 @@ import subprocess
 import json
 from pathlib import Path
 
-
 def run_smoke_test():
     """Runs an end-to-end smoke test of the enhanced analysis pipeline on real sample data."""
     print("Starting enhanced smoke test on sample data...")
 
-    zip_path = Path("./data/transformers-main.zip")
-    xlsx_path = Path("./data/transformers-main.xlsx")
+    zip_path = Path("./data/Mixeway-MixewayScanner.zip")
+    xlsx_path = Path("./data/Mixeway-MixewayScanner_small.xlsx")
 
     if not zip_path.exists() or not xlsx_path.exists():
         print(
@@ -33,10 +32,7 @@ def run_smoke_test():
         "src",
         "analyze",
         str(zip_path),
-        str(xlsx_path),
-        "--top-k",
-        "50",  # Increased from 30 for better context
-        # "--rebuild-index",
+        str(xlsx_path)
     ]
 
     print(f"Running enhanced pipeline command: {' '.join(command)}")

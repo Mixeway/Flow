@@ -1,10 +1,9 @@
-import json
-from datetime import datetime
-from enum import Enum
 from typing import List, Optional, Dict, Any, Literal
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
-
+# ==========================================
+# SYNTHESIS ANALYSIS MODELS
+# ==========================================
 
 class VulnerabilityInput(BaseModel):
     """Input data for vulnerability analysis from XLSX file."""
@@ -30,50 +29,92 @@ class VulnerabilityInput(BaseModel):
         """Check if NVD data was provided."""
         return self.nvd_data is not None and self.nvd_data.strip() != ""
 
-
-class AnalysisStatus(str, Enum):
-    CONFIRMED = "confirmed"
-    NOT_CONFIRMED = "not_confirmed"
-    UNCERTAIN = "uncertain"
-
-
 class EvidenceSnippet(BaseModel):
-    """Code snippet that provides evidence for vulnerability."""
-    file: str
-    start_line: int
-    end_line: int
-    snippet: str
+    source: Literal["code_triage", "nvd", "web_research"] = Field(description="The intelligence source this evidence was extracted from.")
+    file: Optional[str] = Field(description="File path (if applicable, primarily for code_triage).")
+    start_line: Optional[int] = Field( description="Starting line number of the code snippet (if applicable).")
+    end_line: Optional[int] = Field(description="Ending line number of the code snippet (if applicable).")
+    content: str = Field(description="The relevant evidence content (code snippet, NVD quote, or web research fact).")
+    significance: str = Field(description="Detailed explanation of how this specific evidence impacts the final assessment.")
 
+class Contradiction(BaseModel):
+    code_triage: str = Field(description="What the Code Triage analysis found.")
+    nvd_data: str = Field(description="What the NVD data shows.")
+    web_research: str = Field(description="What the Web Research found.")
+    resolution: str = Field(description="Your expert resolution of this contradiction, explaining which source you trusted and why.")
+    aspect: str = Field(description="The specific fact or aspect where sources disagree.")
 
-class VulnerabilityResult(BaseModel):
-    """Result of vulnerability analysis."""
-    vulnerability_id: str
-    vulnerability_name: str
-    status: AnalysisStatus
-    confidence: int = Field(..., ge=1, le=5)
-    analysis_summary: str
-    detailed_reasoning: str  # Comprehensive justification of the analysis and assessment
-    evidence_snippets: List[EvidenceSnippet]
-    files_analyzed: List[str]
-    mitigations_detected: List[str]
-    suggested_next_steps: str
-    timestamp_utc: datetime = Field(default_factory=datetime.utcnow)
+class SourceCorrelation(BaseModel):
+    agreements: List[str] = Field(description="List of key facts where all available sources agree.")
+    contradictions: List[Contradiction] = Field(description="List of discrepancies between sources and how they were resolved.")
+    confidence_factors: List[str] = Field(description="Specific factors that increase confidence in this assessment.")
+    uncertainty_factors: List[str] = Field(description="Specific factors (missing data, unclear code) that create uncertainty.")
 
-    # LLM predictions
-    predicted_probability: Optional[float] = None  # LLM's predicted probability (0.0-1.0)
-    predicted_exploitable: Optional[bool] = None   # LLM's predicted exploitability
+class DetectedMitigation(BaseModel):
+    name: str = Field(description="Name of the mitigation (e.g., 'Input Validation', 'Authentication').")
+    source: str = Field(description="Which analysis (Code Triage, Web Research) found this.")
+    impact: Literal["ineffective", "partial", "strong", "complete"] = Field(description="Categorical assessment of the mitigation's effectiveness against this specific CVE.")
+    assessment: str = Field(description="Detailed explanation of why this mitigation provides the stated level of impact.")
 
-    # Ground truth for evaluation
-    ground_truth_probability: Optional[float] = None  # From the dataset
-    ground_truth_exploitable: Optional[bool] = None   # From the dataset
+class VersionAssessment(BaseModel):
+    code_analysis: str = Field(description="Version information extracted directly from code dependencies.")
+    nvd_data: str = Field(description="Vulnerable version ranges reported by NVD.")
+    web_research: str = Field(description="Version information gathered from security advisories and web research.")
+    final_determination: str = Field(description="Your synthesized, final conclusion on whether the installed version is vulnerable.")
+    confidence: Literal["high", "medium", "low"] = Field(description="Confidence in the final version determination.")
 
+class ExploitAssessment(BaseModel):
+    technical_feasibility: str = Field(description="Assessment of technical exploit feasibility based on code paths and prerequisites.")
+    attack_scenarios: List[str] = Field(description="Realistic attack scenarios based on all combined intelligence.")
+    exploitation_barriers: List[str] = Field(description="Barriers to successful exploitation (e.g., requires admin auth, specific network config).")
+    real_world_context: str = Field(description="Context from web research about actual in-the-wild usage or incidents.")
 
-    @field_validator('suggested_next_steps', mode='before')
-    @classmethod
-    def dump_to_string(cls, v: Any) -> str:
-        if isinstance(v, (list, dict)):
-            return json.dumps(v)
-        return str(v)
+class VulnerabilitySynthesisResult(BaseModel):
+    """Output schema for the Synthesis Analysis LLM."""
+    status: Literal["confirmed", "not_confirmed", "uncertain"] = Field(description="Final vulnerability status based on rigorous evidence.")
+    confidence: int = Field(ge=1, le=5, description="Confidence score from 1 (No evidence) to 5 (Definitive proof).")
+    probability: float = Field(
+        ge=0.0, le=1.0,
+        description="Final calculated probability (0.0 to 1.0) based on the strict decision matrix."
+    )
+    predicted_probability: float = Field(
+        ge=0.0, le=1.0,
+        description="Identical to probability (maintained for pipeline compatibility)."
+    )
+    exploitable: bool = Field(description="True if the vulnerability is practically exploitable in this specific codebase.")
+    predicted_exploitable: bool = Field(description="Identical to exploitable (maintained for pipeline compatibility).")
+    analysis_summary: str = Field(description="Comprehensive analysis integrating all intelligence sources (2-3 sentences max).")
+    detailed_reasoning: str = Field(
+        min_length=1500,
+        description=(
+            "COMPREHENSIVE STEP-BY-STEP JUSTIFICATION (MUST BE EXHAUSTIVE, 1500+ CHARACTERS). "
+            "You MUST explicitly include: "
+            "1. API USAGE VERIFICATION (Explicitly state if API is called vs imported). "
+            "2. VERSION ANALYSIS. "
+            "3. CONSTRAINT-BY-CONSTRAINT EVALUATION. "
+            "4. EVIDENCE CROSS-VALIDATION. "
+            "5. PROBABILITY JUSTIFICATION (Explain the exact numbers). "
+            "6. EXPLOITABILITY ASSESSMENT. "
+            "7. MITIGATION IMPACT."
+        )
+    )
+    evidence_snippets: List[EvidenceSnippet] = Field(description="Concrete snippets of evidence supporting the analysis.")
+    source_correlation: SourceCorrelation = Field(description="Analysis of how the different intelligence sources align or conflict.")
+    mitigations_detected: List[DetectedMitigation] = Field(description="List of security controls and their assessed impact.")
+    version_assessment: VersionAssessment = Field(description="Synthesized assessment of library versions.")
+    exploit_assessment: ExploitAssessment = Field(description="Assessment of how this could actually be exploited.")
+    suggested_next_steps: str = Field(description="Prioritized, actionable recommendations based on the complete analysis.")
+
+class VulnerabilityAnalysis(VulnerabilitySynthesisResult):
+    """
+        The complete, final vulnerability assessment record, combining
+        the AI's analytical findings with core project metadata.
+    """
+    vulnerability_id: str = Field(description="The unique identifier for the assessed vulnerability (e.g., CVE-YYYY-NNNN).")
+    vulnerability_name: str = Field(description="The standard designation or title of the vulnerability being analyzed.")
+    files_analyzed: List[str] = Field(description="The comprehensive list of file paths that were scanned and evaluated during the assessment.")
+    ground_truth_probability: Optional[float] = Field(description="The verified, baseline probability of exploitation, used as a benchmark for evaluating analytical accuracy.")
+    ground_truth_exploitable: Optional[bool] = Field(description="The verified, real-world exploitability status of the vulnerability, used as a benchmark.")
 
 # ==========================================
 # CHUNK ORGANIZER MODELS
