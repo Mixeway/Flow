@@ -79,7 +79,7 @@ def assess_analysis_quality(vulnerability, result) -> QualityAssessmentResult:
 def assess_batch_quality(
     vulnerabilities: List[VulnerabilityInput],
     results: List[VulnerabilitySynthesisResult]
-) -> Dict[str, Any]:
+) -> BatchQualityAssessmentResult:
     """Assess quality for a batch of vulnerability analysis results."""
     logger.info(f"STARTING BATCH QUALITY ASSESSMENT FOR {len(results)} RESULTS")
 
@@ -124,4 +124,4 @@ def assess_batch_quality(
     logger.info(f"Average quality score: {avg_score:.2f}/5")
     logger.info(f"Quality distribution: {dist.model_dump()}")
 
-    return batch_result.model_dump()
+    return batch_result

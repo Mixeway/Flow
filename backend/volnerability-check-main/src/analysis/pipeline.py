@@ -246,7 +246,6 @@ async def pipeline_async(
         # Check if we have ground truth for evaluation
         has_ground_truth = any(vuln.has_ground_truth for vuln in vulnerabilities)
         
-        quality_assessment = None
         metrics = None
         
         if has_ground_truth:
@@ -280,14 +279,8 @@ async def pipeline_async(
             logger.info("🔍 Computing accuracy metrics vs ground truth")
 
             try:
-                metrics = calculate_metrics(results)
-                
-                # Add quality assessment metrics if available
-                if quality_assessment:
-                    metrics.avg_quality_score = quality_assessment['average_quality_score']
-                    metrics.quality_distribution = quality_assessment['quality_distribution']
-                    metrics.total_quality_assessed = quality_assessment['total_assessed']
-                
+                metrics = calculate_metrics(results, quality_data=quality_assessment)
+
                 logger.info("Metrics calculated successfully:")
                 logger.info(f"  Total vulnerabilities evaluated: {metrics.total_vulnerabilities}")
                 logger.info(f"  Probability MAE: {metrics.probability_mae:.4f}")
@@ -297,12 +290,13 @@ async def pipeline_async(
                 logger.info(f"  Exploitable Recall: {metrics.exploitable_recall:.4f}")
                 logger.info(f"  Exploitable F1: {metrics.exploitable_f1:.4f}")
                 logger.info(f"  Status Accuracy: {metrics.status_accuracy:.4f}")
-                
+
                 if metrics.avg_quality_score is not None:
                     logger.info(f"  Average Quality Score: {metrics.avg_quality_score:.2f}/5")
-                
-                # Save metrics to file
+                    logger.info(f"  Total Assessed for Quality: {metrics.total_quality_assessed}")
+
                 metrics_output_path = output_dir / f"{base_name}.metrics.json"
+
                 with open(metrics_output_path, 'w') as f:
                     json.dump(metrics.model_dump(), f, indent=2)
                 logger.info(f"Metrics saved to: {metrics_output_path}")

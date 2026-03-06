@@ -649,8 +649,8 @@ class MetricsResult(BaseModel):
     total_vulnerabilities: int
     
     # Probability metrics
-    probability_mae: float  # Mean Absolute Error for probability
-    probability_rmse: float  # Root Mean Square Error for probability
+    probability_mae: float
+    probability_rmse: float
     
     # Exploitability metrics
     exploitable_accuracy: float
@@ -659,12 +659,12 @@ class MetricsResult(BaseModel):
     exploitable_f1: float
     
     # Status metrics
-    status_accuracy: float  # Accuracy for vulnerability status
+    status_accuracy: float
     
     # General metrics
     avg_confidence: float
     
     # LLM-based quality assessment metrics
-    avg_quality_score: Optional[float] = None  # Average LLM quality score (1-5)
-    quality_distribution: Optional[dict] = None  # Distribution of quality scores
-    total_quality_assessed: Optional[int] = None  # Number of results assessed for quality
+    avg_quality_score: Optional[float] = None
+    quality_distribution: Optional[dict] = None
+    total_quality_assessed: Optional[int] = None
