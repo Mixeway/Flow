@@ -1,6 +1,116 @@
-.vertical-align-multiple {
+.results-column-header {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  height: 100%;
+  align-items: flex-start;
+
+  .column-header {
+    font-weight: 600;
+  }
+
+  .column-legend {
+    display: flex;
+    gap: 8px;
+    margin-top: 2px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+
+    .legend-c {
+      color: var(--cui-danger);
+    }
+    .legend-h {
+      color: var(--cui-warning);
+    }
+    .legend-m {
+      color: var(--cui-info);
+    }
+  }
+}
+
+.results-grid {
+  width: 100%;
+  padding: 4px 0;
+
+  .results-grid-row {
+    display: grid;
+    grid-template-columns: 58px 34px 34px 34px;
+    gap: 4px;
+    align-items: center;
+    padding: 3px 0;
+
+    &:not(:last-child) {
+      border-bottom: 1px solid rgba(128, 128, 128, 0.08);
+    }
+
+    .grid-label {
+      font-weight: 600;
+      font-size: 0.73rem;
+      color: var(--cui-secondary-color);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .grid-value {
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.73rem;
+      border-radius: 4px;
+      padding: 2px 4px;
+      line-height: 1.4;
+      transition: background-color 0.15s, color 0.15s;
+
+      &.zero {
+        color: var(--cui-tertiary-color);
+        opacity: 0.35;
+      }
+
+      &.critical-active {
+        background-color: var(--cui-danger);
+        color: #fff;
+      }
+
+      &.high-active {
+        background-color: var(--cui-warning);
+        color: #fff;
+      }
+
+      &.medium-active {
+        background-color: var(--cui-info);
+        color: #fff;
+      }
+    }
+  }
+}
+
+.scan-datatable {
+  .column-header {
+    font-weight: 600;
+  }
+
+  .date-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    .date-icon {
+      width: 14px;
+      height: 14px;
+      opacity: 0.7;
+    }
+
+    .scan-date {
+      font-size: 0.85rem;
+    }
+  }
+
+  .target-cell {
+    .target-main {
+      font-weight: 500;
+    }
+
+    .target-sub {
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+  }
 }

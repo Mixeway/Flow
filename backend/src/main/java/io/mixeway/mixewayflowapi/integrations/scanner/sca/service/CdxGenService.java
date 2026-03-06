@@ -100,12 +100,13 @@ public class CdxGenService {
 
         if (proxyHost != null && proxyPort != null) {
             command = "CDXGEN_DEBUG_MODE=debug "
+                    + "CDX_MAVEN_INCLUDE_TEST_SCOPE=false "
                     + "HTTP_PROXY=http://" + proxyHost + ":" + proxyPort + " "
                     + "HTTPS_PROXY=http://" + proxyHost + ":" + proxyPort + " "
-                    + "cdxgen --recurse --output sbom.json .";
+                    + "cdxgen --recurse --required-only --output sbom.json .";
             log.info("[CdxGen] Proxy settings applied: {}:{}", proxyHost, proxyPort);
         } else {
-            command = "CDXGEN_DEBUG_MODE=debug cdxgen --recurse --output sbom.json .";
+            command = "CDXGEN_DEBUG_MODE=debug CDX_MAVEN_INCLUDE_TEST_SCOPE=false cdxgen --recurse --required-only --output sbom.json .";
         }
 
         // Use 'sh -c' to execute the command in a shell

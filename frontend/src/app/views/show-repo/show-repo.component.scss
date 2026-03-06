@@ -271,32 +271,79 @@
         }
       }
 
-      // Results cell styling
-      .results-cell {
+      .results-column-header {
         display: flex;
         flex-direction: column;
-        gap: 0.5rem;
+        align-items: flex-start;
 
-        .result-category {
+        .column-header {
+          font-weight: 600;
+        }
+
+        .column-legend {
           display: flex;
-          align-items: center;
-          justify-content: space-between;
+          gap: 8px;
+          margin-top: 2px;
+          font-size: 0.65rem;
+          font-weight: 700;
+          letter-spacing: 0.5px;
 
-          .category-label {
-            font-weight: 600;
-            font-size: 0.85rem;
-            width: 60px;
+          .legend-c { color: var(--cui-danger); }
+          .legend-h { color: var(--cui-warning); }
+          .legend-m { color: var(--cui-info); }
+        }
+      }
+
+      .results-grid {
+        width: 100%;
+        padding: 4px 0;
+
+        .results-grid-row {
+          display: grid;
+          grid-template-columns: 58px 34px 34px 34px;
+          gap: 4px;
+          align-items: center;
+          padding: 3px 0;
+
+          &:not(:last-child) {
+            border-bottom: 1px solid rgba(128, 128, 128, 0.08);
           }
 
-          .category-badges {
-            display: flex;
-            gap: 0.35rem;
+          .grid-label {
+            font-weight: 600;
+            font-size: 0.73rem;
+            color: var(--cui-secondary-color);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+          }
 
-            .result-badge {
-              min-width: 28px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
+          .grid-value {
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.73rem;
+            border-radius: 4px;
+            padding: 2px 4px;
+            line-height: 1.4;
+            transition: background-color 0.15s, color 0.15s;
+
+            &.zero {
+              color: var(--cui-tertiary-color);
+              opacity: 0.35;
+            }
+
+            &.critical-active {
+              background-color: var(--cui-danger);
+              color: #fff;
+            }
+
+            &.high-active {
+              background-color: var(--cui-warning);
+              color: #fff;
+            }
+
+            &.medium-active {
+              background-color: var(--cui-info);
+              color: #fff;
             }
           }
         }

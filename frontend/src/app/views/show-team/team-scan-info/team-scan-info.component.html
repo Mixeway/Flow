@@ -60,86 +60,77 @@
                             </ng-template>
                         </ngx-datatable-column>
 
-                        <!-- Results Column (with unified NOT PERFORMED state) -->
-                        <ngx-datatable-column name="Results" [width]="260">
+                        <!-- Results Column -->
+                        <ngx-datatable-column name="Results" [width]="320">
                             <ng-template ngx-datatable-header-template>
-                                <span class="column-header">Results</span>
+                                <div class="results-column-header">
+                                    <span class="column-header">Results</span>
+                                    <div class="column-legend">
+                                        <span class="legend-c">C</span>
+                                        <span class="legend-h">H</span>
+                                        <span class="legend-m">M</span>
+                                    </div>
+                                </div>
                             </ng-template>
                             <ng-template let-row="row" ngx-datatable-cell-template>
-                                <!-- Show NOT PERFORMED badge if any scanner metrics indicate -1 (same semantics as repo) -->
                                 <ng-container *ngIf="
                                    row?.sastCritical === -1 || row?.sastHigh === -1 || row?.sastMedium === -1 ||
                                    row?.scaCritical === -1  || row?.scaHigh === -1  || row?.scaMedium === -1  ||
                                    row?.iacCritical === -1  || row?.iacHigh === -1  || row?.iacMedium === -1  ||
                                    row?.secretsCritical === -1 || row?.secretsHigh === -1 || row?.secretsMedium === -1
                                   ; else normalResults">
-                                    <div class="results-cell">
-                                        <c-badge
-                                                color="secondary"
-                                                class="result-badge"
-                                                [cTooltip]="'Scan requested while previous was running or was run too early (limit: 1 scan per 10 minutes)'">
-                                            SCAN NOT PERFORMED
-                                        </c-badge>
-                                    </div>
+                                    <c-badge
+                                            color="secondary"
+                                            [cTooltip]="'Scan requested while previous was running or was run too early (limit: 1 scan per 10 minutes)'">
+                                        SCAN NOT PERFORMED
+                                    </c-badge>
                                 </ng-container>
 
-                                <!-- Normal results rendering, aligned with repo -->
                                 <ng-template #normalResults>
-                                    <div class="results-cell">
-    <!-- SAST -->
-    <div class="result-row" style="display:flex; align-items:center; gap:.5rem;">
-      <span class="category-label" style="min-width:70px;">SAST:</span>
-      <c-badge color="danger" class="result-badge" *ngIf="row.sastCritical > 0">{{ row.sastCritical }}</c-badge>
-      <c-badge color="warning" class="result-badge" *ngIf="row.sastHigh > 0">{{ row.sastHigh }}</c-badge>
-      <c-badge color="info" class="result-badge" *ngIf="row.sastMedium > 0">{{ row.sastMedium }}</c-badge>
-    </div>
-
-    <!-- SCA -->
-    <div class="result-row" style="display:flex; align-items:center; gap:.5rem;">
-      <span class="category-label" style="min-width:70px;">SCA:</span>
-      <c-badge color="danger" class="result-badge" *ngIf="row.scaCritical > 0">{{ row.scaCritical }}</c-badge>
-      <c-badge color="warning" class="result-badge" *ngIf="row.scaHigh > 0">{{ row.scaHigh }}</c-badge>
-      <c-badge color="info" class="result-badge" *ngIf="row.scaMedium > 0">{{ row.scaMedium }}</c-badge>
-    </div>
-
-    <!-- IaC -->
-    <div class="result-row" style="display:flex; align-items:center; gap:.5rem;">
-      <span class="category-label" style="min-width:70px;">IaC:</span>
-      <c-badge color="danger" class="result-badge" *ngIf="row.iacCritical > 0">{{ row.iacCritical }}</c-badge>
-      <c-badge color="warning" class="result-badge" *ngIf="row.iacHigh > 0">{{ row.iacHigh }}</c-badge>
-      <c-badge color="info" class="result-badge" *ngIf="row.iacMedium > 0">{{ row.iacMedium }}</c-badge>
-    </div>
-
-    <!-- Secrets -->
-    <div class="result-row" style="display:flex; align-items:center; gap:.5rem;">
-      <span class="category-label" style="min-width:70px;">Secrets:</span>
-      <c-badge color="danger" class="result-badge" *ngIf="row.secretsCritical > 0">{{ row.secretsCritical }}</c-badge>
-      <c-badge color="warning" class="result-badge" *ngIf="row.secretsHigh > 0">{{ row.secretsHigh }}</c-badge>
-      <c-badge color="info" class="result-badge" *ngIf="row.secretsMedium > 0">{{ row.secretsMedium }}</c-badge>
-    </div>
-
-    <!-- GitLab -->
-    <div class="result-row" style="display:flex; align-items:center; gap:.5rem;">
-      <span class="category-label" style="min-width:70px;">GitLab:</span>
-      <c-badge color="danger" class="result-badge" *ngIf="row.gitlabCritical > 0">{{ row.gitlabCritical }}</c-badge>
-      <c-badge color="warning" class="result-badge" *ngIf="row.gitlabHigh > 0">{{ row.gitlabHigh }}</c-badge>
-      <c-badge color="info" class="result-badge" *ngIf="row.gitlabMedium > 0">{{ row.gitlabMedium }}</c-badge>
-    </div>
-
-    <!-- DAST -->
-    <div class="result-row" style="display:flex; align-items:center; gap:.5rem;">
-      <span class="category-label" style="min-width:70px;">DAST:</span>
-      <c-badge color="danger" class="result-badge" *ngIf="row.dastCritical > 0">{{ row.dastCritical }}</c-badge>
-      <c-badge color="warning" class="result-badge" *ngIf="row.dastHigh > 0">{{ row.dastHigh }}</c-badge>
-      <c-badge color="info" class="result-badge" *ngIf="row.dastMedium > 0">{{ row.dastMedium }}</c-badge>
-    </div>
-
-    <!-- Optional: Cloud Scan (team-specific summary) -->
-    <div class="result-row" style="display:flex; align-items:center; gap:.5rem;" *ngIf="row.criticalFindings !== undefined">
-      <span class="category-label" style="min-width:70px;">Cloud:</span>
-      <c-badge color="danger" class="result-badge" *ngIf="row.criticalFindings > 0">{{ row.criticalFindings }}</c-badge>
-    </div>
-  </div>
+                                    <div class="results-grid">
+                                        <div class="results-grid-row">
+                                            <span class="grid-label">SAST</span>
+                                            <span class="grid-value" [class.critical-active]="row.sastCritical > 0" [class.zero]="!row.sastCritical">{{ row.sastCritical || 0 }}</span>
+                                            <span class="grid-value" [class.high-active]="row.sastHigh > 0" [class.zero]="!row.sastHigh">{{ row.sastHigh || 0 }}</span>
+                                            <span class="grid-value" [class.medium-active]="row.sastMedium > 0" [class.zero]="!row.sastMedium">{{ row.sastMedium || 0 }}</span>
+                                        </div>
+                                        <div class="results-grid-row">
+                                            <span class="grid-label">SCA</span>
+                                            <span class="grid-value" [class.critical-active]="row.scaCritical > 0" [class.zero]="!row.scaCritical">{{ row.scaCritical || 0 }}</span>
+                                            <span class="grid-value" [class.high-active]="row.scaHigh > 0" [class.zero]="!row.scaHigh">{{ row.scaHigh || 0 }}</span>
+                                            <span class="grid-value" [class.medium-active]="row.scaMedium > 0" [class.zero]="!row.scaMedium">{{ row.scaMedium || 0 }}</span>
+                                        </div>
+                                        <div class="results-grid-row">
+                                            <span class="grid-label">IaC</span>
+                                            <span class="grid-value" [class.critical-active]="row.iacCritical > 0" [class.zero]="!row.iacCritical">{{ row.iacCritical || 0 }}</span>
+                                            <span class="grid-value" [class.high-active]="row.iacHigh > 0" [class.zero]="!row.iacHigh">{{ row.iacHigh || 0 }}</span>
+                                            <span class="grid-value" [class.medium-active]="row.iacMedium > 0" [class.zero]="!row.iacMedium">{{ row.iacMedium || 0 }}</span>
+                                        </div>
+                                        <div class="results-grid-row">
+                                            <span class="grid-label">Secrets</span>
+                                            <span class="grid-value" [class.critical-active]="row.secretsCritical > 0" [class.zero]="!row.secretsCritical">{{ row.secretsCritical || 0 }}</span>
+                                            <span class="grid-value" [class.high-active]="row.secretsHigh > 0" [class.zero]="!row.secretsHigh">{{ row.secretsHigh || 0 }}</span>
+                                            <span class="grid-value" [class.medium-active]="row.secretsMedium > 0" [class.zero]="!row.secretsMedium">{{ row.secretsMedium || 0 }}</span>
+                                        </div>
+                                        <div class="results-grid-row">
+                                            <span class="grid-label">GitLab</span>
+                                            <span class="grid-value" [class.critical-active]="row.gitlabCritical > 0" [class.zero]="!row.gitlabCritical">{{ row.gitlabCritical || 0 }}</span>
+                                            <span class="grid-value" [class.high-active]="row.gitlabHigh > 0" [class.zero]="!row.gitlabHigh">{{ row.gitlabHigh || 0 }}</span>
+                                            <span class="grid-value" [class.medium-active]="row.gitlabMedium > 0" [class.zero]="!row.gitlabMedium">{{ row.gitlabMedium || 0 }}</span>
+                                        </div>
+                                        <div class="results-grid-row">
+                                            <span class="grid-label">DAST</span>
+                                            <span class="grid-value" [class.critical-active]="row.dastCritical > 0" [class.zero]="!row.dastCritical">{{ row.dastCritical || 0 }}</span>
+                                            <span class="grid-value" [class.high-active]="row.dastHigh > 0" [class.zero]="!row.dastHigh">{{ row.dastHigh || 0 }}</span>
+                                            <span class="grid-value" [class.medium-active]="row.dastMedium > 0" [class.zero]="!row.dastMedium">{{ row.dastMedium || 0 }}</span>
+                                        </div>
+                                        <div class="results-grid-row" *ngIf="row.criticalFindings !== undefined">
+                                            <span class="grid-label">Cloud</span>
+                                            <span class="grid-value" [class.critical-active]="row.criticalFindings > 0" [class.zero]="!row.criticalFindings">{{ row.criticalFindings || 0 }}</span>
+                                            <span class="grid-value zero">–</span>
+                                            <span class="grid-value zero">–</span>
+                                        </div>
+                                    </div>
                                 </ng-template>
                             </ng-template>
                         </ngx-datatable-column>
