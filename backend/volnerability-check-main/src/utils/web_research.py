@@ -34,6 +34,7 @@ async def _fetch_searxng_query(http_client: httpx.AsyncClient, query: str) -> Li
         data = response.json()
 
         results = []
+        print(data)
         for item in data.get("results", []):
             content = item.get("content", "") or item.get("snippet", "")
             if content:
@@ -62,11 +63,26 @@ async def _gather_web_context(vuln_name: str) -> str:
     ]
 
     all_results = []
-    async with httpx.AsyncClient() as http_client:
-        tasks = [_fetch_searxng_query(http_client, q) for q in queries]
-        query_results = await asyncio.gather(*tasks)
 
-        all_results = list(itertools.chain.from_iterable(query_results))
+    sem = asyncio.Semaphore(1)
+    async def _bounded_fetch(http_client: httpx.AsyncClient, query: str):
+        async with sem:
+            await asyncio.sleep(2.0)
+            return await _fetch_searxng_query(http_client, query)
+
+    async with httpx.AsyncClient(timeout=15.0) as http_client:
+        tasks = [_bounded_fetch(http_client, q) for q in queries]
+        query_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for result in query_results:
+            if isinstance(result, Exception):
+                logger.error(f"Search query failed: {result}")
+            elif result:
+                all_results.append(result)
+
+        all_results = list(itertools.chain.from_iterable(all_results))
+
+    logger.info(f" ALL WEB SEARCH RESULTS: {len(all_results)} found")
 
     seen_urls = set()
     unique_results = []
@@ -82,7 +98,6 @@ async def _gather_web_context(vuln_name: str) -> str:
             f"URL: {res['url']}\n"
             f"Content: {res['content']}\n"
         )
-
     return "\n".join(context_blocks)
 
 def return_fallback_web_research(retry_state) -> Dict[str, Any]:
