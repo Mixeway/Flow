@@ -969,9 +969,22 @@ CREATE TABLE downloader_log (
                             created_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 )
 
---changeset bondluk:add_cf_access_credentials
+--changeset bondluk:add_cf_access_credentials validCheckSum:
+--validCheckSum: 9:da32f5acfbaa56d60e62783ee9a8ce5e
 ALTER TABLE settings_exploitability ADD COLUMN cf_access_client_id VARCHAR(255);
 ALTER TABLE settings_exploitability ADD COLUMN cf_access_client_secret VARCHAR(255);
+
+--changeset bondtom:add_searxng_base_url
+--preconditions onFail:MARK_RAN
+--precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM information_schema.columns WHERE table_name='settings_exploitability' AND column_name='searxng_base_url'
 ALTER TABLE settings_exploitability ADD COLUMN searxng_base_url VARCHAR(255);
+
+--changeset bondtom:add_searxng_top_k_query
+--preconditions onFail:MARK_RAN
+--precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM information_schema.columns WHERE table_name='settings_exploitability' AND column_name='searxng_top_k_query'
 ALTER TABLE settings_exploitability ADD COLUMN searxng_top_k_query INTEGER;
+
+--changeset bondtom:add_searxng_top_k_context
+--preconditions onFail:MARK_RAN
+--precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM information_schema.columns WHERE table_name='settings_exploitability' AND column_name='searxng_top_k_context'
 ALTER TABLE settings_exploitability ADD COLUMN searxng_top_k_context INTEGER;
