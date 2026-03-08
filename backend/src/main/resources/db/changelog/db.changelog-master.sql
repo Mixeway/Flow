@@ -969,9 +969,67 @@ CREATE TABLE downloader_log (
                             created_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 )
 
---changeset bondluk:add_cf_access_credentials
+--changeset bondluk:add_cf_access_credentials validCheckSum:
+--validCheckSum: 9:da32f5acfbaa56d60e62783ee9a8ce5e
 ALTER TABLE settings_exploitability ADD COLUMN cf_access_client_id VARCHAR(255);
 ALTER TABLE settings_exploitability ADD COLUMN cf_access_client_secret VARCHAR(255);
+
+--changeset bondtom:add_searxng_base_url
+--preconditions onFail:MARK_RAN
+--precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM information_schema.columns WHERE table_name='settings_exploitability' AND column_name='searxng_base_url'
 ALTER TABLE settings_exploitability ADD COLUMN searxng_base_url VARCHAR(255);
+
+--changeset bondtom:add_searxng_top_k_query
+--preconditions onFail:MARK_RAN
+--precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM information_schema.columns WHERE table_name='settings_exploitability' AND column_name='searxng_top_k_query'
 ALTER TABLE settings_exploitability ADD COLUMN searxng_top_k_query INTEGER;
+
+--changeset bondtom:add_searxng_top_k_context
+--preconditions onFail:MARK_RAN
+--precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM information_schema.columns WHERE table_name='settings_exploitability' AND column_name='searxng_top_k_context'
 ALTER TABLE settings_exploitability ADD COLUMN searxng_top_k_context INTEGER;
+
+--changeset bondtom:convert_vulnerable_configurations_to_many_to_many
+CREATE TABLE vulnerability_vulnerable_configuration (
+    vulnerability_id BIGINT NOT NULL REFERENCES vulnerability(id) ON DELETE CASCADE,
+    vulnerable_configuration_id BIGINT NOT NULL REFERENCES vulnerable_configurations(id) ON DELETE CASCADE,
+    PRIMARY KEY (vulnerability_id, vulnerable_configuration_id)
+);
+
+CREATE TABLE unique_configurations AS
+SELECT DISTINCT ON (criteria, version_start_including, version_start_excluding, version_end_including, version_end_excluding)
+    id,
+    criteria,
+    version_start_including,
+    version_start_excluding,
+    version_end_including,
+    version_end_excluding
+FROM vulnerable_configurations
+ORDER BY criteria, version_start_including, version_start_excluding, version_end_including, version_end_excluding, id;
+
+CREATE TABLE id_mapping AS
+SELECT
+    vc.id as old_id,
+    uc.id as new_id,
+    vc.vulnerability_id
+FROM vulnerable_configurations vc
+INNER JOIN unique_configurations uc ON
+    COALESCE(vc.criteria, '') = COALESCE(uc.criteria, '') AND
+    COALESCE(vc.version_start_including, '') = COALESCE(uc.version_start_including, '') AND
+    COALESCE(vc.version_start_excluding, '') = COALESCE(uc.version_start_excluding, '') AND
+    COALESCE(vc.version_end_including, '') = COALESCE(uc.version_end_including, '') AND
+    COALESCE(vc.version_end_excluding, '') = COALESCE(uc.version_end_excluding, '');
+
+INSERT INTO vulnerability_vulnerable_configuration (vulnerability_id, vulnerable_configuration_id)
+SELECT DISTINCT vulnerability_id, new_id
+FROM id_mapping;
+
+DELETE FROM vulnerable_configurations
+WHERE id NOT IN (SELECT id FROM unique_configurations);
+
+DROP TABLE id_mapping;
+DROP TABLE unique_configurations;
+
+--changeset bondtom:update_vulnerable_configurations
+ALTER TABLE vulnerable_configurations DROP CONSTRAINT vulnerable_configurations_vulnerability_id_fkey;
+ALTER TABLE vulnerable_configurations DROP COLUMN vulnerability_id;
