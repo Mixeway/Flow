@@ -5,17 +5,15 @@ These tests validate basic functionality and serve as integration tests.
 """
 
 import logging
-from pathlib import Path
 from typing import List, Dict, Any
 
-from ..core.models import VulnerabilityInput, VulnerabilityResult
-from .quality_checker import assess_analysis_quality
+from ..core.models import VulnerabilityInput, VulnerabilitySynthesisResult
 
 logger = logging.getLogger(__name__)
 
 def run_smoke_tests(
     vulnerabilities: List[VulnerabilityInput], 
-    results: List[VulnerabilityResult]
+    results: List[VulnerabilitySynthesisResult]
 ) -> Dict[str, Any]:
     """
     Run basic smoke tests on analysis results.

@@ -1,14 +1,12 @@
 import json
-import logging
 from pathlib import Path
-from typing import List, Dict, Any
-from datetime import datetime
+from typing import List
 
 
-from ..core.models import VulnerabilityResult
+from ..core.models import VulnerabilitySynthesisResult
 
 
-def write_results_to_json(results: List[VulnerabilityResult], output_path: Path):
+def write_results_to_json(results: List[VulnerabilitySynthesisResult], output_path: Path):
     """Writes analysis results to a JSON file."""
     if not results:
         return
