@@ -3,7 +3,6 @@ import shutil
 from pathlib import Path
 import time
 import logging
-from typing import List, Dict, Any
 from collections import Counter
 import json
 import asyncio
@@ -17,7 +16,6 @@ from ..io.json import write_results_to_json
 from .retrieval import retrieve_chunks
 from .analyzer import analyze_vulnerability
 from ..testing.quality_checker import assess_batch_quality
-from ..testing.smoke_tests import run_smoke_tests, validate_pipeline_health
 from ..core.config import settings
 from ..utils.progress import tqdm
 
@@ -261,7 +259,7 @@ async def pipeline_async(
                 quality_time = time.time() - quality_start
                 
                 logger.info(f"Quality assessment completed in {quality_time:.2f}s")
-                logger.info(f"Average quality score: {quality_assessment['average_quality_score']:.2f}/5")
+                logger.info(f"Average quality score: {quality_assessment.average_quality_score:.2f}/5")
                 
                 quality_output_path = output_dir / f"{base_name}.quality.json"
                 with open(quality_output_path, 'w') as f:

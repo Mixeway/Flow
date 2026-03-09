@@ -5,11 +5,11 @@ import httpx
 import time
 
 from tenacity import retry, wait_random_exponential, stop_after_attempt
-from typing import Any, Dict, List
+from typing import Dict, List
 
 from ..core.config import settings
 from ..core.client import client
-from ..core.models import WebResearchResult
+from ..core.models import WebResearchResult, WebResearchResultMetadata
 from ..utils.llm import ask_llm_for_structured_data, create_llm_fallback
 from ..analysis.prompts import (
     WEB_RESEARCH_AGENT_SYSTEM_PROMPT,
@@ -104,10 +104,15 @@ async def _gather_web_context(vuln_name: str) -> str:
     stop=stop_after_attempt(3),
     retry_error_callback=create_llm_fallback(
             "WEB RESEARCH",
-            lambda rs, e: WebResearchResult.create_fallback(rs.args[0], str(e)).model_dump()
+            lambda rs, e: WebResearchResultMetadata.create_fallback(
+                vuln_name=rs.args[0],
+                error_message=str(e),
+                agent_name=settings.OPENAI_WEB_SEARCH_MODEL,
+                constraints=rs.args[1]
+            )
     )
 )
-async def conduct_web_research(vuln_name: str, vuln_constraints: str) -> Dict[str, Any]:
+async def conduct_web_research(vuln_name: str, vuln_constraints: str) -> WebResearchResultMetadata:
     """Conducts comprehensive web research about a vulnerability using LLM with web search capability."""
     logger.info(f"Conducting web research for {vuln_name}")
 
@@ -135,7 +140,7 @@ async def conduct_web_research(vuln_name: str, vuln_constraints: str) -> Dict[st
 
     await rate_limiter.wait_if_needed()
 
-    result_obj = ask_llm_for_structured_data(
+    web_research_obj = ask_llm_for_structured_data(
         client=client,
         model_name=settings.OPENAI_WEB_SEARCH_MODEL,
         system_prompt=system_prompt,
@@ -144,14 +149,13 @@ async def conduct_web_research(vuln_name: str, vuln_constraints: str) -> Dict[st
     )
     logger.info("Web research LLM generation completed.")
 
-    websearch_data = result_obj.model_dump()
-
-    websearch_data["research_metadata"] = {
-        "vuln_name": vuln_name,
-        "research_timestamp": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
-        "research_agent": agent_name,
-        "constraints_analyzed": vuln_constraints
-    }
+    result_obj = WebResearchResultMetadata(
+        **web_research_obj.model_dump(),
+        vuln_name=vuln_name,
+        research_timestamp=time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
+        research_agent = agent_name,
+        constraints_analyzed = vuln_constraints
+    )
 
     logger.info(f"Web research successful for {vuln_name}")
-    return websearch_data
+    return result_obj

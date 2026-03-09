@@ -598,6 +598,31 @@ class WebResearchResult(BaseModel):
             research_quality=ResearchQuality.create_fallback(error_message)
         )
 
+class WebResearchResultMetadata(WebResearchResult):
+    vuln_name: str = Field(description="The formal identifier or name of the vulnerability being researched (e.g., 'CVE-2024-1234' or 'SQL Injection in Auth').")
+    research_timestamp: str = Field(description="The exact UTC timestamp when this web research was completed, formatted as 'YYYY-MM-DD HH:MM:SS UTC'.")
+    research_agent: str = Field(description="The specific LLM model, configuration, or pipeline step that generated this research report (e.g., 'gpt-4o-web-researcher').")
+    constraints_analyzed: str = Field(description="The exact technical constraints, prerequisites, or context parameters that the agent was instructed to focus on during the search.")
+    error: str = Field(default="None", description="Records any system crashes, API timeouts, or generation errors encountered during the research process. Defaults to 'None' if successful.")
+
+    @classmethod
+    def create_fallback(
+        cls,
+        vuln_name: str,
+        error_message: str,
+        agent_name: str = "Unknown Agent",
+        constraints: str = "None provided"
+    ) -> WebResearchResultMetadata:
+        base_fallback = WebResearchResult.create_fallback(vuln_name, error_message)
+
+        return cls(
+            **base_fallback.model_dump(),
+            vuln_name=vuln_name,
+            research_timestamp=time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
+            research_agent=f"{agent_name} (Fallback)",
+            constraints_analyzed=constraints,
+            error=error_message
+        )
 # ==========================================
 # QUALITY ASSESSMENT MODELS
 # ==========================================

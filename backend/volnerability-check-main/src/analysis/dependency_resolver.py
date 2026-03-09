@@ -5,6 +5,7 @@ import re
 logger = logging.getLogger(__name__)
 
 # A simple semantic version parser
+
 def parse_version(version_str):
     if not version_str:
         return []

@@ -124,8 +124,7 @@ def retrieve_chunks(
     query_time = time.time() - query_start
 
     logger.info(f"Query construction completed in {query_time:.3f} seconds")
-    logger.info(f"Final query for vector search: '{query}'")
-    
+
     # Extract function patterns for keyword boost
     function_patterns = _extract_function_patterns(vulnerability.constraints)
     if function_patterns:

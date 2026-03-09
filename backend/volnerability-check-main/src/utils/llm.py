@@ -34,35 +34,69 @@ def create_llm_fallback(llm_name: str, fallback_builder: Callable[[Any, Exceptio
 
     return fallback_handler
 
+def _enforce_strict_schema(schema: dict) -> dict:
+    """Recursively injects 'additionalProperties': False into the schema to satisfy OpenAI's strict mode."""
+    if isinstance(schema, dict):
+
+        if "$ref" in schema:
+            keys_to_remove = [k for k in schema.keys() if k != "$ref"]
+            for k in keys_to_remove:
+                del schema[k]
+            return schema
+
+        if schema.get("type") == "object":
+            schema["additionalProperties"] = False
+
+        for key, value in schema.items():
+            _enforce_strict_schema(value)
+
+    elif isinstance(schema, list):
+        for item in schema:
+            _enforce_strict_schema(item)
+
+    return schema
+
 def ask_llm_for_structured_data(
         client,
         model_name: str,
         system_prompt: str,
         user_prompt: str,
-        response_model: Type[T]
+        response_model: Type[T],
 ) -> T:
     """Universal function to get guaranteed structured data from an LLM by streaming."""
 
     schema = response_model.model_json_schema()
 
-    completion = client.chat.completions.create(
-        model=model_name,
-        messages=[
+    strict_schema = _enforce_strict_schema(schema)
+
+    kwargs = {
+        "model": model_name,
+        "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
         ],
-        response_format={
+        "response_format": {
             "type": "json_schema",
             "json_schema": {
                 "name": response_model.__name__,
-                "schema": schema,
+                "schema": strict_schema,
                 "strict": True
             }
         },
-        temperature=0,
-        seed=42,
-        stream=True,
+        "stream": True,
+    }
+
+    is_restricted_model = (
+        model_name.startswith(("o1", "o3")) or
+        "search-preview" in model_name or
+        "realtime" in model_name
     )
+
+    if not is_restricted_model:
+        kwargs["temperature"] = 0
+        kwargs["seed"] = 42
+
+    completion = client.chat.completions.create(**kwargs)
 
     chunks = []
     for chunk in completion:

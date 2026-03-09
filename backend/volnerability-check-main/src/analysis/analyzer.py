@@ -104,7 +104,7 @@ async def analyze_vulnerability(
         original_constraints=vuln.constraints,
         code_triage_report=code_triage_report.model_dump_json(indent=2),
         nvd_fact_sheet=json.dumps(nvd_fact_sheet, indent=2),
-        web_research_report=json.dumps(web_research_report, indent=2)
+        web_research_report=web_research_report.model_dump_json(indent=2)
     )
 
     await rate_limiter.wait_if_needed()
