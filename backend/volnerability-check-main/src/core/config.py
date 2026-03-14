@@ -17,7 +17,6 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = load_setting("openai_api_key", "settings")
     OPENAI_BASE_URL: str = load_setting("openai_base_url")
     OPENAI_MODEL: str = load_setting("openai_model")
-    OPENAI_WEB_SEARCH_MODEL: str = load_setting("openai_web_search_model")
     OPENAI_EMBEDDING_MODEL: str = load_setting("openai_embedding_model")
     OPENAI_ORG_ID: Optional[str] = load_setting("openai_org_id")
     
@@ -27,13 +26,6 @@ class Settings(BaseSettings):
     # NVD_API_KEY is no longer used during analysis
     # NVD data should be pre-fetched and provided in the NVD_Data column of Excel input
     # See README "NVD Data Format" section for details
-
-    # ===============================================================================
-    # SearxNG Configuration
-    # ===============================================================================
-    SEARXNG_BASE_URL: Optional[str] = load_setting("searxng_base_url")
-    SEARXNG_TOP_K_QUERY: Optional[int] = load_setting("searxng_top_k_query")
-    SEARXNG_TOP_K_CONTEXT: Optional[int] = load_setting("searxng_top_k_context")
 
     # ===============================================================================
     # Cloudflare Access
@@ -203,7 +195,6 @@ def log_openai_configuration():
     logger.info("=" * 80)
     logger.info("OPENAI CONFIGURATION:")
     logger.info(f"  Main Analysis Model:    {settings.OPENAI_MODEL}")
-    logger.info(f"  Web Search Model:       {settings.OPENAI_WEB_SEARCH_MODEL}")
     logger.info(f"  Embedding Model:        {settings.OPENAI_EMBEDDING_MODEL}")
     logger.info(f"  API Base URL:           {settings.OPENAI_BASE_URL}")
     logger.info(f"  Timeout (seconds):      {settings.OPENAI_TIMEOUT_SECONDS}")

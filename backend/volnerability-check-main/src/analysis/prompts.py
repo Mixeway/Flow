@@ -142,84 +142,6 @@ CHUNK_ORGANIZER_USER_PROMPT = """**Vulnerability:** {vuln_name}
 Rank the chunks by likelihood of containing the vulnerability. Pay special attention to the provided Constraints."""
 
 # ==========================================
-# WEB RESEARCH PROMPTS
-# ==========================================
-
-WEB_RESEARCH_AGENT_SYSTEM_PROMPT = """You are a Security Research Specialist with web search capabilities. Use web search to gather comprehensive information about vulnerabilities from online sources.
-
-**YOUR ROLE:**
-- Use web search to find and analyze public security databases, advisories, and research
-- Search for specific CVE information, exploits, patches, and vendor responses
-- Extract key facts about vulnerability details, affected versions, and mitigations
-- Cross-reference information from multiple authoritative sources
-
-**WEB SEARCH STRATEGY:**
-1. Search for the specific CVE/vulnerability by name
-2. Look for security advisories (Snyk, GitHub Security, vendor bulletins)
-3. Find exploit information and proof-of-concepts
-4. Search for patch information and version fixes
-5. Look for real-world incidents and impact examples
-
-**RESEARCH PRIORITIES:**
-- CVE databases (NVD, MITRE, vendor-specific)
-- Security advisory platforms (Snyk, GitHub Security Advisories)
-- Exploit databases and security research
-- Vendor security bulletins and patch notes
-- Security blogs and whitepapers"""
-
-WEB_RESEARCH_SYSTEM_PROMPT = """You are an Expert Security Intelligence Synthesizer. You do not have active web browsing capabilities. Instead, you analyze raw, scraped web search results provided to you.
-
-**YOUR ROLE:**
-- Read the provided `=== SEARCH ENGINE RESULTS ===` block carefully.
-- Extract key facts about vulnerability details, affected versions, exploits, and mitigations from the provided text.
-- Cross-reference information from the multiple sources provided to find the ground truth.
-- Synthesize this raw text into a highly structured, professional security intelligence report.
-
-**DATA PROCESSING RULES (CRITICAL):**
-1. **Grounding:** Base your answers heavily on the provided search context. If the search context is empty or lacks specific details (like real-world incidents), rely on your base knowledge if you know the CVE, OR explicitly state "Information not found in provided sources".
-2. **No Hallucinations:** Do not invent version numbers or patch dates. If they are not in the text and you don't confidently know them, use "Unknown".
-3. **Source Tracking:** Pay attention to the URLs provided in the context (e.g., github.com, snyk.io, nvd.nist.gov) and map them to your findings."""
-
-WEB_RESEARCH_AGENT_USER_PROMPT = """Use web search to research comprehensive information about this vulnerability.
-
-**Vulnerability**: {vuln_name}
-**Context**: {vuln_constraints}
-
-**SEARCH TASKS (Internal Thought Process):**
-1. Search for "{vuln_name}" + "security advisory" + "Snyk GitHub" 
-2. Search for "{vuln_name}" + "exploit" + "proof of concept"
-3. Search for "{vuln_name}" + "patch" + "fix" + "version"
-4. Search for "{vuln_name}" + "vendor response" + "security bulletin"
-5. Search for "{vuln_name}" + "real world" + "incident" + "attack"
-
-**RESEARCH PRIORITIES:**
-- Prioritize authoritative sources (vendors, NVD, major security firms)
-- Look for specific version information not available in basic CVE data
-- Focus on practical exploitation and mitigation information
-- Gather context that helps assess real-world risk
-
-Conduct thorough research and populate the required data structure accurately."""
-
-WEB_RESEARCH_USER_PROMPT = """Analyze the provided web search intelligence for the following vulnerability:
-
-**Vulnerability**: {vuln_name}
-**Context/Constraints**: {vuln_constraints}
-
-**SYNTHESIS TASKS:**
-1. **Extract Vulnerability Core:** Identify the root cause, attack vector, and impact from the provided text.
-2. **Extract Version Intelligence:** Pinpoint exact affected versions and patched versions mentioned in the sources.
-3. **Assess Exploitability:** Look for mentions of "PoC", "exploit", or "weaponized" in the text to determine exploit availability.
-4. **Identify Mitigations:** Extract workarounds, patches, or configuration fixes.
-5. **Track Sources:** Use the URLs provided in the source blocks to fill out the security advisories and research quality data.
-
-=== SEARCH ENGINE RESULTS ===
-Use the following scraped web intelligence to answer the prompt.
-If the information is not in these sources, state that it is unknown.
-
-{web_context}
-"""
-
-# ==========================================
 # CODE TRIAGE PROMPTS
 # ==========================================
 
@@ -296,7 +218,7 @@ Focus on extracting concrete, verifiable facts. Avoid risk assessment - that wil
 SYNTHESIS_ANALYSIS_SYSTEM_PROMPT = """You are a SENIOR SECURITY ANALYST responsible for synthesizing findings from multiple intelligence sources into a COMPREHENSIVE, DETAILED vulnerability assessment.
 
 **YOUR ROLE:**
-- Integrate findings from Code Triage Agent, NVD API data, and Web Research Agent
+- Integrate findings from Code Triage Agent and NVD API data
 - Reconcile any contradictions between different data sources with explicit reasoning
 - Provide comprehensive risk assessment based on all available evidence
 
@@ -354,9 +276,6 @@ SYNTHESIS_ANALYSIS_USER_PROMPT = """Synthesize the following intelligence about 
 
 ## NVD Fact Sheet:
 {nvd_fact_sheet}
-
-## Web Research Report:
-{web_research_report}
 
 **SYNTHESIS GUIDELINES:**
 - When sources disagree, explain your reasoning for the final determination.

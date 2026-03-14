@@ -14,7 +14,6 @@ from ..core.models import (
     CodeTriageResult,
 )
 from ..utils.llm import ask_llm_for_structured_data, create_llm_fallback
-from ..utils.web_research import conduct_web_research
 from ..utils.rate_limiter import rate_limiter
 from .prompts import (
     CODE_TRIAGE_SYSTEM_PROMPT,
@@ -58,8 +57,7 @@ async def analyze_vulnerability(
     Analyzes a vulnerability using a multi-agent chain:
     1. Code Triage Agent: Extracts objective facts from code.
     2. NVD API Agent: Fetches ground truth CVE data.
-    3. Web Research Agent: Gathers additional intelligence from online sources.
-    4. Synthesis Agent: Combines all reports for a final analysis.
+    3. Synthesis Agent: Combines all reports for a final analysis.
     """
     start_time = time.time()
     
@@ -91,12 +89,7 @@ async def analyze_vulnerability(
             "vulnerable_configurations": []
         }
 
-    logger.info("\nSTAGE 3: WEB RESEARCH")
-    logger.info("-" * 20)
-
-    web_research_report = await conduct_web_research(vuln.name, vuln.constraints)
-
-    logger.info("\nSTAGE 4: SYNTHESIS ANALYSIS")
+    logger.info("\nSTAGE 3: SYNTHESIS ANALYSIS")
     logger.info("-" * 20)
 
     user_prompt = SYNTHESIS_ANALYSIS_USER_PROMPT.format(
@@ -104,14 +97,13 @@ async def analyze_vulnerability(
         original_constraints=vuln.constraints,
         code_triage_report=code_triage_report.model_dump_json(indent=2),
         nvd_fact_sheet=json.dumps(nvd_fact_sheet, indent=2),
-        web_research_report=web_research_report.model_dump_json(indent=2)
     )
 
     await rate_limiter.wait_if_needed()
 
     synthesis_result_obj = _run_synthesis_agent(vuln, chunks_for_analysis, user_prompt)
 
-    logger.info("\nSTAGE 5: RESULT CONSTRUCTION")
+    logger.info("\nSTAGE 4: RESULT CONSTRUCTION")
     logger.info("-" * 20)
 
     system_metadata = {

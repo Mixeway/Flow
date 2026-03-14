@@ -108,10 +108,9 @@ Results are saved in `./results/<repository-name>/`:
 - **AST-based Chunking**: Tree-sitter powered intelligent code parsing with hierarchical organization  
 - **Vector-based Search**: Efficient similarity search using FAISS and OpenAI embeddings
 - **Asynchronous Pipeline**: High-performance async processing with rate limiting and error handling
-- **Multi-Agent Analysis**: 4-stage intelligent analysis pipeline:
+- **Multi-Agent Analysis**: 3-stage intelligent analysis pipeline:
   - **Code Triage Agent**: Extract objective facts from source code chunks (distinguishes imports from actual API usage)
   - **NVD Data Processing**: Use pre-fetched CVE data and vulnerability intelligence (no rate limiting)
-  - **Web Research Agent**: Gather security advisories and exploit intelligence
   - **Synthesis Agent**: Integrate all sources for comprehensive risk assessment with detailed reasoning
 - **Quality Assessment**: LLM-based analysis quality evaluation and scoring
 - **Robust Error Handling**: Comprehensive fallback mechanisms and detailed logging
@@ -136,7 +135,6 @@ OPENAI_API_KEY=sk-...                    # OpenAI API key (required)
 ```env
 OPENAI_BASE_URL=https://api.openai.com/v1     # API endpoint
 OPENAI_MODEL=gpt-5.1                          # Main analysis model (high intelligence)
-OPENAI_WEB_SEARCH_MODEL=gpt-4o-search-preview # Dedicated web research model
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small # Embedding model  
 OPENAI_ORG_ID=                                # Optional organization ID
 OPENAI_TIMEOUT_SECONDS=300.0                  # API timeout (5 minutes)
@@ -440,8 +438,7 @@ src/
     ├── cli.py             # Command line interface
     ├── llm.py             # LLM utility functions
     ├── progress.py        # Progress indicators
-    ├── rate_limiter.py    # API rate limiting
-    └── web_research.py    # Web research agent
+    └── rate_limiter.py    # API rate limiting
 ```
 
 ### Pipeline Flow
@@ -454,7 +451,6 @@ src/
 6. **Asynchronous Multi-Agent Analysis**:
    - **Code Triage Agent**: Extract objective facts from retrieved code chunks
    - **NVD Data Processing**: Load pre-fetched NVD data from input (no API calls)
-   - **Web Research Agent**: Gather intelligence from security advisories and online sources  
    - **Synthesis Agent**: Integrate all findings into comprehensive risk assessment
 7. **LLM Quality Assessment**: Validate analysis quality with detailed scoring (1-5 scale)
 8. **Comprehensive Results Export**: Generate JSON, Excel, metrics, quality, and log outputs
@@ -531,7 +527,7 @@ python scripts/smoke_test.py
 - ✅ Extracts `transformers-main.zip` repository
 - ✅ Processes 3,600+ source files with AST chunking
 - ✅ Builds vector index with OpenAI embeddings
-- ✅ Runs 4-stage vulnerability analysis (Code Triage → NVD → Web Research → Synthesis)
+- ✅ Runs 3-stage vulnerability analysis (Code Triage → NVD → Synthesis)
 - ✅ Validates Pydantic models and data structures
 - ✅ Checks probability ranges (0.0-1.0) and exploitability predictions
 - ✅ Verifies quality assessment scoring (1-5 scale)

@@ -1,5 +1,3 @@
-import time
-
 from typing import List, Optional, Any, Literal
 from pydantic import BaseModel, Field
 
@@ -32,11 +30,11 @@ class VulnerabilityInput(BaseModel):
         return self.nvd_data is not None and self.nvd_data.strip() != ""
 
 class EvidenceSnippet(BaseModel):
-    source: Literal["code_triage", "nvd", "web_research"] = Field(description="The intelligence source this evidence was extracted from.")
+    source: Literal["code_triage", "nvd"] = Field(description="The intelligence source this evidence was extracted from.")
     file: Optional[str] = Field(description="File path (if applicable, primarily for code_triage).")
     start_line: Optional[int] = Field( description="Starting line number of the code snippet (if applicable).")
     end_line: Optional[int] = Field(description="Ending line number of the code snippet (if applicable).")
-    content: str = Field(description="The relevant evidence content (code snippet, NVD quote, or web research fact).")
+    content: str = Field(description="The relevant evidence content (code snippet or NVD quote).")
     significance: str = Field(description="Detailed explanation of how this specific evidence impacts the final assessment.")
 
     @classmethod
@@ -51,14 +49,13 @@ class EvidenceSnippet(BaseModel):
 class Contradiction(BaseModel):
     code_triage: str = Field(description="What the Code Triage analysis found.")
     nvd_data: str = Field(description="What the NVD data shows.")
-    web_research: str = Field(description="What the Web Research found.")
     resolution: str = Field(description="Your expert resolution of this contradiction, explaining which source you trusted and why.")
     aspect: str = Field(description="The specific fact or aspect where sources disagree.")
 
     @classmethod
     def create_fallback(cls, error_message: str) -> Contradiction:
         return cls(
-            code_triage="Failed", nvd_data="Failed", web_research="Failed",
+            code_triage="Failed", nvd_data="Failed",
             resolution="Cannot resolve due to system error.",
             aspect=f"System Error: {error_message}"
         )
@@ -80,7 +77,7 @@ class SourceCorrelation(BaseModel):
 
 class DetectedMitigation(BaseModel):
     name: str = Field(description="Name of the mitigation (e.g., 'Input Validation', 'Authentication').")
-    source: str = Field(description="Which analysis (Code Triage, Web Research) found this.")
+    source: str = Field(description="Which analysis (Code Triage, NVD) found this.")
     impact: Literal["ineffective", "partial", "strong", "complete"] = Field(description="Categorical assessment of the mitigation's effectiveness against this specific CVE.")
     assessment: str = Field(description="Detailed explanation of why this mitigation provides the stated level of impact.")
 
@@ -96,14 +93,13 @@ class DetectedMitigation(BaseModel):
 class VersionAssessment(BaseModel):
     code_analysis: str = Field(description="Version information extracted directly from code dependencies.")
     nvd_data: str = Field(description="Vulnerable version ranges reported by NVD.")
-    web_research: str = Field(description="Version information gathered from security advisories and web research.")
     final_determination: str = Field(description="Your synthesized, final conclusion on whether the installed version is vulnerable.")
     confidence: Literal["high", "medium", "low"] = Field(description="Confidence in the final version determination.")
 
     @classmethod
     def create_fallback(cls, error_message: str) -> VersionAssessment:
         return cls(
-            code_analysis="Failed", nvd_data="Failed", web_research="Failed",
+            code_analysis="Failed", nvd_data="Failed",
             final_determination=f"Unknown due to error: {error_message}",
             confidence="low"
         )
@@ -112,7 +108,7 @@ class ExploitAssessment(BaseModel):
     technical_feasibility: str = Field(description="Assessment of technical exploit feasibility based on code paths and prerequisites.")
     attack_scenarios: List[str] = Field(description="Realistic attack scenarios based on all combined intelligence.")
     exploitation_barriers: List[str] = Field(description="Barriers to successful exploitation (e.g., requires admin auth, specific network config).")
-    real_world_context: str = Field(description="Context from web research about actual in-the-wild usage or incidents.")
+    real_world_context: str = Field(description="Context from NVD research about actual in-the-wild usage or incidents.")
 
     @classmethod
     def create_fallback(cls, error_message: str) -> ExploitAssessment:
@@ -462,167 +458,6 @@ class CodeTriageResult(BaseModel):
             evidence_quality="low"
         )
 
-# ==========================================
-# WEB RESEARCH MODELS
-# ==========================================
-
-class VulnerabilityDetails(BaseModel):
-    title: str = Field(description="Official vulnerability title")
-    description: str = Field(description="Detailed technical description")
-    impact: str = Field(description="Potential impact and severity")
-    attack_vector: str = Field(description="How the vulnerability can be exploited")
-    root_cause: str = Field(description="Technical root cause analysis")
-
-    @classmethod
-    def create_fallback(cls, vuln_name: str, error_message: str) -> VulnerabilityDetails:
-        return cls(
-            title=f"Research unavailable for {vuln_name}",
-            description=f"Web research could not be completed: {error_message}",
-            impact="Unknown - research failed",
-            attack_vector="Unknown - research failed",
-            root_cause="Unknown - research failed"
-        )
-
-class VersionIntelligence(BaseModel):
-    affected_versions: List[str] = Field(description="List of affected version ranges")
-    patched_versions: List[str] = Field(description="List of versions with fixes")
-    version_details: str = Field(description="Additional version-specific information")
-    upgrade_recommendations: str = Field(description="Recommended upgrade path")
-
-    @classmethod
-    def create_fallback(cls) -> VersionIntelligence:
-        return cls(
-            affected_versions=[],
-            patched_versions=[],
-            version_details="Version information unavailable",
-            upgrade_recommendations="Consult official sources"
-        )
-
-class ExploitIntelligence(BaseModel):
-    public_exploits: List[str] = Field(description="List of known public exploits with sources")
-    poc_available: bool = Field(description="Whether a proof of concept (PoC) is available (true/false)")
-    exploit_complexity: Literal["low", "medium", "high"] = Field(description="low|medium|high")
-    attack_scenarios: List[str] = Field(description="List of realistic attack scenarios")
-    exploitation_requirements: List[str] = Field(description="Prerequisites for successful exploitation")
-
-    @classmethod
-    def create_fallback(cls) -> ExploitIntelligence:
-        return cls(
-            public_exploits=[],
-            poc_available=False,
-            exploit_complexity="medium",
-            attack_scenarios=[],
-            exploitation_requirements=[]
-        )
-
-class MitigationIntelligence(BaseModel):
-    vendor_patches: List[str] = Field(description="Official patches with release info")
-    workarounds: List[str] = Field(description="Temporary mitigation strategies")
-    configuration_fixes: List[str] = Field(description="Configuration changes to prevent exploitation")
-    defensive_measures: List[str] = Field(description="Additional security controls")
-
-    @classmethod
-    def create_fallback(cls) -> MitigationIntelligence:
-        return cls(
-            vendor_patches=[],
-            workarounds=[],
-            configuration_fixes=[],
-            defensive_measures=[]
-        )
-
-class SecurityAdvisory(BaseModel):
-    source: str = Field(description="Advisory source (e.g., Snyk, GitHub, vendor)")
-    url: str = Field(description="Direct URL to advisory")
-    date: str = Field(description="Advisory publication date")
-    severity: str = Field(description="Severity rating from this source")
-    key_points: List[str] = Field(description="Important points from this advisory")
-
-    @classmethod
-    def create_fallback(cls, error_message: str) -> SecurityAdvisory:
-        return cls(
-            source="System Fallback",
-            url="N/A",
-            date=time.strftime("%Y-%m-%d", time.gmtime()),
-            severity="Unknown",
-            key_points=[f"Advisory information unavailable due to research failure: {error_message}"]
-        )
-
-class RealWorldContext(BaseModel):
-    known_incidents: List[str] = Field(description="Documented security incidents using this vulnerability")
-    industry_impact: str = Field(description="Impact on specific industries or use cases")
-    timeline: str = Field(description="Key dates in vulnerability lifecycle")
-    vendor_response: str = Field(description="How vendors/maintainers have responded")
-
-    @classmethod
-    def create_fallback(cls) -> RealWorldContext:
-        return cls(
-            known_incidents=[],
-            industry_impact="Unknown due to research failure",
-            timeline="Timeline unavailable",
-            vendor_response="Vendor response information unavailable"
-        )
-
-class ResearchQuality(BaseModel):
-    sources_consulted: List[str] = Field(description="List of sources checked")
-    information_confidence: Literal["high", "medium", "low"] = Field(description="high|medium|low")
-    gaps_identified: List[str] = Field(description="Areas where information is limited")
-    last_updated: str = Field(description="When this research was conducted")
-
-    @classmethod
-    def create_fallback(cls, error_message: str) -> ResearchQuality:
-        return cls(
-            sources_consulted=[],
-            information_confidence="low",
-            gaps_identified=[f"All information unavailable due to research failure: {error_message}"],
-            last_updated=time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
-        )
-
-class WebResearchResult(BaseModel):
-    vulnerability_details: VulnerabilityDetails
-    version_intelligence: VersionIntelligence
-    exploit_intelligence: ExploitIntelligence
-    mitigation_intelligence: MitigationIntelligence
-    security_advisories: List[SecurityAdvisory]
-    real_world_context: RealWorldContext
-    research_quality: ResearchQuality
-
-    @classmethod
-    def create_fallback(cls, vuln_name: str, error_message: str) -> WebResearchResult:
-        return cls(
-            vulnerability_details=VulnerabilityDetails.create_fallback(vuln_name, error_message),
-            version_intelligence=VersionIntelligence.create_fallback(),
-            exploit_intelligence=ExploitIntelligence.create_fallback(),
-            mitigation_intelligence=MitigationIntelligence.create_fallback(),
-            security_advisories=[SecurityAdvisory.create_fallback(error_message)],
-            real_world_context=RealWorldContext.create_fallback(),
-            research_quality=ResearchQuality.create_fallback(error_message)
-        )
-
-class WebResearchResultMetadata(WebResearchResult):
-    vuln_name: str = Field(description="The formal identifier or name of the vulnerability being researched (e.g., 'CVE-2024-1234' or 'SQL Injection in Auth').")
-    research_timestamp: str = Field(description="The exact UTC timestamp when this web research was completed, formatted as 'YYYY-MM-DD HH:MM:SS UTC'.")
-    research_agent: str = Field(description="The specific LLM model, configuration, or pipeline step that generated this research report (e.g., 'gpt-4o-web-researcher').")
-    constraints_analyzed: str = Field(description="The exact technical constraints, prerequisites, or context parameters that the agent was instructed to focus on during the search.")
-    error: str = Field(default="None", description="Records any system crashes, API timeouts, or generation errors encountered during the research process. Defaults to 'None' if successful.")
-
-    @classmethod
-    def create_fallback(
-        cls,
-        vuln_name: str,
-        error_message: str,
-        agent_name: str = "Unknown Agent",
-        constraints: str = "None provided"
-    ) -> WebResearchResultMetadata:
-        base_fallback = WebResearchResult.create_fallback(vuln_name, error_message)
-
-        return cls(
-            **base_fallback.model_dump(),
-            vuln_name=vuln_name,
-            research_timestamp=time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
-            research_agent=f"{agent_name} (Fallback)",
-            constraints_analyzed=constraints,
-            error=error_message
-        )
 # ==========================================
 # QUALITY ASSESSMENT MODELS
 # ==========================================
