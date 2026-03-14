@@ -38,7 +38,7 @@ class EvidenceSnippet(BaseModel):
     significance: str = Field(description="Detailed explanation of how this specific evidence impacts the final assessment.")
 
     @classmethod
-    def create_fallback(cls, error_message: str) -> EvidenceSnippet:
+    def create_fallback(cls, error_message: str) -> "EvidenceSnippet":
         return cls(
             source="code_triage",
             file="unknown", start_line=0, end_line=0,
@@ -53,7 +53,7 @@ class Contradiction(BaseModel):
     aspect: str = Field(description="The specific fact or aspect where sources disagree.")
 
     @classmethod
-    def create_fallback(cls, error_message: str) -> Contradiction:
+    def create_fallback(cls, error_message: str) -> "Contradiction":
         return cls(
             code_triage="Failed", nvd_data="Failed",
             resolution="Cannot resolve due to system error.",
@@ -67,7 +67,7 @@ class SourceCorrelation(BaseModel):
     uncertainty_factors: List[str] = Field(description="Specific factors (missing data, unclear code) that create uncertainty.")
 
     @classmethod
-    def create_fallback(cls, error_message: str) -> SourceCorrelation:
+    def create_fallback(cls, error_message: str) -> "SourceCorrelation":
         return cls(
             agreements=[],
             contradictions=[Contradiction.create_fallback(error_message)],
@@ -82,7 +82,7 @@ class DetectedMitigation(BaseModel):
     assessment: str = Field(description="Detailed explanation of why this mitigation provides the stated level of impact.")
 
     @classmethod
-    def create_fallback(cls, error_message: str) -> DetectedMitigation:
+    def create_fallback(cls, error_message: str) -> "DetectedMitigation":
         return cls(
             name="Analysis Failed",
             source="System",
@@ -97,7 +97,7 @@ class VersionAssessment(BaseModel):
     confidence: Literal["high", "medium", "low"] = Field(description="Confidence in the final version determination.")
 
     @classmethod
-    def create_fallback(cls, error_message: str) -> VersionAssessment:
+    def create_fallback(cls, error_message: str) -> "VersionAssessment":
         return cls(
             code_analysis="Failed", nvd_data="Failed",
             final_determination=f"Unknown due to error: {error_message}",
@@ -111,7 +111,7 @@ class ExploitAssessment(BaseModel):
     real_world_context: str = Field(description="Context from NVD research about actual in-the-wild usage or incidents.")
 
     @classmethod
-    def create_fallback(cls, error_message: str) -> ExploitAssessment:
+    def create_fallback(cls, error_message: str) -> "ExploitAssessment":
         return cls(
             technical_feasibility="Unknown",
             attack_scenarios=[],
@@ -158,7 +158,7 @@ class VulnerabilitySynthesisResult(BaseModel):
     @classmethod
     def create_fallback(
             cls, vulnerability: Any, chunks_to_analyze: List[Any], error_message: str, confidence: int = 1
-    ) -> VulnerabilitySynthesisResult:
+    ) -> "VulnerabilitySynthesisResult":
 
         enhanced_summary = (
             f"Analysis failed for {vulnerability.name}: {error_message}. "
@@ -220,7 +220,7 @@ class VulnerabilityAnalysis(VulnerabilitySynthesisResult):
     @classmethod
     def create_fallback(
             cls, vulnerability: Any, chunks_to_analyze: List[Any], error_message: str, confidence: int = 1
-    ) -> VulnerabilityAnalysis:
+    ) -> "VulnerabilityAnalysis":
         base_fallback = VulnerabilitySynthesisResult.create_fallback(
             vulnerability, chunks_to_analyze, error_message, confidence
         )
@@ -250,7 +250,7 @@ class OrganizedChunk(BaseModel):
     notes: str = Field(description="Explanation of why this chunk is important for the vulnerability.")
 
     @classmethod
-    def create_fallback(cls, index: int, error_message: str) -> OrganizedChunk:
+    def create_fallback(cls, index: int, error_message: str) -> "OrganizedChunk":
         return cls(
             index=index,
             priority=5,
@@ -269,7 +269,7 @@ class ChunkOrganizerResult(BaseModel):
     security_context: str = Field(description="Overall assessment of the codebase's security context based on the summaries.")
 
     @classmethod
-    def create_fallback(cls, original_chunks: List[Any], error_message: str) -> ChunkOrganizerResult:
+    def create_fallback(cls, original_chunks: List[Any], error_message: str) -> "ChunkOrganizerResult":
         fallback_chunks = [
             OrganizedChunk.create_fallback(index=i, error_message=error_message)
             for i in range(len(original_chunks))
@@ -291,7 +291,7 @@ class ExpandedQuery(BaseModel):
     expanded_query: str = Field(description="The highly optimized, raw search query combining the vulnerability name and constraints. Do not include conversational text.")
 
     @classmethod
-    def create_fallback(cls, vulnerability: Any, error_message: str) -> ExpandedQuery:
+    def create_fallback(cls, vulnerability: Any, error_message: str) -> "ExpandedQuery":
         fallback_text = f"{vulnerability.name}\n{vulnerability.constraints}"
 
         return cls(expanded_query=fallback_text)
@@ -316,7 +316,7 @@ class ApiUsage(BaseModel):
     note: str = Field(description="Any specific notes about this usage")
 
     @classmethod
-    def create_fallback(cls, error_message: str) -> ApiUsage:
+    def create_fallback(cls, error_message: str) -> "ApiUsage":
         return cls(
             function="[ANALYSIS FAILED]",
             file="unknown",
@@ -337,7 +337,7 @@ class VersionInformation(BaseModel):
     code: str = Field( description="The verbatim code snippet showing the version declaration")
 
     @classmethod
-    def create_fallback(cls, error_message: str) -> VersionInformation:
+    def create_fallback(cls, error_message: str) -> "VersionInformation":
         return cls(
             library="[ANALYSIS FAILED]",
             version="unknown",
@@ -354,7 +354,7 @@ class DependencyAnalysis(BaseModel):
     missing_dependencies: List[str] = Field(description="List specific libraries required by constraints but NOT found in dependency files (critical for co-requisites)")
 
     @classmethod
-    def create_fallback(cls, error_message: str) -> DependencyAnalysis:
+    def create_fallback(cls, error_message: str) -> "DependencyAnalysis":
         return cls(
             files_found=[],
             version_information=[VersionInformation.create_fallback(error_message)],
@@ -371,7 +371,7 @@ class SecurityConfiguration(BaseModel):
     security_relevance: str = Field(description="Detailed explanation of how this specific configuration relates to the vulnerability (e.g., enables the attack vector, disables a security check)")
 
     @classmethod
-    def create_fallback(cls, error_message: str) -> SecurityConfiguration:
+    def create_fallback(cls, error_message: str) -> "SecurityConfiguration":
         return cls(
             type="[ANALYSIS FAILED]",
             file="unknown",
@@ -387,7 +387,7 @@ class MitigationFound(BaseModel):
     effectiveness: str = Field(description="Estimated effectiveness of this mitigation against this specific vulnerability (e.g., 'Prevents SSRF', 'Easily bypassed')")
 
     @classmethod
-    def create_fallback(cls, error_message: str) -> MitigationFound:
+    def create_fallback(cls, error_message: str) -> "MitigationFound":
         return cls(
             type="[ANALYSIS FAILED]",
             location="unknown",
@@ -401,7 +401,7 @@ class PatternExample(BaseModel):
     code: str = Field(description="Verbatim code snippet demonstrating the pattern")
 
     @classmethod
-    def create_fallback(cls) -> PatternExample:
+    def create_fallback(cls) -> "PatternExample":
         return cls(
             file="unknown",
             lines="0",
@@ -414,7 +414,7 @@ class CodePattern(BaseModel):
     examples: List[PatternExample] = Field(description="Specific examples of where this pattern was found")
 
     @classmethod
-    def create_fallback(cls, error_message: str) -> CodePattern:
+    def create_fallback(cls, error_message: str) -> "CodePattern":
         return cls(
             pattern=f"[ANALYSIS FAILED] Pattern extraction aborted: {error_message}",
             matches=0,
@@ -427,7 +427,7 @@ class NegativeEvidence(BaseModel):
     confidence: Literal["high", "medium", "low"] = Field(description="Confidence level in this negative result (e.g., high if a thorough regex/keyword search was performed)")
 
     @classmethod
-    def create_fallback(cls, error_message: str) -> NegativeEvidence:
+    def create_fallback(cls, error_message: str) -> "NegativeEvidence":
         return cls(
             searched_for=f"Analysis aborted due to error: {error_message}",
             matches=0,
@@ -446,7 +446,7 @@ class CodeTriageResult(BaseModel):
     evidence_quality: str = Field(description="An assessment of the completeness and reliability of the evidence extracted")
 
     @classmethod
-    def create_fallback(cls, error_message: str) -> CodeTriageResult:
+    def create_fallback(cls, error_message: str) -> "CodeTriageResult":
         return cls(
             api_usage=[ApiUsage.create_fallback(error_message)],
             dependency_analysis=DependencyAnalysis.create_fallback(error_message),
@@ -478,7 +478,7 @@ class QualityAssessmentResult(BaseModel):
     overall_feedback: str = Field(description="Comprehensive, final feedback on the analysis quality.")
 
     @classmethod
-    def create_fallback(cls, error_message: str) -> QualityAssessmentResult:
+    def create_fallback(cls, error_message: str) -> "QualityAssessmentResult":
         return cls(
             quality_score=3,
             accuracy_assessment=f"Unable to assess due to quality checker failure: {error_message}",
