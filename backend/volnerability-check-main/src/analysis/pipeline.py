@@ -263,7 +263,7 @@ async def pipeline_async(
                 
                 quality_output_path = output_dir / f"{base_name}.quality.json"
                 with open(quality_output_path, 'w') as f:
-                    json.dump(quality_assessment, f, indent=2)
+                    json.dump(quality_assessment.model_dump(), f, indent=2)
                 logger.info(f"Quality assessment saved to: {quality_output_path}")
                 
             except Exception as e:
