@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import Type, TypeVar, Callable, Any
 from tenacity import RetryError
 from openai import APITimeoutError, BadRequestError
+from langfuse import observe, get_client
 
 logger = logging.getLogger(__name__)
 T = TypeVar('T', bound=BaseModel)
@@ -56,6 +57,7 @@ def _enforce_strict_schema(schema: dict) -> dict:
 
     return schema
 
+@observe(as_type="generation")
 def ask_llm_for_structured_data(
         client,
         model_name: str,
@@ -66,7 +68,6 @@ def ask_llm_for_structured_data(
     """Universal function to get guaranteed structured data from an LLM by streaming."""
 
     schema = response_model.model_json_schema()
-
     strict_schema = _enforce_strict_schema(schema)
 
     kwargs = {
@@ -84,6 +85,7 @@ def ask_llm_for_structured_data(
             }
         },
         "stream": True,
+        "stream_options": {"include_usage": True}
     }
 
     is_restricted_model = (
@@ -99,11 +101,31 @@ def ask_llm_for_structured_data(
     completion = client.chat.completions.create(**kwargs)
 
     chunks = []
+    final_usage = None
     for chunk in completion:
-        content = chunk.choices[0].delta.content
-        if content:
-            chunks.append(content)
-            logger.debug(f"Stream chunk: {content}")
+        if chunk.choices and len(chunk.choices) > 0:
+            content = chunk.choices[0].delta.content
+            if content:
+                chunks.append(content)
+                logger.debug(f"Stream chunk: {content}")
+        if hasattr(chunk, 'usage') and chunk.usage:
+            final_usage = chunk.usage
+
+    if final_usage:
+        input_tokens = getattr(final_usage, 'prompt_tokens', 0)
+        output_tokens = getattr(final_usage, 'completion_tokens', 0)
+        total_tokens = getattr(final_usage, 'total_tokens', 0)
+
+        if total_tokens > 0:
+            langfuse = get_client()
+            langfuse.update_current_generation(
+                model=model_name,
+                usage_details={
+                    "input": input_tokens,
+                    "output": output_tokens,
+                    "total": total_tokens
+                }
+            )
 
     raw_json = "".join(chunks).strip()
     return response_model.model_validate_json(raw_json)
