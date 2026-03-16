@@ -3,7 +3,6 @@ package io.mixeway.mixewayflowapi.domain.suppressrule;
 import io.mixeway.mixewayflowapi.api.threatintel.controller.SuppressRuleController;
 import io.mixeway.mixewayflowapi.api.threatintel.dto.SuppressRuleDTO;
 import io.mixeway.mixewayflowapi.api.threatintel.dto.SuppressRuleResponseDTO;
-import io.mixeway.mixewayflowapi.config.TestConfig;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.Finding;
 import io.mixeway.mixewayflowapi.db.entity.SuppressRule;
@@ -19,7 +18,6 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -39,7 +37,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @RunWith(SpringRunner.class)
 @ActiveProfiles("ut")
-@Import(TestConfig.class)
 @Transactional
 class CreateSuppressRuleServiceTest {
 

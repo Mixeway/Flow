@@ -961,13 +961,14 @@ ALTER TABLE vulnerable_configurations ADD COLUMN version_start_excluding VARCHAR
 ALTER TABLE vulnerable_configurations ADD COLUMN version_end_including VARCHAR(50);
 
 --changeset bondtom:create_downloader_log_table
+--validCheckSum: 9:2df5c2ca99ff0bfd88991d77e274d228
 CREATE TABLE downloader_log (
                             id SERIAL PRIMARY KEY,
                             status VARCHAR(15),
                             processed VARCHAR(255),
                             error VARCHAR(255),
                             created_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-)
+);
 
 --changeset bondluk:add_cf_access_credentials validCheckSum:
 --validCheckSum: 9:da32f5acfbaa56d60e62783ee9a8ce5e

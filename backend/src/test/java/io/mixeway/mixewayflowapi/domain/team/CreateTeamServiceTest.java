@@ -1,13 +1,11 @@
 package io.mixeway.mixewayflowapi.domain.team;
 
-import io.mixeway.mixewayflowapi.config.TestConfig;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -18,7 +16,6 @@ import java.util.ArrayList;
 @SpringBootTest
 @RunWith(SpringRunner.class)
 @ActiveProfiles("ut")
-@Import(TestConfig.class)
 public class CreateTeamServiceTest {
     @Autowired
     CreateTeamService createTeamService;

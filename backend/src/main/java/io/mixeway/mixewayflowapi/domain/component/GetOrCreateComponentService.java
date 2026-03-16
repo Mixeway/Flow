@@ -3,13 +3,10 @@ package io.mixeway.mixewayflowapi.domain.component;
 import io.mixeway.mixewayflowapi.db.entity.Component;
 import io.mixeway.mixewayflowapi.db.repository.ComponentRepository;
 import io.mixeway.mixewayflowapi.exceptions.ComponentException;
-import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.BearerScanDataflow;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
 @Service

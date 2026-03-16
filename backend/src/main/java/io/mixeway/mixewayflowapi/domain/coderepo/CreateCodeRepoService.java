@@ -1,6 +1,5 @@
 package io.mixeway.mixewayflowapi.domain.coderepo;
 
-import ch.qos.logback.core.spi.ScanException;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.CreateCodeRepoRequestDto;
 import io.mixeway.mixewayflowapi.config.AppConfigService;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
@@ -10,12 +9,10 @@ import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
 import io.mixeway.mixewayflowapi.domain.coderepobranch.GetOrCreateCodeRepoBranchService;
 import io.mixeway.mixewayflowapi.domain.organization.OrganizationService;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
-import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
 import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoGitHubResponseDto;
 import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoGiteaResponseDto;
 import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoResponseDto;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GetCodeRepoInfoService;
-import io.mixeway.mixewayflowapi.integrations.scanner.sca.service.SCAService;
 import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import io.mixeway.mixewayflowapi.utils.PlanManagementService;
 import lombok.RequiredArgsConstructor;
@@ -25,8 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-import java.io.IOException;
-import java.net.MalformedURLException;
 import java.util.Optional;
 
 @Service
@@ -37,7 +32,6 @@ public class CreateCodeRepoService {
     private final FindTeamService findTeamService;
     private final GetCodeRepoInfoService getCodeRepoInfoService;
     private final GetOrCreateCodeRepoBranchService findOrCreateCodeRepoBranchService;
-    private final SCAService scaService;
     private final ScanManagerService scanManagerService;
     private final AppConfigService appConfigService;
     private final OrganizationService organizationService;
@@ -88,7 +82,7 @@ public class CreateCodeRepoService {
                                                     .forEach(finalCodeRepo::upsertLanguage);
 
                                             finalCodeRepo = codeRepoRepository.save(finalCodeRepo);
-                                            scaService.createDtrackProject(finalCodeRepo);
+                                            //scaService.createDtrackProject(finalCodeRepo);
                                             log.info("[CodeRepoService] Creating initial scan for {} default branch {}", codeRepo.getRepourl(), codeRepoBranch.getName());
                                             scanManagerService.scanRepository(finalCodeRepo, finalCodeRepo.getDefaultBranch(), null, null);
 

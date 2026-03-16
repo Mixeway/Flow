@@ -1,4 +1,4 @@
-package io.mixeway.mixewayflowapi.integrations.scanner.sca.service;
+package io.mixeway.mixewayflowapi.modules.scanner.sca.service;
 
 import ch.qos.logback.core.spi.ScanException;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
@@ -109,7 +109,10 @@ public class CdxGenService {
         }
 
         // Use 'sh -c' to execute the command in a shell
-        ProcessBuilder pb = new ProcessBuilder("sh", "-c", command);
+        //ProcessBuilder pb = new ProcessBuilder("sh", "-c", command);
+        ProcessBuilder pb = new ProcessBuilder(
+                "cmd.exe", "/c", "cdxgen", "-o", "sbom.json"
+        );
         pb.directory(new File(repoDir));
         pb.redirectOutput(ProcessBuilder.Redirect.PIPE);
         pb.redirectError(ProcessBuilder.Redirect.PIPE);

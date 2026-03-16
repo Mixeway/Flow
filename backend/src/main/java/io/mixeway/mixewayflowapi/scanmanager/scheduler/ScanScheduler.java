@@ -7,16 +7,13 @@ import io.mixeway.mixewayflowapi.db.repository.RepositoryProviderRepository;
 import io.mixeway.mixewayflowapi.domain.scaninfo.FindScanInfoService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GetCodeRepoInfoService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.RepositorySyncService;
-import io.mixeway.mixewayflowapi.integrations.scanner.sca.service.SCAService;
 import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.net.MalformedURLException;
-import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -35,7 +32,6 @@ public class ScanScheduler {
 
     private final CodeRepoRepository codeRepoRepository;
     private final ScanManagerService scanManagerService;
-    private final SCAService scaService;
     private static final int THREAD_POOL_SIZE = 15; // Adjust the pool size as needed
     private final GetCodeRepoInfoService getCodeRepoInfoService;
     private final FindScanInfoService findScanInfoService;
@@ -74,7 +70,7 @@ public class ScanScheduler {
      * Scans up to MAX_REPOS_TO_SCAN repositories that haven't been scanned
      * in the last DAYS_SINCE_LAST_SCAN days, prioritizing the oldest scans first.
      */
-    @Scheduled(initialDelay = 0, fixedDelay = 28_800_000) // 8h in ms; runs again 8h after completion
+    //@Scheduled(initialDelay = 0, fixedDelay = 28_800_000) // 8h in ms; runs again 8h after completion
     public void runNotScannedScans() { // keeping the original name per your request
         List<CodeRepo> allRepos = new ArrayList<>();
         codeRepoRepository.findAll().forEach(allRepos::add);
@@ -195,10 +191,5 @@ public class ScanScheduler {
             }
         }
         log.info("[Scheduler] Updated metadata of repositories");
-    }
-
-    @Scheduled(initialDelay = 0, fixedRate = 43200000)
-    public void processKEV() throws MalformedURLException {
-        scanManagerService.processKEV();
     }
 }

@@ -1,22 +1,18 @@
 package io.mixeway.mixewayflowapi.domain.roles;
 
-import io.mixeway.mixewayflowapi.config.TestConfig;
-import io.mixeway.mixewayflowapi.db.entity.UserRole;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
-import org.testcontainers.shaded.org.apache.commons.lang3.StringUtils;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SpringBootTest
 @RunWith(SpringRunner.class)
 @ActiveProfiles("ut")
-@Import(TestConfig.class)
 class FindRoleServiceTest {
     @Autowired
     FindRoleService findRoleService;

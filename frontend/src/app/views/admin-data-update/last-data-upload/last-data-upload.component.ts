@@ -12,7 +12,6 @@ import {ThemeService} from "../../../service/theme/theme.service";
   styleUrl: './last-data-upload.component.scss'
 })
 export class LastDataUploadComponent {
-
   private themeService = inject(ThemeService);
   protected progressBarLabels: string[] = ['0%', '25%', '50%', '75%', '100%'];
   protected progressBarValue: number = 10;

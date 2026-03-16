@@ -22,30 +22,24 @@ import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.service.Clou
 import io.mixeway.mixewayflowapi.integrations.scanner.gitlab_scanner.service.GitLabScannerService;
 import io.mixeway.mixewayflowapi.integrations.scanner.iac.service.IaCService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.service.SASTService;
-import io.mixeway.mixewayflowapi.integrations.scanner.sca.apiclient.KEVApiClient;
-import io.mixeway.mixewayflowapi.integrations.scanner.sca.dto.CatalogDto;
-import io.mixeway.mixewayflowapi.integrations.scanner.sca.dto.VulnerabilityDto;
-import io.mixeway.mixewayflowapi.integrations.scanner.sca.service.SCAGrypeService;
-import io.mixeway.mixewayflowapi.integrations.scanner.sca.service.SCAService;
 import io.mixeway.mixewayflowapi.integrations.scanner.secrets.service.SecretsService;
 import io.mixeway.mixewayflowapi.integrations.scanner.zap.service.ZAPService;
+import io.mixeway.mixewayflowapi.modules.scanner.sca.api.controller.SCAScannerController;
+import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import jakarta.annotation.PreDestroy;
-
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * Service for managing and orchestrating code repository scans.
@@ -62,9 +56,7 @@ public class ScanManagerService {
     private final ZAPService zapService;
     private final ConcurrentHashMap<Long, Boolean> scanningRepos = new ConcurrentHashMap<>();
     private final UpdateCodeRepoService updateCodeRepoService;
-    private final SCAService scaService;
     private final GitCommentService gitCommentService;
-    private final KEVApiClient kevApiClient;
     private final UpdateVulnerabilityService updateVulnerabilityService;
     private final CloudScannerService cloudScannerService;
     private final CloudIssueService cloudIssueService;
@@ -77,7 +69,7 @@ public class ScanManagerService {
 
     private final AtomicInteger zapScansRunning = new AtomicInteger(0);
 
-    private final int maxConcurrentScans = 10; // Maximum number of concurrent scans
+    private static final int maxConcurrentScans = 10; // Maximum number of concurrent scans
     private final Semaphore semaphore = new Semaphore(maxConcurrentScans); // Limit concurrent scans
     //private final ConcurrentHashMap<Long, Lock> repoLocks = new ConcurrentHashMap<>(); // Ensure no parallel scans for the same repo
     private final ConcurrentHashMap<Long, Object> repoLocks = new ConcurrentHashMap<>();
@@ -100,7 +92,7 @@ public class ScanManagerService {
             .expireAfterWrite(10, TimeUnit.MINUTES)
             .build();
     private final GitLabScannerService gitLabScannerService;
-    private final SCAGrypeService sCAGrypeService;
+    private final SCAScannerController scaScannerController;
 
 
     /**
@@ -164,7 +156,6 @@ public class ScanManagerService {
 
                     // Run scans in parallel
                     Future<Void> secretScanFuture = runSecretScan(repoDir, codeRepo, codeRepoBranch);
-//                    Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo, codeRepoBranch, scaScanPerformed); Dependency Track version
                     Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> sastScanFuture = runSASTScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> iacScanFuture = runIACScan(repoDir, codeRepo, codeRepoBranch);
@@ -428,14 +419,13 @@ public class ScanManagerService {
 
             try {
                 log.info("[ScanManagerService] Starting SCA scan... [for: {}]", repoDir);
-                sCAGrypeService.runGrype(repoDir, codeRepo, codeRepoBranch);
+                scaScannerController.executeSCAScan(repoDir, codeRepo, codeRepoBranch);
             } catch (Exception e) {
                 if (Thread.currentThread().isInterrupted()) {
                     log.warn("[ScanManagerService] SCA scan interrupted for {}.", codeRepo.getRepourl());
                     Thread.currentThread().interrupt();
                 } else {
                     log.error("[ScanManagerService] An error occurred during SCA scan for {} - {}.", codeRepo.getRepourl(), e.getLocalizedMessage());
-                    e.printStackTrace();
                 }
             } finally {
                 int remainingScaScans = scaScansRunning.decrementAndGet();
@@ -459,7 +449,6 @@ public class ScanManagerService {
                     log.warn("[ScanManagerService] SAST scan interrupted for {}.", codeRepo.getRepourl());
                     Thread.currentThread().interrupt();
                 } else {
-                    e.printStackTrace();
                     log.error("[ScanManagerService] An error occurred during SAST scan for {}.", codeRepo.getRepourl());
                 }
             } finally {
@@ -559,7 +548,7 @@ public class ScanManagerService {
                         commitId, e.getMessage(), codeRepoBranch.getName());
 
                 // Clean up the directory before retrying
-                cleanUp(repoDir);
+                //cleanUp(repoDir);
                 new File(repoDir).mkdirs();
 
                 // Get the latest commit from the branch
@@ -702,47 +691,6 @@ public class ScanManagerService {
         return jsonResponse.get("access_token").getAsString();
     }
 
-    public void processKEV(){
-        CatalogDto catalogDto = kevApiClient.loadKev().block();
-        log.info("[KEV] Processing KEV...");
-        // Extract all cveIDs from the vulnerabilities in the DTO
-        List<String> cveIds = catalogDto.getVulnerabilities().stream()
-                .map(VulnerabilityDto::getCveID)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-
-        if (cveIds.isEmpty()) {
-            return;
-        }
-
-        // Fetch existing vulnerabilities from the database matching the cveIDs
-        List<Vulnerability> existingVulnerabilities = findVulnerabilityService.getByNameIn(cveIds);
-
-        // Map cveID to Vulnerability entity for quick lookup
-        Map<String, Vulnerability> vulnerabilityMap = existingVulnerabilities.stream()
-                .collect(Collectors.toMap(Vulnerability::getName, Function.identity()));
-
-        // Iterate over vulnerabilities in the DTO
-        for (VulnerabilityDto vulnerabilityDto : catalogDto.getVulnerabilities()) {
-            String cveID = vulnerabilityDto.getCveID();
-
-            if (cveID == null) {
-                continue; // Ignore vulnerabilities without cveID
-            }
-
-            Vulnerability vulnerability = vulnerabilityMap.get(cveID);
-
-            if (vulnerability != null) {
-                // Vulnerability found in database, execute addExploit
-                updateVulnerabilityService.addExploit(vulnerability,String.join(",", vulnerabilityDto.getCwes()));
-            } else {
-                // Vulnerability not found, ignore
-                log.debug("Vulnerability with cveID {} not found in database.", cveID);
-            }
-        }
-        log.info("[KEV] Done processing KEV...");
-
-    }
     private Future<Void> runZAPScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
         Callable<Void> task = () -> {
             int currentZapScans = zapScansRunning.incrementAndGet();

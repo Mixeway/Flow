@@ -6,7 +6,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -35,5 +37,9 @@ public class VulnerableConfigurationsService {
             newVulnerableConfigurations.setVersionEndExcluding(versionEndExcluding);
             return vulnerableConfigurationsRepository.save(newVulnerableConfigurations);
         }
+    }
+
+    public List<VulnerableConfigurations> getVulnerableConfigurationsByCriterias(Set<String> criteria) {
+        return vulnerableConfigurationsRepository.findByCriteriaIn(criteria);
     }
 }

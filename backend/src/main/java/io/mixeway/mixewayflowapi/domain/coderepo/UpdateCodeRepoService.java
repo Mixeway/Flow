@@ -34,6 +34,10 @@ public class UpdateCodeRepoService {
     private final FindCodeRepoService findCodeRepoService;
     private boolean scaScanPerformed;
 
+    public void updateCodeRepo(CodeRepo codeRepo) {
+        codeRepoRepository.save(codeRepo);
+    }
+
     /**
      * Updates the SCA UUID for a given {@link CodeRepo}.
      *

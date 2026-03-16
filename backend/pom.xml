@@ -28,6 +28,8 @@
     </scm>
     <properties>
         <java.version>22</java.version>
+
+        <cyclonedx.version>12.1.0</cyclonedx.version>
     </properties>
     <dependencies>
         <dependency>
@@ -197,6 +199,11 @@
             <artifactId>lombok-mapstruct-binding</artifactId>
             <version>0.2.0</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.cyclonedx</groupId>
+            <artifactId>cyclonedx-core-java</artifactId>
+            <version>${cyclonedx.version}</version>
         </dependency>
     </dependencies>
 
