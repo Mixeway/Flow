@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     # =============================================================================
     # OpenAI API Configuration (REQUIRED)
     # =============================================================================
-    OPENAI_API_KEY: Optional[str] = load_setting("openai_api_key", "settings")
+    OPENAI_API_KEY: Optional[str] = load_setting("openai_api_key", "settings", default="dummy-local-key")
     OPENAI_BASE_URL: str = load_setting("openai_base_url")
     OPENAI_MODEL: str = load_setting("openai_model")
     OPENAI_EMBEDDING_MODEL: str = load_setting("openai_embedding_model")
