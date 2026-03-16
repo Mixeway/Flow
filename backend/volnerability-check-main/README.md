@@ -178,6 +178,13 @@ CHUNKING_PARALLEL_WORKERS=4                 # Parallel file processing workers
 REDUCE_CHUNKING_LOGS=true                   # Reduce verbose chunking logs
 ```
 
+### Observability & Tracing (Langfuse)
+```env
+LANGFUSE_SECRET_KEY=sk-lf-...                 # Langfuse Secret Key
+LANGFUSE_PUBLIC_KEY=pk-lf-...                 # Langfuse Public Key
+LANGFUSE_HOST=http://localhost:3000           # Langfuse Host URL (Cloud or Self-hosted)
+```
+
 ## Input Formats
 
 ### Repository ZIP
@@ -454,6 +461,16 @@ src/
    - **Synthesis Agent**: Integrate all findings into comprehensive risk assessment
 7. **LLM Quality Assessment**: Validate analysis quality with detailed scoring (1-5 scale)
 8. **Comprehensive Results Export**: Generate JSON, Excel, metrics, quality, and log outputs
+
+## Observability & Prompt Management (Langfuse)
+
+This system deeply integrates with [Langfuse](https://langfuse.com/) to provide enterprise-grade observability, cost-tracking, and prompt management for the multi-agent LLM pipeline.
+
+### Key Capabilities
+
+* **End-to-End Tracing:** Every analysis run is tracked under a unified Batch Session ID. You can visually inspect the execution timeline, from the initial AST chunking and vector embedding phase down to the individual LLM agent calls.
+* **Cost & Latency Analytics:** The system captures accurate token usage (both `prompt_tokens` and `completion_tokens`) for every LLM call.
+* **Dynamic Prompt Management:** System prompts and few-shot examples are decoupled from the Python codebase. The pipeline fetches prompts dynamically from the Langfuse, allowing you to tweak instructions, fix formatting issues, and A/B test system prompts without restarting or deploying new code.
 
 ## Supported Languages
 
