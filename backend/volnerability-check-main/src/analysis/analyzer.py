@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
         lambda rs, e: VulnerabilitySynthesisResult.create_fallback(rs.args[1], rs.args[2], str(e))
     )
 )
-@observe(as_type="span")
+@observe(as_type="span", name="Synthesize Analysis")
 def _run_synthesis_agent(
         vuln: VulnerabilityInput,
         chunks: List[CodeChunk],
@@ -53,7 +53,7 @@ def _run_synthesis_agent(
         response_model=VulnerabilitySynthesisResult
     )
 
-@observe(as_type="span")
+@observe(as_type="span", name="Analyze Vulnerability")
 async def analyze_vulnerability(
     vuln: VulnerabilityInput,
     chunks_for_analysis: List[CodeChunk],
@@ -143,7 +143,7 @@ async def analyze_vulnerability(
         lambda rs, e: CodeTriageResult.create_fallback(f"API Failure after retries {e}")
     )
 )
-@observe(as_type="span")
+@observe(as_type="span", name="Code Triage")
 async def _run_code_triage(vuln: VulnerabilityInput, chunks: List[CodeChunk]) -> CodeTriageResult:
     """Runs the Code Triage agent to extract facts from code."""
 

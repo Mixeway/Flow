@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 @retry(wait=wait_random_exponential(min=5, max=180), stop=stop_after_attempt(15))
-@observe(as_type="generation", name="Generate Single Embedding")
+@observe(as_type="generation")
 def get_embedding(
     text: str, model: str = settings.OPENAI_EMBEDDING_MODEL
 ) -> List[float]:
@@ -61,7 +61,7 @@ def get_embedding(
 
 
 @retry(wait=wait_random_exponential(min=5, max=180), stop=stop_after_attempt(10))
-@observe(as_type="generation", name="Generate Batch Embeddings")
+@observe(as_type="generation")
 def get_embeddings_batch(
     texts: List[str], model: str = settings.OPENAI_EMBEDDING_MODEL, max_tokens_per_text: int = 8000
 ) -> List[List[float]]:

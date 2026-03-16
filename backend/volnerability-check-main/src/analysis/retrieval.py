@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
         lambda rs, e: ExpandedQuery.create_fallback(rs.args[0], str(e)).expanded_query
     )
 )
-@observe(as_type="span")
+@observe(as_type="span", name="Expand Query")
 def expand_query_with_llm(vulnerability: VulnerabilityInput) -> str:
     """
     Uses an LLM to expand a vulnerability name and constraints into a targeted search query.
@@ -92,7 +92,7 @@ def _extract_function_patterns(constraints: str) -> List[str]:
     unique_patterns = list(set(p.strip() for p in patterns if len(p.strip()) > 3))
     return unique_patterns
 
-@observe(as_type="span")
+@observe(as_type="span", name="Retrieve Code Chunks")
 def retrieve_chunks(
     vector_store: VectorStore,
     vulnerability: VulnerabilityInput,
