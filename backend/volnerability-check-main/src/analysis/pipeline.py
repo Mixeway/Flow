@@ -124,7 +124,7 @@ async def pipeline_async(
 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         short_uuid = uuid.uuid4().hex[:8]
-        batch_session_id = f"{repository_info["repository_name"]}_{timestamp}_{short_uuid}"
+        batch_session_id = f"{repository_info['repository_name']}_{timestamp}_{short_uuid}"
 
         with langfuse.start_as_current_observation(name="Code chunking and indexing") as indexing_trace:
             with propagate_attributes(
