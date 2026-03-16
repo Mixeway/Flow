@@ -988,3 +988,8 @@ ALTER TABLE settings_exploitability ADD COLUMN searxng_top_k_query INTEGER;
 --preconditions onFail:MARK_RAN
 --precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM information_schema.columns WHERE table_name='settings_exploitability' AND column_name='searxng_top_k_context'
 ALTER TABLE settings_exploitability ADD COLUMN searxng_top_k_context INTEGER;
+
+--changeset bondluk:add_langfuse_credentials
+ALTER TABLE settings_exploitability ADD COLUMN langfuse_base_url VARCHAR(255);
+ALTER TABLE settings_exploitability ADD COLUMN langfuse_secret_key VARCHAR(255);
+ALTER TABLE settings_exploitability ADD COLUMN langfuse_public_key VARCHAR(255);
