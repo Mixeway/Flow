@@ -41,9 +41,9 @@ class Settings(BaseSettings):
     LANGFUSE_SECRET_KEY: Optional[str] = load_setting("langfuse_secret_key")
     os.environ["LANGFUSE_SECRET_KEY"] = LANGFUSE_SECRET_KEY
     LANGFUSE_PUBLIC_KEY: Optional[str] = load_setting("langfuse_public_key")
-    os.environ["LANGFUSE_PUBLIC_KEY"] = LANGFUSE_SECRET_KEY
+    os.environ["LANGFUSE_PUBLIC_KEY"] = LANGFUSE_PUBLIC_KEY
     LANGFUSE_BASE_URL: Optional[str] = load_setting("langfuse_base_url")
-    os.environ["LANGFUSE_BASE_URL"] = LANGFUSE_SECRET_KEY
+    os.environ["LANGFUSE_BASE_URL"] = LANGFUSE_BASE_URL
 
     # =============================================================================
     # OpenAI Timeout & Retry Configuration
