@@ -1,10 +1,11 @@
 from pathlib import Path
 from typing import List
-from collections import Counter
 import logging
 import time
 
 from tenacity import retry, wait_random_exponential, stop_after_attempt
+from collections import Counter
+from langfuse import observe
 
 from ..core.client import client
 from ..core.config import settings
@@ -12,7 +13,7 @@ from ..core.models import VulnerabilityInput, ExpandedQuery
 from ..core.vectorstore import VectorStore
 from ..core.chunk import CodeChunk
 from ..utils.llm import ask_llm_for_structured_data, create_llm_fallback
-from .prompts import QUERY_GENERATION_PROMPT_TEMPLATE, QUERY_GENERATION_SYSTEM_PROMPT
+from .prompts import LangfusePrompt
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
         lambda rs, e: ExpandedQuery.create_fallback(rs.args[0], str(e)).expanded_query
     )
 )
+@observe(as_type="span", name="Expand Query")
 def expand_query_with_llm(vulnerability: VulnerabilityInput) -> str:
     """
     Uses an LLM to expand a vulnerability name and constraints into a targeted search query.
@@ -31,16 +33,16 @@ def expand_query_with_llm(vulnerability: VulnerabilityInput) -> str:
     logger.info("EXPANDING VULNERABILITY TO SEARCH QUERY")
     logger.info("=" * 40)
 
-    user_prompt = QUERY_GENERATION_PROMPT_TEMPLATE.format(
-        vuln_name=vulnerability.name,
-        vuln_constraints=vulnerability.constraints,
-    )
+    prompt_variables = {
+        "vuln_name": vulnerability.name,
+        "vuln_constraints": vulnerability.constraints,
+    }
 
     logger.info("Sending query expansion request to LLM...")
     
     logger.info("FULL QUERY EXPANSION PROMPT:")
     logger.info("-" * 40)
-    logger.info(f"User: {user_prompt}")
+    logger.info(f"User: {prompt_variables}")
     logger.info("-" * 40)
 
     api_start_time = time.time()
@@ -48,8 +50,8 @@ def expand_query_with_llm(vulnerability: VulnerabilityInput) -> str:
     result_obj = ask_llm_for_structured_data(
         client=client,
         model_name=settings.OPENAI_MODEL,
-        system_prompt=QUERY_GENERATION_SYSTEM_PROMPT,
-        user_prompt=user_prompt,
+        prompt_name=LangfusePrompt.QUERY_GENERATION.value,
+        prompt_variables=prompt_variables,
         response_model=ExpandedQuery
     )
 
@@ -90,7 +92,7 @@ def _extract_function_patterns(constraints: str) -> List[str]:
     unique_patterns = list(set(p.strip() for p in patterns if len(p.strip()) > 3))
     return unique_patterns
 
-
+@observe(as_type="span", name="Retrieve Code Chunks")
 def retrieve_chunks(
     vector_store: VectorStore,
     vulnerability: VulnerabilityInput,

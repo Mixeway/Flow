@@ -1033,3 +1033,8 @@ DROP TABLE unique_configurations;
 --changeset bondtom:update_vulnerable_configurations
 ALTER TABLE vulnerable_configurations DROP CONSTRAINT vulnerable_configurations_vulnerability_id_fkey;
 ALTER TABLE vulnerable_configurations DROP COLUMN vulnerability_id;
+
+--changeset bondluk:add_langfuse_credentials
+ALTER TABLE settings_exploitability ADD COLUMN langfuse_base_url VARCHAR(255);
+ALTER TABLE settings_exploitability ADD COLUMN langfuse_secret_key VARCHAR(255);
+ALTER TABLE settings_exploitability ADD COLUMN langfuse_public_key VARCHAR(255);

@@ -12,10 +12,7 @@ from ..core.models import (
 )
 from ..core.chunk import CodeChunk
 from ..utils.llm import ask_llm_for_structured_data, create_llm_fallback
-from .prompts import (
-    CHUNK_ORGANIZER_SYSTEM_PROMPT,
-    CHUNK_ORGANIZER_USER_PROMPT
-)
+from .prompts import LangfusePrompt
 from .dependency_resolver import analyze_dependency_versions
 
 
@@ -300,19 +297,20 @@ def check_and_organize_chunks(
         chunks_summary.append(summary)
     
     chunks_text = "\n".join(chunks_summary)
-    
-    user_prompt = CHUNK_ORGANIZER_USER_PROMPT.format(
-        vuln_name=vulnerability.name,
-        vuln_constraints=vulnerability.constraints,
-        chunks_summary=chunks_text
-    )
+
     logger.info(f"Asking LLM to organize {len(chunks)} chunks...")
+
+    prompt_variables = {
+        "vuln_name": vulnerability.name,
+        "vuln_constraints": vulnerability.constraints,
+        "chunks_summary": chunks_text
+    }
 
     result_obj = ask_llm_for_structured_data(
         client=client,
         model_name=settings.OPENAI_MODEL,
-        system_prompt=CHUNK_ORGANIZER_SYSTEM_PROMPT,
-        user_prompt=user_prompt,
+        prompt_name=LangfusePrompt.CHUNK_ORGANIZER.value,
+        prompt_variables=prompt_variables,
         response_model=ChunkOrganizerResult,
     )
 

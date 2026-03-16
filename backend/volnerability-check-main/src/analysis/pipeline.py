@@ -1,11 +1,14 @@
 import os
 import shutil
-from pathlib import Path
 import time
 import logging
-from collections import Counter
 import json
 import asyncio
+import uuid
+from pathlib import Path
+from collections import Counter
+from datetime import datetime
+from langfuse import get_client, propagate_attributes
 
 from ..io.unzip import unzip_repository
 from ..io.discover import discover_source_files
@@ -116,30 +119,48 @@ async def pipeline_async(
             logger.info(f"  {lang}: {len(files)} files")
 
         # STEP 2: Advanced Chunking & Indexing
-        logger.info("\n" + "=" * 60)
-        logger.info("STEP 2: CODE CHUNKING AND INDEXING")
-        logger.info("=" * 60)
 
-        logger.info("Initializing vector store...")
-        vector_store = VectorStore(index_dir=index_dir)
+        langfuse = get_client()
 
-        need_build = rebuild_index or not vector_store.index_exists()
-        logger.info(f"Index present: {not need_build}")
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        short_uuid = uuid.uuid4().hex[:8]
+        batch_session_id = f"{repository_info["repository_name"]}_{timestamp}_{short_uuid}"
 
-        if need_build:
-            logger.info("Building vector index...")
-            logger.info("Chunking source files...")
-            chunks = chunk_source_files(source_files)
-            logger.info(f"Generated {len(chunks)} chunks")
+        with langfuse.start_as_current_observation(name="Code chunking and indexing") as indexing_trace:
+            with propagate_attributes(
+                session_id=batch_session_id,
+                tags=["indexing", repository_info["repository_name"]]
+            ):
+                logger.info("\n" + "=" * 60)
+                logger.info("STEP 2: CODE CHUNKING AND INDEXING")
+                logger.info("=" * 60)
 
-            logger.info("Building embeddings and vector index...")
-            vector_store.set_chunks(chunks)
+                logger.info("Initializing vector store...")
+                vector_store = VectorStore(index_dir=index_dir)
 
-        index_start = time.time()
-        vector_store.build_index(rebuild=rebuild_index)
-        index_time = time.time() - index_start
-        logger.info(f"Vector index ready in {index_time:.2f} seconds")
+                need_build = rebuild_index or not vector_store.index_exists()
+                logger.info(f"Index present: {not need_build}")
 
+                if need_build:
+                    logger.info("Building vector index...")
+                    logger.info("Chunking source files...")
+                    chunks = chunk_source_files(source_files)
+                    logger.info(f"Generated {len(chunks)} chunks")
+
+                    logger.info("Building embeddings and vector index...")
+                    vector_store.set_chunks(chunks)
+
+                index_start = time.time()
+                vector_store.build_index(rebuild=rebuild_index)
+                index_time = time.time() - index_start
+                logger.info(f"Vector index ready in {index_time:.2f} seconds")
+
+                indexing_trace.update(
+                    metadata={
+                        "rebuilt": need_build,
+                        "chunks_processed": len(chunks) if need_build else "loaded_from_disk",
+                    }
+                )
         # STEP 4: Load Vulnerabilities
         logger.info("\n" + "=" * 60)
         logger.info("STEP 4: LOADING VULNERABILITIES")
@@ -178,52 +199,63 @@ async def pipeline_async(
                 }
             )
 
-            retrieval_start = time.time()
-
-            repo_code_root = (
-                temp_repo_dir / base_name
-                if (temp_repo_dir / base_name).exists()
-                else temp_repo_dir
-            )
-            chunks_for_analysis = retrieve_chunks(
-                vector_store, vuln, top_k, repo_code_root
-            )
-            retrieval_time = time.time() - retrieval_start
-
-            if not chunks_for_analysis:
-                logger.warning(
-                    f"No relevant chunks found for vulnerability: {vuln.name}"
+            with langfuse.start_as_current_observation(name=f"Analyze {vuln.name}") as cve_trace:
+                cve_trace.update(
+                    input=vuln.model_dump()
                 )
-                logger.warning("Skipping this vulnerability...")
-                continue
+                with propagate_attributes(
+                        session_id=batch_session_id,
+                        tags=["end_to_end_analysis", repository_info["repository_name"], vuln.name]
+                ):
 
-            logger.info(f"Retrieval completed in {retrieval_time:.2f} seconds")
-            logger.info(f"Selected {len(chunks_for_analysis)} chunks for analysis:")
+                    retrieval_start = time.time()
 
-            files_represented = {}
-            for chunk in chunks_for_analysis:
-                file_path = chunk.file_path
-                files_represented.setdefault(file_path, []).append(chunk)
+                    repo_code_root = (
+                        temp_repo_dir / base_name
+                        if (temp_repo_dir / base_name).exists()
+                        else temp_repo_dir
+                    )
+                    chunks_for_analysis = retrieve_chunks(
+                        vector_store, vuln, top_k, repo_code_root
+                    )
+                    retrieval_time = time.time() - retrieval_start
 
-            logger.info(f"Selected chunks from {len(files_represented)} files")
-            for file_path, file_chunks in list(files_represented.items())[:3]:
-                logger.info(f"  {file_path.name}: {len(file_chunks)} chunks")
-            if len(files_represented) > 3:
-                logger.info(f"  ... and {len(files_represented) - 3} more files")
+                    if not chunks_for_analysis:
+                        logger.warning(
+                            f"No relevant chunks found for vulnerability: {vuln.name}"
+                        )
+                        logger.warning("Skipping this vulnerability...")
+                        continue
+
+                    logger.info(f"Retrieval completed in {retrieval_time:.2f} seconds")
+                    logger.info(f"Selected {len(chunks_for_analysis)} chunks for analysis:")
+
+                    files_represented = {}
+                    for chunk in chunks_for_analysis:
+                        file_path = chunk.file_path
+                        files_represented.setdefault(file_path, []).append(chunk)
+
+                    logger.info(f"Selected chunks from {len(files_represented)} files")
+                    for file_path, file_chunks in list(files_represented.items())[:3]:
+                        logger.info(f"  {file_path.name}: {len(file_chunks)} chunks")
+                    if len(files_represented) > 3:
+                        logger.info(f"  ... and {len(files_represented) - 3} more files")
 
 
 
-            total_tokens = sum(chunk.tokens_count for chunk in chunks_for_analysis)
-            logger.info(f"Analysis input: {len(chunks_for_analysis)} chunks, {total_tokens} tokens")
+                    total_tokens = sum(chunk.tokens_count for chunk in chunks_for_analysis)
+                    logger.info(f"Analysis input: {len(chunks_for_analysis)} chunks, {total_tokens} tokens")
 
-            analysis_start = time.time()
-            result = await analyze_vulnerability(vuln, chunks_for_analysis, repository_info)
-            analysis_time = time.time() - analysis_start
+                    analysis_start = time.time()
+                    result = await analyze_vulnerability(vuln, chunks_for_analysis, repository_info)
+                    analysis_time = time.time() - analysis_start
 
-            logger.info(f"Analysis completed in {analysis_time:.2f}s - Status: {result.status}, Confidence: {result.confidence}")
-            logger.info(f"Result: Prob={result.predicted_probability:.3f}, Exploitable={result.predicted_exploitable}")
+                    cve_trace.update(output=result.model_dump())
 
-            results.append(result)
+                    logger.info(f"Analysis completed in {analysis_time:.2f}s - Status: {result.status}, Confidence: {result.confidence}")
+                    logger.info(f"Result: Prob={result.predicted_probability:.3f}, Exploitable={result.predicted_exploitable}")
+
+                    results.append(result)
 
 
 
@@ -253,55 +285,75 @@ async def pipeline_async(
             logger.info("=" * 60)
             logger.info("📊 Ground truth available - running quality evaluation")
 
-            try:
-                quality_start = time.time()
-                quality_assessment = assess_batch_quality(vulnerabilities, results)
-                quality_time = time.time() - quality_start
-                
-                logger.info(f"Quality assessment completed in {quality_time:.2f}s")
-                logger.info(f"Average quality score: {quality_assessment.average_quality_score:.2f}/5")
-                
-                quality_output_path = output_dir / f"{base_name}.quality.json"
-                with open(quality_output_path, 'w') as f:
-                    json.dump(quality_assessment, f, indent=2)
-                logger.info(f"Quality assessment saved to: {quality_output_path}")
-                
-            except Exception as e:
-                logger.error(f"Quality assessment failed: {e}")
-                quality_assessment = None
+            with langfuse.start_as_current_observation(name="Batch Evaluation Summary") as summary_trace:
+                summary_trace.update(
+                    input={
+                        "repository_name": repository_info["repository_name"],
+                        "total_vulnerabilities_analyzed": len(results),
+                        "evaluation_mode": has_ground_truth
+                    }
+                )
+                with propagate_attributes(
+                        session_id=batch_session_id,
+                        tags=["batch_metrics", repository_info["repository_name"]]
+                ):
+                    try:
+                        quality_start = time.time()
+                        quality_assessment = assess_batch_quality(vulnerabilities, results)
+                        quality_time = time.time() - quality_start
 
-            # STEP 8: Metrics Evaluation (evaluation mode only)
-            logger.info("\n" + "=" * 60)
-            logger.info("STEP 8: METRICS EVALUATION")
-            logger.info("=" * 60)
-            logger.info("🔍 Computing accuracy metrics vs ground truth")
+                        logger.info(f"Quality assessment completed in {quality_time:.2f}s")
+                        logger.info(f"Average quality score: {quality_assessment.average_quality_score:.2f}/5")
 
-            try:
-                metrics = calculate_metrics(results, quality_data=quality_assessment)
+                        quality_output_path = output_dir / f"{base_name}.quality.json"
+                        with open(quality_output_path, 'w') as f:
+                            json.dump(quality_assessment.model_dump(), f, indent=2)
+                        logger.info(f"Quality assessment saved to: {quality_output_path}")
 
-                logger.info("Metrics calculated successfully:")
-                logger.info(f"  Total vulnerabilities evaluated: {metrics.total_vulnerabilities}")
-                logger.info(f"  Probability MAE: {metrics.probability_mae:.4f}")
-                logger.info(f"  Probability RMSE: {metrics.probability_rmse:.4f}")
-                logger.info(f"  Exploitable Accuracy: {metrics.exploitable_accuracy:.4f}")
-                logger.info(f"  Exploitable Precision: {metrics.exploitable_precision:.4f}")
-                logger.info(f"  Exploitable Recall: {metrics.exploitable_recall:.4f}")
-                logger.info(f"  Exploitable F1: {metrics.exploitable_f1:.4f}")
-                logger.info(f"  Status Accuracy: {metrics.status_accuracy:.4f}")
+                    except Exception as e:
+                        logger.error(f"Quality assessment failed: {e}")
+                        quality_assessment = None
 
-                if metrics.avg_quality_score is not None:
-                    logger.info(f"  Average Quality Score: {metrics.avg_quality_score:.2f}/5")
-                    logger.info(f"  Total Assessed for Quality: {metrics.total_quality_assessed}")
+                    # STEP 8: Metrics Evaluation (evaluation mode only)
+                    logger.info("\n" + "=" * 60)
+                    logger.info("STEP 8: METRICS EVALUATION")
+                    logger.info("=" * 60)
+                    logger.info("🔍 Computing accuracy metrics vs ground truth")
 
-                metrics_output_path = output_dir / f"{base_name}.metrics.json"
+                    try:
+                        metrics = calculate_metrics(results, quality_data=quality_assessment)
 
-                with open(metrics_output_path, 'w') as f:
-                    json.dump(metrics.model_dump(), f, indent=2)
-                logger.info(f"Metrics saved to: {metrics_output_path}")
-                
-            except Exception as e:
-                logger.error(f"Metrics calculation failed: {e}")
-                metrics = None
+                        logger.info("Metrics calculated successfully:")
+                        logger.info(f"  Total vulnerabilities evaluated: {metrics.total_vulnerabilities}")
+                        logger.info(f"  Probability MAE: {metrics.probability_mae:.4f}")
+                        logger.info(f"  Probability RMSE: {metrics.probability_rmse:.4f}")
+                        logger.info(f"  Exploitable Accuracy: {metrics.exploitable_accuracy:.4f}")
+                        logger.info(f"  Exploitable Precision: {metrics.exploitable_precision:.4f}")
+                        logger.info(f"  Exploitable Recall: {metrics.exploitable_recall:.4f}")
+                        logger.info(f"  Exploitable F1: {metrics.exploitable_f1:.4f}")
+                        logger.info(f"  Status Accuracy: {metrics.status_accuracy:.4f}")
+
+                        if metrics.avg_quality_score is not None:
+                            logger.info(f"  Average Quality Score: {metrics.avg_quality_score:.2f}/5")
+                            logger.info(f"  Total Assessed for Quality: {metrics.total_quality_assessed}")
+
+                        metrics_output_path = output_dir / f"{base_name}.metrics.json"
+
+                        with open(metrics_output_path, 'w') as f:
+                            json.dump(metrics.model_dump(), f, indent=2)
+                        logger.info(f"Metrics saved to: {metrics_output_path}")
+
+                    except Exception as e:
+                        logger.error(f"Metrics calculation failed: {e}")
+                        metrics = None
+
+                    finally:
+                        summary_trace.update(
+                            output={
+                                "metrics": metrics.model_dump() if metrics else None,
+                                "quality_assessment": quality_assessment.model_dump() if quality_assessment else None
+                            }
+                        )
         else:
             # Production mode - skip evaluation steps
             logger.info("\n" + "=" * 60)
@@ -366,6 +418,8 @@ async def pipeline_async(
 
     finally:
         # Cleanup
+        get_client().flush()
+
         if temp_repo_dir and temp_repo_dir.exists():
             logger.info(f"Cleaning up temporary directory: {temp_repo_dir}")
             shutil.rmtree(temp_repo_dir, ignore_errors=True)
