@@ -119,30 +119,48 @@ async def pipeline_async(
             logger.info(f"  {lang}: {len(files)} files")
 
         # STEP 2: Advanced Chunking & Indexing
-        logger.info("\n" + "=" * 60)
-        logger.info("STEP 2: CODE CHUNKING AND INDEXING")
-        logger.info("=" * 60)
 
-        logger.info("Initializing vector store...")
-        vector_store = VectorStore(index_dir=index_dir)
+        langfuse = get_client()
 
-        need_build = rebuild_index or not vector_store.index_exists()
-        logger.info(f"Index present: {not need_build}")
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        short_uuid = uuid.uuid4().hex[:8]
+        batch_session_id = f"{repository_info["repository_name"]}_{timestamp}_{short_uuid}"
 
-        if need_build:
-            logger.info("Building vector index...")
-            logger.info("Chunking source files...")
-            chunks = chunk_source_files(source_files)
-            logger.info(f"Generated {len(chunks)} chunks")
+        with langfuse.start_as_current_observation(name="Code chunking and indexing") as indexing_trace:
+            with propagate_attributes(
+                session_id=batch_session_id,
+                tags=["indexing", repository_info["repository_name"]]
+            ):
+                logger.info("\n" + "=" * 60)
+                logger.info("STEP 2: CODE CHUNKING AND INDEXING")
+                logger.info("=" * 60)
 
-            logger.info("Building embeddings and vector index...")
-            vector_store.set_chunks(chunks)
+                logger.info("Initializing vector store...")
+                vector_store = VectorStore(index_dir=index_dir)
 
-        index_start = time.time()
-        vector_store.build_index(rebuild=rebuild_index)
-        index_time = time.time() - index_start
-        logger.info(f"Vector index ready in {index_time:.2f} seconds")
+                need_build = rebuild_index or not vector_store.index_exists()
+                logger.info(f"Index present: {not need_build}")
 
+                if need_build:
+                    logger.info("Building vector index...")
+                    logger.info("Chunking source files...")
+                    chunks = chunk_source_files(source_files)
+                    logger.info(f"Generated {len(chunks)} chunks")
+
+                    logger.info("Building embeddings and vector index...")
+                    vector_store.set_chunks(chunks)
+
+                index_start = time.time()
+                vector_store.build_index(rebuild=rebuild_index)
+                index_time = time.time() - index_start
+                logger.info(f"Vector index ready in {index_time:.2f} seconds")
+
+                indexing_trace.update(
+                    metadata={
+                        "rebuilt": need_build,
+                        "chunks_processed": len(chunks) if need_build else "loaded_from_disk",
+                    }
+                )
         # STEP 4: Load Vulnerabilities
         logger.info("\n" + "=" * 60)
         logger.info("STEP 4: LOADING VULNERABILITIES")
@@ -168,12 +186,6 @@ async def pipeline_async(
         total_vulnerabilities = len(vulnerabilities)
 
         vuln_progress = tqdm(vulnerabilities, desc="Analyzing vulnerabilities", unit="vuln")
-
-        langfuse = get_client()
-
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        short_uuid = uuid.uuid4().hex[:8]
-        batch_session_id = f"{repository_info["repository_name"]}_{timestamp}_{short_uuid}"
 
         for vuln_index, vuln in enumerate(vuln_progress, 1):
             logger.info(f"\nAnalyzing vulnerability {vuln_index}/{total_vulnerabilities}: {vuln.name}")
