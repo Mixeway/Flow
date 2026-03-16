@@ -7,6 +7,7 @@ import io.mixeway.mixewayflowapi.db.entity.Vulnerability;
 import io.mixeway.mixewayflowapi.db.entity.VulnerableConfigurations;
 import io.mixeway.mixewayflowapi.domain.vulnerability.GetOrCreateVulnerabilityService;
 import io.mixeway.mixewayflowapi.domain.vulnerability.UpdateVulnerabilityService;
+import io.mixeway.mixewayflowapi.domain.vulnerableconfiguration.VulnerableConfigurationsService;
 import io.mixeway.mixewayflowapi.modules.downloader.exception.InvalidDataForVulnerabilityException;
 import io.mixeway.mixewayflowapi.modules.downloader.exception.InvalidPackageDataException;
 import io.mixeway.mixewayflowapi.modules.downloader.model.DownloaderVulnerability;
@@ -26,6 +27,7 @@ public class DownloaderRavenGateway {
     private final GetOrCreateVulnerabilityService getOrCreateVulnerabilityService;
     private final UpdateVulnerabilityService updateVulnerabilityService;
     private final ConstraintService constraintService;
+    private final VulnerableConfigurationsService vulnerableConfigurationsService;
 
     public void createOrUpdateVulnerability(String key, DownloaderVulnerability downloaderVulnerability) {
 
@@ -72,9 +74,10 @@ public class DownloaderRavenGateway {
 
         try {
             downloaderVulnerability.getPackages().forEach(entry -> {
-                VulnerableConfigurations vulnerableConfiguration = parseVulnerableConfiguration(entry, vulnerability);
-                if (vulnerableConfiguration != null)
+                VulnerableConfigurations vulnerableConfiguration = parseVulnerableConfiguration(entry);
+                if (vulnerableConfiguration != null) {
                     configurations.add(vulnerableConfiguration);
+                }
             });
         } catch (InvalidPackageDataException e) {
             log.error("Error parsing package data: {}", e.getInvalidEntry());
@@ -83,19 +86,20 @@ public class DownloaderRavenGateway {
         vulnerability.setConfigurations(configurations);
     }
 
-    public VulnerableConfigurations parseVulnerableConfiguration(String entry, Vulnerability vulnerability) {
-        VulnerableConfigurations config = new VulnerableConfigurations();
-        config.setVulnerability(vulnerability);
+    public VulnerableConfigurations parseVulnerableConfiguration(String entry) {
+        int operatorIndex = findFirstOperatorIndex(entry);
 
-        String[] parts = entry.split(" ", 2);
-        if (parts.length != 2) {
+        if (operatorIndex == -1) {
+            // No version constraints found
             return null;
         }
 
-        String criteria = parts[0];
-        String versionPart = parts[1];
-
-        config.setCriteria(criteria);
+        String criteria = entry.substring(0, operatorIndex);
+        String versionPart = entry.substring(operatorIndex);
+        String versionStartIncluding = null;
+        String versionStartExcluding = null;
+        String versionEndIncluding = null;
+        String versionEndExcluding = null;
 
         // Handle multiple version constraints separated by comma
         String[] versionConstraints = versionPart.split(",");
@@ -104,23 +108,91 @@ public class DownloaderRavenGateway {
             constraint = constraint.trim();
 
             if (constraint.startsWith(">=")) {
-                config.setVersionStartIncluding(constraint.substring(2));
+                versionStartIncluding = constraint.substring(2);
             } else if (constraint.startsWith(">")) {
-                config.setVersionStartExcluding(constraint.substring(1));
+                versionStartExcluding = constraint.substring(1);
             } else if (constraint.startsWith("<=")) {
-                config.setVersionEndIncluding(constraint.substring(2));
+                versionEndIncluding = constraint.substring(2);
             } else if (constraint.startsWith("<")) {
-                config.setVersionEndExcluding(constraint.substring(1));
+                versionEndExcluding = constraint.substring(1);
             } else {
                 throw new InvalidPackageDataException(entry, "Invalid package entry");
             }
         }
 
         //Correction of data:
-        if (config.getVersionStartIncluding() != null && config.getVersionStartExcluding() != null)
-            throw new InvalidPackageDataException(entry, "Invalid package entry");
+        if (versionStartIncluding != null && versionStartExcluding != null) {
+            int comparison = compareVersions(versionStartIncluding, versionStartExcluding);
+            if (comparison >= 0) {
+                versionStartExcluding = null;
+            } else {
+                versionStartIncluding = null;
+            }
+        }
+        if (versionEndIncluding != null && versionEndExcluding != null) {
+            int comparison = compareVersions(versionEndIncluding, versionEndExcluding);
+            if (comparison >= 0) {
+                versionEndExcluding = null;
+            } else {
+                versionEndIncluding = null;
+            }
+        }
 
-        return config;
+        String versionStart = versionStartIncluding != null ? versionStartIncluding : versionStartExcluding;
+        String versionEnd = versionEndIncluding != null ? versionEndIncluding : versionEndExcluding;
+        if (versionStart != null && versionEnd != null && compareVersions(versionStart, versionEnd) >= 0) {
+            throw new InvalidPackageDataException(entry, "Start version " + versionStart + " is greater than end version " + versionEnd);
+        }
+
+        return vulnerableConfigurationsService.getOrCreateVulnerableConfigurations(criteria,
+                versionStartIncluding,
+                versionStartExcluding,
+                versionEndIncluding,
+                versionEndExcluding);
+    }
+
+    private int findFirstOperatorIndex(String entry) {
+        int[] indices = {
+                entry.indexOf(">="),
+                entry.indexOf("<="),
+                entry.indexOf(">"),
+                entry.indexOf("<")
+        };
+
+        int minIndex = -1;
+        for (int index : indices) {
+            if (index != -1 && (minIndex == -1 || index < minIndex)) {
+                minIndex = index;
+            }
+        }
+
+        return minIndex;
+    }
+
+    private int compareVersions(String version1, String version2) {
+        String[] parts1 = version1.split("\\.");
+        String[] parts2 = version2.split("\\.");
+
+        int maxLength = Math.max(parts1.length, parts2.length);
+
+        for (int i = 0; i < maxLength; i++) {
+            int v1 = i < parts1.length ? parseVersionPart(parts1[i]) : 0;
+            int v2 = i < parts2.length ? parseVersionPart(parts2[i]) : 0;
+
+            if (v1 != v2) {
+                return Integer.compare(v1, v2);
+            }
+        }
+
+        return 0;
+    }
+
+    private int parseVersionPart(String part) {
+        try {
+            return Integer.parseInt(part);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     private void updateBaseInfo(Vulnerability vulnerability, DownloaderVulnerability downloaderVulnerability) {

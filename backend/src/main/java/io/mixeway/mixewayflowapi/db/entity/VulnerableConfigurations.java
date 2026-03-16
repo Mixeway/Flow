@@ -1,9 +1,13 @@
 package io.mixeway.mixewayflowapi.db.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
+
+import java.util.HashSet;
+import java.util.Set;
 
 @Data
 @Entity
@@ -16,9 +20,9 @@ public class VulnerableConfigurations {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private final long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "vulnerability_id", nullable = false)
-    private Vulnerability vulnerability;
+    @ManyToMany(mappedBy = "configurations", fetch = FetchType.LAZY)
+    @JsonIgnore
+    private Set<Vulnerability> vulnerabilities = new HashSet<>();
 
     @Column(name = "criteria")
     private String criteria;
