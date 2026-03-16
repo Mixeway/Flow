@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 
-from ..analysis.prompts import QUALITY_CHECKER_SYSTEM_PROMPT, QUALITY_CHECKER_USER_PROMPT
+from ..analysis.prompts import LangfusePrompt
 from ..core.client import client
 from ..core.config import settings
 from ..core.models import (
@@ -44,30 +44,30 @@ def assess_analysis_quality(vulnerability, result) -> QualityAssessmentResult:
 
     evidence_snippets_text = "\n".join(evidence_text) if evidence_text else "No evidence snippets provided"
 
-    user_prompt = QUALITY_CHECKER_USER_PROMPT.format(
-        vuln_name=vulnerability.name,
-        vuln_constraints=vulnerability.constraints,
-        ground_truth_summary=getattr(vulnerability, 'summary', 'N/A'),
-        ground_truth_probability=getattr(vulnerability, 'probability', 'N/A'),
-        ground_truth_exploitable=getattr(vulnerability, 'exploitable', 'N/A'),
-        result_status=result.status,
-        result_confidence=result.confidence,
-        result_probability=result.predicted_probability,
-        result_exploitable=result.predicted_exploitable,
-        result_summary=result.analysis_summary[:200] + "..." if len(result.analysis_summary) > 200 else result.analysis_summary,
-        result_detailed_reasoning_preview=result.detailed_reasoning[:200] + "..." if len(result.detailed_reasoning) > 200 else result.detailed_reasoning,
-        result_evidence_count=len(result.evidence_snippets),
-        result_mitigations_count=len(result.mitigations_detected),
-        full_analysis_summary=result.analysis_summary,
-        full_detailed_reasoning=result.detailed_reasoning,
-        evidence_snippets=evidence_snippets_text
-    )
+    prompt_variables = {
+        "vuln_name": vulnerability.name,
+        "vuln_constraints": vulnerability.constraints,
+        "ground_truth_summary": getattr(vulnerability, 'summary', 'N/A'),
+        "ground_truth_probability": getattr(vulnerability, 'probability', 'N/A'),
+        "ground_truth_exploitable": getattr(vulnerability, 'exploitable', 'N/A'),
+        "result_status": result.status,
+        "result_confidence": result.confidence,
+        "result_probability": result.predicted_probability,
+        "result_exploitable": result.predicted_exploitable,
+        "result_summary": result.analysis_summary[:200] + "..." if len(result.analysis_summary) > 200 else result.analysis_summary,
+        "result_detailed_reasoning_preview": result.detailed_reasoning[:200] + "..." if len(result.detailed_reasoning) > 200 else result.detailed_reasoning,
+        "result_evidence_count": len(result.evidence_snippets),
+        "result_mitigations_count": len(result.mitigations_detected),
+        "full_analysis_summary": result.analysis_summary,
+        "full_detailed_reasoning": result.detailed_reasoning,
+        "evidence_snippets": evidence_snippets_text
+    }
 
     result_obj = ask_llm_for_structured_data(
         client=client,
         model_name=settings.OPENAI_MODEL,
-        system_prompt=QUALITY_CHECKER_SYSTEM_PROMPT,
-        user_prompt=user_prompt,
+        prompt_name=LangfusePrompt.QUALITY_CHECKER.value,
+        prompt_variables=prompt_variables,
         response_model=QualityAssessmentResult
     )
 

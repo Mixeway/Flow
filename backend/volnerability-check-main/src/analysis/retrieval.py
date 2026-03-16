@@ -13,7 +13,7 @@ from ..core.models import VulnerabilityInput, ExpandedQuery
 from ..core.vectorstore import VectorStore
 from ..core.chunk import CodeChunk
 from ..utils.llm import ask_llm_for_structured_data, create_llm_fallback
-from .prompts import QUERY_GENERATION_PROMPT_TEMPLATE, QUERY_GENERATION_SYSTEM_PROMPT
+from .prompts import LangfusePrompt
 
 logger = logging.getLogger(__name__)
 
@@ -33,16 +33,16 @@ def expand_query_with_llm(vulnerability: VulnerabilityInput) -> str:
     logger.info("EXPANDING VULNERABILITY TO SEARCH QUERY")
     logger.info("=" * 40)
 
-    user_prompt = QUERY_GENERATION_PROMPT_TEMPLATE.format(
-        vuln_name=vulnerability.name,
-        vuln_constraints=vulnerability.constraints,
-    )
+    prompt_variables = {
+        "vuln_name": vulnerability.name,
+        "vuln_constraints": vulnerability.constraints,
+    }
 
     logger.info("Sending query expansion request to LLM...")
     
     logger.info("FULL QUERY EXPANSION PROMPT:")
     logger.info("-" * 40)
-    logger.info(f"User: {user_prompt}")
+    logger.info(f"User: {prompt_variables}")
     logger.info("-" * 40)
 
     api_start_time = time.time()
@@ -50,8 +50,8 @@ def expand_query_with_llm(vulnerability: VulnerabilityInput) -> str:
     result_obj = ask_llm_for_structured_data(
         client=client,
         model_name=settings.OPENAI_MODEL,
-        system_prompt=QUERY_GENERATION_SYSTEM_PROMPT,
-        user_prompt=user_prompt,
+        prompt_name=LangfusePrompt.QUERY_GENERATION.value,
+        prompt_variables=prompt_variables,
         response_model=ExpandedQuery
     )
 

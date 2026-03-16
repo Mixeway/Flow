@@ -61,21 +61,22 @@ def _enforce_strict_schema(schema: dict) -> dict:
 def ask_llm_for_structured_data(
         client,
         model_name: str,
-        system_prompt: str,
-        user_prompt: str,
+        prompt_name: str,
+        prompt_variables: dict,
         response_model: Type[T],
 ) -> T:
     """Universal function to get guaranteed structured data from an LLM by streaming."""
+
+    langfuse = get_client()
+    prompt = langfuse.get_prompt(prompt_name)
+    compiled_messages = prompt.compile(**prompt_variables)
 
     schema = response_model.model_json_schema()
     strict_schema = _enforce_strict_schema(schema)
 
     kwargs = {
         "model": model_name,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ],
+        "messages": compiled_messages,
         "response_format": {
             "type": "json_schema",
             "json_schema": {
@@ -117,9 +118,9 @@ def ask_llm_for_structured_data(
         total_tokens = getattr(final_usage, 'total_tokens', 0)
 
         if total_tokens > 0:
-            langfuse = get_client()
             langfuse.update_current_generation(
                 model=model_name,
+                prompt=prompt,
                 usage_details={
                     "input": input_tokens,
                     "output": output_tokens,

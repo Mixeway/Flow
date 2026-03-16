@@ -16,12 +16,7 @@ from ..core.models import (
 )
 from ..utils.llm import ask_llm_for_structured_data, create_llm_fallback
 from ..utils.rate_limiter import rate_limiter
-from .prompts import (
-    CODE_TRIAGE_SYSTEM_PROMPT,
-    CODE_TRIAGE_USER_PROMPT,
-    SYNTHESIS_ANALYSIS_SYSTEM_PROMPT,
-    SYNTHESIS_ANALYSIS_USER_PROMPT,
-)
+from .prompts import LangfusePrompt
 from ..core.chunk import CodeChunk
 
 logger = logging.getLogger(__name__)
@@ -38,15 +33,23 @@ logger = logging.getLogger(__name__)
 def _run_synthesis_agent(
         vuln: VulnerabilityInput,
         chunks: List[CodeChunk],
-        user_prompt: str,
+        code_triage_report: CodeTriageResult,
+        nvd_fact_sheet: dict,
 ) -> VulnerabilitySynthesisResult:
-    logger.info("Executing Synthesis LLM Call...")
+    logger.info(f"Executing Synthesis LLM Call... for {vuln.name}")
+
+    prompt_variables = {
+        "vuln_name": vuln.name,
+        "original_constraints": vuln.constraints,
+        "code_triage_report": code_triage_report.model_dump_json(indent=2),
+        "nvd_fact_sheet": json.dumps(nvd_fact_sheet, indent=2),
+    }
 
     return ask_llm_for_structured_data(
         client=client,
         model_name=settings.OPENAI_MODEL,
-        system_prompt=SYNTHESIS_ANALYSIS_SYSTEM_PROMPT,
-        user_prompt=user_prompt,
+        prompt_name=LangfusePrompt.SYNTHESIS_ANALYSIS.value,
+        prompt_variables=prompt_variables,
         response_model=VulnerabilitySynthesisResult
     )
 
@@ -95,16 +98,14 @@ async def analyze_vulnerability(
     logger.info("\nSTAGE 3: SYNTHESIS ANALYSIS")
     logger.info("-" * 20)
 
-    user_prompt = SYNTHESIS_ANALYSIS_USER_PROMPT.format(
-        vuln_name=vuln.name,
-        original_constraints=vuln.constraints,
-        code_triage_report=code_triage_report.model_dump_json(indent=2),
-        nvd_fact_sheet=json.dumps(nvd_fact_sheet, indent=2),
-    )
-
     await rate_limiter.wait_if_needed()
 
-    synthesis_result_obj = _run_synthesis_agent(vuln, chunks_for_analysis, user_prompt)
+    synthesis_result_obj = _run_synthesis_agent(
+        vuln=vuln,
+        chunks=chunks_for_analysis,
+        code_triage_report=code_triage_report,
+        nvd_fact_sheet=nvd_fact_sheet,
+    )
 
     logger.info("\nSTAGE 4: RESULT CONSTRUCTION")
     logger.info("-" * 20)
@@ -152,16 +153,17 @@ async def _run_code_triage(vuln: VulnerabilityInput, chunks: List[CodeChunk]) ->
         logger.error("Preprocessing returned empty code, cannot run triage.")
         return CodeTriageResult.create_fallback("No code chunks provided after preprocessing")
 
-    user_prompt = CODE_TRIAGE_USER_PROMPT.format(
-        vuln_name=vuln.name,
-        vuln_constraints=vuln.constraints,
-        structured_code=structured_code
-    )
+    prompt_variables = {
+        "vuln_name": vuln.name,
+        "vuln_constraints": vuln.constraints,
+        "structured_code": structured_code
+    }
+
     result_obj = ask_llm_for_structured_data(
         client=client,
         model_name=settings.OPENAI_MODEL,
-        system_prompt=CODE_TRIAGE_SYSTEM_PROMPT,
-        user_prompt=user_prompt,
+        prompt_name=LangfusePrompt.CODE_TRIAGE.value,
+        prompt_variables=prompt_variables,
         response_model=CodeTriageResult
     )
 
