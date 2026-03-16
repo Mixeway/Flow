@@ -1,5 +1,6 @@
 /backend/target/
 /backend/logs
+/backend/downloader/
 /backend/MixewayFlowAPI.iml
 
 /frontend/.angular
