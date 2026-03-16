@@ -1,6 +1,8 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Optional
 import logging
+import os
+
 from ..utils.load_setting import load_setting
 
 logger = logging.getLogger(__name__)
@@ -32,6 +34,16 @@ class Settings(BaseSettings):
     # ===============================================================================
     CF_ACCESS_CLIENT_ID: Optional[str] = load_setting("cf_access_client_id")
     CF_ACCESS_CLIENT_SECRET: Optional[str] = load_setting("cf_access_client_secret")
+
+    # ===============================================================================
+    # Langfuse Tracing
+    # ===============================================================================
+    LANGFUSE_SECRET_KEY: Optional[str] = load_setting("langfuse_secret_key")
+    os.environ["LANGFUSE_SECRET_KEY"] = LANGFUSE_SECRET_KEY
+    LANGFUSE_PUBLIC_KEY: Optional[str] = load_setting("langfuse_public_key")
+    os.environ["LANGFUSE_PUBLIC_KEY"] = LANGFUSE_SECRET_KEY
+    LANGFUSE_BASE_URL: Optional[str] = load_setting("langfuse_base_url")
+    os.environ["LANGFUSE_BASE_URL"] = LANGFUSE_SECRET_KEY
 
     # =============================================================================
     # OpenAI Timeout & Retry Configuration
