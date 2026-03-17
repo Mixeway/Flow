@@ -50,6 +50,7 @@ public class GitService {
      * @throws InterruptedException if the process is interrupted
      */
     public String fetchBranch(String repoUrl, String accessToken, CodeRepoBranch branch, String repoDir, CodeRepo.RepoType repoType) throws IOException, InterruptedException {
+        new java.io.File(repoDir).getParentFile().mkdirs();
         String authenticatedUrl = buildAuthenticatedUrl(repoUrl, accessToken, repoType);
         ProcessBuilder pb = new ProcessBuilder("git", "clone", "--branch", branch.getName(), authenticatedUrl, repoDir);
         pb.environment().put("GIT_ASKPASS", "echo");
