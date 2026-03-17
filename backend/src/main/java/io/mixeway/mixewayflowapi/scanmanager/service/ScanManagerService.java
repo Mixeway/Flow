@@ -156,11 +156,11 @@ public class ScanManagerService {
                     validateInputs(codeRepo, codeRepoBranch);
 
                     String repoUrl = codeRepo.getRepourl();
-                    String repoType = String.valueOf(codeRepo.getType());
+                    io.mixeway.mixewayflowapi.db.entity.CodeRepo.RepoType repoType = codeRepo.getType();
                     String accessToken = codeRepo.getAccessToken();
 
                     // Clone or fetch the repository
-                    commit = fetchRepository(commitId, repoUrl, accessToken, codeRepoBranch, repoDir);
+                    commit = fetchRepository(commitId, repoUrl, accessToken, codeRepoBranch, repoDir, repoType);
 
                     // Run scans in parallel
                     Future<Void> secretScanFuture = runSecretScan(repoDir, codeRepo, codeRepoBranch);
@@ -169,7 +169,7 @@ public class ScanManagerService {
                     Future<Void> sastScanFuture = runSASTScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> iacScanFuture = runIACScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> gitlabScanFuture = null;
-                    if ("GITLAB".equals(repoType)) {
+                    if (io.mixeway.mixewayflowapi.db.entity.CodeRepo.RepoType.GITLAB.equals(repoType)) {
                         gitlabScanFuture = runGitLabScan(codeRepo);
                     }
                     Future<Void> zapScanFuture = runZAPScan(repoDir, codeRepo, codeRepoBranch);
@@ -285,11 +285,11 @@ public class ScanManagerService {
                     validateInputs(codeRepo, codeRepoBranch);
 
                     String repoUrl = codeRepo.getRepourl();
-                    String repoType = String.valueOf(codeRepo.getType());
+                    io.mixeway.mixewayflowapi.db.entity.CodeRepo.RepoType repoType = codeRepo.getType();
                     String accessToken = codeRepo.getAccessToken();
 
                     // Clone or fetch the repository
-                    commit = fetchRepository(commitId, repoUrl, accessToken, codeRepoBranch, repoDir);
+                    commit = fetchRepository(commitId, repoUrl, accessToken, codeRepoBranch, repoDir, repoType);
 
                     // Run scans in parallel
                     Future<Void> secretScanFuture = runSecretScan(repoDir, codeRepo, codeRepoBranch);
@@ -298,7 +298,7 @@ public class ScanManagerService {
                     Future<Void> sastScanFuture = runSASTScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> iacScanFuture = runIACScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> gitlabScanFuture = null;
-                    if ("GITLAB".equals(repoType)) {
+                    if (io.mixeway.mixewayflowapi.db.entity.CodeRepo.RepoType.GITLAB.equals(repoType)) {
                         gitlabScanFuture = runGitLabScan(codeRepo);
                     }
                     Future<Void> zapScanFuture = runZAPScan(repoDir, codeRepo, codeRepoBranch);
@@ -536,34 +536,25 @@ public class ScanManagerService {
      * This is an excerpt from the ScanManagerService class focusing on the fixed method.
      */
     private String fetchRepository(String commitId, String repoUrl, String accessToken,
-                                   CodeRepoBranch codeRepoBranch, String repoDir)
+                                   CodeRepoBranch codeRepoBranch, String repoDir,
+                                   io.mixeway.mixewayflowapi.db.entity.CodeRepo.RepoType repoType)
             throws IOException, InterruptedException {
 
-        // Check specifically for the zero commit ID
         if (commitId == null || "0000000000000000000000000000000000000000".equals(commitId)) {
-            // If the commit ID is null or the zero hash, get the latest commit from the branch
             log.info("[ScanManagerService] Zero commit ID detected. Getting latest commit from branch: {}",
                     codeRepoBranch.getName());
-
-            // fetchBranch will clone the specified branch and return its latest commit ID
-            return gitService.fetchBranch(repoUrl, accessToken, codeRepoBranch, repoDir);
+            return gitService.fetchBranch(repoUrl, accessToken, codeRepoBranch, repoDir, repoType);
         } else {
             try {
-                // Normal case - fetch the specific commit
-                gitService.fetchCommit(repoUrl, accessToken, commitId, repoDir);
+                gitService.fetchCommit(repoUrl, accessToken, commitId, repoDir, repoType);
                 gitService.checkoutCommit(repoDir, commitId);
                 return commitId;
             } catch (GitException e) {
-                // If fetching the specific commit fails, fall back to the latest commit from the branch
                 log.warn("[ScanManagerService] Failed to fetch commit {}: {}. Getting latest commit from branch: {}",
                         commitId, e.getMessage(), codeRepoBranch.getName());
-
-                // Clean up the directory before retrying
                 cleanUp(repoDir);
                 new File(repoDir).mkdirs();
-
-                // Get the latest commit from the branch
-                return gitService.fetchBranch(repoUrl, accessToken, codeRepoBranch, repoDir);
+                return gitService.fetchBranch(repoUrl, accessToken, codeRepoBranch, repoDir, repoType);
             }
         }
     }

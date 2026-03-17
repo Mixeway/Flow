@@ -22,23 +22,40 @@ public class BitbucketApiClientService {
     private final WebClient webClient;
 
     /**
-     * Fetches all accessible repositories from Bitbucket Cloud using paginated API.
-     * Bitbucket API v2.0 uses /2.0/repositories with role=member.
-     * @param repoUrl The base API URL for Bitbucket (e.g., https://api.bitbucket.org).
-     * @param accessToken The access token (App Password, OAuth token, or Repository/Workspace Access Token).
-     * @return A Flux emitting all found repositories across all pages.
+     * Returns true when {@code url} points to a self-hosted Bitbucket Server / Data Center
+     * instance rather than the Bitbucket Cloud SaaS offering.
+     */
+    private boolean isOnPremise(String url) {
+        return url != null && !url.contains("bitbucket.org");
+    }
+
+    // -------------------------------------------------------------------------
+    // Fetch all repositories
+    // -------------------------------------------------------------------------
+
+    /**
+     * Fetches all accessible repositories.
+     * <ul>
+     *   <li>Cloud (bitbucket.org): API v2.0, paginated via {@code next} URL.</li>
+     *   <li>Server / DC: REST API 1.0, paginated via {@code isLastPage} / {@code nextPageStart}.</li>
+     * </ul>
      */
     public Flux<ImportCodeRepoBitbucketResponseDto> fetchAllRepositories(String repoUrl, String accessToken) {
+        if (isOnPremise(repoUrl)) {
+            String initialUri = repoUrl.replaceAll("/$", "") + "/rest/api/1.0/repos?limit=100&start=0";
+            return fetchBitbucketServerPage(initialUri, repoUrl, accessToken);
+        }
         String initialUri = UriComponentsBuilder.fromHttpUrl(normalizeToApiUrl(repoUrl))
                 .path("/2.0/repositories")
                 .queryParam("role", "member")
                 .queryParam("pagelen", 100)
                 .toUriString();
-
-        return fetchBitbucketPage(initialUri, accessToken);
+        return fetchBitbucketCloudPage(initialUri, accessToken);
     }
 
-    private Flux<ImportCodeRepoBitbucketResponseDto> fetchBitbucketPage(String uri, String accessToken) {
+    // --- Cloud pagination ---
+
+    private Flux<ImportCodeRepoBitbucketResponseDto> fetchBitbucketCloudPage(String uri, String accessToken) {
         return webClient.get()
                 .uri(uri)
                 .header("Authorization", "Bearer " + accessToken)
@@ -51,20 +68,49 @@ public class BitbucketApiClientService {
 
                     Flux<ImportCodeRepoBitbucketResponseDto> currentPage = Flux.empty();
                     if (values != null) {
-                        currentPage = Flux.fromIterable(values)
-                                .map(this::mapToDto);
+                        currentPage = Flux.fromIterable(values).map(this::mapCloudRepoToDto);
                     }
-
                     if (nextUrl != null && !nextUrl.isEmpty()) {
-                        return Flux.concat(currentPage, fetchBitbucketPage(nextUrl, accessToken));
+                        return Flux.concat(currentPage, fetchBitbucketCloudPage(nextUrl, accessToken));
                     }
                     return currentPage;
                 })
-                .doOnError(error -> log.error("Error fetching Bitbucket repositories from URI {}: {}", uri, error.getMessage()));
+                .doOnError(error -> log.error("Error fetching Bitbucket Cloud repos from {}: {}", uri, error.getMessage()));
     }
 
+    // --- Server / DC pagination ---
+
+    private Flux<ImportCodeRepoBitbucketResponseDto> fetchBitbucketServerPage(String uri, String baseUrl, String accessToken) {
+        return webClient.get()
+                .uri(uri)
+                .header("Authorization", "Bearer " + accessToken)
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .flatMapMany(response -> {
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> values = (List<Map<String, Object>>) response.get("values");
+                    Boolean isLastPage = (Boolean) response.get("isLastPage");
+                    Object nextPageStartObj = response.get("nextPageStart");
+
+                    Flux<ImportCodeRepoBitbucketResponseDto> currentPage = Flux.empty();
+                    if (values != null) {
+                        currentPage = Flux.fromIterable(values).map(r -> mapServerRepoToDto(r, null));
+                    }
+                    if (Boolean.FALSE.equals(isLastPage) && nextPageStartObj != null) {
+                        String nextUri = baseUrl.replaceAll("/$", "") + "/rest/api/1.0/repos?limit=100&start=" + nextPageStartObj;
+                        return Flux.concat(currentPage, fetchBitbucketServerPage(nextUri, baseUrl, accessToken));
+                    }
+                    return currentPage;
+                })
+                .doOnError(error -> log.error("Error fetching Bitbucket Server repos from {}: {}", uri, error.getMessage()));
+    }
+
+    // -------------------------------------------------------------------------
+    // Map raw API responses to DTO
+    // -------------------------------------------------------------------------
+
     @SuppressWarnings("unchecked")
-    private ImportCodeRepoBitbucketResponseDto mapToDto(Map<String, Object> repoMap) {
+    private ImportCodeRepoBitbucketResponseDto mapCloudRepoToDto(Map<String, Object> repoMap) {
         ImportCodeRepoBitbucketResponseDto dto = new ImportCodeRepoBitbucketResponseDto();
         dto.setUuid((String) repoMap.get("uuid"));
         dto.setDescription((String) repoMap.get("description"));
@@ -92,14 +138,77 @@ public class BitbucketApiClientService {
             mainbranchDto.setType((String) mainbranch.get("type"));
             dto.setMainbranch(mainbranchDto);
         }
-
         return dto;
     }
+
+    /**
+     * Maps a Bitbucket Server REST API 1.0 repository object.
+     * The HTTPS clone URL is stored as the "web URL" so that it can be used for git
+     * operations and for deduplication (stored as {@code CodeRepo.repourl}).
+     *
+     * @param repoMap       raw JSON map from the Server API
+     * @param defaultBranch pre-resolved default branch name, or {@code null} to use "master"
+     */
+    @SuppressWarnings("unchecked")
+    private ImportCodeRepoBitbucketResponseDto mapServerRepoToDto(Map<String, Object> repoMap, String defaultBranch) {
+        ImportCodeRepoBitbucketResponseDto dto = new ImportCodeRepoBitbucketResponseDto();
+
+        Object idObj = repoMap.get("id");
+        dto.setUuid(idObj != null ? String.valueOf(idObj) : null);
+        dto.setDescription((String) repoMap.get("description"));
+        dto.setName((String) repoMap.get("slug"));
+        dto.setSlug((String) repoMap.get("slug"));
+
+        Map<String, Object> project = (Map<String, Object>) repoMap.get("project");
+        String projectKey = project != null ? (String) project.get("key") : "";
+        dto.setFullName(projectKey + "/" + repoMap.get("slug"));
+
+        // Find HTTPS clone URL from links.clone[]
+        String cloneUrl = extractHttpsCloneUrl(repoMap);
+        if (cloneUrl != null) {
+            ImportCodeRepoBitbucketResponseDto.LinksDto linksDto = new ImportCodeRepoBitbucketResponseDto.LinksDto();
+            ImportCodeRepoBitbucketResponseDto.HrefDto hrefDto = new ImportCodeRepoBitbucketResponseDto.HrefDto();
+            hrefDto.setHref(cloneUrl);
+            linksDto.setHtml(hrefDto);
+            dto.setLinks(linksDto);
+        }
+
+        if (defaultBranch != null) {
+            ImportCodeRepoBitbucketResponseDto.MainbranchDto mainbranchDto = new ImportCodeRepoBitbucketResponseDto.MainbranchDto();
+            mainbranchDto.setName(defaultBranch);
+            mainbranchDto.setType("branch");
+            dto.setMainbranch(mainbranchDto);
+        }
+        return dto;
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extractHttpsCloneUrl(Map<String, Object> repoMap) {
+        Map<String, Object> links = (Map<String, Object>) repoMap.get("links");
+        if (links == null) return null;
+        List<Map<String, Object>> cloneLinks = (List<Map<String, Object>>) links.get("clone");
+        if (cloneLinks == null) return null;
+        for (Map<String, Object> link : cloneLinks) {
+            String name = (String) link.get("name");
+            if ("http".equals(name) || "https".equals(name)) {
+                return (String) link.get("href");
+            }
+        }
+        return null;
+    }
+
+    // -------------------------------------------------------------------------
+    // Get single project info
+    // -------------------------------------------------------------------------
 
     public Mono<ImportCodeRepoBitbucketResponseDto> getProjectInfo(String fullName, String repoUrl, String accessToken) {
         String[] parts = fullName.split("/", 2);
         if (parts.length < 2) {
             return Mono.error(new IllegalArgumentException("Invalid Bitbucket repository path: " + fullName));
+        }
+
+        if (isOnPremise(repoUrl)) {
+            return getServerProjectInfo(repoUrl, parts[0], parts[1], accessToken);
         }
 
         String apiUrl = UriComponentsBuilder.fromHttpUrl(normalizeToApiUrl(repoUrl))
@@ -113,15 +222,47 @@ public class BitbucketApiClientService {
                 .onStatus(status -> !status.is2xxSuccessful(), response ->
                         Mono.error(new RuntimeException("Failed to fetch Bitbucket repository info")))
                 .bodyToMono(ImportCodeRepoBitbucketResponseDto.class)
-                .doOnError(throwable -> log.error("Error fetching Bitbucket repository info: {}", throwable.getMessage()));
+                .doOnError(throwable -> log.error("Error fetching Bitbucket Cloud repository info: {}", throwable.getMessage()));
     }
 
+    private Mono<ImportCodeRepoBitbucketResponseDto> getServerProjectInfo(String baseUrl, String projectKey, String slug, String accessToken) {
+        String normalized = baseUrl.replaceAll("/$", "");
+        String projectInfoUrl = normalized + "/rest/api/1.0/projects/" + projectKey + "/repos/" + slug;
+        String defaultBranchUrl = projectInfoUrl + "/branches/default";
+
+        Mono<Map<String, Object>> repoMono = webClient.get()
+                .uri(projectInfoUrl)
+                .header("Authorization", "Bearer " + accessToken)
+                .retrieve()
+                .onStatus(status -> !status.is2xxSuccessful(), response ->
+                        Mono.error(new RuntimeException("Failed to fetch Bitbucket Server repository info from " + projectInfoUrl)))
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .doOnError(e -> log.error("Error fetching Bitbucket Server repo info: {}", e.getMessage()));
+
+        Mono<String> defaultBranchMono = webClient.get()
+                .uri(defaultBranchUrl)
+                .header("Authorization", "Bearer " + accessToken)
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .map(b -> (String) b.getOrDefault("displayId", "master"))
+                .onErrorReturn("master");
+
+        return Mono.zip(repoMono, defaultBranchMono)
+                .map(tuple -> mapServerRepoToDto(tuple.getT1(), tuple.getT2()));
+    }
+
+    // -------------------------------------------------------------------------
+    // Languages
+    // -------------------------------------------------------------------------
+
     /**
-     * Bitbucket doesn't provide a separate languages endpoint like GitHub/GitLab/Gitea.
-     * The primary language is available in the repository metadata.
-     * We return a map with just that language at 100%.
+     * Bitbucket Cloud exposes a primary language field on the repo.
+     * Bitbucket Server has no equivalent — return an empty map in that case.
      */
     public Mono<HashMap<String, Integer>> getProjectLanguages(String fullName, String repoUrl, String accessToken) {
+        if (isOnPremise(repoUrl)) {
+            return Mono.just(new HashMap<>());
+        }
         String apiUrl = normalizeToApiUrl(repoUrl);
         return getProjectInfo(fullName, apiUrl, accessToken)
                 .map(dto -> {
@@ -134,12 +275,20 @@ public class BitbucketApiClientService {
                 .doOnError(throwable -> log.error("Error fetching Bitbucket repository languages: {}", throwable.getMessage()));
     }
 
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
     private String normalizeToApiUrl(String url) {
         if (url != null && url.contains("bitbucket.org") && !url.contains("api.bitbucket.org")) {
             return url.replace("bitbucket.org", "api.bitbucket.org");
         }
         return url;
     }
+
+    // -------------------------------------------------------------------------
+    // Pull request comments (Cloud only for now)
+    // -------------------------------------------------------------------------
 
     public Mono<String> commentPullRequest(CodeRepo codeRepo, Long prId, String comment) {
         String apiUrl = String.format("https://api.bitbucket.org/2.0/repositories/%s/pullrequests/%d/comments",

@@ -1,5 +1,6 @@
 package io.mixeway.mixewayflowapi.integrations.repo.service;
 
+import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.exceptions.GitException;
 import lombok.extern.log4j.Log4j2;
@@ -32,7 +33,7 @@ public class GitService {
      * @throws InterruptedException if the process is interrupted
      */
     public void cloneRepo(String repoUrl, String accessToken, String repoDir) throws IOException, InterruptedException {
-        String authenticatedUrl = buildAuthenticatedUrl(repoUrl, accessToken);
+        String authenticatedUrl = buildAuthenticatedUrl(repoUrl, accessToken, null);
         ProcessBuilder pb = new ProcessBuilder("git", "clone", authenticatedUrl, repoDir);
         executeCommand(pb);
     }
@@ -48,8 +49,8 @@ public class GitService {
      * @throws IOException          if an I/O error occurs
      * @throws InterruptedException if the process is interrupted
      */
-    public String fetchBranch(String repoUrl, String accessToken, CodeRepoBranch branch, String repoDir) throws IOException, InterruptedException {
-        String authenticatedUrl = buildAuthenticatedUrl(repoUrl, accessToken);
+    public String fetchBranch(String repoUrl, String accessToken, CodeRepoBranch branch, String repoDir, CodeRepo.RepoType repoType) throws IOException, InterruptedException {
+        String authenticatedUrl = buildAuthenticatedUrl(repoUrl, accessToken, repoType);
         ProcessBuilder pb = new ProcessBuilder("git", "clone", "--branch", branch.getName(), authenticatedUrl, repoDir);
         pb.environment().put("GIT_ASKPASS", "echo");
         pb.environment().put("GIT_TOKEN", accessToken);
@@ -75,8 +76,8 @@ public class GitService {
      * @throws IOException          if an I/O error occurs
      * @throws InterruptedException if the process is interrupted
      */
-    public void fetchCommit(String repoUrl, String accessToken, String commitId, String repoDir) throws IOException, InterruptedException {
-        String authenticatedUrl = buildAuthenticatedUrl(repoUrl, accessToken);
+    public void fetchCommit(String repoUrl, String accessToken, String commitId, String repoDir, CodeRepo.RepoType repoType) throws IOException, InterruptedException {
+        String authenticatedUrl = buildAuthenticatedUrl(repoUrl, accessToken, repoType);
 
         File dir = new File(repoDir);
         if (!dir.exists()) {
@@ -142,11 +143,18 @@ public class GitService {
     }
 
     /**
-     * Builds an authenticated git clone URL. Bitbucket Cloud uses {@code x-token-auth}
-     * as the username for bearer/access tokens, while GitLab/GitHub/Gitea use {@code OAUTH2}.
+     * Builds an authenticated git clone URL.
+     * <ul>
+     *   <li>Bitbucket Cloud and Bitbucket Server/DC both use {@code x-token-auth} with HTTP access tokens.</li>
+     *   <li>GitLab, GitHub and Gitea use {@code OAUTH2}.</li>
+     * </ul>
+     * When {@code repoType} is {@code null} the method falls back to URL-based detection
+     * (legacy path, Cloud only via {@code bitbucket.org} hostname check).
      */
-    private String buildAuthenticatedUrl(String repoUrl, String accessToken) {
-        String gitUsername = repoUrl.contains("bitbucket.org") ? "x-token-auth" : "OAUTH2";
+    private String buildAuthenticatedUrl(String repoUrl, String accessToken, CodeRepo.RepoType repoType) {
+        boolean isBitbucket = repoType == CodeRepo.RepoType.BITBUCKET
+                || (repoType == null && repoUrl.contains("bitbucket.org"));
+        String gitUsername = isBitbucket ? "x-token-auth" : "OAUTH2";
         return repoUrl.replace("https://", "https://" + gitUsername + ":" + accessToken + "@");
     }
 

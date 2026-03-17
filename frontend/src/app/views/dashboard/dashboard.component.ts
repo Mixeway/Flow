@@ -1127,7 +1127,7 @@ export class DashboardComponent implements OnInit {
         } else if (this.selectedRepo === 'Gitea') {
             repoObject.repoUrl = this.repoUrl
         } else if (this.selectedRepo === 'Bitbucket') {
-            repoObject.repoUrl = 'https://api.bitbucket.org'
+            repoObject.repoUrl = this.bitbucketService.getApiUrl()
         }
         row.imported = true;
         this.dashboardService.createRepo(repoObject, this.selectedRepo.toLowerCase()).subscribe({
@@ -1326,7 +1326,7 @@ export class DashboardComponent implements OnInit {
                     const repoObject: CreateRepo = {
                         name: response.full_name,
                         remoteId: response.id,
-                        repoUrl: 'https://api.bitbucket.org',
+                        repoUrl: this.bitbucketService.getApiUrl(),
                         accessToken,
                         team,
                     };

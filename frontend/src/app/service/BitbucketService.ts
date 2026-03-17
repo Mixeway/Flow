@@ -85,11 +85,30 @@ export class BitbucketService {
         );
     }
 
-    private isCloud(): boolean {
+    isCloud(): boolean {
         return this.bitbucketBaseUrl.includes('bitbucket.org');
     }
 
+    /**
+     * Returns the base API URL to use for backend proxy calls and for the import request body.
+     * For Cloud this is the Bitbucket Cloud API host; for on-premise it is the server base URL.
+     */
+    getApiUrl(): string {
+        return this.isCloud() ? 'https://api.bitbucket.org' : this.bitbucketBaseUrl;
+    }
+
     private extractRepositoryPath(repoUrl: string): string {
+        if (!this.isCloud()) {
+            // Bitbucket Server: /projects/{KEY}/repos/{slug}[/browse] or /scm/{key}/{slug}.git
+            const projectsMatch = repoUrl.match(/\/projects\/([^\/]+)\/repos\/([^\/]+)/);
+            if (projectsMatch) {
+                return `${projectsMatch[1]}/${projectsMatch[2]}`;
+            }
+            const scmMatch = repoUrl.match(/\/scm\/([^\/]+)\/([^\/]+?)(?:\.git)?$/);
+            if (scmMatch) {
+                return `${scmMatch[1].toUpperCase()}/${scmMatch[2]}`;
+            }
+        }
         return repoUrl.replace(/https?:\/\/[^\/]+\//, '').replace(/\.git$/, '');
     }
 

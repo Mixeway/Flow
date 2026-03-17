@@ -50,8 +50,9 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/v1/login").permitAll()
-                        .requestMatchers("/api/v1/status").permitAll() // Ensure the SSO endpoint is public
+                        .requestMatchers("/api/v1/status").permitAll()
                         .requestMatchers("/api/v1/webhook/**").permitAll()
+                        .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
