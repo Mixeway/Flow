@@ -10,6 +10,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 /**
@@ -156,7 +158,8 @@ public class GitService {
         boolean isBitbucket = repoType == CodeRepo.RepoType.BITBUCKET
                 || (repoType == null && repoUrl.contains("bitbucket.org"));
         String gitUsername = isBitbucket ? "x-token-auth" : "OAUTH2";
-        return repoUrl.replace("https://", "https://" + gitUsername + ":" + accessToken + "@");
+        String encodedToken = URLEncoder.encode(accessToken, StandardCharsets.UTF_8);
+        return repoUrl.replace("https://", "https://" + gitUsername + ":" + encodedToken + "@");
     }
 
     /**

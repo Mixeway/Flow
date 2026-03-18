@@ -25,7 +25,6 @@ import reactor.core.publisher.Mono;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.ConnectException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
@@ -198,6 +197,11 @@ public class DependencyTrackApiClientService {
                 .retrieve()
                 .toEntity(CreateProjectResponseDto.class);
 
+        if (settings.getScaApiKey() == null) {
+            log.debug("[Dependency Track] API key not configured, skipping project registration for {}", codeRepo.getName());
+            return;
+        }
+
         try {
             ResponseEntity<CreateProjectResponseDto> response = responseMono.block();
 
@@ -206,7 +210,7 @@ public class DependencyTrackApiClientService {
                 log.info("[Dependency Track] Created Project for {} - {}", codeRepo.getRepourl(), response.getBody().getUuid());
             }
         } catch (Exception e){
-            log.error("[SCA Service] Unable to connect with dTrack: {}", e.getMessage());
+            log.warn("[SCA Service] DependencyTrack not available, skipping project registration for {}: {}", codeRepo.getName(), e.getMessage());
         }
     }
 
