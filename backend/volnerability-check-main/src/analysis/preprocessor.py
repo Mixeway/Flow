@@ -273,7 +273,10 @@ def preprocess_code_chunks(
     stop=stop_after_attempt(3),
     retry_error_callback=create_llm_fallback(
         "CHUNK ORGANIZATION",
-        lambda rs, e: ChunkOrganizerResult.create_fallback(rs.args[1], str(e))
+        lambda rs, e: ChunkOrganizerResult.create_fallback(
+            rs.kwargs['chunks'] if 'chunks' in rs.kwargs else rs.args[1],
+            str(e)
+        )
     ),
 )
 def check_and_organize_chunks(

@@ -22,7 +22,10 @@ logger = logging.getLogger(__name__)
     stop=stop_after_attempt(3),
     retry_error_callback=create_llm_fallback(
         "QUERY EXPANSION",
-        lambda rs, e: ExpandedQuery.create_fallback(rs.args[0], str(e)).expanded_query
+        lambda rs, e: ExpandedQuery.create_fallback(
+            rs.kwargs['vulnerability'] if 'vulnerability' in rs.kwargs else rs.args[0],
+            str(e)
+        ).expanded_query
     )
 )
 @observe(as_type="span", name="Expand Query")
