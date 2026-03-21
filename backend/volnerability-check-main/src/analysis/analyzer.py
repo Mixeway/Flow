@@ -26,7 +26,11 @@ logger = logging.getLogger(__name__)
     stop=stop_after_attempt(3),
     retry_error_callback=create_llm_fallback(
         "SYNTHESIS ANALYSIS",
-        lambda rs, e: VulnerabilitySynthesisResult.create_fallback(rs.args[1], rs.args[2], str(e))
+        lambda rs, e: VulnerabilitySynthesisResult.create_fallback(
+            rs.kwargs['chunks'] if 'chunks' in rs.kwargs else rs.args[1],
+            rs.kwargs['code_triage_report'] if 'code_triage_report' in rs.kwargs else rs.args[2],
+            str(e)
+        )
     )
 )
 @observe(as_type="span", name="Synthesize Analysis")
