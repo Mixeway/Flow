@@ -27,8 +27,8 @@ logger = logging.getLogger(__name__)
     retry_error_callback=create_llm_fallback(
         "SYNTHESIS ANALYSIS",
         lambda rs, e: VulnerabilitySynthesisResult.create_fallback(
+            rs.kwargs['vuln'] if 'vuln' in rs.kwargs else rs.args[0],
             rs.kwargs['chunks'] if 'chunks' in rs.kwargs else rs.args[1],
-            rs.kwargs['code_triage_report'] if 'code_triage_report' in rs.kwargs else rs.args[2],
             str(e)
         )
     )
