@@ -16,7 +16,6 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 @RequiredArgsConstructor
@@ -55,7 +54,7 @@ public class DownloaderRavenGateway {
 
     private void updateConstraints(Vulnerability vulnerability, DownloaderVulnerability downloaderVulnerability) {
         vulnerability.getConstraints().clear();
-        List<Constraint> constraints = vulnerability.getConstraints();
+        Set<Constraint> constraints = vulnerability.getConstraints();
         downloaderVulnerability.getConstraints().forEach(c -> constraints.add(constraintService.createConstraint(vulnerability, c)));
     }
 
