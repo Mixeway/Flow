@@ -1,26 +1,18 @@
-import json
 import logging
 from typing import List, Dict, Any
 from pathlib import Path
-import time
 
-from tenacity import retry, stop_after_attempt, wait_random_exponential, RetryError
-from openai import BadRequestError, APITimeoutError
+from tenacity import retry, stop_after_attempt, wait_random_exponential
 
 from ..core.client import client
 from ..core.config import settings
-from ..core.models import VulnerabilityInput
-from ..core.chunk import CodeChunk
-from .prompts import (
-    CODE_PREPROCESSOR_SYSTEM_PROMPT, 
-    CODE_PREPROCESSOR_USER_PROMPT,
-    CODE_TRIAGE_SYSTEM_PROMPT,
-    CODE_TRIAGE_USER_PROMPT,
-    SYNTHESIS_ANALYSIS_SYSTEM_PROMPT,
-    SYNTHESIS_ANALYSIS_USER_PROMPT,
-    CHUNK_ORGANIZER_SYSTEM_PROMPT,
-    CHUNK_ORGANIZER_USER_PROMPT
+from ..core.models import (
+    VulnerabilityInput,
+    ChunkOrganizerResult
 )
+from ..core.chunk import CodeChunk
+from ..utils.llm import ask_llm_for_structured_data, create_llm_fallback
+from .prompts import LangfusePrompt
 from .dependency_resolver import analyze_dependency_versions
 
 
@@ -276,13 +268,22 @@ def preprocess_code_chunks(
     
     return structured_code
 
-
-@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(3))
+@retry(
+    wait=wait_random_exponential(min=1, max=60),
+    stop=stop_after_attempt(3),
+    retry_error_callback=create_llm_fallback(
+        "CHUNK ORGANIZATION",
+        lambda rs, e: ChunkOrganizerResult.create_fallback(
+            rs.kwargs['chunks'] if 'chunks' in rs.kwargs else rs.args[1],
+            str(e)
+        )
+    ),
+)
 def check_and_organize_chunks(
     vulnerability: VulnerabilityInput, 
     chunks: List[CodeChunk],
     repository_info: Dict[str, Any] = None
-) -> Dict[str, Any]:
+) -> ChunkOrganizerResult:
     """Organize and prioritize code chunks for analysis (simplified version)."""
     logger.info("ORGANIZING CODE CHUNKS")
     logger.info("=" * 30)
@@ -299,73 +300,26 @@ def check_and_organize_chunks(
         chunks_summary.append(summary)
     
     chunks_text = "\n".join(chunks_summary)
-    
-    prompt = CHUNK_ORGANIZER_USER_PROMPT.format(
-        vuln_name=vulnerability.name,
-        vuln_constraints=vulnerability.constraints,
-        chunks_summary=chunks_text
+
+    logger.info(f"Asking LLM to organize {len(chunks)} chunks...")
+
+    prompt_variables = {
+        "vuln_name": vulnerability.name,
+        "vuln_constraints": vulnerability.constraints,
+        "chunks_summary": chunks_text
+    }
+
+    result_obj = ask_llm_for_structured_data(
+        client=client,
+        model_name=settings.OPENAI_MODEL,
+        prompt_name=LangfusePrompt.CHUNK_ORGANIZER.value,
+        prompt_variables=prompt_variables,
+        response_model=ChunkOrganizerResult,
     )
-    
-    # Check input size before sending
-    if len(prompt) > settings.MAX_ORGANIZATION_CHARS:
-        logger.warning(f"Organization prompt too large ({len(prompt)} chars > {settings.MAX_ORGANIZATION_CHARS}), truncating...")
-        prompt = prompt[:settings.MAX_ORGANIZATION_CHARS] + "\n[TRUNCATED DUE TO SIZE LIMIT]"
-    
-    try:
-        completion = client.chat.completions.create(
-            model=settings.OPENAI_MODEL,
-            messages=[
-                {"role": "system", "content": CHUNK_ORGANIZER_SYSTEM_PROMPT},
-                {"role": "user", "content": f"{prompt}\n\nCRITICAL: Return valid JSON only in the specified format."}
-            ],
-            timeout=settings.OPENAI_TIMEOUT_SECONDS,
-        )
-        
-        result = json.loads(completion.choices[0].message.content)
-        logger.info("Chunk organization completed successfully")
-        
-        return result
-        
-    except Exception as e:
-        logger.error(f"Chunk organization failed: {e}")
-        
-        # Enhanced error handling for specific error types
-        if isinstance(e, APITimeoutError):
-            logger.error("API TIMEOUT ERROR in chunk organization - Request took too long")
-            logger.error("This may be due to large input size or API server load")
-            
-        elif isinstance(e, RetryError):
-            logger.error("RetryError detected in chunk organization - all retry attempts exhausted")
-            if hasattr(e, 'last_attempt') and e.last_attempt and e.last_attempt.exception():
-                underlying_error = e.last_attempt.exception()
-                logger.error(f"Underlying organization error: {type(underlying_error).__name__}: {str(underlying_error)}")
-                
-                # Check for specific error types
-                if isinstance(underlying_error, APITimeoutError):
-                    logger.error("TIMEOUT ERROR in organization retry - Consider reducing input size")
-                elif isinstance(underlying_error, BadRequestError):
-                    underlying_msg = str(underlying_error)
-                    if "tokens exceed" in underlying_msg or "context_length_exceeded" in underlying_msg:
-                        logger.error("TOKEN LIMIT EXCEEDED in chunk organization")
-        
-        logger.warning("Using fallback chunk organization")
-        
-        # Return fallback organization
-        return {
-            "organized_chunks": [
-                {
-                    "index": i,
-                    "priority": 5,
-                    "relevance": "medium",
-                    "focus_areas": ["general analysis"],
-                    "notes": "fallback organization"
-                }
-                for i in range(len(chunks))
-            ],
-            "strategy": "fallback_due_to_error",
-            "key_patterns": [],
-            "security_context": "analysis_failed"
-        }
+
+    logger.info("Chunk organization completed successfully")
+
+    return result_obj
 
 
 def reorder_chunks_by_priority(chunks: List[CodeChunk], organization_result: Dict[str, Any]) -> List[CodeChunk]:
@@ -393,12 +347,6 @@ def reorder_chunks_by_priority(chunks: List[CodeChunk], organization_result: Dic
     except Exception as e:
         logger.warning(f"Failed to reorder chunks by priority: {e}")
         return chunks
-
-
-# Aliases for backward compatibility during refactoring
-VULNERABILITY_ANALYSIS_SYSTEM_PROMPT = SYNTHESIS_ANALYSIS_SYSTEM_PROMPT
-VULNERABILITY_ANALYSIS_USER_PROMPT = SYNTHESIS_ANALYSIS_USER_PROMPT
-
 
 def _extract_version_info(content: str, vulnerability_name: str) -> str:
     """Extract ALL version information from dependency file content - ENHANCED UNIVERSAL approach."""
@@ -507,8 +455,7 @@ def _extract_version_info(content: str, vulnerability_name: str) -> str:
 def _simple_repository_search(temp_repo_dir: Path, vulnerability: "VulnerabilityInput") -> str:
     """UNIVERSAL repository-wide search for constraint patterns - works with any language/framework."""
     import re
-    from pathlib import Path
-    
+
     logger.info("Starting UNIVERSAL repository-wide search for constraint patterns")
     
     # UNIVERSAL PATTERN EXTRACTION - works for any vulnerability/language

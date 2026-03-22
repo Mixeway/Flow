@@ -3,15 +3,13 @@ from pathlib import Path
 from typing import List, Dict, Optional
 from collections import defaultdict, Counter
 import logging
-import gc
-import os
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 
 import faiss
 import numpy as np
 from tenacity import retry, stop_after_attempt, wait_random_exponential, RetryError
-from openai import BadRequestError, APITimeoutError
+from openai import BadRequestError
+from langfuse import get_client, observe
 
 from .client import client
 from .chunk import CodeChunk, ChunkType
@@ -27,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 @retry(wait=wait_random_exponential(min=5, max=180), stop=stop_after_attempt(15))
+@observe(as_type="generation")
 def get_embedding(
     text: str, model: str = settings.OPENAI_EMBEDDING_MODEL
 ) -> List[float]:
@@ -35,10 +34,24 @@ def get_embedding(
     
     try:
         logger.debug(f"Generating embedding using model: {model}")
-        response = client.embeddings.create(input=[text], model=model).data[0].embedding
+        response = client.embeddings.create(input=[text], model=model)
+
+
+        if hasattr(response, 'usage') and response.usage:
+            langfuse = get_client()
+            langfuse.update_current_generation(
+                model=model,
+                usage_details={
+                    "input": getattr(response.usage, 'prompt_tokens', 0),
+                    "output": 0,
+                    "total": getattr(response.usage, 'total_tokens', 0)
+                }
+            )
+
         # Aggressive delay to avoid 429s (embeddings share rate limit with main model)
+        embedding = response.data[0].embedding
         time.sleep(1.5)
-        return response
+        return embedding
     except Exception as e:
         logger.warning(f"Embedding API error: {e}")
         # On rate limit, wait longer before retry
@@ -48,6 +61,7 @@ def get_embedding(
 
 
 @retry(wait=wait_random_exponential(min=5, max=180), stop=stop_after_attempt(10))
+@observe(as_type="generation")
 def get_embeddings_batch(
     texts: List[str], model: str = settings.OPENAI_EMBEDDING_MODEL, max_tokens_per_text: int = 8000
 ) -> List[List[float]]:
@@ -79,6 +93,18 @@ def get_embeddings_batch(
 
     try:
         response = client.embeddings.create(input=cleaned_texts, model=model)
+
+        if hasattr(response, 'usage') and response.usage:
+            langfuse = get_client()
+            langfuse.update_current_generation(
+                model=model,
+                usage_details={
+                    "input": getattr(response.usage, 'prompt_tokens', 0),
+                    "output": 0,
+                    "total": getattr(response.usage, 'total_tokens', 0)
+                }
+            )
+
         # Aggressive delay for batch operations
         time.sleep(2.0)
         return [data.embedding for data in response.data]
@@ -108,6 +134,8 @@ class VectorStore:
     def set_chunks(self, chunks: List[CodeChunk]) -> None:
         self.metadata = chunks
 
+
+    @observe(as_type="span", name="Build FAISS Index")
     def build_index(self, rebuild: bool = False):
         """Builds or rebuilds the FAISS index with enhanced chunking support."""
         self.index_dir.mkdir(parents=True, exist_ok=True)
@@ -473,6 +501,7 @@ class VectorStore:
         else:
             self.chunk_stats = {}
 
+    @observe(as_type="span", name="Vector Similarity Search")
     def search(self, query: str, k: int) -> List[CodeChunk]:
         """Searches the index for the top-k most similar chunks with enhanced filtering."""
         if self.index is None:

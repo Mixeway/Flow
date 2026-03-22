@@ -1,6 +1,8 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Optional
 import logging
+import os
+
 from ..utils.load_setting import load_setting
 
 logger = logging.getLogger(__name__)
@@ -14,10 +16,9 @@ class Settings(BaseSettings):
     # =============================================================================
     # OpenAI API Configuration (REQUIRED)
     # =============================================================================
-    OPENAI_API_KEY: Optional[str] = load_setting("openai_api_key", "settings")
+    OPENAI_API_KEY: Optional[str] = load_setting("openai_api_key", "settings", default="dummy-local-key")
     OPENAI_BASE_URL: str = load_setting("openai_base_url")
     OPENAI_MODEL: str = load_setting("openai_model")
-    OPENAI_WEB_SEARCH_MODEL: str = load_setting("openai_web_search_model")
     OPENAI_EMBEDDING_MODEL: str = load_setting("openai_embedding_model")
     OPENAI_ORG_ID: Optional[str] = load_setting("openai_org_id")
     
@@ -29,22 +30,27 @@ class Settings(BaseSettings):
     # See README "NVD Data Format" section for details
 
     # ===============================================================================
-    # SearxNG Configuration
-    # ===============================================================================
-    SEARXNG_BASE_URL: Optional[str] = load_setting("searxng_base_url")
-    SEARXNG_TOP_K_QUERY: Optional[int] = load_setting("searxng_top_k_query")
-    SEARXNG_TOP_K_CONTEXT: Optional[int] = load_setting("searxng_top_k_context")
-
-    # ===============================================================================
     # Cloudflare Access
     # ===============================================================================
     CF_ACCESS_CLIENT_ID: Optional[str] = load_setting("cf_access_client_id")
     CF_ACCESS_CLIENT_SECRET: Optional[str] = load_setting("cf_access_client_secret")
 
+    # ===============================================================================
+    # Langfuse Tracing
+    # ===============================================================================
+    LANGFUSE_SECRET_KEY: Optional[str] = load_setting("langfuse_secret_key")
+    os.environ["LANGFUSE_SECRET_KEY"] = LANGFUSE_SECRET_KEY
+    LANGFUSE_PUBLIC_KEY: Optional[str] = load_setting("langfuse_public_key")
+    os.environ["LANGFUSE_PUBLIC_KEY"] = LANGFUSE_PUBLIC_KEY
+    LANGFUSE_BASE_URL: Optional[str] = load_setting("langfuse_base_url")
+    os.environ["LANGFUSE_BASE_URL"] = LANGFUSE_BASE_URL
+
     # =============================================================================
     # OpenAI Timeout & Retry Configuration
     # =============================================================================
     # Timeout configuration
+    OPENAI_MAX_OUTPUT_TOKENS: int = load_setting("openai_max_output_tokens")
+    OPENAI_FIRST_TOKEN_TIMEOUT_SECONDS: float = load_setting("openai_first_token_timeout_seconds")
     OPENAI_TIMEOUT_SECONDS: float = load_setting("openai_timeout_seconds")
     OPENAI_MAX_RETRIES: int = load_setting("openai_max_retries")
     
@@ -203,7 +209,6 @@ def log_openai_configuration():
     logger.info("=" * 80)
     logger.info("OPENAI CONFIGURATION:")
     logger.info(f"  Main Analysis Model:    {settings.OPENAI_MODEL}")
-    logger.info(f"  Web Search Model:       {settings.OPENAI_WEB_SEARCH_MODEL}")
     logger.info(f"  Embedding Model:        {settings.OPENAI_EMBEDDING_MODEL}")
     logger.info(f"  API Base URL:           {settings.OPENAI_BASE_URL}")
     logger.info(f"  Timeout (seconds):      {settings.OPENAI_TIMEOUT_SECONDS}")

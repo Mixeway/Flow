@@ -108,10 +108,9 @@ Results are saved in `./results/<repository-name>/`:
 - **AST-based Chunking**: Tree-sitter powered intelligent code parsing with hierarchical organization  
 - **Vector-based Search**: Efficient similarity search using FAISS and OpenAI embeddings
 - **Asynchronous Pipeline**: High-performance async processing with rate limiting and error handling
-- **Multi-Agent Analysis**: 4-stage intelligent analysis pipeline:
+- **Multi-Agent Analysis**: 3-stage intelligent analysis pipeline:
   - **Code Triage Agent**: Extract objective facts from source code chunks (distinguishes imports from actual API usage)
   - **NVD Data Processing**: Use pre-fetched CVE data and vulnerability intelligence (no rate limiting)
-  - **Web Research Agent**: Gather security advisories and exploit intelligence
   - **Synthesis Agent**: Integrate all sources for comprehensive risk assessment with detailed reasoning
 - **Quality Assessment**: LLM-based analysis quality evaluation and scoring
 - **Robust Error Handling**: Comprehensive fallback mechanisms and detailed logging
@@ -136,7 +135,6 @@ OPENAI_API_KEY=sk-...                    # OpenAI API key (required)
 ```env
 OPENAI_BASE_URL=https://api.openai.com/v1     # API endpoint
 OPENAI_MODEL=gpt-5.1                          # Main analysis model (high intelligence)
-OPENAI_WEB_SEARCH_MODEL=gpt-4o-search-preview # Dedicated web research model
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small # Embedding model  
 OPENAI_ORG_ID=                                # Optional organization ID
 OPENAI_TIMEOUT_SECONDS=300.0                  # API timeout (5 minutes)
@@ -178,6 +176,13 @@ ENABLE_CHUNK_SUBDIVISION=false              # Enable chunk subdivision
 MAX_CHUNKS_PER_FILE=15                      # Max chunks per file
 CHUNKING_PARALLEL_WORKERS=4                 # Parallel file processing workers
 REDUCE_CHUNKING_LOGS=true                   # Reduce verbose chunking logs
+```
+
+### Observability & Tracing (Langfuse)
+```env
+LANGFUSE_SECRET_KEY=sk-lf-...                 # Langfuse Secret Key
+LANGFUSE_PUBLIC_KEY=pk-lf-...                 # Langfuse Public Key
+LANGFUSE_HOST=http://localhost:3000           # Langfuse Host URL (Cloud or Self-hosted)
 ```
 
 ## Input Formats
@@ -440,8 +445,7 @@ src/
     ├── cli.py             # Command line interface
     ├── llm.py             # LLM utility functions
     ├── progress.py        # Progress indicators
-    ├── rate_limiter.py    # API rate limiting
-    └── web_research.py    # Web research agent
+    └── rate_limiter.py    # API rate limiting
 ```
 
 ### Pipeline Flow
@@ -454,10 +458,19 @@ src/
 6. **Asynchronous Multi-Agent Analysis**:
    - **Code Triage Agent**: Extract objective facts from retrieved code chunks
    - **NVD Data Processing**: Load pre-fetched NVD data from input (no API calls)
-   - **Web Research Agent**: Gather intelligence from security advisories and online sources  
    - **Synthesis Agent**: Integrate all findings into comprehensive risk assessment
 7. **LLM Quality Assessment**: Validate analysis quality with detailed scoring (1-5 scale)
 8. **Comprehensive Results Export**: Generate JSON, Excel, metrics, quality, and log outputs
+
+## Observability & Prompt Management (Langfuse)
+
+This system deeply integrates with [Langfuse](https://langfuse.com/) to provide enterprise-grade observability, cost-tracking, and prompt management for the multi-agent LLM pipeline.
+
+### Key Capabilities
+
+* **End-to-End Tracing:** Every analysis run is tracked under a unified Batch Session ID. You can visually inspect the execution timeline, from the initial AST chunking and vector embedding phase down to the individual LLM agent calls.
+* **Cost & Latency Analytics:** The system captures accurate token usage (both `prompt_tokens` and `completion_tokens`) for every LLM call.
+* **Dynamic Prompt Management:** System prompts and few-shot examples are decoupled from the Python codebase. The pipeline fetches prompts dynamically from the Langfuse, allowing you to tweak instructions, fix formatting issues, and A/B test system prompts without restarting or deploying new code.
 
 ## Supported Languages
 
@@ -531,7 +544,7 @@ python scripts/smoke_test.py
 - ✅ Extracts `transformers-main.zip` repository
 - ✅ Processes 3,600+ source files with AST chunking
 - ✅ Builds vector index with OpenAI embeddings
-- ✅ Runs 4-stage vulnerability analysis (Code Triage → NVD → Web Research → Synthesis)
+- ✅ Runs 3-stage vulnerability analysis (Code Triage → NVD → Synthesis)
 - ✅ Validates Pydantic models and data structures
 - ✅ Checks probability ranges (0.0-1.0) and exploitability predictions
 - ✅ Verifies quality assessment scoring (1-5 scale)

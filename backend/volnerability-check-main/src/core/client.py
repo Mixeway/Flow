@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 # Build client kwargs dynamically to include optional organization ID
 client_kwargs = {
     "base_url": settings.OPENAI_BASE_URL,
-    "timeout": settings.OPENAI_TIMEOUT_SECONDS,
+    "timeout": settings.OPENAI_FIRST_TOKEN_TIMEOUT_SECONDS,
     "max_retries": settings.OPENAI_MAX_RETRIES,
 }
 

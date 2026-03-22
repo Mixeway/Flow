@@ -1,14 +1,20 @@
 import logging
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import pandas as pd
 import numpy as np
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 try:
-    from sklearn.metrics import mean_absolute_error, mean_squared_error, f1_score, accuracy_score
+    from sklearn.metrics import (
+        mean_absolute_error,
+        mean_squared_error,
+        f1_score,
+        accuracy_score,
+        precision_score,
+        recall_score,
+    )
 except ImportError:
     # Fallback implementations if sklearn not available
     def mean_absolute_error(y_true, y_pred):
@@ -49,7 +55,12 @@ except ImportError:
         fn = sum(1 for t, p in zip(y_true, y_pred) if t and not p)
         return tp / (tp + fn) if (tp + fn) > 0 else 0.0
 
-from ..core.models import VulnerabilityInput, VulnerabilityResult
+from ..core.models import (
+    VulnerabilityInput,
+    VulnerabilityAnalysis,
+    BatchQualityAssessmentResult,
+    MetricsResult
+)
 
 
 def read_vulnerabilities_from_xlsx(xlsx_path: Path) -> List[VulnerabilityInput]:
@@ -119,7 +130,7 @@ def read_vulnerabilities_from_xlsx(xlsx_path: Path) -> List[VulnerabilityInput]:
     return vulnerabilities
 
 
-def write_results_to_xlsx(results: List[VulnerabilityResult], output_path: Path):
+def write_results_to_xlsx(results: List[VulnerabilityAnalysis], output_path: Path):
     """Write analysis results to XLSX file."""
     # Convert results to DataFrame
     data = [result.model_dump() for result in results]
@@ -127,7 +138,10 @@ def write_results_to_xlsx(results: List[VulnerabilityResult], output_path: Path)
     df.to_excel(output_path, index=False)
 
 
-def calculate_metrics(results: List[VulnerabilityResult]) -> Dict[str, Any]:
+def calculate_metrics(
+        results: List[VulnerabilityAnalysis],
+        quality_data: Optional[BatchQualityAssessmentResult] = None
+) -> MetricsResult:
     """Calculate comprehensive metrics comparing LLM predictions with ground truth."""
     if not results:
         raise ValueError("No results provided for metrics calculation")
@@ -170,15 +184,22 @@ def calculate_metrics(results: List[VulnerabilityResult]) -> Dict[str, Any]:
     
     # Calculate general metrics
     avg_confidence = np.mean([r.confidence for r in valid_results])
-    
-    return {
-        "total_vulnerabilities": len(valid_results),
-        "probability_mae": prob_mae,
-        "probability_rmse": prob_rmse,
-        "exploitable_accuracy": exploit_accuracy,
-        "exploitable_precision": exploit_precision,
-        "exploitable_recall": exploit_recall,
-        "exploitable_f1": exploit_f1,
-        "status_accuracy": status_accuracy,
-        "avg_confidence": avg_confidence
-    }
+
+    metrics = MetricsResult(
+        total_vulnerabilities=len(valid_results),
+        probability_mae=float(prob_mae),
+        probability_rmse=float(prob_rmse),
+        exploitable_accuracy=float(exploit_accuracy),
+        exploitable_precision=float(exploit_precision),
+        exploitable_recall=float(exploit_recall),
+        exploitable_f1=float(exploit_f1),
+        status_accuracy=float(status_accuracy),
+        avg_confidence=float(avg_confidence)
+    )
+
+    if quality_data:
+        metrics.avg_quality_score = quality_data.average_quality_score
+        metrics.quality_distribution = quality_data.quality_distribution.model_dump()
+        metrics.total_quality_assessed = quality_data.total_assessed
+
+    return metrics
