@@ -5,6 +5,7 @@ import io.mixeway.mixewayflowapi.api.coderepo.dto.CreateCodeRepoRequestDto;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.Component;
 import io.mixeway.mixewayflowapi.db.entity.Team;
+import io.mixeway.mixewayflowapi.domain.component.GetOrCreateComponentService;
 import io.mixeway.mixewayflowapi.domain.team.CreateTeamService;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoResponseDto;
@@ -42,6 +43,8 @@ class UpdateCodeRepoServiceTest {
     FindCodeRepoService findCodeRepoService;
     @Autowired
     CreateCodeRepoService createCodeRepoService;
+    @Autowired
+    GetOrCreateComponentService getOrCreateComponentService;
     @MockBean
     GetCodeRepoInfoService getCodeRepoInfoService;
     @Autowired
@@ -117,7 +120,7 @@ class UpdateCodeRepoServiceTest {
         assertFalse(codeRepo.getSecretsScan().equals(CodeRepo.ScanStatus.NOT_PERFORMED));
     }
 
-    private static List<Component> createDummyComponents() {
+    private List<Component> createDummyComponents() {
         List<Component> components = new ArrayList<>();
         Random random = new Random();
 
@@ -127,7 +130,9 @@ class UpdateCodeRepoServiceTest {
             String version = "v" + random.nextInt(10) + "." + random.nextInt(10) + "." + random.nextInt(10);
             String origin = random.nextBoolean() ? "internal" : "external";
 
-            components.add(new Component(groupid, name, version, origin));
+            Component component = getOrCreateComponentService.getOrCreate(name, groupid, version, origin);
+
+            components.add(component);
         }
 
         return components;

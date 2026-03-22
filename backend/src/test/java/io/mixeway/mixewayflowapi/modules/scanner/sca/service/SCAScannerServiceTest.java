@@ -46,6 +46,15 @@ public class SCAScannerServiceTest {
     void shouldCreateBomComponentsFromBom(List<ComponentTestData> testData, int expectedCount) {
         CodeRepo codeRepo = mock(CodeRepo.class);
         List<Component> components = new ArrayList<>();
+
+        when(codeRepo.getCodeRepoComponents()).thenReturn(new ArrayList<>());
+
+        doAnswer(invocation -> {
+            Component comp = invocation.getArgument(0);
+            components.add(comp);
+            return null;
+        }).when(codeRepo).addComponent(any(Component.class), anyBoolean());
+
         when(codeRepo.getComponents()).thenReturn(components);
 
         Bom bom = new Bom();

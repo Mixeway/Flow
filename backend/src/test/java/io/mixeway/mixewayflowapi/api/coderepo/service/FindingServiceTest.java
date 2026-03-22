@@ -15,9 +15,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.security.Principal;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -51,7 +51,7 @@ class FindingServiceTest {
         vulnerability.setVector("CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H");
         vulnerability.setBaseScore(new BigDecimal("9.8"));
 
-        List<Constraint> constraints = new ArrayList<>();
+        Set<Constraint> constraints = new HashSet<>();
         constraints.add(new Constraint("Constraint 1"));
         vulnerability.setConstraints(constraints);
 
