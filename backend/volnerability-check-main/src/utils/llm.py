@@ -1,9 +1,14 @@
 import logging
+import functools
+import concurrent.futures
+import contextvars
 from pydantic import BaseModel
 from typing import Type, TypeVar, Callable, Any
 from tenacity import RetryError
 from openai import APITimeoutError, BadRequestError
 from langfuse import observe, get_client
+
+from ..core.config import settings
 
 logger = logging.getLogger(__name__)
 T = TypeVar('T', bound=BaseModel)
@@ -57,7 +62,26 @@ def _enforce_strict_schema(schema: dict) -> dict:
 
     return schema
 
+class LLMTimeoutError(Exception):
+    pass
+
+def strict_timeout(seconds: float):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            ctx = contextvars.copy_context()
+            executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+            future = executor.submit(ctx.run, func, *args, **kwargs)
+            try:
+                return future.result(timeout=float(seconds))
+            except concurrent.futures.TimeoutError:
+                executor.shutdown(wait=False, cancel_futures=True)
+                raise LLMTimeoutError(f"LLM request violently terminated after {seconds} seconds.")
+        return wrapper
+    return decorator
+
 @observe(as_type="generation")
+@strict_timeout(seconds=settings.OPENAI_TIMEOUT_SECONDS)
 def ask_llm_for_structured_data(
         client,
         model_name: str,
@@ -86,7 +110,8 @@ def ask_llm_for_structured_data(
             }
         },
         "stream": True,
-        "stream_options": {"include_usage": True}
+        "stream_options": {"include_usage": True},
+        "max_tokens": settings.OPENAI_MAX_OUTPUT_TOKENS,
     }
 
     is_restricted_model = (

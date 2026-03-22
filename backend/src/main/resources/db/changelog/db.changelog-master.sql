@@ -1038,3 +1038,7 @@ ALTER TABLE vulnerable_configurations DROP COLUMN vulnerability_id;
 ALTER TABLE settings_exploitability ADD COLUMN langfuse_base_url VARCHAR(255);
 ALTER TABLE settings_exploitability ADD COLUMN langfuse_secret_key VARCHAR(255);
 ALTER TABLE settings_exploitability ADD COLUMN langfuse_public_key VARCHAR(255);
+
+--changeset bondluk:add_llm_timeout_settings
+ALTER TABLE settings_exploitability ADD COLUMN openai_max_output_tokens INTEGER DEFAULT 8192;
+ALTER TABLE settings_exploitability ADD COLUMN openai_first_token_timeout_seconds REAL DEFAULT 300.0;
