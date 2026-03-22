@@ -1,6 +1,5 @@
 package io.mixeway.mixewayflowapi.db.repository;
 
-import io.mixeway.mixewayflowapi.api.components.dto.ComponentProjectionDto;
 import io.mixeway.mixewayflowapi.api.components.dto.ComponentRawDataDto;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.Component;
@@ -14,13 +13,14 @@ import java.util.Optional;
 
 @Repository
 public interface ComponentRepository extends JpaRepository<Component, Long> {
-    Optional<Component> findByNameAndVersion(String name, String version);
+
     Optional<Component> findByNameAndVersionAndGroupid(String name, String version, String groupid);
 
     @Query("SELECT new io.mixeway.mixewayflowapi.api.components.dto.ComponentRawDataDto(c.id, c.name, c.version, c.groupid, v.name, cr.repourl) " +
             "FROM Component c " +
             "LEFT JOIN c.vulnerabilities v " +
-            "LEFT JOIN c.codeRepos cr " +
+            "LEFT JOIN c.codeRepoComponents crc " +
+            "LEFT JOIN crc.codeRepo cr " +
             "WHERE cr IN :accessibleRepos OR cr IS NULL")
     List<ComponentRawDataDto> findComponentData(@Param("accessibleRepos") List<CodeRepo> accessibleRepos);
 

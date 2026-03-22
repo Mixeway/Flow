@@ -10,4 +10,5 @@ public class SCABomComponent {
     private String group;
     private String name;
     private String version;
+    private boolean transitive;
 }

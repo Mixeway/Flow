@@ -57,7 +57,7 @@ public class UpdateCodeRepoService {
      */
     @Transactional
     public void updateComponents(List<Component> components, CodeRepo codeRepo) {
-        codeRepo.setComponents(components);
+        codeRepo.setComponents(components, false);
         codeRepoRepository.save(codeRepo);
     }
 

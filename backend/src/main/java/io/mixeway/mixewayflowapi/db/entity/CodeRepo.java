@@ -95,13 +95,8 @@ public final class CodeRepo {
     @Column(name = "exploitability_scan", nullable = false)
     private ScanStatus exploitabilityScan;
 
-    @ManyToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    @JoinTable(
-            name = "coderepo_component",
-            joinColumns = @JoinColumn(name = "coderepo_id"),
-            inverseJoinColumns = @JoinColumn(name = "component_id")
-    )
-    private List<Component> components;
+    @OneToMany(mappedBy = "codeRepo", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CodeRepoComponent> codeRepoComponents = new ArrayList<>();
 
     @OneToMany(mappedBy = "codeRepo", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<AppDataType> appDataTypes;
@@ -127,7 +122,7 @@ public final class CodeRepo {
         this.team = null;
         this.defaultBranch = null;
         this.branches = null;
-        this.components = new ArrayList<>();
+        this.codeRepoComponents = new ArrayList<>();
         this.insertedDate = LocalDateTime.now();
         this.sastScan = ScanStatus.NOT_PERFORMED;
         this.scaScan = ScanStatus.NOT_PERFORMED;
@@ -150,7 +145,7 @@ public final class CodeRepo {
         this.accessToken = accessToken;
         this.team = team;
         this.insertedDate = LocalDateTime.now();
-        this.components = new ArrayList<>();
+        this.codeRepoComponents = new ArrayList<>();
         this.sastScan = ScanStatus.NOT_PERFORMED;
         this.scaScan = ScanStatus.NOT_PERFORMED;
         this.iacScan = ScanStatus.NOT_PERFORMED;
@@ -221,16 +216,24 @@ public final class CodeRepo {
         return url.getProtocol() + "://" + url.getHost() + port;
     }
 
-    // Method to set the components list
-    public void setComponents(List<Component> newComponents) {
-        this.components.clear(); // Clear the existing components
+    public List<Component> getComponents() {
+        return this.codeRepoComponents.stream()
+                .map(CodeRepoComponent::getComponent)
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+    }
+
+    public void setComponents(List<Component> newComponents, boolean transitive) {
+        this.codeRepoComponents.clear(); // Clear the existing components
 
         for (Component component : newComponents) {
-            if (!this.components.contains(component)) { // Check if already added
-                this.components.add(component);
-                component.addCodeRepo(this); // Maintain bidirectional relationship
-            }
+            CodeRepoComponent crc = new CodeRepoComponent(this, component, transitive);
+            this.codeRepoComponents.add(crc);
         }
+    }
+
+    public void addComponent(Component component, boolean transitive) {
+        CodeRepoComponent crc = new CodeRepoComponent(this, component, transitive);
+        this.codeRepoComponents.add(crc);
     }
 
     public boolean isScanRunning(){

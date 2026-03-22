@@ -1034,3 +1034,11 @@ DROP TABLE unique_configurations;
 --changeset bondtom:update_vulnerable_configurations
 ALTER TABLE vulnerable_configurations DROP CONSTRAINT vulnerable_configurations_vulnerability_id_fkey;
 ALTER TABLE vulnerable_configurations DROP COLUMN vulnerability_id;
+
+--changeset bondtom:coderepo_component_extension_of_relation
+ALTER TABLE coderepo_component DROP CONSTRAINT coderepo_component_pkey;
+ALTER TABLE coderepo_component ADD COLUMN id BIGSERIAL;
+ALTER TABLE coderepo_component ADD PRIMARY KEY (id);
+ALTER TABLE coderepo_component ADD COLUMN is_transitive BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE coderepo_component ADD COLUMN inserted_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE coderepo_component ADD CONSTRAINT unique_coderepo_comp UNIQUE (coderepo_id, component_id);

@@ -29,13 +29,21 @@ public class SCAScannerService {
 
         List<SCABomComponent> bomComponents = bom.getComponents()
                 .stream()
-                .map(m -> new SCABomComponent(m.getGroup(), m.getName(), m.getVersion()))
-                        .toList();
+                .map(m -> {
+                    // Check if scope is not "required" (direct dependency)
+                    // In CycloneDX, scope can be: required, optional, excluded
+                    // If scope is null or "required", it's typically a direct dependency
+                    boolean isTransitive = m.getScope() != null &&
+                                          !m.getScope().equals(org.cyclonedx.model.Component.Scope.REQUIRED);
+                    return new SCABomComponent(m.getGroup(), m.getName(), m.getVersion(), isTransitive);
+                })
+                .toList();
 
-        repository.getComponents().clear();
-        List<Component> components = repository.getComponents();
-        bomComponents.forEach(bomComponent -> updateComponent(bomComponent, components));
+        repository.getCodeRepoComponents().clear();
+        bomComponents.forEach(bomComponent -> updateComponent(bomComponent, repository));
         scaScannerGateway.updateRepository(repository);
+
+        List<Component> components = repository.getComponents();
 
         Set<String> criteria = buildCriteria(bomComponents);
         List<VulnerableConfigurations> vulnerableConfigurations = scaScannerGateway.getVulnerableConfigurationsByCriterias(criteria);
@@ -81,8 +89,8 @@ public class SCAScannerService {
                 .collect(Collectors.toSet());
     }
 
-    private void updateComponent(SCABomComponent bomComponent, List<Component> components) {
+    private void updateComponent(SCABomComponent bomComponent, CodeRepo repository) {
         Component component = scaScannerGateway.getOrCreateComponent(bomComponent.getGroup(), bomComponent.getName(), bomComponent.getVersion());
-        components.add(component);
+        repository.addComponent(component, bomComponent.isTransitive());
     }
 }
