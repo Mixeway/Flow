@@ -12,6 +12,8 @@ ALLOWED_SETTINGS = {
     "openai_model",
     "openai_embedding_model",
     "openai_org_id",
+    "openai_max_output_tokens",
+    "openai_first_token_timeout_seconds",
     "openai_timeout_seconds",
     "openai_max_retries",
     "cf_access_client_id",

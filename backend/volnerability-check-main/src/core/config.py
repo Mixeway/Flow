@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     # OpenAI Timeout & Retry Configuration
     # =============================================================================
     # Timeout configuration
+    OPENAI_MAX_OUTPUT_TOKENS: int = load_setting("openai_max_output_tokens")
+    OPENAI_FIRST_TOKEN_TIMEOUT_SECONDS: float = load_setting("openai_first_token_timeout_seconds")
     OPENAI_TIMEOUT_SECONDS: float = load_setting("openai_timeout_seconds")
     OPENAI_MAX_RETRIES: int = load_setting("openai_max_retries")
     
