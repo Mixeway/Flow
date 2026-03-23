@@ -2,7 +2,9 @@ package io.mixeway.mixewayflowapi.api.coderepo.controller;
 
 import io.mixeway.mixewayflowapi.api.coderepo.dto.*;
 import io.mixeway.mixewayflowapi.api.coderepo.service.CodeRepoApiService;
+import io.mixeway.mixewayflowapi.api.gitlabcicd.dto.GitLabCICDRequestDto;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
+import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.domain.coderepo.CreateCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.coderepo.DeleteCodeRepoService;
 import io.mixeway.mixewayflowapi.exceptions.CodeRepoNotFoundException;
@@ -191,6 +193,33 @@ public class CodeRepoController {
         } catch (Exception e) {
             log.error("[CodeRepo] Delete failed for id {} by {}: {}", id, principal.getName(), e.getMessage());
             return new ResponseEntity<>(new StatusDTO("Internal server error"), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('USER')")
+    @PostMapping(value = "/api/v1/coderepo/run-orch")
+    public ResponseEntity<String> runRepoScan(@RequestHeader("X-API-KEY") String apiKey, @Valid @RequestBody RunOrchRequestDto requestDto) {
+        try {
+            String repoUrl = requestDto.getRepoUrl();
+            Long teamId = requestDto.getTeamId();
+            String branch = requestDto.getBranch();
+            String domain = requestDto.getDomain();
+
+            if (!codeRepoApiService.isRepoInTeamById(repoUrl, teamId)) {
+                String errorMessage = String.format("The repository with URL '%s' does not belong to the team with ID '%d'.", repoUrl, teamId);
+                return new ResponseEntity<>(errorMessage, HttpStatus.FORBIDDEN);
+            }
+
+            if (!codeRepoApiService.isValidApiKey(apiKey, repoUrl)) {
+                String errorMessage = String.format("The provided API key is invalid for the repository with URL '%s'.", repoUrl);
+                return new ResponseEntity<>(errorMessage, HttpStatus.UNAUTHORIZED);
+            }
+
+            String scanDetails = codeRepoApiService.runScan(repoUrl, branch, domain);
+
+            return new ResponseEntity<>(scanDetails, HttpStatus.OK);
+        } catch (Exception e){
+            return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }
     }
 }
