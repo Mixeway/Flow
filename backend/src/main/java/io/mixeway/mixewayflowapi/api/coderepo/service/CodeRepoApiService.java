@@ -1,22 +1,28 @@
 package io.mixeway.mixewayflowapi.api.coderepo.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.GetCodeReposResponseDto;
-import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
-import io.mixeway.mixewayflowapi.db.entity.Team;
+import io.mixeway.mixewayflowapi.api.coderepo.dto.RunOrchScanDetailsDto;
+import io.mixeway.mixewayflowapi.api.coderepo.dto.RunOrchScanReportDto;
+import io.mixeway.mixewayflowapi.api.gitlabcicd.dto.GitLabCICDDetailsResponseDto;
+import io.mixeway.mixewayflowapi.db.entity.*;
+import io.mixeway.mixewayflowapi.db.repository.UserRepository;
 import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
+import io.mixeway.mixewayflowapi.domain.finding.FindFindingService;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import io.mixeway.mixewayflowapi.exceptions.CodeRepoNotFoundException;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
-import io.mixeway.mixewayflowapi.exceptions.UnauthorizedException;
 import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import io.mixeway.mixewayflowapi.utils.PermissionFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.aspectj.apache.bcel.classfile.Code;
 import org.springframework.stereotype.Service;
 
 import java.security.Principal;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,6 +34,8 @@ public class CodeRepoApiService {
     private final PermissionFactory permissionFactory;
     private final FindTeamService findTeamService;
     private final UpdateCodeRepoService updateCodeRepoService;
+    private final UserRepository userRepository;
+    private final FindFindingService findFindingService;
 
     public List<GetCodeReposResponseDto> getRepos(Principal principal) {
         return findCodeRepoService.getCodeReposResponseDtos(principal);
@@ -100,5 +108,90 @@ public class CodeRepoApiService {
 
         permissionFactory.canUserManageTeam(repo.getTeam(), principal);
         updateCodeRepoService.renameCodeRepo(repo, newName);
+    }
+
+    public Boolean isRepoInTeamById(String repoUrl, Long teamId) {
+        try {
+            Optional<CodeRepo> codeRepo = findCodeRepoService.findCodeRepoByUrl(repoUrl);
+
+            return codeRepo.isPresent() && teamId.equals(codeRepo.get().getTeam().getId());
+        } catch (Exception e) {
+            log.error("[CodeRepo] Error checking if repo '{}' belongs to team '{}': {}", repoUrl, teamId, e.getMessage());
+            return false;
+        }
+    }
+
+    public Boolean isValidApiKey(String apiKey, String repoUrl) {
+        Optional<UserInfo> userOptional = userRepository.findByApiKey(apiKey);
+        Optional<Team> codeRepoTeam = findTeamService.findByRepoUrl(repoUrl);
+
+        if (userOptional.isEmpty() || codeRepoTeam.isEmpty()) {
+            return false;
+        }
+
+        List<UserInfo> teamUsers = userRepository.getUsersByTeamId(codeRepoTeam.get().getId());
+
+        if (teamUsers.contains(userOptional.get())) {
+            log.info("[Team Service] User's {} API key validation succeeded", userOptional.get().getUsername());
+            return true;
+        } else {
+            log.info("[Team Service] User's {} API key validation failed", userOptional.get().getUsername());
+            return false;
+        }
+    }
+
+    public String runScan(String repoUrl, String branch, String domain) {
+
+        CodeRepo codeRepo = findCodeRepoService.findCodeRepoByUrl(repoUrl).orElse(null);
+
+        CodeRepoBranch repoBranch;
+
+        if (branch == null) {
+            repoBranch = codeRepo.getDefaultBranch();
+        } else {
+            repoBranch = codeRepo.getBranches().stream().filter(b -> b.getName().equals(branch)).findFirst().orElse(null);
+        }
+
+        scanManagerService.scanRepositorySync(codeRepo, repoBranch, null, null);
+
+        RunOrchScanReportDto scanReport = new RunOrchScanReportDto();
+
+        scanReport.setRepoUrl(repoUrl);
+        scanReport.setBranch(branch);
+        if (domain != null) {
+            scanReport.setLinkToScanDetails("https://" + domain + "/#/show-repo/" + codeRepo.getId());
+        }
+
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.enable(SerializationFeature.INDENT_OUTPUT);
+
+        Collection<Finding.Status> statuses = Arrays.asList(Finding.Status.NEW, Finding.Status.EXISTING);
+
+        List<Finding> findings = findFindingService.findByCodeRepoAndCodeRepoBranchAndStatusIn(codeRepo, repoBranch, statuses);
+
+        List<RunOrchScanDetailsDto> findingsDetails = new ArrayList<>();
+        for (Finding finding : findings) {
+            RunOrchScanDetailsDto scanDetails = new RunOrchScanDetailsDto();
+
+            scanDetails.setName(finding.getVulnerability().getName());
+            scanDetails.setDescription(finding.getVulnerability().getDescription());
+            scanDetails.setExplanation(finding.getExplanation());
+            scanDetails.setRecommendation(finding.getVulnerability().getRecommendation());
+            scanDetails.setLocation(finding.getLocation());
+            scanDetails.setSource(String.valueOf(finding.getSource()));
+            scanDetails.setStatus(String.valueOf(finding.getStatus()));
+            scanDetails.setSeverity(String.valueOf(finding.getSeverity()));
+
+            findingsDetails.add(scanDetails);
+        }
+
+        scanReport.setFindings(findingsDetails);
+
+        try {
+            return mapper.writeValueAsString(scanReport);
+        } catch (Exception e) {
+            log.error("Error while serializing scan report: {}", e.getMessage());
+        }
+        return null;
     }
 }

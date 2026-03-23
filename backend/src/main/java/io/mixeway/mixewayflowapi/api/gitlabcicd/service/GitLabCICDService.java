@@ -61,7 +61,7 @@ public class GitLabCICDService {
     }
 
     public void runCodeRepoScan(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
-        scanManagerService.scanRepositoryViaGitLabCICD(codeRepo, codeRepoBranch, null, null);
+        scanManagerService.scanRepositorySync(codeRepo, codeRepoBranch, null, null);
     }
 
     public String createScanSummary(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String domain) {
