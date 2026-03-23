@@ -243,7 +243,7 @@ public class ScanManagerService {
         });
     }
 
-    public void scanRepositoryViaGitLabCICD(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId, Long iid) {
+    public void scanRepositorySync(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId, Long iid) {
         // Get or create a lock object for the repository
         Object repoLock = repoLocks.computeIfAbsent(codeRepo.getId(), k -> new Object());
 
