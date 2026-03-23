@@ -3,6 +3,7 @@ package io.mixeway.mixewayflowapi.modules.scanner.sca.service;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.Component;
 import io.mixeway.mixewayflowapi.modules.scanner.sca.api.gateway.SCAScannerGateway;
+import jakarta.persistence.EntityManager;
 import org.cyclonedx.model.Bom;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,12 +27,14 @@ public class SCAScannerServiceTest {
 
     private SCAScannerService scaScannerService;
     private SCAScannerGateway scaScannerGateway;
+    private EntityManager entityManager;
 
     @BeforeEach
     void setup() {
         scaScannerGateway = mock(SCAScannerGateway.class);
+        entityManager = mock(EntityManager.class);
 
-        scaScannerService = new SCAScannerService(scaScannerGateway);
+        scaScannerService = new SCAScannerService(scaScannerGateway, entityManager);
     }
 
     @Test
