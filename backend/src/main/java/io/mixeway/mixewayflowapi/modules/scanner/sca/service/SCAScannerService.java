@@ -4,10 +4,12 @@ import io.mixeway.mixewayflowapi.db.entity.*;
 import io.mixeway.mixewayflowapi.modules.scanner.sca.api.gateway.SCAScannerGateway;
 import io.mixeway.mixewayflowapi.modules.scanner.sca.model.SCABomComponent;
 import io.mixeway.mixewayflowapi.modules.scanner.sca.util.SCAScannerComparator;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.cyclonedx.model.Bom;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,7 +22,9 @@ import java.util.stream.Collectors;
 public class SCAScannerService {
 
     private final SCAScannerGateway scaScannerGateway;
+    private final EntityManager entityManager;
 
+    @Transactional
     public void scanRepository(CodeRepo repository, CodeRepoBranch codeRepoBranch, Bom bom) {
         log.info("SCA Scan started");
 
@@ -37,9 +41,11 @@ public class SCAScannerService {
                                           !m.getScope().equals(org.cyclonedx.model.Component.Scope.REQUIRED);
                     return new SCABomComponent(m.getGroup(), m.getName(), m.getVersion(), isTransitive);
                 })
+                .distinct()
                 .toList();
 
         repository.getCodeRepoComponents().clear();
+        entityManager.flush();
         bomComponents.forEach(bomComponent -> updateComponent(bomComponent, repository));
         scaScannerGateway.updateRepository(repository);
 

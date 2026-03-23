@@ -3,6 +3,7 @@ package io.mixeway.mixewayflowapi.api.coderepo.controller;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.*;
 import io.mixeway.mixewayflowapi.api.coderepo.service.CodeRepoApiService;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
+import io.mixeway.mixewayflowapi.db.mapper.CodeRepoMapper;
 import io.mixeway.mixewayflowapi.domain.coderepo.CreateCodeRepoService;
 import io.mixeway.mixewayflowapi.exceptions.CodeRepoNotFoundException;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
@@ -27,6 +28,7 @@ import java.util.List;
 public class CodeRepoController {
     private final CreateCodeRepoService createCodeRepoService;
     private final CodeRepoApiService codeRepoApiService;
+    private final CodeRepoMapper codeRepoMapper;
 
     @PreAuthorize("hasAuthority('USER')")
     @PostMapping(value= "/api/v1/coderepo/create/gitlab")
@@ -78,9 +80,9 @@ public class CodeRepoController {
 
     @PreAuthorize("hasAuthority('USER')")
     @GetMapping(value= "/api/v1/coderepo/{id}")
-    public ResponseEntity<CodeRepo> getCodeRepo(@PathVariable(name = "id")Long id, Principal principal){
+    public ResponseEntity<CodeRepoDto> getCodeRepo(@PathVariable(name = "id")Long id, Principal principal){
         try {
-            return new ResponseEntity<>(codeRepoApiService.getRepo(id, principal), HttpStatus.OK);
+            return new ResponseEntity<>(codeRepoMapper.toDto(codeRepoApiService.getRepo(id, principal)), HttpStatus.OK);
         } catch (Exception e){
             return new ResponseEntity<>( HttpStatus.BAD_REQUEST);
         }

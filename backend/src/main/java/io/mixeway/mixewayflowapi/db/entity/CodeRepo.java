@@ -95,8 +95,8 @@ public final class CodeRepo {
     @Column(name = "exploitability_scan", nullable = false)
     private ScanStatus exploitabilityScan;
 
-    @OneToMany(mappedBy = "codeRepo", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<CodeRepoComponent> codeRepoComponents = new ArrayList<>();
+    @OneToMany(mappedBy = "codeRepo", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CodeRepoComponent> codeRepoComponents;
 
     @OneToMany(mappedBy = "codeRepo", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<AppDataType> appDataTypes;

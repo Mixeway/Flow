@@ -8,7 +8,6 @@ import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import io.mixeway.mixewayflowapi.exceptions.CodeRepoNotFoundException;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
-import io.mixeway.mixewayflowapi.exceptions.UnauthorizedException;
 import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import io.mixeway.mixewayflowapi.utils.PermissionFactory;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +45,7 @@ public class CodeRepoApiService {
 
         List<CodeRepo> repos = findCodeRepoService.findByTeam(team);
         return repos.stream()
-                .map(repo -> new GetCodeReposResponseDto(repo))
+                .map(GetCodeReposResponseDto::new)
                 .collect(Collectors.toList());
     }
 
