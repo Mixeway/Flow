@@ -205,7 +205,7 @@ public class CodeRepoController {
             String branch = requestDto.getBranch();
             String domain = requestDto.getDomain();
 
-            if (!codeRepoApiService.isRepoInTeamById(repoUrl, teamId)) {
+            if (!codeRepoApiService.isRepoInTeamByRemoteId(repoUrl, teamId)) {
                 String errorMessage = String.format("The repository with URL '%s' does not belong to the team with ID '%d'.", repoUrl, teamId);
                 return new ResponseEntity<>(errorMessage, HttpStatus.FORBIDDEN);
             }
