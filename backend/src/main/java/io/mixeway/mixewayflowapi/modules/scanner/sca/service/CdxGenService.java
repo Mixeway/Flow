@@ -112,6 +112,7 @@ public class CdxGenService {
             );
         } else {
             pb = new ProcessBuilder("bash", "-c", command);
+            pb.environment().put("CDXGEN_IN_CONTAINER", "true");
         }
 
         pb.directory(new File(repoDir));
