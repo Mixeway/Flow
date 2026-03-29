@@ -50,7 +50,7 @@ public class CdxGenService {
         // Step 1: Verify if 'pipreqs' command is available
         boolean isPipreqsAvailable = false;
         try {
-            ProcessBuilder pbCheckPipreqs = new ProcessBuilder("sh", "-c", "command -v pipreqs");
+            ProcessBuilder pbCheckPipreqs = new ProcessBuilder("bash", "-c", "command -v pipreqs");
             pbCheckPipreqs.redirectErrorStream(true);
             Process pCheckPipreqs = pbCheckPipreqs.start();
             int exitCode = pCheckPipreqs.waitFor();
@@ -111,7 +111,7 @@ public class CdxGenService {
                     "cmd.exe", "/c", "cdxgen", "-o", "sbom.json"
             );
         } else {
-            pb = new ProcessBuilder("sh", "-c", command);
+            pb = new ProcessBuilder("bash", "-c", command);
         }
 
         pb.directory(new File(repoDir));
