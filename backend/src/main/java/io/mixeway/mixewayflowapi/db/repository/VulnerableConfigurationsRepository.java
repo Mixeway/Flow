@@ -19,6 +19,6 @@ public interface VulnerableConfigurationsRepository extends JpaRepository<Vulner
                                                                                                                                                   String versionEndIncluding,
                                                                                                                                                   String versionEndExcluding);
 
-    @Query("SELECT vc FROM VulnerableConfigurations vc WHERE vc.criteria IN :criteriaList")
+    @Query("SELECT vc FROM VulnerableConfigurations vc WHERE TRIM(vc.criteria) IN :criteriaList")
     List<VulnerableConfigurations> findByCriteriaIn(@Param("criteriaList") Set<String> criteriaList);
 }

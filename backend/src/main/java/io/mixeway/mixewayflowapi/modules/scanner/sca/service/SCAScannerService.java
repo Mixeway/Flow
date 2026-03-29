@@ -4,6 +4,7 @@ import io.mixeway.mixewayflowapi.db.entity.*;
 import io.mixeway.mixewayflowapi.modules.scanner.sca.api.gateway.SCAScannerGateway;
 import io.mixeway.mixewayflowapi.modules.scanner.sca.model.SCABomComponent;
 import io.mixeway.mixewayflowapi.modules.scanner.sca.util.SCAScannerComparator;
+import io.mixeway.mixewayflowapi.modules.scanner.sca.util.SCAScannerCriteriaBuilder;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,8 +26,11 @@ public class SCAScannerService {
     private final EntityManager entityManager;
 
     @Transactional
-    public void scanRepository(CodeRepo repository, CodeRepoBranch codeRepoBranch, Bom bom) {
+    public void scanRepository(Long codeRepoId, CodeRepoBranch codeRepoBranch, Bom bom) {
         log.info("SCA Scan started");
+
+        CodeRepo repository = scaScannerGateway.getCodeRepository(codeRepoId)
+                .orElseThrow(() -> new IllegalArgumentException("CodeRepo not found"));
 
         if (repository == null)
             throw new IllegalArgumentException("CodeRepo cannot be null");
@@ -91,7 +95,8 @@ public class SCAScannerService {
 
     private Set<String> buildCriteria(List<SCABomComponent> bomComponents) {
         return bomComponents.stream()
-                .map(bomComponent -> bomComponent.getGroup() + ":" + bomComponent.getName())
+                .map(bomComponent -> SCAScannerCriteriaBuilder.buildCriteria(bomComponent.getGroup(), bomComponent.getName()))
+                .filter(criteria -> !criteria.isEmpty())
                 .collect(Collectors.toSet());
     }
 

@@ -10,7 +10,7 @@ public class SCAScannerComparator {
     }
 
     public static boolean matchesComponentCriteria(VulnerableConfigurations config, Component component) {
-        String componentCriteria = component.getGroupid() + ":" + component.getName();
+        String componentCriteria = SCAScannerCriteriaBuilder.buildCriteria(component.getGroupid(), component.getName());
         return config.getCriteria() != null && config.getCriteria().equals(componentCriteria);
     }
 

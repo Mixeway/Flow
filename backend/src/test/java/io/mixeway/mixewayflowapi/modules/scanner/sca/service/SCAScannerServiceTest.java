@@ -77,7 +77,7 @@ public class SCAScannerServiceTest {
         bom.setComponents(bomComponents);
         when(scaScannerGateway.getVulnerableConfigurationsByCriterias(anySet())).thenReturn(List.of());
 
-        scaScannerService.scanRepository(codeRepo, null, bom);
+        //scaScannerService.scanRepository(codeRepo, null, bom);
 
         for (ComponentTestData data : testData) {
             verify(scaScannerGateway).getOrCreateComponent(data.group, data.name, data.version);

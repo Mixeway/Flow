@@ -1,6 +1,7 @@
 package io.mixeway.mixewayflowapi.modules.scanner.sca.api.gateway;
 
 import io.mixeway.mixewayflowapi.db.entity.*;
+import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.component.GetOrCreateComponentService;
 import io.mixeway.mixewayflowapi.domain.finding.CreateFindingService;
@@ -10,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -21,6 +23,7 @@ public class SCAScannerGateway {
     private final UpdateCodeRepoService updateCodeRepoService;
     private final VulnerableConfigurationsService vulnerableConfigurationsService;
     private final CreateFindingService createFindingService;
+    private final FindCodeRepoService findCodeRepoService;
 
     public Component getOrCreateComponent(String group, String name, String version) {
         return getOrCreateComponentService.getOrCreate(name, group, version, "");
@@ -36,5 +39,9 @@ public class SCAScannerGateway {
 
     public void updateFindings(List<Finding> newFindings, CodeRepoBranch repoWhereFindingWasFound, CodeRepo repoInWhichFindingWasFound, Finding.Source source, CloudSubscription cloudSubscription) {
         createFindingService.saveFindings(newFindings, repoWhereFindingWasFound, repoInWhichFindingWasFound, source, cloudSubscription);
+    }
+
+    public Optional<CodeRepo> getCodeRepository(Long codeRepoId) {
+        return findCodeRepoService.findById(codeRepoId);
     }
 }

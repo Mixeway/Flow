@@ -155,16 +155,21 @@ public class ScanManagerService {
                     commit = fetchRepository(commitId, repoUrl, accessToken, codeRepoBranch, repoDir);
 
                     // Run scans in parallel
-                    Future<Void> secretScanFuture = runSecretScan(repoDir, codeRepo, codeRepoBranch);
+                    /*Future<Void> secretScanFuture = runSecretScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> sastScanFuture = runSASTScan(repoDir, codeRepo, codeRepoBranch);
-                    Future<Void> iacScanFuture = runIACScan(repoDir, codeRepo, codeRepoBranch);
+                    Future<Void> iacScanFuture = runIACScan(repoDir, codeRepo, codeRepoBranch);*/
+
+                    Future<Void> secretScanFuture = null;
+                    Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo.getId(), codeRepoBranch);
+                    Future<Void> sastScanFuture = null;
+                    Future<Void> iacScanFuture = null;
                     Future<Void> gitlabScanFuture = null;
                     if ("GITLAB".equals(repoType)) {
                         gitlabScanFuture = runGitLabScan(codeRepo);
                     }
-                    Future<Void> zapScanFuture = runZAPScan(repoDir, codeRepo, codeRepoBranch);
-
+                    //Future<Void> zapScanFuture = runZAPScan(repoDir, codeRepo, codeRepoBranch);
+                    Future<Void> zapScanFuture = null;
                     List<Future<Void>> scanFutures = new ArrayList<>(Arrays.asList(
                             secretScanFuture, scaScanFuture, sastScanFuture, iacScanFuture, zapScanFuture
                     ));
@@ -185,7 +190,8 @@ public class ScanManagerService {
                     // Wait for all scans to complete
                     for (Future<Void> future : scanFutures) {
                         try {
-                            future.get(); // Wait for scan to complete
+                            if (future != null)
+                                future.get(); // Wait for scan to complete
                         } catch (CancellationException ce) {
                             log.warn("[ScanManagerService] Scan task was cancelled.");
                         } catch (InterruptedException ie) {
@@ -285,7 +291,7 @@ public class ScanManagerService {
                     // Run scans in parallel
                     Future<Void> secretScanFuture = runSecretScan(repoDir, codeRepo, codeRepoBranch);
 //                    Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo, codeRepoBranch, scaScanPerformed); Dependency Track version
-                    Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo, codeRepoBranch);
+                    Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo.getId(), codeRepoBranch);
                     Future<Void> sastScanFuture = runSASTScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> iacScanFuture = runIACScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> gitlabScanFuture = null;
@@ -412,20 +418,20 @@ public class ScanManagerService {
 //        return scanExecutorService.submit(task);
 //    }
 
-    private Future<Void> runSCAScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
+    private Future<Void> runSCAScan(String repoDir, Long codeRepoId, CodeRepoBranch codeRepoBranch) {
         Callable<Void> task = () -> {
             int currentScaScans = scaScansRunning.incrementAndGet();
             log.info("[ScanManagerService] Starting new SCA scan, parallel SCA scans running {}", currentScaScans);
 
             try {
                 log.info("[ScanManagerService] Starting SCA scan... [for: {}]", repoDir);
-                scaScannerController.executeSCAScan(repoDir, codeRepo, codeRepoBranch);
+                scaScannerController.executeSCAScan(repoDir, codeRepoId, codeRepoBranch);
             } catch (Exception e) {
                 if (Thread.currentThread().isInterrupted()) {
-                    log.warn("[ScanManagerService] SCA scan interrupted for {}.", codeRepo.getRepourl());
+                    log.warn("[ScanManagerService] SCA scan interrupted for repoId: {}.", codeRepoId);
                     Thread.currentThread().interrupt();
                 } else {
-                    log.error("[ScanManagerService] An error occurred during SCA scan for {} - {}.", codeRepo.getRepourl(), e.getLocalizedMessage());
+                    log.error("[ScanManagerService] An error occurred during SCA scan for repository: {} - {}.", codeRepoId, e.getLocalizedMessage());
                 }
             } finally {
                 int remainingScaScans = scaScansRunning.decrementAndGet();

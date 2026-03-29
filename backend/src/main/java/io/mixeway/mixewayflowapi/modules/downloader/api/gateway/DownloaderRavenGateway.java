@@ -93,7 +93,7 @@ public class DownloaderRavenGateway {
             return null;
         }
 
-        String criteria = entry.substring(0, operatorIndex);
+        String criteria = entry.substring(0, operatorIndex).trim();
         String versionPart = entry.substring(operatorIndex);
         String versionStartIncluding = null;
         String versionStartExcluding = null;

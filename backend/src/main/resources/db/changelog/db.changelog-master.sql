@@ -1052,3 +1052,6 @@ ALTER TABLE coderepo_component ADD PRIMARY KEY (id);
 ALTER TABLE coderepo_component ADD COLUMN is_transitive BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE coderepo_component ADD COLUMN inserted_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE coderepo_component ADD CONSTRAINT unique_coderepo_comp UNIQUE (coderepo_id, component_id);
+
+--changeset bondtom:vulnerable_configurations_trim_criteria
+UPDATE vulnerable_configurations SET criteria = TRIM(criteria) WHERE criteria != TRIM(criteria);
