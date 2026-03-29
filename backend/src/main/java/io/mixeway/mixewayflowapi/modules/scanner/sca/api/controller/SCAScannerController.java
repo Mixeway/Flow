@@ -28,7 +28,7 @@ public class SCAScannerController {
         cdxGenService.generateBom(repoDir);
 
         JsonParser parser = new JsonParser();
-        Bom bom = parser.parse(new File(repoDir + "\\sbom.json"));
+        Bom bom = parser.parse(new File(repoDir + File.separator + "sbom.json"));
 
         scaScannerService.scanRepository(codeRepoId, codeRepoBranch, bom);
     }
