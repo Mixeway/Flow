@@ -139,8 +139,7 @@ public class ScanManagerService {
 
                 String repoDir = "/tmp/" + codeRepo.getName();
                 String commit = "";
-//                AtomicBoolean scaScanPerformed = new AtomicBoolean(false);
-                Future<?> timeoutFuture = null;
+                Future<?> timeoutFuture;
 
                 try {
                     log.info("[ScanManagerService] Starting scan for {} with branch {}", codeRepo.getRepourl(), codeRepoBranch.getName());
@@ -155,28 +154,22 @@ public class ScanManagerService {
                     commit = fetchRepository(commitId, repoUrl, accessToken, codeRepoBranch, repoDir);
 
                     // Run scans in parallel
-                    /*Future<Void> secretScanFuture = runSecretScan(repoDir, codeRepo, codeRepoBranch);
-                    Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo, codeRepoBranch);
-                    Future<Void> sastScanFuture = runSASTScan(repoDir, codeRepo, codeRepoBranch);
-                    Future<Void> iacScanFuture = runIACScan(repoDir, codeRepo, codeRepoBranch);*/
-
-                    Future<Void> secretScanFuture = null;
+                    Future<Void> secretScanFuture = runSecretScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo.getId(), codeRepoBranch);
-                    Future<Void> sastScanFuture = null;
-                    Future<Void> iacScanFuture = null;
+                    Future<Void> sastScanFuture = runSASTScan(repoDir, codeRepo, codeRepoBranch);
+                    Future<Void> iacScanFuture = runIACScan(repoDir, codeRepo, codeRepoBranch);
+
                     Future<Void> gitlabScanFuture = null;
                     if ("GITLAB".equals(repoType)) {
                         gitlabScanFuture = runGitLabScan(codeRepo);
                     }
-                    //Future<Void> zapScanFuture = runZAPScan(repoDir, codeRepo, codeRepoBranch);
-                    Future<Void> zapScanFuture = null;
+                    Future<Void> zapScanFuture = runZAPScan(repoDir, codeRepo, codeRepoBranch);
                     List<Future<Void>> scanFutures = new ArrayList<>(Arrays.asList(
                             secretScanFuture, scaScanFuture, sastScanFuture, iacScanFuture, zapScanFuture
                     ));
                     if (gitlabScanFuture != null) {
                         scanFutures.add(gitlabScanFuture);
                     }
-
 
                     // Schedule a timeout task to cancel scans
                     timeoutFuture = this.scheduler.schedule(() -> {
@@ -212,7 +205,6 @@ public class ScanManagerService {
                 } finally {
                     // Update status
                     try {
-//                        updateCodeRepoService.updateCodeRepoStatus(codeRepo, codeRepoBranch, scaScanPerformed.get(), commit);
                         updateCodeRepoService.updateCodeRepoStatus(codeRepo, codeRepoBranch, commit);
                     } catch (Exception updateEx) {
                         log.error("[ScanManagerService] Failed to update CodeRepo status for {}: {}", codeRepo.getName(), updateEx.getMessage(), updateEx);
