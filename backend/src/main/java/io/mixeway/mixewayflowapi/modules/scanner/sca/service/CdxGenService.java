@@ -104,11 +104,16 @@ public class CdxGenService {
             command = "cdxgen -o sbom.json";
         }
 
-        // Use 'sh -c' to execute the command in a shell
-        //ProcessBuilder pb = new ProcessBuilder("sh", "-c", command);
-        ProcessBuilder pb = new ProcessBuilder(
-                "cmd.exe", "/c", "cdxgen", "-o", "sbom.json"
-        );
+        String osName = System.getProperty("os.name").toLowerCase();
+        ProcessBuilder pb;
+        if (osName.contains("win")) {
+            pb = new ProcessBuilder(
+                    "cmd.exe", "/c", "cdxgen", "-o", "sbom.json"
+            );
+        } else {
+            pb = new ProcessBuilder("sh", "-c", command);
+        }
+
         pb.directory(new File(repoDir));
         pb.redirectOutput(ProcessBuilder.Redirect.PIPE);
         pb.redirectError(ProcessBuilder.Redirect.PIPE);
