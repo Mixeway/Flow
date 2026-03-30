@@ -1041,6 +1041,22 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         });
     }
 
+    runScanForBranch(branchName: string) {
+        this.repoService.runScanForBranch(+this.repoId, branchName).subscribe({
+            next: () => {
+                this.toastStatus = 'success';
+                this.toastMessage = `Scan requested for branch: ${branchName}`;
+                this.toggleToast();
+                this.loadRepoInfo();
+            },
+            error: () => {
+                this.toastStatus = 'danger';
+                this.toastMessage = 'Failed to start scan for selected branch';
+                this.toggleToast();
+            }
+        });
+    }
+
     openDeleteRepoModal(): void {
         this.deleteConfirmationText = '';
         this.deleteRepoConfirmationVisible = true;

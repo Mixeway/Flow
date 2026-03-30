@@ -84,7 +84,15 @@ export class RepositoryInfoComponent implements OnInit {
     renameError: string | null = null;
     renameForm = { name: '' };
 
+    scanDropdownOpen = false;
+    branchScanModalVisible = false;
+    loadingBranches = false;
+    availableBranches: string[] = [];
+    selectedBranch = '';
+    branchLoadError: string | null = null;
+
   @Output() runScanEvent = new EventEmitter<void>();
+  @Output() runScanBranchEvent = new EventEmitter<string>();
   @Output() openChangeTeamModalEvent = new EventEmitter<void>();
   @Output() deleteRepoEvent = new EventEmitter<void>();
 
@@ -110,7 +118,39 @@ export class RepositoryInfoComponent implements OnInit {
   }
 
   runScan(): void {
+    this.scanDropdownOpen = false;
     this.runScanEvent.emit();
+  }
+
+  toggleScanDropdown(): void {
+    this.scanDropdownOpen = !this.scanDropdownOpen;
+  }
+
+  openBranchScanModal(): void {
+    this.scanDropdownOpen = false;
+    this.branchScanModalVisible = true;
+    this.selectedBranch = '';
+    this.branchLoadError = null;
+    this.availableBranches = [];
+    this.loadingBranches = true;
+    const id = this.repoData?.id;
+    if (!id) return;
+    this.codeService.getRemoteBranches(id).subscribe({
+      next: (branches) => {
+        this.availableBranches = branches;
+        this.loadingBranches = false;
+      },
+      error: () => {
+        this.branchLoadError = 'Failed to load branches.';
+        this.loadingBranches = false;
+      }
+    });
+  }
+
+  confirmBranchScan(): void {
+    if (!this.selectedBranch) return;
+    this.branchScanModalVisible = false;
+    this.runScanBranchEvent.emit(this.selectedBranch);
   }
 
     constructor(private codeService: RepoService) {}

@@ -45,6 +45,14 @@ export class RepoService {
         return this.http.get<any>(this.loginUrl + '/api/v1/coderepo/' + id + '/run',{ withCredentials: true });
     }
 
+    getRemoteBranches(id: number): Observable<string[]> {
+        return this.http.get<string[]>(this.loginUrl + '/api/v1/coderepo/' + id + '/git-branches', { withCredentials: true });
+    }
+
+    runScanForBranch(id: number, branchName: string): Observable<any> {
+        return this.http.post<any>(this.loginUrl + '/api/v1/coderepo/' + id + '/run/branch', { branchName }, { withCredentials: true });
+    }
+
     suppressMultipleFindings(number: number, selectedFindings: number[]) {
         return this.http.post<any>(this.loginUrl + '/api/v1/coderepo/' + number+ '/supress', selectedFindings,{ withCredentials: true });
 

@@ -10,8 +10,10 @@ import io.mixeway.mixewayflowapi.db.entity.*;
 import io.mixeway.mixewayflowapi.db.repository.UserRepository;
 import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
+import io.mixeway.mixewayflowapi.domain.coderepobranch.GetOrCreateCodeRepoBranchService;
 import io.mixeway.mixewayflowapi.domain.finding.FindFindingService;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
+import io.mixeway.mixewayflowapi.integrations.repo.service.GitService;
 import io.mixeway.mixewayflowapi.exceptions.CodeRepoNotFoundException;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
 import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
@@ -36,6 +38,8 @@ public class CodeRepoApiService {
     private final UpdateCodeRepoService updateCodeRepoService;
     private final UserRepository userRepository;
     private final FindFindingService findFindingService;
+    private final GitService gitService;
+    private final GetOrCreateCodeRepoBranchService getOrCreateCodeRepoBranchService;
 
     public List<GetCodeReposResponseDto> getRepos(Principal principal) {
         return findCodeRepoService.getCodeReposResponseDtos(principal);
@@ -65,6 +69,29 @@ public class CodeRepoApiService {
             scanManagerService.scanRepository(repo, repo.getDefaultBranch(),null, null);
         }
     }
+
+    public List<String> getRemoteBranches(Long id, Principal principal) {
+        CodeRepo repo = findCodeRepoService.findById(id, principal);
+        if (repo == null) {
+            throw new CodeRepoNotFoundException("Repository not found");
+        }
+        try {
+            return gitService.listRemoteBranches(repo.getRepourl(), repo.getAccessToken(), repo.getType());
+        } catch (Exception e) {
+            log.error("[CodeRepo] Error listing remote branches for repo {}: {}", id, e.getMessage());
+            throw new RuntimeException("Failed to list remote branches: " + e.getMessage());
+        }
+    }
+
+    public void runScanForBranch(Long id, String branchName, Principal principal) {
+        CodeRepo repo = findCodeRepoService.findById(id, principal);
+        if (repo == null) {
+            throw new CodeRepoNotFoundException("Repository not found");
+        }
+        CodeRepoBranch branch = getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(branchName, repo);
+        scanManagerService.scanRepository(repo, branch, null, null);
+    }
+
     public void changeTeam(Long codeRepoId, Long newTeamId, Principal principal) {
         // Find the code repo
         CodeRepo codeRepo = findCodeRepoService.findById(codeRepoId)

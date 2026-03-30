@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -143,6 +145,34 @@ public class GitService {
         ProcessBuilder pb = new ProcessBuilder("git", "checkout", commitId);
         pb.directory(new File(repoDir));
         executeCommand(pb);
+    }
+
+    /**
+     * Lists all remote branches of a Git repository without cloning it.
+     *
+     * @param repoUrl      the URL of the Git repository
+     * @param accessToken  the access token for authentication
+     * @param repoType     the type of the repository
+     * @return list of branch names
+     * @throws IOException          if an I/O error occurs
+     * @throws InterruptedException if the process is interrupted
+     */
+    public List<String> listRemoteBranches(String repoUrl, String accessToken, CodeRepo.RepoType repoType) throws IOException, InterruptedException {
+        String authenticatedUrl = buildAuthenticatedUrl(repoUrl, accessToken, repoType);
+        ProcessBuilder pb = new ProcessBuilder("git", "ls-remote", "--heads", authenticatedUrl);
+        String output = executeCommandAndGetOutput(pb);
+        List<String> branches = new ArrayList<>();
+        for (String line : output.split("\n")) {
+            line = line.trim();
+            if (line.contains("refs/heads/")) {
+                String branchName = line.replaceAll(".*refs/heads/", "").trim();
+                if (!branchName.isEmpty()) {
+                    branches.add(branchName);
+                }
+            }
+        }
+        log.info("[Git Service] Listed {} remote branches for {}", branches.size(), repoUrl);
+        return branches;
     }
 
     /**

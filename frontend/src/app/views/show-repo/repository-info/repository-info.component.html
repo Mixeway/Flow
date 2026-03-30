@@ -18,18 +18,44 @@
                     </div>
                 </div>
                 <div class="repo-actions" >
-                    <button
-                            *ngIf="!scanRunning"
-                            cButton
-                            color="info"
-                            variant="ghost"
-                            size="sm"
-                            [cTooltip]="'Start a new security scan'"
-                            (click)="runScan()"
-                    >
-                        <svg cIcon name="cil-media-play" class="me-1"></svg>
-                        Scan
-                    </button>
+                    <div *ngIf="!scanRunning" class="position-relative d-inline-flex">
+                        <button
+                                cButton
+                                color="info"
+                                variant="ghost"
+                                size="sm"
+                                [cTooltip]="'Scan default branch'"
+                                (click)="runScan()"
+                        >
+                            <svg cIcon name="cil-media-play" class="me-1"></svg>
+                            Scan
+                        </button>
+                        <button
+                                cButton
+                                color="info"
+                                variant="ghost"
+                                size="sm"
+                                class="px-1 border-start"
+                                [cTooltip]="'Choose branch to scan'"
+                                (click)="toggleScanDropdown()"
+                        >
+                            <svg cIcon name="cil-chevron-bottom"></svg>
+                        </button>
+                        <ul *ngIf="scanDropdownOpen"
+                            class="dropdown-menu show position-absolute"
+                            style="top:100%;right:0;z-index:1050;min-width:180px;">
+                            <li>
+                                <button class="dropdown-item" (click)="runScan()">
+                                    Scan Default Branch
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item" (click)="openBranchScanModal()">
+                                    Scan Other Branch
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
                     <button *ngIf="userRole === 'ADMIN' || userRole === 'TEAM_MANAGER'"
                             cButton
                             color="primary"
@@ -121,6 +147,35 @@
         </c-card>
     </c-col>
 </c-row>
+
+<c-modal [(visible)]="branchScanModalVisible" alignment="center" size="sm">
+    <c-modal-header>
+        <h5 cModalTitle>Select Branch to Scan</h5>
+        <button cButtonClose (click)="branchScanModalVisible=false"></button>
+    </c-modal-header>
+    <c-modal-body>
+        <div *ngIf="loadingBranches" class="text-center py-3">
+            <c-spinner size="sm" class="me-2"></c-spinner>
+            Loading branches...
+        </div>
+        <div *ngIf="!loadingBranches && branchLoadError" class="text-danger">
+            {{ branchLoadError }}
+        </div>
+        <div *ngIf="!loadingBranches && !branchLoadError">
+            <label class="form-label">Branch</label>
+            <select class="form-select" [(ngModel)]="selectedBranch">
+                <option value="">-- Select branch --</option>
+                <option *ngFor="let b of availableBranches" [value]="b">{{ b }}</option>
+            </select>
+        </div>
+    </c-modal-body>
+    <c-modal-footer>
+        <button cButton color="secondary" variant="ghost" (click)="branchScanModalVisible=false">Cancel</button>
+        <button cButton color="info" [disabled]="!selectedBranch" (click)="confirmBranchScan()">
+            Run Scan
+        </button>
+    </c-modal-footer>
+</c-modal>
 
 <c-modal [(visible)]="renameModalVisible" alignment="center" size="sm">
     <c-modal-header>

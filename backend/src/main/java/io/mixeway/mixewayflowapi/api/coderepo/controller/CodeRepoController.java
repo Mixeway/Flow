@@ -124,6 +124,29 @@ public class CodeRepoController {
             return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
         }
     }
+
+    @PreAuthorize("hasAuthority('USER')")
+    @GetMapping(value= "/api/v1/coderepo/{id}/git-branches")
+    public ResponseEntity<List<String>> getGitBranches(@PathVariable("id") Long id, Principal principal){
+        try {
+            return new ResponseEntity<>(codeRepoApiService.getRemoteBranches(id, principal), HttpStatus.OK);
+        } catch (Exception e){
+            log.error("[CodeRepo] Error listing remote branches for {}", id);
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('USER')")
+    @PostMapping(value= "/api/v1/coderepo/{id}/run/branch")
+    public ResponseEntity<StatusDTO> runScanForBranch(@PathVariable("id") Long id, @Valid @RequestBody RunScanBranchRequestDto request, Principal principal){
+        try {
+            codeRepoApiService.runScanForBranch(id, request.getBranchName(), principal);
+            return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.OK);
+        } catch (Exception e){
+            log.error("[CodeRepo] Error running scan for branch {} on repo {}", request.getBranchName(), id);
+            return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
+        }
+    }
     @PreAuthorize("hasAuthority('TEAM_MANAGER')")
     @PutMapping(value = "/api/v1/coderepo/{id}/team")
     public ResponseEntity<StatusDTO> changeTeam(

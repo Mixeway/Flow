@@ -6,6 +6,7 @@
         [chartPieData]="chartPieData"
         [options]="options"
         (runScanEvent)="runScan()"
+        (runScanBranchEvent)="runScanForBranch($event)"
         (openChangeTeamModalEvent)="openChangeTeamModal()"
         (deleteRepoEvent)="openDeleteRepoModal()"
 ></app-repository-info>
