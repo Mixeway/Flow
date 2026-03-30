@@ -110,11 +110,11 @@ public class CodeRepoApiService {
         updateCodeRepoService.renameCodeRepo(repo, newName);
     }
 
-    public Boolean isRepoInTeamById(String repoUrl, Long teamId) {
+    public Boolean isRepoInTeamByRemoteId(String repoUrl, Long teamId) {
         try {
             Optional<CodeRepo> codeRepo = findCodeRepoService.findCodeRepoByUrl(repoUrl);
 
-            return codeRepo.isPresent() && teamId.equals(codeRepo.get().getTeam().getId());
+            return codeRepo.isPresent() && String.valueOf(teamId).equals(codeRepo.get().getTeam().getRemoteIdentifier());
         } catch (Exception e) {
             log.error("[CodeRepo] Error checking if repo '{}' belongs to team '{}': {}", repoUrl, teamId, e.getMessage());
             return false;
@@ -127,6 +127,11 @@ public class CodeRepoApiService {
 
         if (userOptional.isEmpty() || codeRepoTeam.isEmpty()) {
             return false;
+        }
+
+        if ("ADMIN".equals(userOptional.get().getHighestRole())) {
+            log.info("[Team Service] Admin '{}' API key validation succeeded", userOptional.get().getUsername());
+            return true;
         }
 
         List<UserInfo> teamUsers = userRepository.getUsersByTeamId(codeRepoTeam.get().getId());
@@ -149,7 +154,11 @@ public class CodeRepoApiService {
         if (branch == null) {
             repoBranch = codeRepo.getDefaultBranch();
         } else {
-            repoBranch = codeRepo.getBranches().stream().filter(b -> b.getName().equals(branch)).findFirst().orElse(null);
+            repoBranch = codeRepo.getBranches()
+                    .stream()
+                    .filter(b -> b.getName().equals(branch))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Branch " + branch + " does not exist in the repository."));
         }
 
         scanManagerService.scanRepositorySync(codeRepo, repoBranch, null, null);
@@ -157,9 +166,9 @@ public class CodeRepoApiService {
         RunOrchScanReportDto scanReport = new RunOrchScanReportDto();
 
         scanReport.setRepoUrl(repoUrl);
-        scanReport.setBranch(branch);
-        if (domain != null) {
-            scanReport.setLinkToScanDetails("https://" + domain + "/#/show-repo/" + codeRepo.getId());
+        scanReport.setBranch(repoBranch.getName());
+        if (domain != null && !domain.isBlank() && !"null".equalsIgnoreCase(domain.trim())) {
+            scanReport.setLinkToScanDetails("https://" + domain.trim() + "/#/show-repo/" + codeRepo.getId());
         }
 
         ObjectMapper mapper = new ObjectMapper();
