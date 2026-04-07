@@ -72,6 +72,7 @@ export class VulnerabilitiesTableComponent implements OnInit, OnChanges {
   @Input() vulns: Vulnerability[] = [];
   @Input() filteredVulns: Vulnerability[] = [];
   @Input() selectedBranch: string | null = null;
+  @Input() selectedBranchId: number | null = null;
   @Input() showRemoved: boolean = false;
   @Input() showSuppressed: boolean = false;
   @Input() showUrgent: boolean = false;

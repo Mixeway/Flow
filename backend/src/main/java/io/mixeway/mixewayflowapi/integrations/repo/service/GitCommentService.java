@@ -5,6 +5,7 @@ import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.db.entity.Finding;
 import io.mixeway.mixewayflowapi.domain.finding.FindFindingService;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.BitbucketApiClientService;
+import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GiteaApiClientService;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GitHubApiClientService;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GitLabApiClientService;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.net.MalformedURLException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -26,6 +29,7 @@ public class GitCommentService {
     String frontendUrl;
     private final GitLabApiClientService gitLabApiClientService;
     private final GitHubApiClientService gitHubApiClientService;
+    private final GiteaApiClientService giteaApiClientService;
     private final BitbucketApiClientService bitbucketApiClientService;
 
     private static final int TOP_FINDINGS_LIMIT = 5;
@@ -68,7 +72,9 @@ public class GitCommentService {
 
         List<Finding> topCriticalFindings = getTopCriticalFindings(findings);
         boolean scaEnabled = !codeRepo.getIacScan().equals(CodeRepo.ScanStatus.NOT_PERFORMED);
-        String detailsLink = (frontendUrl.startsWith("http") ? "" : "https://") + frontendUrl + "#/show-repo/" + codeRepo.getId();
+        String baseUrl = (frontendUrl.startsWith("http") ? "" : "https://") + frontendUrl + "#/show-repo/" + codeRepo.getId();
+        String encodedBranch = URLEncoder.encode(codeRepoBranch.getName(), StandardCharsets.UTF_8);
+        String detailsLink = baseUrl + "?branch=" + encodedBranch;
 
         String message = generateSecurityReport(
                 status, critAndHigh,
@@ -84,6 +90,9 @@ public class GitCommentService {
         } else if (codeRepo.getType().equals(CodeRepo.RepoType.GITHUB)) {
             log.info("[Git Comment Service] About to put comment for Pull Request for {}", codeRepo.getName());
             gitHubApiClientService.commentMergeRequest(codeRepo, iid, message).block();
+        } else if (codeRepo.getType().equals(CodeRepo.RepoType.GITEA)) {
+            log.info("[Git Comment Service] About to put comment for Pull Request for {}", codeRepo.getName());
+            giteaApiClientService.commentMergeRequest(codeRepo, iid, message).block();
         } else if (codeRepo.getType().equals(CodeRepo.RepoType.BITBUCKET)) {
             log.info("[Git Comment Service] About to put comment for Pull Request for {}", codeRepo.getName());
             bitbucketApiClientService.commentPullRequest(codeRepo, iid, message).block();

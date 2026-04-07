@@ -385,6 +385,10 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
 
     // Selected branch
     selectedBranch: string | null = null;
+    selectedBranchId: number | null = null;
+
+    // Branch name from query param (?branch=...)
+    private initialBranchName: string | null = null;
 
     // Snapshot for filter/toggle UI state when modal is open
     private filterUiSnapshot: {
@@ -425,6 +429,9 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
 
         this.route.paramMap.subscribe((params) => {
             this.repoId = params.get('id') || '';
+        });
+        this.route.queryParamMap.subscribe((params) => {
+            this.initialBranchName = params.get('branch');
         });
         this.authService.hc().subscribe({
             next: () => {
@@ -504,6 +511,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                 ) {
                     this.scanRunning = true;
                 }
+                this.selectBranchFromQueryParam();
             },
             error: () => {
                 this.scanInfoLoading = false;
@@ -811,8 +819,13 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
     }
 
     onBranchSelect(event: any) {
-        const selectedBranchId = event.target.value;
-        this.repoService.getFindingsBranch(+this.repoId, selectedBranchId).subscribe({
+        const branchIdValue = event.target.value;
+        const allBranches = [this.repoData?.defaultBranch, ...(this.repoData?.branches || [])];
+        const branch = allBranches.find((b: any) => b && String(b.id) === String(branchIdValue));
+        this.selectedBranch = branch?.name || null;
+        this.selectedBranchId = branch ? +branch.id : null;
+
+        this.repoService.getFindingsBranch(+this.repoId, branchIdValue).subscribe({
             next: (response) => {
                 this.vulns = response.map((v: any, i: number) => ({ ...v, __idx: i }));
                 this.filteredVulns = [...this.vulns];
@@ -824,7 +837,42 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                 this.toggleToast();
             },
         });
-        // Call a method to handle the selected branch ID
+    }
+
+    private selectBranchFromQueryParam(): void {
+        if (!this.initialBranchName || !this.repoData) {
+            return;
+        }
+        const branchName = this.initialBranchName;
+        const allBranches = [...(this.repoData.branches || [])];
+        if (this.repoData.defaultBranch) {
+            allBranches.unshift(this.repoData.defaultBranch);
+        }
+
+        const matchedBranch = allBranches.find(
+            (b: any) => b.name === branchName
+        );
+
+        if (matchedBranch) {
+            this.selectedBranch = matchedBranch.name;
+            this.selectedBranchId = +matchedBranch.id;
+            this.vulnerabilitiesLoading = true;
+            this.repoService.getFindingsBranch(+this.repoId, matchedBranch.id).subscribe({
+                next: (response) => {
+                    this.vulns = response.map((v: any, i: number) => ({ ...v, __idx: i }));
+                    this.filteredVulns = [...this.vulns];
+                    this.counts = this.countFindings(this.vulns);
+                    this.checkForSpecialFindings();
+                    this.restoreFilterStateFromStorage();
+                    this.applyFilters();
+                    this.vulnerabilitiesLoading = false;
+                },
+                error: () => {
+                    this.vulnerabilitiesLoading = false;
+                },
+            });
+        }
+        this.initialBranchName = null;
     }
 
     private sortByUrgencyThenOriginal(rows: any[]): any[] {

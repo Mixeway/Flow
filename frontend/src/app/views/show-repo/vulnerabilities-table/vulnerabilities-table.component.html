@@ -10,10 +10,12 @@
                             class="form-select branch-selector"
                             (change)="onBranchSelect($event)"
                     >
-                        <option [value]="repoData?.defaultBranch.id">
-                            {{ selectedBranch || 'Default: ' + repoData?.defaultBranch.name }}
+                        <option [value]="repoData?.defaultBranch.id"
+                                [selected]="!selectedBranchId || selectedBranchId === repoData?.defaultBranch?.id">
+                            Default: {{ repoData?.defaultBranch?.name }}
                         </option>
-                        <option *ngFor="let branch of repoData?.branches" [value]="branch.id">
+                        <option *ngFor="let branch of repoData?.branches" [value]="branch.id"
+                                [selected]="selectedBranchId === branch.id">
                             {{ branch.name }}
                         </option>
                     </select>
