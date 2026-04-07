@@ -14,6 +14,7 @@ public class JiraConfigResponseDto {
     private String jiraProjectKey;
     private String jiraIssueType;
     private String jiraUsername;
+    private String authType;
     private boolean autoCreateEnabled;
     private String autoSeverityThreshold;
     private boolean configured;

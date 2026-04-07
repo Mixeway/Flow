@@ -18,6 +18,8 @@ public class JiraConfigRequestDto {
 
     private String jiraUsername;
 
+    private String authType = "BASIC";
+
     private boolean autoCreateEnabled = false;
 
     private String autoSeverityThreshold = "HIGH";

@@ -35,6 +35,9 @@ public class JiraConfiguration {
     @Column(name = "jira_username")
     private String jiraUsername;
 
+    @Column(name = "auth_type", nullable = false, length = 20)
+    private String authType;
+
     @Column(name = "auto_create_enabled", nullable = false)
     private boolean autoCreateEnabled;
 
@@ -52,21 +55,22 @@ public class JiraConfiguration {
     protected JiraConfiguration() {}
 
     public JiraConfiguration(Team team, String jiraUrl, String jiraToken, String jiraProjectKey,
-                             String jiraIssueType, String jiraUsername, boolean autoCreateEnabled,
-                             String autoSeverityThreshold) {
+                             String jiraIssueType, String jiraUsername, String authType,
+                             boolean autoCreateEnabled, String autoSeverityThreshold) {
         this.team = team;
         this.jiraUrl = jiraUrl;
         this.jiraToken = jiraToken;
         this.jiraProjectKey = jiraProjectKey;
         this.jiraIssueType = jiraIssueType != null ? jiraIssueType : "Bug";
         this.jiraUsername = jiraUsername;
+        this.authType = authType != null ? authType : "BASIC";
         this.autoCreateEnabled = autoCreateEnabled;
         this.autoSeverityThreshold = autoSeverityThreshold != null ? autoSeverityThreshold : "HIGH";
     }
 
     public void update(String jiraUrl, String jiraToken, String jiraProjectKey,
-                       String jiraIssueType, String jiraUsername, boolean autoCreateEnabled,
-                       String autoSeverityThreshold) {
+                       String jiraIssueType, String jiraUsername, String authType,
+                       boolean autoCreateEnabled, String autoSeverityThreshold) {
         this.jiraUrl = jiraUrl;
         if (jiraToken != null && !jiraToken.isBlank()) {
             this.jiraToken = jiraToken;
@@ -74,6 +78,7 @@ public class JiraConfiguration {
         this.jiraProjectKey = jiraProjectKey;
         this.jiraIssueType = jiraIssueType != null ? jiraIssueType : "Bug";
         this.jiraUsername = jiraUsername;
+        this.authType = authType != null ? authType : "BASIC";
         this.autoCreateEnabled = autoCreateEnabled;
         this.autoSeverityThreshold = autoSeverityThreshold;
     }

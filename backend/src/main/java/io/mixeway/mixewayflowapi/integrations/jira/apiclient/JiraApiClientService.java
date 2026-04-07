@@ -98,56 +98,67 @@ public class JiraApiClientService {
      * Tries v3 API first (Atlassian Cloud), falls back to v2.
      */
     public boolean testConnection(JiraConfiguration config) {
+        boolean isCloud = config.getJiraUrl() != null && config.getJiraUrl().contains(".atlassian.net");
+        String firstApi = isCloud ? "/rest/api/3/myself" : "/rest/api/2/myself";
+        String fallbackApi = isCloud ? "/rest/api/2/myself" : "/rest/api/3/myself";
+
         try {
             String response = webClient.get()
-                    .uri(config.getJiraUrl() + "/rest/api/3/myself")
+                    .uri(config.getJiraUrl() + firstApi)
                     .headers(h -> buildAuthHeaders(h, config))
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();
-            log.info("[JIRA] Connection test successful (v3): {}", response != null ? response.substring(0, Math.min(response.length(), 100)) : "null");
+            log.info("[JIRA] Connection test successful ({}): {}", firstApi, response != null ? response.substring(0, Math.min(response.length(), 100)) : "null");
             return true;
         } catch (Exception e) {
-            log.warn("[JIRA] v3 connection test failed, trying v2: {}", e.getMessage());
+            log.warn("[JIRA] {} connection test failed, trying fallback: {} ({})", firstApi, e.getMessage(), e.getClass().getSimpleName());
         }
         try {
             webClient.get()
-                    .uri(config.getJiraUrl() + "/rest/api/2/myself")
+                    .uri(config.getJiraUrl() + fallbackApi)
                     .headers(h -> buildAuthHeaders(h, config))
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();
-            log.info("[JIRA] Connection test successful (v2)");
+            log.info("[JIRA] Connection test successful ({})", fallbackApi);
             return true;
         } catch (Exception e) {
-            log.error("[JIRA] Connection test failed (v2): {}", e.getMessage());
+            log.error("[JIRA] Connection test failed ({}): {} ({})", fallbackApi, e.getMessage(), e.getClass().getSimpleName());
             return false;
         }
     }
 
     /**
      * Fetches accessible JIRA projects for given credentials.
-     * Tries v3 search API first (Atlassian Cloud), then falls back to v2.
+     * For on-prem (PAT or non-cloud URL), tries v2 first.
+     * For cloud, tries v3 first, then falls back to v2.
      */
     @SuppressWarnings("unchecked")
-    public List<Map<String, String>> fetchProjects(String jiraUrl, String jiraUsername, String jiraToken) {
+    public List<Map<String, String>> fetchProjects(String jiraUrl, String jiraUsername, String jiraToken, String authType) {
         String normalizedUrl = jiraUrl.endsWith("/") ? jiraUrl.substring(0, jiraUrl.length() - 1) : jiraUrl;
+        boolean isCloud = normalizedUrl.contains(".atlassian.net");
 
-        List<Map<String, String>> projects = fetchProjectsV3(normalizedUrl, jiraUsername, jiraToken);
-        if (!projects.isEmpty()) {
-            return projects;
+        if (!isCloud || "PAT".equalsIgnoreCase(authType)) {
+            List<Map<String, String>> projects = fetchProjectsV2(normalizedUrl, jiraUsername, jiraToken, authType);
+            if (!projects.isEmpty()) return projects;
+            log.info("[JIRA] v2 returned no results, trying v3 endpoint");
+            return fetchProjectsV3(normalizedUrl, jiraUsername, jiraToken, authType);
         }
 
+        List<Map<String, String>> projects = fetchProjectsV3(normalizedUrl, jiraUsername, jiraToken, authType);
+        if (!projects.isEmpty()) return projects;
+
         log.info("[JIRA] v3 search returned no results, falling back to v2 endpoint");
-        return fetchProjectsV2(normalizedUrl, jiraUsername, jiraToken);
+        return fetchProjectsV2(normalizedUrl, jiraUsername, jiraToken, authType);
     }
 
     @SuppressWarnings("unchecked")
-    private List<Map<String, String>> fetchProjectsV3(String baseUrl, String jiraUsername, String jiraToken) {
+    private List<Map<String, String>> fetchProjectsV3(String baseUrl, String jiraUsername, String jiraToken, String authType) {
         try {
             String raw = webClient.get()
                     .uri(baseUrl + "/rest/api/3/project/search?maxResults=100")
-                    .headers(h -> buildTempAuthHeaders(h, jiraUsername, jiraToken))
+                    .headers(h -> buildTempAuthHeaders(h, jiraUsername, jiraToken, authType))
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();
@@ -170,22 +181,20 @@ public class JiraApiClientService {
                 log.info("[JIRA] v3 parsed keys: {}, total: {}", parsed.keySet(), parsed.get("total"));
             }
         } catch (Exception e) {
-            log.warn("[JIRA] v3 project/search failed: {}", e.getMessage());
+            log.warn("[JIRA] v3 project/search failed: {} ({})", e.getMessage(), e.getClass().getSimpleName());
         }
         return List.of();
     }
 
     @SuppressWarnings("unchecked")
-    private List<Map<String, String>> fetchProjectsV2(String baseUrl, String jiraUsername, String jiraToken) {
+    private List<Map<String, String>> fetchProjectsV2(String baseUrl, String jiraUsername, String jiraToken, String authType) {
         try {
             String raw = webClient.get()
                     .uri(baseUrl + "/rest/api/2/project")
-                    .headers(h -> buildTempAuthHeaders(h, jiraUsername, jiraToken))
+                    .headers(h -> buildTempAuthHeaders(h, jiraUsername, jiraToken, authType))
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();
-
-            log.info("[JIRA] v2 project raw response: {}", raw);
 
             if (raw != null) {
                 com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
@@ -202,14 +211,16 @@ public class JiraApiClientService {
                 }
             }
         } catch (Exception e) {
-            log.error("[JIRA] v2 project fetch failed: {}", e.getMessage());
+            log.error("[JIRA] v2 project fetch failed: {} ({})", e.getMessage(), e.getClass().getSimpleName());
         }
         return List.of();
     }
 
-    private void buildTempAuthHeaders(HttpHeaders headers, String jiraUsername, String jiraToken) {
+    private void buildTempAuthHeaders(HttpHeaders headers, String jiraUsername, String jiraToken, String authType) {
         headers.set("Accept", "application/json");
-        if (jiraUsername != null && !jiraUsername.isBlank()) {
+        if ("PAT".equalsIgnoreCase(authType)) {
+            headers.setBearerAuth(jiraToken);
+        } else if (jiraUsername != null && !jiraUsername.isBlank()) {
             headers.setBasicAuth(jiraUsername, jiraToken);
         } else {
             headers.setBearerAuth(jiraToken);
@@ -221,24 +232,24 @@ public class JiraApiClientService {
      * Uses createmeta endpoint which returns types valid for issue creation.
      */
     @SuppressWarnings("unchecked")
-    public List<String> fetchIssueTypes(String jiraUrl, String jiraUsername, String jiraToken, String projectKey) {
+    public List<String> fetchIssueTypes(String jiraUrl, String jiraUsername, String jiraToken, String projectKey, String authType) {
         String normalizedUrl = jiraUrl.endsWith("/") ? jiraUrl.substring(0, jiraUrl.length() - 1) : jiraUrl;
 
-        List<String> types = fetchIssueTypesViaCreatemeta(normalizedUrl, jiraUsername, jiraToken, projectKey);
+        List<String> types = fetchIssueTypesViaCreatemeta(normalizedUrl, jiraUsername, jiraToken, projectKey, authType);
         if (!types.isEmpty()) return types;
 
-        types = fetchIssueTypesViaProject(normalizedUrl, jiraUsername, jiraToken, projectKey);
+        types = fetchIssueTypesViaProject(normalizedUrl, jiraUsername, jiraToken, projectKey, authType);
         if (!types.isEmpty()) return types;
 
-        return fetchIssueTypesGlobal(normalizedUrl, jiraUsername, jiraToken);
+        return fetchIssueTypesGlobal(normalizedUrl, jiraUsername, jiraToken, authType);
     }
 
     @SuppressWarnings("unchecked")
-    private List<String> fetchIssueTypesViaCreatemeta(String baseUrl, String jiraUsername, String jiraToken, String projectKey) {
+    private List<String> fetchIssueTypesViaCreatemeta(String baseUrl, String jiraUsername, String jiraToken, String projectKey, String authType) {
         try {
             String raw = webClient.get()
                     .uri(baseUrl + "/rest/api/2/issue/createmeta?projectKeys=" + projectKey + "&expand=projects.issuetypes")
-                    .headers(h -> buildTempAuthHeaders(h, jiraUsername, jiraToken))
+                    .headers(h -> buildTempAuthHeaders(h, jiraUsername, jiraToken, authType))
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();
@@ -263,17 +274,17 @@ public class JiraApiClientService {
                 }
             }
         } catch (Exception e) {
-            log.warn("[JIRA] createmeta failed for {}: {}", projectKey, e.getMessage());
+            log.warn("[JIRA] createmeta failed for {}: {} ({})", projectKey, e.getMessage(), e.getClass().getSimpleName());
         }
         return List.of();
     }
 
     @SuppressWarnings("unchecked")
-    private List<String> fetchIssueTypesViaProject(String baseUrl, String jiraUsername, String jiraToken, String projectKey) {
+    private List<String> fetchIssueTypesViaProject(String baseUrl, String jiraUsername, String jiraToken, String projectKey, String authType) {
         try {
             String raw = webClient.get()
                     .uri(baseUrl + "/rest/api/2/project/" + projectKey)
-                    .headers(h -> buildTempAuthHeaders(h, jiraUsername, jiraToken))
+                    .headers(h -> buildTempAuthHeaders(h, jiraUsername, jiraToken, authType))
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();
@@ -291,17 +302,17 @@ public class JiraApiClientService {
                 }
             }
         } catch (Exception e) {
-            log.warn("[JIRA] project endpoint failed for {}: {}", projectKey, e.getMessage());
+            log.warn("[JIRA] project endpoint failed for {}: {} ({})", projectKey, e.getMessage(), e.getClass().getSimpleName());
         }
         return List.of();
     }
 
     @SuppressWarnings("unchecked")
-    private List<String> fetchIssueTypesGlobal(String baseUrl, String jiraUsername, String jiraToken) {
+    private List<String> fetchIssueTypesGlobal(String baseUrl, String jiraUsername, String jiraToken, String authType) {
         try {
             String raw = webClient.get()
                     .uri(baseUrl + "/rest/api/2/issuetype")
-                    .headers(h -> buildTempAuthHeaders(h, jiraUsername, jiraToken))
+                    .headers(h -> buildTempAuthHeaders(h, jiraUsername, jiraToken, authType))
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();
@@ -320,7 +331,7 @@ public class JiraApiClientService {
                 return result;
             }
         } catch (Exception e) {
-            log.warn("[JIRA] global issuetype fetch failed: {}", e.getMessage());
+            log.warn("[JIRA] global issuetype fetch failed: {} ({})", e.getMessage(), e.getClass().getSimpleName());
         }
         return List.of();
     }
@@ -425,16 +436,17 @@ public class JiraApiClientService {
 
     private void buildAuthHeaders(HttpHeaders headers, JiraConfiguration config) {
         headers.set("Accept", "application/json");
-        boolean isAtlassianCloud = config.getJiraUrl() != null
-                && config.getJiraUrl().contains(".atlassian.net");
-
-        if (config.getJiraUsername() != null && !config.getJiraUsername().isBlank()) {
-            headers.setBasicAuth(config.getJiraUsername(), config.getJiraToken());
-        } else if (isAtlassianCloud) {
-            log.warn("[JIRA] Atlassian Cloud requires Basic Auth (email + API token). "
-                    + "Username is empty – authentication will likely fail.");
+        if ("PAT".equalsIgnoreCase(config.getAuthType())) {
             headers.setBearerAuth(config.getJiraToken());
+        } else if (config.getJiraUsername() != null && !config.getJiraUsername().isBlank()) {
+            headers.setBasicAuth(config.getJiraUsername(), config.getJiraToken());
         } else {
+            boolean isAtlassianCloud = config.getJiraUrl() != null
+                    && config.getJiraUrl().contains(".atlassian.net");
+            if (isAtlassianCloud) {
+                log.warn("[JIRA] Atlassian Cloud requires Basic Auth (email + API token). "
+                        + "Username is empty – authentication will likely fail.");
+            }
             headers.setBearerAuth(config.getJiraToken());
         }
     }

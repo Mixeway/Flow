@@ -60,6 +60,7 @@ public class JiraApiService {
                 request.getJiraProjectKey(),
                 request.getJiraIssueType(),
                 request.getJiraUsername(),
+                request.getAuthType(),
                 request.isAutoCreateEnabled(),
                 request.getAutoSeverityThreshold()
         );
@@ -79,6 +80,7 @@ public class JiraApiService {
                 request.getJiraProjectKey(),
                 request.getJiraIssueType(),
                 request.getJiraUsername(),
+                request.getAuthType(),
                 request.isAutoCreateEnabled(),
                 request.getAutoSeverityThreshold()
         );
@@ -107,7 +109,8 @@ public class JiraApiService {
         return jiraApiClientService.fetchProjects(
                 request.getJiraUrl(),
                 request.getJiraUsername(),
-                request.getJiraToken()
+                request.getJiraToken(),
+                request.getAuthType()
         );
     }
 
@@ -116,7 +119,8 @@ public class JiraApiService {
                 request.getJiraUrl(),
                 request.getJiraUsername(),
                 request.getJiraToken(),
-                request.getJiraProjectKey()
+                request.getJiraProjectKey(),
+                request.getAuthType()
         );
     }
 
@@ -189,6 +193,7 @@ public class JiraApiService {
         dto.setJiraProjectKey(config.getJiraProjectKey());
         dto.setJiraIssueType(config.getJiraIssueType());
         dto.setJiraUsername(config.getJiraUsername());
+        dto.setAuthType(config.getAuthType());
         dto.setAutoCreateEnabled(config.isAutoCreateEnabled());
         dto.setAutoSeverityThreshold(config.getAutoSeverityThreshold());
         dto.setConfigured(true);

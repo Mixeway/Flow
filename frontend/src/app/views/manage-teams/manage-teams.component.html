@@ -542,12 +542,31 @@
                 <div *ngIf="jiraConfigForm.get('jiraUrl')?.invalid && jiraConfigForm.get('jiraUrl')?.touched"
                      class="invalid-feedback d-block">JIRA URL is required</div>
 
-                <c-input-group class="mb-3">
+                <div class="mb-3">
+                    <label class="form-label">Authentication Method</label>
+                    <c-input-group>
+                        <span cInputGroupText class="input-icon">
+                            <svg cIcon name="cil-shield-alt"></svg>
+                        </span>
+                        <select cFormControl formControlName="authType" class="form-select">
+                            <option value="BASIC">Basic Auth (Username + API Token / Password)</option>
+                            <option value="PAT">Personal Access Token (on-prem / Data Center)</option>
+                        </select>
+                    </c-input-group>
+                    <small class="text-muted" *ngIf="jiraConfigForm.get('authType')?.value === 'BASIC'">
+                        Use for Atlassian Cloud (email + API token) or on-prem with username + password.
+                    </small>
+                    <small class="text-muted" *ngIf="jiraConfigForm.get('authType')?.value === 'PAT'">
+                        Use for Jira Server / Data Center with a Personal Access Token (no username required).
+                    </small>
+                </div>
+
+                <c-input-group class="mb-3" *ngIf="jiraConfigForm.get('authType')?.value === 'BASIC'">
                     <span cInputGroupText class="input-icon">
                         <svg cIcon name="cil-user"></svg>
                     </span>
                     <input type="text" cFormControl formControlName="jiraUsername"
-                           placeholder="Email (required for Atlassian Cloud, e.g. user@company.com)">
+                           placeholder="Username / Email (e.g. user@company.com)">
                 </c-input-group>
 
                 <c-input-group class="mb-3">
@@ -555,10 +574,12 @@
                         <svg cIcon name="cil-lock-locked"></svg>
                     </span>
                     <input type="password" cFormControl formControlName="jiraToken"
-                           [placeholder]="jiraConfigEditMode ? 'Leave empty to keep current token' : 'API Token / Personal Access Token'">
+                           [placeholder]="jiraConfigEditMode
+                               ? 'Leave empty to keep current token'
+                               : (jiraConfigForm.get('authType')?.value === 'PAT' ? 'Personal Access Token' : 'API Token / Password')">
                 </c-input-group>
                 <div *ngIf="!jiraConfigEditMode && jiraConfigForm.get('jiraToken')?.invalid && jiraConfigForm.get('jiraToken')?.touched"
-                     class="invalid-feedback d-block">API Token is required</div>
+                     class="invalid-feedback d-block">Token is required</div>
             </div>
 
             <div class="form-section mt-4">

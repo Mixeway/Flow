@@ -806,3 +806,6 @@ CREATE INDEX idx_jira_configuration_team_id ON jira_configuration(team_id);
 
 --changeset siewer:add_jira_ticket_key_to_finding
 ALTER TABLE finding ADD COLUMN jira_ticket_key VARCHAR(50);
+
+--changeset siewer:add_jira_auth_type
+ALTER TABLE jira_configuration ADD COLUMN auth_type VARCHAR(20) NOT NULL DEFAULT 'BASIC';

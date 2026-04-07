@@ -161,6 +161,7 @@ export class ManageTeamsComponent implements OnInit {
     jiraProjectKey: ['', Validators.required],
     jiraIssueType: ['Bug'],
     jiraUsername: [''],
+    authType: ['BASIC'],
     autoCreateEnabled: [false],
     autoSeverityThreshold: ['HIGH'],
   });
@@ -572,6 +573,7 @@ export class ManageTeamsComponent implements OnInit {
         jiraProjectKey: existing.jiraProjectKey,
         jiraIssueType: existing.jiraIssueType || 'Bug',
         jiraUsername: existing.jiraUsername || '',
+        authType: existing.authType || 'BASIC',
         autoCreateEnabled: existing.autoCreateEnabled,
         autoSeverityThreshold: existing.autoSeverityThreshold || 'HIGH',
       });
@@ -584,6 +586,7 @@ export class ManageTeamsComponent implements OnInit {
         jiraProjectKey: '',
         jiraIssueType: 'Bug',
         jiraUsername: '',
+        authType: 'BASIC',
         autoCreateEnabled: false,
         autoSeverityThreshold: 'HIGH',
       });
@@ -602,6 +605,7 @@ export class ManageTeamsComponent implements OnInit {
       jiraProjectKey: this.jiraConfigForm.value.jiraProjectKey || '',
       jiraIssueType: this.jiraConfigForm.value.jiraIssueType || 'Bug',
       jiraUsername: this.jiraConfigForm.value.jiraUsername || '',
+      authType: this.jiraConfigForm.value.authType || 'BASIC',
       autoCreateEnabled: this.jiraConfigForm.value.autoCreateEnabled || false,
       autoSeverityThreshold: this.jiraConfigForm.value.autoSeverityThreshold || 'HIGH',
     };
@@ -680,6 +684,7 @@ export class ManageTeamsComponent implements OnInit {
       jiraToken: token || '',
       jiraProjectKey: form.jiraProjectKey || '',
       jiraUsername: form.jiraUsername || '',
+      authType: form.authType || 'BASIC',
     };
   }
 

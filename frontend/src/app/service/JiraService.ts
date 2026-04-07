@@ -9,6 +9,7 @@ export interface JiraConfigRequest {
     jiraProjectKey: string;
     jiraIssueType: string;
     jiraUsername: string;
+    authType: string;
     autoCreateEnabled: boolean;
     autoSeverityThreshold: string;
 }
@@ -20,6 +21,7 @@ export interface JiraConfigResponse {
     jiraProjectKey: string;
     jiraIssueType: string;
     jiraUsername: string;
+    authType: string;
     autoCreateEnabled: boolean;
     autoSeverityThreshold: string;
     configured: boolean;
