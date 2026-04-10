@@ -117,4 +117,15 @@ public class UpdateUserService {
         userRepository.save(userInfo.get());
         log.info("[UserService] Activated user {}", userInfo.get().getUsername());
     }
+
+    public String generateApiKey(String username) {
+        UserInfo userInfo = findUserService.findUser(username);
+        if (userInfo == null) {
+            throw new UserNotExistingException();
+        }
+        userInfo.changeApiKey();
+        userRepository.save(userInfo);
+        log.info("[UserService] Generated new API key for user {}", username);
+        return userInfo.getApiKey();
+    }
 }

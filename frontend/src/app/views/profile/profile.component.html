@@ -1,0 +1,63 @@
+<c-row>
+    <c-col class="xs-12">
+        <c-card>
+            <c-card-body>
+                <c-tabs [activeItemKey]="0">
+                    <c-tabs-list variant="underline-border" class="border-bottom">
+                        <button cTab [itemKey]="0" class="d-flex align-items-center">
+                            <svg cIcon name="cilCode" class="me-2"></svg> Developer Settings
+                        </button>
+                    </c-tabs-list>
+                    <c-tabs-content>
+                        <c-tab-panel class="p-4" [itemKey]="0">
+                            <div class="config-section p-4 rounded shadow-sm">
+                                <h4 class="mb-3 section-title">API Key</h4>
+                                <p class="text-muted mb-4">
+                                    Generate an API key to authenticate with the Flow API.
+                                    Use the <code>X-API-KEY</code> header in your requests.
+                                </p>
+
+                                <div *ngIf="apiKeyGenerated && apiKey" class="mb-4">
+                                    <c-alert color="warning" class="mb-3">
+                                        <strong>Save your API key now!</strong> It will not be shown again after you leave this page.
+                                    </c-alert>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <code class="p-2 border rounded bg-body-secondary flex-grow-1 d-block text-break">{{ apiKey }}</code>
+                                        <button cButton color="secondary" size="sm" (click)="copyToClipboard()" title="Copy to clipboard">
+                                            <svg cIcon name="cilCopy"></svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <button cButton color="primary" (click)="generateApiKey()" [disabled]="generating">
+                                    <span *ngIf="generating" class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    {{ apiKeyGenerated ? 'Regenerate API Key' : 'Generate API Key' }}
+                                </button>
+
+                                <div *ngIf="apiKeyGenerated" class="mt-3">
+                                    <small class="text-muted">
+                                        Generating a new key will invalidate the previous one.
+                                    </small>
+                                </div>
+                            </div>
+                        </c-tab-panel>
+                    </c-tabs-content>
+                </c-tabs>
+            </c-card-body>
+        </c-card>
+    </c-col>
+</c-row>
+
+<c-toaster [placement]="position" class="p-3" position="fixed">
+    <c-toast
+            [color]="toastStatus"
+            (visibleChange)="onVisibleChange($event)"
+            [visible]="visible">
+        <c-toast-header>
+            <strong class="me-auto">Profile</strong>
+        </c-toast-header>
+        <c-toast-body>
+            <p>{{toastMessage}}</p>
+        </c-toast-body>
+    </c-toast>
+</c-toaster>

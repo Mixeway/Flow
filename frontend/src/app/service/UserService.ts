@@ -40,4 +40,8 @@ export class UserService {
         return this.http.get<any>(this.loginUrl + '/api/v1/user/' +id + '/activate',{ withCredentials: true });
     }
 
+    generateApiKey(): Observable<any> {
+        return this.http.post<any>(this.loginUrl + '/api/v1/user/apikey', {}, { withCredentials: true });
+    }
+
 }

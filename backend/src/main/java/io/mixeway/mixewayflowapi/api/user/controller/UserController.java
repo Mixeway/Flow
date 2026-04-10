@@ -114,4 +114,16 @@ public class UserController {
             return ResponseEntity.badRequest().build();
         }
     }
+
+    @PreAuthorize("hasAuthority('USER')")
+    @PostMapping(value= "/api/v1/user/apikey")
+    public ResponseEntity<StatusDTO> generateApiKey(Principal principal){
+        try {
+            String apiKey = updateUserService.generateApiKey(principal.getName());
+            return new ResponseEntity<>(new StatusDTO(apiKey), HttpStatus.OK);
+        } catch (Exception e){
+            log.error("[UserController] Error generating API key: {}", e.getMessage());
+            return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+        }
+    }
 }
