@@ -12,6 +12,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.net.MalformedURLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +24,9 @@ public class BitbucketApiClientService {
     private final WebClient webClient;
 
     public static final String FLOW_SECURITY_BUILD_KEY = "io.mixeway.flow.security";
+
+    /** Stable id for Code Insights report (PUT .../commit/{sha}/reports/{id}); must be unique among reports on that commit. */
+    public static final String FLOW_CODE_INSIGHT_REPORT_ID = "mixeway-flow-security";
 
     /**
      * Returns true when {@code url} points to a self-hosted Bitbucket Server / Data Center
@@ -107,6 +111,83 @@ public class BitbucketApiClientService {
                 .toBodilessEntity()
                 .doOnSuccess(r -> log.info("Posted Flow Security commit status on Bitbucket Server for commit {}", commitHash))
                 .doOnError(e -> log.warn("Error posting Bitbucket Server commit status: {}", e.getMessage()))
+                .then();
+    }
+
+    /**
+     * Bitbucket Cloud Code Insights — create/update a {@code SECURITY} report on a commit (visible on the PR as a report row).
+     * On-premise Bitbucket is skipped (Code Insights REST is Cloud-oriented; Server/DC uses other integrations).
+     * <p>
+     * {@code result} must be {@code PASSED}, {@code FAILED}, or {@code PENDING} per API.
+     * OAuth / app password needs permission to write repository metadata (same as other write APIs).
+     */
+    public Mono<Void> putCommitCodeInsightReport(CodeRepo codeRepo, String commitHash,
+                                                 String result, String details, String reportUrl,
+                                                 int urgentCount, int notableCount) {
+        if (commitHash == null || commitHash.isBlank()) {
+            return Mono.empty();
+        }
+        String hostUrl;
+        try {
+            hostUrl = codeRepo.getGitHostUrl();
+        } catch (MalformedURLException e) {
+            return Mono.error(new IllegalStateException("Invalid repository URL", e));
+        }
+        if (isOnPremise(hostUrl)) {
+            log.debug("[Bitbucket] Code Insights report skipped for on-premise host (Cloud API only).");
+            return Mono.empty();
+        }
+        String[] nameParts = codeRepo.getName().split("/", 2);
+        if (nameParts.length < 2) {
+            return Mono.error(new IllegalArgumentException("Invalid Bitbucket repository path: " + codeRepo.getName()));
+        }
+        String apiRoot = normalizeToApiUrl(hostUrl).replaceAll("/$", "");
+        String uri = UriComponentsBuilder.fromHttpUrl(apiRoot)
+                .pathSegment("2.0", "repositories", nameParts[0], nameParts[1], "commit", commitHash,
+                        "reports", FLOW_CODE_INSIGHT_REPORT_ID)
+                .build()
+                .toUriString();
+
+        List<Map<String, Object>> data = new ArrayList<>();
+        Map<String, Object> urgentRow = new HashMap<>();
+        urgentRow.put("title", "Urgent");
+        urgentRow.put("type", "NUMBER");
+        urgentRow.put("value", urgentCount);
+        data.add(urgentRow);
+        Map<String, Object> notableRow = new HashMap<>();
+        notableRow.put("title", "Notable");
+        notableRow.put("type", "NUMBER");
+        notableRow.put("value", notableCount);
+        data.add(notableRow);
+        Map<String, Object> noUrgentRow = new HashMap<>();
+        noUrgentRow.put("title", "No urgent findings");
+        noUrgentRow.put("type", "BOOLEAN");
+        noUrgentRow.put("value", urgentCount == 0);
+        data.add(noUrgentRow);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("title", "Flow Security");
+        body.put("details", details != null ? details : "");
+        body.put("report_type", "SECURITY");
+        body.put("reporter", "Flow");
+        body.put("result", result);
+        if (reportUrl != null && !reportUrl.isBlank()) {
+            body.put("link", reportUrl);
+        }
+        body.put("data", data);
+
+        return webClient.put()
+                .uri(uri)
+                .header("Authorization", "Bearer " + codeRepo.getAccessToken())
+                .bodyValue(body)
+                .retrieve()
+                .onStatus(status -> !status.is2xxSuccessful(), response -> {
+                    log.warn("Failed to PUT Bitbucket Code Insights report. Status: {}", response.statusCode());
+                    return Mono.error(new RuntimeException("Failed to put Bitbucket Code Insights report"));
+                })
+                .toBodilessEntity()
+                .doOnSuccess(r -> log.info("Updated Flow Code Insights report on Bitbucket Cloud for commit {}", commitHash))
+                .doOnError(e -> log.warn("Error putting Bitbucket Code Insights report: {}", e.getMessage()))
                 .then();
     }
 

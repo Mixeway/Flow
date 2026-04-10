@@ -20,7 +20,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Publishes Flow scan results to Bitbucket: commit build status (Cloud + Server) and optional PR comment.
+ * Publishes Flow scan results to Bitbucket: commit build status (Cloud + Server),
+ * Bitbucket Cloud Code Insights report ({@code PUT .../reports/{id}}), and optional PR comment.
  * Urgency uses the same rules as {@link FindingService#calculateUrgency(Finding)}.
  */
 @Service
@@ -29,6 +30,7 @@ import java.util.Map;
 public class BitbucketScanReportService {
 
     private static final int MAX_STATUS_DESCRIPTION_LEN = 450;
+    private static final int MAX_INSIGHT_DETAILS_LEN = 1200;
 
     private final FindFindingService findFindingService;
     private final FindingService findingService;
@@ -95,6 +97,17 @@ public class BitbucketScanReportService {
             log.error("[Bitbucket Scan Report] Failed to post commit status for {}: {}", codeRepo.getName(), e.getMessage(), e);
         }
 
+        String insightDetails = truncateForInsight(String.format(
+                "Urgent: %d, Notable: %d. %s",
+                urgent, notable, summarizeBySource(bySource)));
+        String insightResult = urgent > 0 ? "FAILED" : "PASSED";
+        try {
+            bitbucketApiClientService.putCommitCodeInsightReport(
+                    codeRepo, commit, insightResult, insightDetails, reportUrl, urgent, notable).block();
+        } catch (Exception e) {
+            log.error("[Bitbucket Scan Report] Failed to PUT Code Insights report for {}: {}", codeRepo.getName(), e.getMessage(), e);
+        }
+
         if (prId == null || prId <= 0) {
             return;
         }
@@ -146,5 +159,12 @@ public class BitbucketScanReportService {
             return s;
         }
         return s.substring(0, MAX_STATUS_DESCRIPTION_LEN - 3) + "...";
+    }
+
+    private static String truncateForInsight(String s) {
+        if (s.length() <= MAX_INSIGHT_DETAILS_LEN) {
+            return s;
+        }
+        return s.substring(0, MAX_INSIGHT_DETAILS_LEN - 3) + "...";
     }
 }
