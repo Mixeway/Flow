@@ -11,6 +11,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.net.MalformedURLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,12 +22,92 @@ import java.util.Map;
 public class BitbucketApiClientService {
     private final WebClient webClient;
 
+    public static final String FLOW_SECURITY_BUILD_KEY = "io.mixeway.flow.security";
+
     /**
      * Returns true when {@code url} points to a self-hosted Bitbucket Server / Data Center
      * instance rather than the Bitbucket Cloud SaaS offering.
      */
     private boolean isOnPremise(String url) {
         return url != null && !url.contains("bitbucket.org");
+    }
+
+    /**
+     * Posts a commit build status (Bitbucket Cloud: REST 2.0; Server/Data Center: build-status REST).
+     * {@code state} must match the provider API (e.g. SUCCESSFUL, FAILED, INPROGRESS, STOPPED on Cloud).
+     */
+    public Mono<Void> postCommitBuildStatus(CodeRepo codeRepo, String commitHash, String state, String description, String reportUrl) {
+        if (commitHash == null || commitHash.isBlank()) {
+            return Mono.empty();
+        }
+        String hostUrl;
+        try {
+            hostUrl = codeRepo.getGitHostUrl();
+        } catch (MalformedURLException e) {
+            return Mono.error(new IllegalStateException("Invalid repository URL", e));
+        }
+        if (isOnPremise(hostUrl)) {
+            return postServerCommitBuildStatus(hostUrl.replaceAll("/$", ""), codeRepo.getAccessToken(), commitHash, state, description, reportUrl);
+        }
+        String[] nameParts = codeRepo.getName().split("/", 2);
+        if (nameParts.length < 2) {
+            return Mono.error(new IllegalArgumentException("Invalid Bitbucket repository path: " + codeRepo.getName()));
+        }
+        String apiRoot = normalizeToApiUrl(hostUrl).replaceAll("/$", "");
+        String repoPath = UriComponentsBuilder.fromHttpUrl(apiRoot)
+                .pathSegment("2.0", "repositories", nameParts[0], nameParts[1], "commit", commitHash, "statuses", "build")
+                .build()
+                .toUriString();
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("state", state);
+        body.put("key", FLOW_SECURITY_BUILD_KEY);
+        body.put("name", "Flow Security");
+        body.put("description", description != null ? description : "");
+        if (reportUrl != null && !reportUrl.isBlank()) {
+            body.put("url", reportUrl);
+        }
+
+        return webClient.post()
+                .uri(repoPath)
+                .header("Authorization", "Bearer " + codeRepo.getAccessToken())
+                .bodyValue(body)
+                .retrieve()
+                .onStatus(status -> !status.is2xxSuccessful(), response -> {
+                    log.warn("Failed to post Bitbucket Cloud commit status. Status: {}", response.statusCode());
+                    return Mono.error(new RuntimeException("Failed to post Bitbucket commit status"));
+                })
+                .toBodilessEntity()
+                .doOnSuccess(r -> log.info("Posted Flow Security commit status on Bitbucket Cloud for commit {}", commitHash))
+                .doOnError(e -> log.warn("Error posting Bitbucket Cloud commit status: {}", e.getMessage()))
+                .then();
+    }
+
+    private Mono<Void> postServerCommitBuildStatus(String baseUrl, String accessToken, String commitHash, String state, String description, String reportUrl) {
+        String url = baseUrl + "/rest/build-status/1.0/commits/" + commitHash;
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("key", FLOW_SECURITY_BUILD_KEY);
+        body.put("state", state);
+        body.put("name", "Flow Security");
+        body.put("description", description != null ? description : "");
+        if (reportUrl != null && !reportUrl.isBlank()) {
+            body.put("url", reportUrl);
+        }
+
+        return webClient.post()
+                .uri(url)
+                .header("Authorization", "Bearer " + accessToken)
+                .bodyValue(body)
+                .retrieve()
+                .onStatus(status -> !status.is2xxSuccessful(), response -> {
+                    log.warn("Failed to post Bitbucket Server commit status. Status: {}", response.statusCode());
+                    return Mono.error(new RuntimeException("Failed to post Bitbucket Server commit status"));
+                })
+                .toBodilessEntity()
+                .doOnSuccess(r -> log.info("Posted Flow Security commit status on Bitbucket Server for commit {}", commitHash))
+                .doOnError(e -> log.warn("Error posting Bitbucket Server commit status: {}", e.getMessage()))
+                .then();
     }
 
     // -------------------------------------------------------------------------
@@ -287,17 +368,47 @@ public class BitbucketApiClientService {
     }
 
     // -------------------------------------------------------------------------
-    // Pull request comments (Cloud only for now)
+    // Pull request comments (Cloud + Server)
     // -------------------------------------------------------------------------
 
     public Mono<String> commentPullRequest(CodeRepo codeRepo, Long prId, String comment) {
-        String apiUrl = String.format("https://api.bitbucket.org/2.0/repositories/%s/pullrequests/%d/comments",
-                codeRepo.getName(), prId);
+        String hostUrl;
+        try {
+            hostUrl = codeRepo.getGitHostUrl();
+        } catch (MalformedURLException e) {
+            return Mono.error(new IllegalStateException("Invalid repository URL", e));
+        }
+
+        boolean onPremise = isOnPremise(hostUrl);
+        String apiUrl;
+        if (onPremise) {
+            String[] parts = codeRepo.getName().split("/", 2);
+            if (parts.length < 2) {
+                return Mono.error(new IllegalArgumentException("Invalid Bitbucket repository path: " + codeRepo.getName()));
+            }
+            apiUrl = hostUrl.replaceAll("/$", "")
+                    + "/rest/api/1.0/projects/" + parts[0] + "/repos/" + parts[1]
+                    + "/pull-requests/" + prId + "/comments";
+        } else {
+            String[] cloudParts = codeRepo.getName().split("/", 2);
+            if (cloudParts.length < 2) {
+                return Mono.error(new IllegalArgumentException("Invalid Bitbucket repository path: " + codeRepo.getName()));
+            }
+            String apiRoot = normalizeToApiUrl(hostUrl).replaceAll("/$", "");
+            apiUrl = UriComponentsBuilder.fromHttpUrl(apiRoot)
+                    .pathSegment("2.0", "repositories", cloudParts[0], cloudParts[1], "pullrequests", String.valueOf(prId), "comments")
+                    .build()
+                    .toUriString();
+        }
 
         Map<String, Object> body = new HashMap<>();
-        Map<String, String> content = new HashMap<>();
-        content.put("raw", comment);
-        body.put("content", content);
+        if (onPremise) {
+            body.put("text", comment);
+        } else {
+            Map<String, String> content = new HashMap<>();
+            content.put("raw", comment);
+            body.put("content", content);
+        }
 
         return webClient.post()
                 .uri(apiUrl)

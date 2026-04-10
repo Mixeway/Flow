@@ -13,6 +13,7 @@ import io.mixeway.mixewayflowapi.domain.settings.FindSettingsService;
 import io.mixeway.mixewayflowapi.domain.vulnerability.FindVulnerabilityService;
 import io.mixeway.mixewayflowapi.domain.vulnerability.UpdateVulnerabilityService;
 import io.mixeway.mixewayflowapi.exceptions.GitException;
+import io.mixeway.mixewayflowapi.integrations.repo.service.BitbucketScanReportService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GitCommentService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GitService;
 import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.dto.CloudIssueReport;
@@ -64,6 +65,7 @@ public class ScanManagerService {
     private final UpdateCodeRepoService updateCodeRepoService;
     private final SCAService scaService;
     private final GitCommentService gitCommentService;
+    private final BitbucketScanReportService bitbucketScanReportService;
     private final KEVApiClient kevApiClient;
     private final UpdateVulnerabilityService updateVulnerabilityService;
     private final CloudScannerService cloudScannerService;
@@ -228,7 +230,13 @@ public class ScanManagerService {
                         log.error("[ScanManagerService] Failed to clean up repository directory {}: {}", repoDir, cleanupEx.getMessage(), cleanupEx);
                     }
 
-                    if (iid != null && iid > 0) {
+                    if (CodeRepo.RepoType.BITBUCKET.equals(codeRepo.getType())) {
+                        try {
+                            bitbucketScanReportService.publishAfterScan(codeRepo, codeRepoBranch, commit, iid);
+                        } catch (Exception e) {
+                            log.error("[Scan Service] Bitbucket publish after scan failed for {}: {}", codeRepo.getName(), e.getMessage(), e);
+                        }
+                    } else if (iid != null && iid > 0) {
                         try {
                             gitCommentService.processMergeComment(codeRepo, codeRepoBranch, iid);
                         } catch (MalformedURLException e) {
@@ -357,7 +365,13 @@ public class ScanManagerService {
                         log.error("[ScanManagerService] Failed to clean up repository directory {}: {}", repoDir, cleanupEx.getMessage(), cleanupEx);
                     }
 
-                    if (iid != null && iid > 0) {
+                    if (CodeRepo.RepoType.BITBUCKET.equals(codeRepo.getType())) {
+                        try {
+                            bitbucketScanReportService.publishAfterScan(codeRepo, codeRepoBranch, commit, iid);
+                        } catch (Exception e) {
+                            log.error("[Scan Service] Bitbucket publish after scan failed for {}: {}", codeRepo.getName(), e.getMessage(), e);
+                        }
+                    } else if (iid != null && iid > 0) {
                         try {
                             gitCommentService.processMergeComment(codeRepo, codeRepoBranch, iid);
                         } catch (MalformedURLException e) {

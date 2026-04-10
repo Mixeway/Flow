@@ -34,7 +34,10 @@ public class GitCommentService {
 
     private static final int TOP_FINDINGS_LIMIT = 5;
 
-    public void processMergeComment(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, Long iid) throws MalformedURLException {
+    /**
+     * Markdown body for the security scan comment (used by Git providers and Bitbucket integration).
+     */
+    public String buildSecurityScanComment(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) throws MalformedURLException {
         List<Finding> findings = findFindingService.getCodeRepoFindings(codeRepo, codeRepoBranch);
 
         int sastCritical = countFindings(findings, Finding.Source.SAST, Finding.Severity.CRITICAL, Finding.Status.EXISTING, Finding.Status.NEW);
@@ -76,13 +79,17 @@ public class GitCommentService {
         String encodedBranch = URLEncoder.encode(codeRepoBranch.getName(), StandardCharsets.UTF_8);
         String detailsLink = baseUrl + "?branch=" + encodedBranch;
 
-        String message = generateSecurityReport(
+        return generateSecurityReport(
                 status, critAndHigh,
                 sastCritical, sastHigh, sastMedium, sastLow,
                 secretsCritical, secretsHigh, secretsMedium, secretsLow,
                 iacCritical, iacHigh, iacMedium, iacLow,
                 scaEnabled, scaCritical, scaHigh, scaMedium, scaLow,
                 topCriticalFindings, detailsLink);
+    }
+
+    public void processMergeComment(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, Long iid) throws MalformedURLException {
+        String message = buildSecurityScanComment(codeRepo, codeRepoBranch);
 
         if (codeRepo.getType().equals(CodeRepo.RepoType.GITLAB)) {
             log.info("[Git Comment Service] About to put comment for Merge Request for {}", codeRepo.getName());
