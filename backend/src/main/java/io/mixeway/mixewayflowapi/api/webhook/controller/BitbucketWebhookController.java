@@ -28,7 +28,7 @@ public class BitbucketWebhookController {
 
     @PostMapping("/api/v1/webhook/bitbucket/pull-request")
     public ResponseEntity<?> pullRequestEvent(@RequestBody BBPullRequestEventDTO bbPullRequestEventDTO) {
-        log.info("[Bitbucket PR] Pull request event for {}", bbPullRequestEventDTO.getRepository().getFullName());
+        log.info("[Bitbucket PR] Pull request event for {}", bbPullRequestEventDTO.resolveRepositoryFullName());
         bitbucketWebhookService.processPullRequest(bbPullRequestEventDTO);
         return new ResponseEntity<>(HttpStatus.OK);
     }

@@ -49,23 +49,28 @@ public class BitbucketWebhookService {
 
     public void processPullRequest(BBPullRequestEventDTO prEvent) {
         try {
-            int remoteId = Math.abs(prEvent.getRepository().getUuid().hashCode());
+            String repoId = prEvent.resolveRepositoryId();
+            if (repoId == null) {
+                log.warn("[Bitbucket PR] Could not resolve repository ID from webhook payload");
+                return;
+            }
+            int remoteId = Math.abs(repoId.hashCode());
             CodeRepo codeRepo = findCodeRepoService.findByRemoteId((long) remoteId);
 
             String state = prEvent.getPullrequest().getState();
             if ("OPEN".equalsIgnoreCase(state)) {
-                String sourceBranch = prEvent.getPullrequest().getSource().getBranch().getName();
-                String commitHash = prEvent.getPullrequest().getSource().getCommit().getHash();
+                String sourceBranch = prEvent.resolveSourceBranch();
+                String commitHash = prEvent.resolveSourceCommitHash();
                 Long prId = prEvent.getPullrequest().getId();
 
                 log.info("[Bitbucket Webhook] Received open Pull Request event for {}, proceeding with scan..",
-                        prEvent.getRepository().getFullName());
+                        prEvent.resolveRepositoryFullName());
                 CodeRepoBranch codeRepoBranch = getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(sourceBranch, codeRepo);
                 scanManagerService.scanRepository(codeRepo, codeRepoBranch, commitHash, prId);
             }
         } catch (Exception e) {
             log.error("[Bitbucket PR] Error processing pull request webhook for {}, probably repo needs to be onboarded first.",
-                    prEvent.getRepository() != null ? prEvent.getRepository().getFullName() : "unknown");
+                    prEvent.resolveRepositoryFullName());
         }
     }
 }
