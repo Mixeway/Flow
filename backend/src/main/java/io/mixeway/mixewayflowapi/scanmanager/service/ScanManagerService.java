@@ -41,6 +41,8 @@ import jakarta.annotation.PreDestroy;
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -227,7 +229,7 @@ public class ScanManagerService {
                     try {
                         cleanUp(repoDir);
                     } catch (IOException cleanupEx) {
-                        log.error("[ScanManagerService] Failed to clean up repository directory {}: {}", repoDir, cleanupEx.getMessage(), cleanupEx);
+                        log.error("[ScanManagerService] Failed to clean up repository directory {}: {}", repoDir, cleanupEx.getMessage());
                     }
 
                     if (CodeRepo.RepoType.BITBUCKET.equals(codeRepo.getType())) {
@@ -362,7 +364,7 @@ public class ScanManagerService {
                     try {
                         cleanUp(repoDir);
                     } catch (IOException cleanupEx) {
-                        log.error("[ScanManagerService] Failed to clean up repository directory {}: {}", repoDir, cleanupEx.getMessage(), cleanupEx);
+                        log.error("[ScanManagerService] Failed to clean up repository directory {}: {}", repoDir, cleanupEx.getMessage());
                     }
 
                     if (CodeRepo.RepoType.BITBUCKET.equals(codeRepo.getType())) {
@@ -583,7 +585,45 @@ public class ScanManagerService {
     private void cleanUp(String repoDir) throws IOException {
         File dir = new File(repoDir);
         if (dir.exists()) {
-            deleteDirectory(dir);
+            int attempts = 0;
+            IOException lastException = null;
+
+            while (attempts < 3 && dir.exists()) {
+                attempts++;
+                try {
+                    deleteDirectory(dir);
+                    lastException = null;
+                    break;
+                } catch (IOException e) {
+                    lastException = e;
+                    log.warn("[ScanManagerService] Cleanup attempt {} failed for {}: {}", attempts, repoDir, e.getMessage());
+                    try {
+                        Thread.sleep(500L * attempts);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+
+            // Last resort on Linux containers: force remove with rm -rf.
+            if (dir.exists()) {
+                try {
+                    Process rmProcess = new ProcessBuilder("rm", "-rf", repoDir).start();
+                    boolean finished = rmProcess.waitFor(30, TimeUnit.SECONDS);
+                    if (!finished) {
+                        rmProcess.destroyForcibly();
+                    }
+                } catch (Exception e) {
+                    log.warn("[ScanManagerService] Force cleanup command failed for {}: {}", repoDir, e.getMessage());
+                }
+            }
+
+            if (dir.exists()) {
+                String reason = lastException != null ? lastException.getMessage() : "unknown reason";
+                throw new IOException("Repository directory still exists after cleanup attempts: " + repoDir + " (" + reason + ")");
+            }
+
             log.info("[ScanManagerService] Successfully cleaned up directory: {}", repoDir);
         } else {
             log.warn("[ScanManagerService] Directory does not exist: {}", repoDir);
@@ -597,16 +637,32 @@ public class ScanManagerService {
      * @throws IOException If an I/O error occurs during deletion.
      */
     private void deleteDirectory(File dir) throws IOException {
-        if (dir.isDirectory()) {
-            File[] files = dir.listFiles();
-            if (files != null) {
-                for (File file : files) {
-                    deleteDirectory(file);
-                }
-            }
+        Path rootPath = dir.toPath();
+        if (!Files.exists(rootPath)) {
+            return;
         }
-        if (!dir.delete()) {
-            throw new IOException("Failed to delete file or directory: " + dir.getAbsolutePath());
+
+        List<Path> failedDeletes = new ArrayList<>();
+
+        // Delete children before parents.
+        try (var paths = Files.walk(rootPath)) {
+            paths.sorted(Comparator.reverseOrder()).forEach(path -> {
+                try {
+                    File file = path.toFile();
+                    if (!file.canWrite()) {
+                        // Best-effort: some repos contain read-only files.
+                        file.setWritable(true);
+                    }
+                    Files.deleteIfExists(path);
+                } catch (Exception ex) {
+                    failedDeletes.add(path);
+                }
+            });
+        }
+
+        if (!failedDeletes.isEmpty()) {
+            String firstFailedPath = failedDeletes.get(0).toString();
+            throw new IOException("Failed to delete " + failedDeletes.size() + " path(s). First: " + firstFailedPath);
         }
     }
 
