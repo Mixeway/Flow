@@ -92,9 +92,12 @@ public class FindCodeRepoService {
     }
 
     public CodeRepo findByRemoteIdAndRepoUrl(Long id, String repoUrl) {
-
-        Optional<CodeRepo> codeRepo = codeRepoRepository.findByRemoteIdAndRepourl(id,repoUrl);
-        return codeRepo.orElseThrow();
+        Optional<CodeRepo> codeRepo = codeRepoRepository.findByRemoteIdAndRepourl(id, repoUrl);
+        if (codeRepo.isPresent()) {
+            return codeRepo.get();
+        }
+        // Fallback for webhook URL format differences (e.g. trailing slash/.git/SSH vs HTTP)
+        return codeRepoRepository.findByRemoteId(id).orElseThrow();
     }
 
     public Optional<CodeRepo> findById(long id) {

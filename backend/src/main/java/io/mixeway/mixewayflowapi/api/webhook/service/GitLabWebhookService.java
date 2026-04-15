@@ -14,6 +14,7 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.NoSuchElementException;
 
 @Service
 @RequiredArgsConstructor
@@ -28,8 +29,10 @@ public class GitLabWebhookService {
             CodeRepo codeRepo = findCodeRepoService.findByRemoteIdAndRepoUrl(gLPushEventDTO.getProject().getId(),gLPushEventDTO.getProject().getWeb_url());
             CodeRepoBranch codeRepoBranch = getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(gLPushEventDTO.getRef().replace("refs/heads/", ""), codeRepo);
             scanManagerService.scanRepository(codeRepo, codeRepoBranch, gLPushEventDTO.getAfter(), null);
+        } catch (NoSuchElementException e) {
+            log.warn("[GitLab Push] Skipping webhook for not onboarded repository: {}", gLPushEventDTO.getProject().getWeb_url());
         } catch (Exception e) {
-            log.error("[GitLab Push] There is a problem with processing push webhook for {}, probably repo need to be onboarded first.", gLPushEventDTO.getProject().getWeb_url());
+            log.error("[GitLab Push] Failed to process push webhook for {}: {}", gLPushEventDTO.getProject().getWeb_url(), e.getMessage());
         }
     }
 
@@ -42,8 +45,10 @@ public class GitLabWebhookService {
                 scanManagerService.scanRepository(codeRepo, codeRepoBranch, gLMergeEventDTO.getObjectAttributes().getLastCommitDTO().getId(),
                         gLMergeEventDTO.getObjectAttributes().getIid());
             }
+        } catch (NoSuchElementException e) {
+            log.warn("[GitLab Merge] Skipping merge webhook for not onboarded repository: {}", gLMergeEventDTO.getProject().getWeb_url());
         } catch (Exception e) {
-            log.error("[GitLab Merge] There is a problem with processing push webhook for {}, probably repo need to be onboarded first.", gLMergeEventDTO.getProject().getWeb_url());
+            log.error("[GitLab Merge] Failed to process merge webhook for {}: {}", gLMergeEventDTO.getProject().getWeb_url(), e.getMessage());
         }
     }
 }
