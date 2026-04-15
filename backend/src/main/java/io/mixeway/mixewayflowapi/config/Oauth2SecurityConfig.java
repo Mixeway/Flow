@@ -2,12 +2,15 @@ package io.mixeway.mixewayflowapi.config;
 
 import io.mixeway.mixewayflowapi.auth.CustomAuthenticationEntryPoint;
 import io.mixeway.mixewayflowapi.auth.OAuth2LoginSuccessHandler;
+import io.mixeway.mixewayflowapi.auth.UserDetailsServiceImpl;
 import io.mixeway.mixewayflowapi.auth.jwt.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -38,6 +41,7 @@ public class Oauth2SecurityConfig {
                 .authorizeHttpRequests(authorizeRequests ->
                         authorizeRequests
                                 .requestMatchers("/api/v1/status").permitAll()
+                                .requestMatchers("/api/v1/login").permitAll() // Form login (e.g. admin/admin) when SSO is also enabled
                                 .requestMatchers("/api/v1/webhook/**").permitAll() // Public webhook endpoint
                                 .requestMatchers("/api/v1/sso").permitAll() // Ensure the SSO endpoint is public
                 ) // Ensure the SSO endpoint is public
