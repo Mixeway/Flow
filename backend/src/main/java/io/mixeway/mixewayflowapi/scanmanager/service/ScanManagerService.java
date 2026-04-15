@@ -448,8 +448,7 @@ public class ScanManagerService {
                     log.warn("[ScanManagerService] SCA scan interrupted for {}.", codeRepo.getRepourl());
                     Thread.currentThread().interrupt();
                 } else {
-                    log.error("[ScanManagerService] An error occurred during SCA scan for {} - {}.", codeRepo.getRepourl(), e.getLocalizedMessage());
-                    e.printStackTrace();
+                    log.error("[ScanManagerService] SCA scan failed for {}: {}", codeRepo.getRepourl(), e.getMessage());
                 }
             } finally {
                 int remainingScaScans = scaScansRunning.decrementAndGet();
@@ -473,8 +472,10 @@ public class ScanManagerService {
                     log.warn("[ScanManagerService] SAST scan interrupted for {}.", codeRepo.getRepourl());
                     Thread.currentThread().interrupt();
                 } else {
-                    e.printStackTrace();
-                    log.error("[ScanManagerService] An error occurred during SAST scan for {}.", codeRepo.getRepourl());
+                    log.error("[ScanManagerService] SAST scan failed for {}: {} - {}",
+                            codeRepo.getRepourl(),
+                            e.getClass().getSimpleName(),
+                            e.getMessage());
                 }
             } finally {
                 int remainingSastScans = sastScansRunning.decrementAndGet();
