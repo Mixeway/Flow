@@ -41,7 +41,6 @@ public class Oauth2SecurityConfig {
                 .authorizeHttpRequests(authorizeRequests ->
                         authorizeRequests
                                 .requestMatchers("/api/v1/status").permitAll()
-                                .requestMatchers("/api/v1/login").permitAll() // Form login (e.g. admin/admin) when SSO is also enabled
                                 .requestMatchers("/api/v1/webhook/**").permitAll() // Public webhook endpoint
                                 .requestMatchers("/api/v1/sso").permitAll() // Ensure the SSO endpoint is public
                 ) // Ensure the SSO endpoint is public
