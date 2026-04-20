@@ -86,19 +86,22 @@ class StatsControllerTopReposAndVulnsTest {
     }
 
     @Test
-    void findTopVulnerabilitiesBySource_sast_returnsResults() {
+    void findTopVulnerabilitiesBySource_returnsValidStructure() {
         CodeRepo codeRepo = findCodeRepoService.findByRemoteId(14493750L);
-        assertNotNull(codeRepo);
+        assertNotNull(codeRepo, "Test fixture repo should exist");
+        List<Long> ids = Collections.singletonList(codeRepo.getId());
 
-        List<Object[]> rows = findingRepository.findTopVulnerabilitiesBySource(
-                Collections.singletonList(codeRepo.getId()), "SAST", 20);
-        assertNotNull(rows);
-
-        for (Object[] row : rows) {
-            TopVulnerabilityDto dto = mapToVulnDto(row);
-            assertNotNull(dto.getVulnName());
-            assertNotNull(dto.getSeverity());
-            assertTrue(dto.getCount() > 0);
+        String[] sources = {"SAST", "SCA", "IAC", "SECRETS", "DAST", "GITLAB_SCANNER"};
+        for (String source : sources) {
+            List<Object[]> rows = findingRepository.findTopVulnerabilitiesBySource(ids, source, 20);
+            assertNotNull(rows, "Result for source " + source + " should not be null");
+            for (Object[] row : rows) {
+                assertEquals(4, row.length, "Expected 4 columns for source " + source);
+                TopVulnerabilityDto dto = mapToVulnDto(row);
+                assertNotNull(dto.getVulnName());
+                assertNotNull(dto.getSeverity());
+                assertTrue(dto.getCount() > 0);
+            }
         }
     }
 
@@ -113,24 +116,9 @@ class StatsControllerTopReposAndVulnsTest {
     @Test
     void findTopVulnerabilitiesBySource_respectsLimit() {
         CodeRepo codeRepo = findCodeRepoService.findByRemoteId(14493750L);
-        List<Object[]> rows = findingRepository.findTopVulnerabilitiesBySource(
-                Collections.singletonList(codeRepo.getId()), "SAST", 1);
-        assertTrue(rows.size() <= 1, "Limit of 1 should return at most 1 result");
-    }
-
-    @Test
-    void findTopVulnerabilitiesBySource_allSources() {
-        CodeRepo codeRepo = findCodeRepoService.findByRemoteId(14493750L);
         List<Long> ids = Collections.singletonList(codeRepo.getId());
-
-        String[] sources = {"SAST", "SCA", "IAC", "SECRETS", "DAST", "GITLAB_SCANNER"};
-        for (String source : sources) {
-            List<Object[]> rows = findingRepository.findTopVulnerabilitiesBySource(ids, source, 20);
-            assertNotNull(rows, "Result for source " + source + " should not be null");
-            for (Object[] row : rows) {
-                assertEquals(4, row.length, "Expected 4 columns for source " + source);
-            }
-        }
+        List<Object[]> rows = findingRepository.findTopVulnerabilitiesBySource(ids, "SAST", 1);
+        assertTrue(rows.size() <= 1, "Limit of 1 should return at most 1 result");
     }
 
     private TopRepoFindingsDto mapToRepoDto(Object[] r) {
