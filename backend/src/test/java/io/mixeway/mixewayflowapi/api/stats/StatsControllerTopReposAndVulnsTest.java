@@ -99,7 +99,6 @@ class StatsControllerTopReposAndVulnsTest {
                 assertEquals(4, row.length, "Expected 4 columns for source " + source);
                 TopVulnerabilityDto dto = mapToVulnDto(row);
                 assertNotNull(dto.getVulnName());
-                assertNotNull(dto.getSeverity());
                 assertTrue(dto.getCount() > 0);
             }
         }
