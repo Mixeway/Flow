@@ -142,6 +142,51 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
 
     void deleteByCodeRepo(CodeRepo codeRepo);
 
+    @Query(value = """
+        SELECT
+            cr.id   AS repo_id,
+            cr.name AS repo_name,
+            t.name  AS team_name,
+            SUM(CASE WHEN f.source = 'SAST'           THEN 1 ELSE 0 END) AS sast,
+            SUM(CASE WHEN f.source = 'SCA'            THEN 1 ELSE 0 END) AS sca,
+            SUM(CASE WHEN f.source = 'IAC'            THEN 1 ELSE 0 END) AS iac,
+            SUM(CASE WHEN f.source = 'SECRETS'        THEN 1 ELSE 0 END) AS secrets,
+            SUM(CASE WHEN f.source = 'DAST'           THEN 1 ELSE 0 END) AS dast,
+            SUM(CASE WHEN f.source = 'GITLAB_SCANNER' THEN 1 ELSE 0 END) AS gitlab,
+            SUM(CASE WHEN f.severity IN ('CRITICAL','HIGH') THEN 1 ELSE 0 END) AS urgent,
+            SUM(CASE WHEN f.severity = 'MEDIUM'             THEN 1 ELSE 0 END) AS notable,
+            COUNT(*) AS total
+        FROM finding f
+        JOIN coderepo cr ON f.coderepo_id = cr.id
+        JOIN team t      ON cr.team_id    = t.id
+        WHERE f.status IN ('NEW','EXISTING')
+          AND f.coderepo_id IN (:repoIds)
+        GROUP BY cr.id, cr.name, t.name
+        ORDER BY total DESC
+        LIMIT :lim
+        """, nativeQuery = true)
+    List<Object[]> findTopReposDetailed(@Param("repoIds") List<Long> repoIds,
+                                        @Param("lim") int lim);
+
+    @Query(value = """
+        SELECT
+            v.id       AS vuln_id,
+            v.name     AS vuln_name,
+            v.severity AS severity,
+            COUNT(*)   AS cnt
+        FROM finding f
+        JOIN vulnerability v ON f.vulnerability_id = v.id
+        WHERE f.status IN ('NEW','EXISTING')
+          AND f.source = :source
+          AND f.coderepo_id IN (:repoIds)
+        GROUP BY v.id, v.name, v.severity
+        ORDER BY cnt DESC
+        LIMIT :lim
+        """, nativeQuery = true)
+    List<Object[]> findTopVulnerabilitiesBySource(@Param("repoIds") List<Long> repoIds,
+                                                  @Param("source") String source,
+                                                  @Param("lim") int lim);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
     update Finding f

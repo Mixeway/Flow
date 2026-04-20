@@ -1,10 +1,13 @@
 package io.mixeway.mixewayflowapi.api.stats;
 
+import io.mixeway.mixewayflowapi.api.stats.dto.TopRepoFindingsDto;
+import io.mixeway.mixewayflowapi.api.stats.dto.TopVulnerabilityDto;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoFindingStats;
 import io.mixeway.mixewayflowapi.db.entity.ScanInfo;
 import io.mixeway.mixewayflowapi.db.entity.Team;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoFindingStatsRepository;
+import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
 import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.scaninfo.FindScanInfoService;
 import io.mixeway.mixewayflowapi.utils.PermissionFactory;
@@ -28,6 +31,7 @@ public class StatsController {
     private final FindCodeRepoService findCodeRepoService;
     private final PermissionFactory permissionFactory;
     private final FindScanInfoService findScanInfoService;
+    private final FindingRepository findingRepository;
 
     /**
      * Returns vulnerability trend data over time for repositories the user has access to
@@ -365,6 +369,83 @@ public class StatsController {
         );
 
         return ResponseEntity.ok(teamStats);
+    }
+
+    @GetMapping("/top-repos-detailed")
+    public ResponseEntity<?> getTopReposDetailed(Principal principal,
+                                                  @RequestParam(required = false) Long teamId,
+                                                  @RequestParam(required = false) Integer limit) {
+
+        int resultsLimit = limit != null ? limit : 20;
+        List<Long> repoIds = getAccessibleRepoIds(principal, teamId);
+        if (repoIds == null) {
+            return ResponseEntity.notFound().build();
+        }
+        if (repoIds.isEmpty()) {
+            return ResponseEntity.ok(Collections.emptyList());
+        }
+
+        List<Object[]> rows = findingRepository.findTopReposDetailed(repoIds, resultsLimit);
+        List<TopRepoFindingsDto> result = rows.stream().map(r -> new TopRepoFindingsDto(
+                ((Number) r[0]).longValue(),
+                (String) r[1],
+                (String) r[2],
+                ((Number) r[3]).longValue(),
+                ((Number) r[4]).longValue(),
+                ((Number) r[5]).longValue(),
+                ((Number) r[6]).longValue(),
+                ((Number) r[7]).longValue(),
+                ((Number) r[8]).longValue(),
+                ((Number) r[9]).longValue(),
+                ((Number) r[10]).longValue(),
+                ((Number) r[11]).longValue()
+        )).collect(Collectors.toList());
+
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/top-vulnerabilities")
+    public ResponseEntity<?> getTopVulnerabilities(Principal principal,
+                                                    @RequestParam String source,
+                                                    @RequestParam(required = false) Long teamId,
+                                                    @RequestParam(required = false) Integer limit) {
+
+        int resultsLimit = limit != null ? limit : 20;
+        List<Long> repoIds = getAccessibleRepoIds(principal, teamId);
+        if (repoIds == null) {
+            return ResponseEntity.notFound().build();
+        }
+        if (repoIds.isEmpty()) {
+            return ResponseEntity.ok(Collections.emptyList());
+        }
+
+        List<Object[]> rows = findingRepository.findTopVulnerabilitiesBySource(repoIds, source, resultsLimit);
+        List<TopVulnerabilityDto> result = rows.stream().map(r -> new TopVulnerabilityDto(
+                ((Number) r[0]).longValue(),
+                (String) r[1],
+                (String) r[2],
+                ((Number) r[3]).longValue()
+        )).collect(Collectors.toList());
+
+        return ResponseEntity.ok(result);
+    }
+
+    private List<Long> getAccessibleRepoIds(Principal principal, Long teamId) {
+        List<Team> accessibleTeams;
+        if (teamId != null) {
+            Optional<Team> teamOpt = permissionFactory.findById(teamId, principal);
+            if (teamOpt.isEmpty()) {
+                return null;
+            }
+            accessibleTeams = Collections.singletonList(teamOpt.get());
+        } else {
+            accessibleTeams = permissionFactory.findTeams(principal);
+        }
+
+        return accessibleTeams.stream()
+                .flatMap(team -> findCodeRepoService.findByTeam(team).stream())
+                .map(CodeRepo::getId)
+                .collect(Collectors.toList());
     }
 
     // Helper method to update counts in the aggregation map

@@ -82,6 +82,34 @@ export interface TeamStats {
 }
 
 /**
+ * Top repository findings broken down by scanner (NEW + EXISTING combined)
+ */
+export interface TopRepoFindings {
+    repoId: number;
+    repoName: string;
+    teamName: string;
+    sast: number;
+    sca: number;
+    iac: number;
+    secrets: number;
+    dast: number;
+    gitlab: number;
+    urgent: number;
+    notable: number;
+    total: number;
+}
+
+/**
+ * Top vulnerability for a single source
+ */
+export interface TopVulnerability {
+    vulnId: number;
+    vulnName: string;
+    severity: string;
+    count: number;
+}
+
+/**
  * Chart data structure for Line charts
  */
 export interface LineChartData {

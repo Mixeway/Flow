@@ -8,3 +8,4 @@
 /frontend/src/assets/.DS_Store
 /backend/MixewayFlowAPI.iml
 #frontend/src/environments
+.vscode

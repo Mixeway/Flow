@@ -4,16 +4,13 @@ import io.mixeway.mixewayflowapi.db.entity.UserInfo;
 import io.mixeway.mixewayflowapi.domain.user.FindUserService;
 import io.mixeway.mixewayflowapi.domain.user.UpdateUserService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.security.Principal;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
-    private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final FindUserService findUserService;
     private final UpdateUserService updateUserService;
 
