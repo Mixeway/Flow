@@ -92,8 +92,7 @@ public class FindCodeRepoService {
     }
 
     public CodeRepo findByRemoteIdAndRepoUrl(Long id, String repoUrl) {
-
-        Optional<CodeRepo> codeRepo = codeRepoRepository.findByRemoteIdAndRepourl(id,repoUrl);
+        Optional<CodeRepo> codeRepo = codeRepoRepository.findByRemoteIdAndRepourl(id, repoUrl);
         return codeRepo.orElseThrow();
     }
 

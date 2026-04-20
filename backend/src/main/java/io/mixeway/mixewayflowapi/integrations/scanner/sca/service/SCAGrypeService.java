@@ -65,6 +65,9 @@ public class SCAGrypeService {
         if (sbomFile == null) {
             cdxGenService.generateBom(repoDir,codeRepo,codeRepoBranch);
             sbomFile = findSbom(repoDir);
+            if (sbomFile == null) {
+                throw new ScanException("[GrypeService] SBOM file not found after cdxgen generation.");
+            }
         }
 
         log.info("[GrypeService] Starting Grype scan for repository: {} branch: {}", codeRepo.getName(), codeRepoBranch.getName());
@@ -89,7 +92,7 @@ public class SCAGrypeService {
                         // Silently consume the output
                     }
                 } catch (IOException e) {
-                    log.error("Error reading output stream", e);
+                    log.error("[GrypeService] Error reading output stream: {}", e.getMessage());
                 }
             });
 
@@ -102,7 +105,7 @@ public class SCAGrypeService {
                         // Silently consume the error stream
                     }
                 } catch (IOException e) {
-                    log.error("[GrypeService] Error reading error stream", e);
+                    log.error("[GrypeService] Error reading error stream: {}", e.getMessage());
                 }
             });
 
@@ -137,7 +140,10 @@ public class SCAGrypeService {
 
             log.info("[GrypeService] Scan results processed successfully - [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
         } catch (JsonParseException e) {
-            log.warn("[GrypeService] Error with running scan for repository - [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName(), e);
+            log.warn("[GrypeService] Error processing Grype JSON for [{} / {}]: {}",
+                    codeRepo.getRepourl(),
+                    codeRepoBranch.getName(),
+                    e.getMessage());
         }
     }
 
@@ -162,16 +168,20 @@ public class SCAGrypeService {
                 try {
                     pkg = new PackageURL(purl);
                 } catch (MalformedPackageURLException e) {
-                    log.warn("[GrypeService] Skipping invalid component purl: {}", purl, e);
+                    log.warn("[GrypeService] Skipping invalid component purl: {}", purl);
                     continue;
                 }
 
                 String type = pkg.getType();
                 String version = pkg.getVersion();
 
-                String name = "maven".equals(type)
+                String name = "maven".equals(type) && pkg.getNamespace() != null && !pkg.getNamespace().isBlank()
                         ? pkg.getNamespace() + ":" + pkg.getName()
                         : pkg.getName();
+                if (name == null || name.isBlank() || version == null || version.isBlank()) {
+                    log.warn("[GrypeService] Skipping component with missing name/version. purl: {}", purl);
+                    continue;
+                }
 
                 Component component = getOrCreateComponentService.getOrCreate(
                         name, type, version, "nvd"
@@ -194,7 +204,7 @@ public class SCAGrypeService {
                     try {
                         pkg = new PackageURL(d.getRef());
                     } catch (MalformedPackageURLException e) {
-                        log.warn("[GrypeService] Skipping invalid dependency purl: {}", d.getRef(), e);
+                        log.warn("[GrypeService] Skipping invalid dependency purl: {}", d.getRef());
                         continue;
                     }
 
@@ -203,6 +213,10 @@ public class SCAGrypeService {
                     String name = "maven".equals(type)
                             ? pkg.getNamespace() + ":" + pkg.getName()
                             : pkg.getName();
+                    if (name == null || name.isBlank() || version == null || version.isBlank()) {
+                        log.warn("[GrypeService] Skipping dependency with missing name/version. purl: {}", d.getRef());
+                        continue;
+                    }
 
                     Component component = getOrCreateComponentService.getOrCreate(
                             name, type, version, "nvd"
@@ -226,7 +240,7 @@ public class SCAGrypeService {
                         try {
                             pkg = new PackageURL(depPurl);
                         } catch (MalformedPackageURLException e) {
-                            log.warn("[GrypeService] Skipping invalid dependency purl: {}", depPurl, e);
+                            log.warn("[GrypeService] Skipping invalid dependency purl: {}", depPurl);
                             continue;
                         }
 
@@ -235,6 +249,10 @@ public class SCAGrypeService {
                         String name = "maven".equals(type)
                                 ? pkg.getNamespace() + ":" + pkg.getName()
                                 : pkg.getName();
+                        if (name == null || name.isBlank() || version == null || version.isBlank()) {
+                            log.warn("[GrypeService] Skipping dependency with missing name/version. purl: {}", depPurl);
+                            continue;
+                        }
 
                         Component component = getOrCreateComponentService.getOrCreate(
                                 name, type, version, "nvd"
