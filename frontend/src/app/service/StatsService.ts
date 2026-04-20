@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import {TopRepoFindings, TopVulnerability} from "../model/stats.models";
 import {environment} from "../../environments/environment";
 
 @Injectable({
@@ -70,5 +71,23 @@ export class StatsService {
      */
     getDashboardMetrics(): Observable<any> {
         return this.http.get<any>(`${this.apiBaseUrl}/dashboard-metrics`, { withCredentials: true });
+    }
+
+    getTopReposDetailed(teamId: number | null, limit: number): Observable<TopRepoFindings[]> {
+        let params = new HttpParams();
+        if (teamId !== null) {
+            params = params.append('teamId', teamId.toString());
+        }
+        params = params.append('limit', limit.toString());
+        return this.http.get<TopRepoFindings[]>(`${this.apiBaseUrl}/top-repos-detailed`, { params });
+    }
+
+    getTopVulnerabilities(teamId: number | null, source: string, limit: number): Observable<TopVulnerability[]> {
+        let params = new HttpParams().append('source', source);
+        if (teamId !== null) {
+            params = params.append('teamId', teamId.toString());
+        }
+        params = params.append('limit', limit.toString());
+        return this.http.get<TopVulnerability[]>(`${this.apiBaseUrl}/top-vulnerabilities`, { params });
     }
 }

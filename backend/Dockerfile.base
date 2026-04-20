@@ -1,49 +1,23 @@
-## ── Stage 1: Maven build ────────────────────────────────────
-FROM maven:3.9.8-amazoncorretto-17 AS maven_build
+# Pre-baked runtime base image for flow-api.
+# Contains all system packages, JDKs, security tools, and runtimes.
+# Rebuild only when tool versions change:
+#   docker buildx build -f Dockerfile.base --platform linux/amd64,linux/arm64 \
+#     -t mixeway/flow-api-base:latest --push .
 
-WORKDIR /app
-
-RUN yum update -y && yum install -y which file && yum clean all
-
-# Set up Java 22 based on architecture
-RUN ARCH=$(uname -m) && \
-    if [ "$ARCH" = "x86_64" ]; then \
-        curl -L https://download.oracle.com/java/22/archive/jdk-22_linux-x64_bin.tar.gz -o jdk.tar.gz; \
-    elif [ "$ARCH" = "aarch64" ]; then \
-        curl -L https://download.oracle.com/java/22/archive/jdk-22_linux-aarch64_bin.tar.gz -o jdk.tar.gz; \
-    else \
-        echo "Unsupported architecture: $ARCH"; exit 1; \
-    fi && \
-    mkdir -p /usr/local/jdk-22 && \
-    tar -xzf jdk.tar.gz -C /usr/local/jdk-22 --strip-components=1 && \
-    rm jdk.tar.gz
-
-ENV JAVA_HOME=/usr/local/jdk-22
-ENV PATH="$JAVA_HOME/bin:$PATH"
-
-# Download dependencies first (cacheable when only src changes)
-COPY pom.xml .
-RUN mvn dependency:go-offline -B
-
-# Now copy source and build
-COPY src ./src
-RUN mvn clean package -DskipTests -o
-
-## ── Stage 2: KICS ──────────────────────────────────────────
 FROM checkmarx/kics:latest AS kics
 
-## ── Stage 3: Runtime ────────────────────────────────────────
-FROM bitnami/minideb:latest AS final
+FROM bitnami/minideb:latest
+
 WORKDIR /app
 
-# ── Layer group 1: OS packages (rarely changes) ─────────────
+# ── OS packages ──────────────────────────────────────────────
 RUN apt-get update && \
     apt-get install -y curl cron firefox-esr wget unzip git python3 python3-pip file libenchant-2-2 maven && \
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y nodejs && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# ── Layer group 2: JDKs + Gradle (rarely changes) ───────────
+# ── JDK 22 + JDK 17 ─────────────────────────────────────────
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then \
         wget -O jdk22.tar.gz https://download.oracle.com/java/22/archive/jdk-22_linux-x64_bin.tar.gz; \
@@ -60,6 +34,7 @@ RUN ARCH=$(uname -m) && \
 ENV JAVA_HOME=/usr/local/jdk-22
 ENV PATH="$JAVA_HOME/bin:$PATH"
 
+# ── Gradle ───────────────────────────────────────────────────
 ENV GRADLE_VERSION=8.6
 RUN wget -q https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -P /tmp && \
     unzip -q /tmp/gradle-${GRADLE_VERSION}-bin.zip -d /opt/gradle && \
@@ -67,9 +42,10 @@ RUN wget -q https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-b
 ENV GRADLE_HOME=/opt/gradle/gradle-${GRADLE_VERSION}
 ENV PATH="$PATH:$GRADLE_HOME/bin"
 
-# ── Layer group 3: Security tools (rarely changes) ──────────
+# ── Node tools ───────────────────────────────────────────────
 RUN npm install -g @cyclonedx/cdxgen@latest
 
+# ── Security scanners ───────────────────────────────────────
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then \
         wget -O gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.12.0/gitleaks_8.12.0_linux_x64.tar.gz; \
@@ -91,36 +67,22 @@ RUN mkdir -p /opt/bearer && \
     tar -xzf bearer-rules.tar.gz -C /opt/bearer --strip-components=1 && \
     rm bearer-rules.tar.gz
 
+# ── ZAP ──────────────────────────────────────────────────────
 RUN wget -q https://github.com/zaproxy/zaproxy/releases/download/v2.16.1/ZAP_2.16.1_Linux.tar.gz && \
     tar -xzf ZAP_2.16.1_Linux.tar.gz && \
     rm ZAP_2.16.1_Linux.tar.gz && \
     mv ZAP_2.16.1 /opt/zap
 
+# ── KICS ─────────────────────────────────────────────────────
 RUN mkdir /opt/kics
 COPY --from=kics /app/bin/kics /usr/local/bin/kics
 COPY --from=kics /app/bin/assets /opt/tools/kics/assets
 RUN rm -rf /opt/tools/kics/assets/queries/openAPI && \
     rm -rf /opt/tools/kics/assets/queries/common/passwords_and_secrets
 
-# ── Layer group 4: Python deps (changes occasionally) ───────
-COPY requirements.txt .
-RUN pip install -r requirements.txt --break-system-packages
-
-# ── Layer group 5: App artifacts (changes every build) ──────
-COPY --from=maven_build /app/target/MixewayFlowAPI-0.0.1-SNAPSHOT.jar flowapi.jar
-COPY gitleaks.default.toml .gitleaks.default.toml
-COPY gitleaks.toml .gitleaks.toml
-COPY src/main/java/io/mixeway/mixewayflowapi/integrations/scanner/secrets/service/secrets_filtering_service.py .
-COPY src/main/java/io/mixeway/mixewayflowapi/integrations/scanner/secrets/service/secrets_verifying_service.py .
-
-# ── Cron cleanup ────────────────────────────────────────────
+# ── Cron cleanup ─────────────────────────────────────────────
 RUN echo '#!/bin/bash\nfind /tmp -mmin +39 -type f -exec rm -fv {} \;' > /usr/local/bin/cleanup_tmp.sh && \
     chmod +x /usr/local/bin/cleanup_tmp.sh && \
     echo "*/5 * * * * /usr/local/bin/cleanup_tmp.sh" > /etc/cron.d/cleanup_tmp && \
     chmod 0644 /etc/cron.d/cleanup_tmp && \
     crontab /etc/cron.d/cleanup_tmp
-
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
-
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

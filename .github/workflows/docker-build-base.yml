@@ -1,14 +1,16 @@
-name: Docker Build and Push
+name: Build Base Image
 
+# Run manually or when tool versions change in Dockerfile.base
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
     paths:
-      - 'frontend/**'
+      - 'backend/Dockerfile.base'
 
 jobs:
-  build-and-push-frontend:
+  build-base:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -26,14 +28,13 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push multi-platform image
+      - name: Build and push base image
         uses: docker/build-push-action@v6
         with:
-          context: ./frontend
+          context: ./backend
+          file: ./backend/Dockerfile.base
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: |
-            mixeway/flow:latest
-            mixeway/flow:latest-beta
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: mixeway/flow-api-base:latest
+          cache-from: type=gha,scope=base
+          cache-to: type=gha,mode=max,scope=base

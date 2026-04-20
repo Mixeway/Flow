@@ -39,212 +39,431 @@
     </div>
 
     <div *ngIf="!isLoading" class="dashboard-content">
-        <!-- KPI Cards -->
-        <div class="kpi-grid">
-            <div class="kpi-card kpi-blue">
-                <div class="kpi-icon">
-                    <svg cIcon name="cil-list" size="xl"></svg>
-                </div>
-                <div class="kpi-body">
-                    <span class="kpi-label">Total Open Findings</span>
-                    <span class="kpi-value">{{ formatNumber(summaryData.openTotal || 0) }}</span>
-                    <span class="kpi-trend" [ngClass]="getTrendClass(getSeverityTrend('critical'))">
-                        <svg cIcon [name]="getTrendIcon(getSeverityTrend('critical'))" size="sm"></svg>
-                        {{ getSeverityTrend('critical') === 'up' ? 'Increasing' : getSeverityTrend('critical') === 'down' ? 'Decreasing' : 'Stable' }}
-                    </span>
-                </div>
-            </div>
+        <c-tabs [activeItemKey]="activeTab">
+            <c-tabs-list variant="underline-border" class="dashboard-tabs">
+                <button cTab [itemKey]="0" class="px-4 py-3">
+                    <svg cIcon name="cil-chart-pie" class="me-2"></svg>
+                    Overview
+                </button>
+                <button cTab [itemKey]="1" class="px-4 py-3">
+                    <svg cIcon name="cil-code" class="me-2"></svg>
+                    Top Repositories
+                </button>
+                <button cTab [itemKey]="2" class="px-4 py-3">
+                    <svg cIcon name="cil-bug" class="me-2"></svg>
+                    Top Vulnerabilities
+                </button>
+            </c-tabs-list>
 
-            <div class="kpi-card kpi-red">
-                <div class="kpi-icon">
-                    <svg cIcon name="cil-warning" size="xl"></svg>
-                </div>
-                <div class="kpi-body">
-                    <span class="kpi-label">Critical</span>
-                    <span class="kpi-value">{{ formatNumber(summaryData.criticalTotal || 0) }}</span>
-                    <span class="kpi-trend" [ngClass]="getTrendClass(getSeverityTrend('critical'))">
-                        <svg cIcon [name]="getTrendIcon(getSeverityTrend('critical'))" size="sm"></svg>
-                        {{ getSeverityTrend('critical') === 'up' ? 'Increasing' : getSeverityTrend('critical') === 'down' ? 'Decreasing' : 'Stable' }}
-                    </span>
-                </div>
-            </div>
+            <c-tabs-content>
+                <!-- ═══ TAB 0: Overview ═══ -->
+                <c-tab-panel [itemKey]="0">
+                    <div class="tab-body">
+                        <div class="kpi-grid">
+                            <div class="kpi-card kpi-blue">
+                                <div class="kpi-icon">
+                                    <svg cIcon name="cil-list" size="xl"></svg>
+                                </div>
+                                <div class="kpi-body">
+                                    <span class="kpi-label">Total Open Findings</span>
+                                    <span class="kpi-value">{{ formatNumber(summaryData.openTotal || 0) }}</span>
+                                    <span class="kpi-trend" [ngClass]="getTrendClass(getSeverityTrend('critical'))">
+                                        <svg cIcon [name]="getTrendIcon(getSeverityTrend('critical'))" size="sm"></svg>
+                                        {{ getSeverityTrend('critical') === 'up' ? 'Increasing' : getSeverityTrend('critical') === 'down' ? 'Decreasing' : 'Stable' }}
+                                    </span>
+                                </div>
+                            </div>
 
-            <div class="kpi-card kpi-purple">
-                <div class="kpi-icon">
-                    <svg cIcon name="cil-clock" size="xl"></svg>
-                </div>
-                <div class="kpi-body">
-                    <span class="kpi-label">Avg. Fix Time</span>
-                    <span class="kpi-value">{{ summaryData.averageFixTime || 0 }}<small>d</small></span>
-                    <span class="kpi-trend text-muted">Based on resolved findings</span>
-                </div>
-            </div>
+                            <div class="kpi-card kpi-red">
+                                <div class="kpi-icon">
+                                    <svg cIcon name="cil-warning" size="xl"></svg>
+                                </div>
+                                <div class="kpi-body">
+                                    <span class="kpi-label">Critical</span>
+                                    <span class="kpi-value">{{ formatNumber(summaryData.criticalTotal || 0) }}</span>
+                                    <span class="kpi-trend" [ngClass]="getTrendClass(getSeverityTrend('critical'))">
+                                        <svg cIcon [name]="getTrendIcon(getSeverityTrend('critical'))" size="sm"></svg>
+                                        {{ getSeverityTrend('critical') === 'up' ? 'Increasing' : getSeverityTrend('critical') === 'down' ? 'Decreasing' : 'Stable' }}
+                                    </span>
+                                </div>
+                            </div>
 
-            <div class="kpi-card kpi-teal">
-                <div class="kpi-icon">
-                    <svg cIcon name="cil-storage" size="xl"></svg>
-                </div>
-                <div class="kpi-body">
-                    <span class="kpi-label">Repositories</span>
-                    <span class="kpi-value">{{ formatNumber(summaryData.totalRepos || 0) }}</span>
-                    <span class="kpi-trend text-muted">Monitored for issues</span>
-                </div>
-            </div>
-        </div>
+                            <div class="kpi-card kpi-purple">
+                                <div class="kpi-icon">
+                                    <svg cIcon name="cil-clock" size="xl"></svg>
+                                </div>
+                                <div class="kpi-body">
+                                    <span class="kpi-label">Avg. Fix Time</span>
+                                    <span class="kpi-value">{{ summaryData.averageFixTime || 0 }}<small>d</small></span>
+                                    <span class="kpi-trend text-muted">Based on resolved findings</span>
+                                </div>
+                            </div>
 
-        <!-- Vulnerability Trend -->
-        <div class="chart-section">
-            <div class="section-card full-width">
-                <div class="section-header">
-                    <h3>Vulnerability Trend</h3>
-                    <span class="section-badge">Last {{ timeRange }} days</span>
-                </div>
-                <div class="chart-wrapper" style="height: 300px;">
-                    <c-chart *ngIf="vulnerabilityTrendChartData" type="line"
-                             [data]="vulnerabilityTrendChartData"
-                             [options]="lineChartOptions"
-                             style="max-height: 100%; width: 100%;"></c-chart>
-                </div>
-            </div>
-        </div>
+                            <div class="kpi-card kpi-teal">
+                                <div class="kpi-icon">
+                                    <svg cIcon name="cil-storage" size="xl"></svg>
+                                </div>
+                                <div class="kpi-body">
+                                    <span class="kpi-label">Repositories</span>
+                                    <span class="kpi-value">{{ formatNumber(summaryData.totalRepos || 0) }}</span>
+                                    <span class="kpi-trend text-muted">Monitored for issues</span>
+                                </div>
+                            </div>
+                        </div>
 
-        <!-- Distribution Charts -->
-        <div class="distribution-grid">
-            <div class="section-card">
-                <div class="section-header">
-                    <h3>By Severity</h3>
-                </div>
-                <div class="chart-wrapper" style="height: 240px;">
-                    <c-chart *ngIf="severityDistributionChartData" type="doughnut"
-                             [data]="severityDistributionChartData"
-                             [options]="doughnutChartOptions"></c-chart>
-                </div>
-            </div>
+                        <div class="chart-section">
+                            <div class="section-card full-width">
+                                <div class="section-header">
+                                    <h3>Vulnerability Trend</h3>
+                                    <span class="section-badge">Last {{ timeRange }} days</span>
+                                </div>
+                                <div class="chart-wrapper" style="height: 300px;">
+                                    <c-chart *ngIf="vulnerabilityTrendChartData" type="line"
+                                             [data]="vulnerabilityTrendChartData"
+                                             [options]="lineChartOptions"
+                                             style="max-height: 100%; width: 100%;"></c-chart>
+                                </div>
+                            </div>
+                        </div>
 
-            <div class="section-card">
-                <div class="section-header">
-                    <h3>By Source</h3>
-                </div>
-                <div class="chart-wrapper" style="height: 240px;">
-                    <c-chart *ngIf="sourceDistributionChartData" type="doughnut"
-                             [data]="sourceDistributionChartData"
-                             [options]="doughnutChartOptions"></c-chart>
-                </div>
-            </div>
+                        <div class="distribution-grid">
+                            <div class="section-card">
+                                <div class="section-header"><h3>By Severity</h3></div>
+                                <div class="chart-wrapper" style="height: 240px;">
+                                    <c-chart *ngIf="severityDistributionChartData" type="doughnut"
+                                             [data]="severityDistributionChartData"
+                                             [options]="doughnutChartOptions"></c-chart>
+                                </div>
+                            </div>
+                            <div class="section-card">
+                                <div class="section-header"><h3>By Source</h3></div>
+                                <div class="chart-wrapper" style="height: 240px;">
+                                    <c-chart *ngIf="sourceDistributionChartData" type="doughnut"
+                                             [data]="sourceDistributionChartData"
+                                             [options]="doughnutChartOptions"></c-chart>
+                                </div>
+                            </div>
+                            <div class="section-card">
+                                <div class="section-header"><h3>By Status</h3></div>
+                                <div class="chart-wrapper" style="height: 240px;">
+                                    <c-chart *ngIf="statusDistributionChartData" type="doughnut"
+                                             [data]="statusDistributionChartData"
+                                             [options]="doughnutChartOptions"></c-chart>
+                                </div>
+                            </div>
+                        </div>
 
-            <div class="section-card">
-                <div class="section-header">
-                    <h3>By Status</h3>
-                </div>
-                <div class="chart-wrapper" style="height: 240px;">
-                    <c-chart *ngIf="statusDistributionChartData" type="doughnut"
-                             [data]="statusDistributionChartData"
-                             [options]="doughnutChartOptions"></c-chart>
-                </div>
-            </div>
-        </div>
+                        <div class="chart-section">
+                            <div class="section-card full-width">
+                                <div class="section-header"><h3>Fix Progress</h3></div>
+                                <div class="chart-wrapper" style="height: 260px;">
+                                    <c-chart *ngIf="fixProgressChartData" type="line"
+                                             [data]="fixProgressChartData"
+                                             [options]="lineChartOptions"
+                                             style="max-height: 100%; width: 100%;"></c-chart>
+                                </div>
+                            </div>
+                        </div>
 
-        <!-- Fix Progress -->
-        <div class="chart-section">
-            <div class="section-card full-width">
-                <div class="section-header">
-                    <h3>Fix Progress</h3>
-                </div>
-                <div class="chart-wrapper" style="height: 260px;">
-                    <c-chart *ngIf="fixProgressChartData" type="line"
-                             [data]="fixProgressChartData"
-                             [options]="lineChartOptions"
-                             style="max-height: 100%; width: 100%;"></c-chart>
-                </div>
-            </div>
-        </div>
+                        <div class="table-section">
+                            <div class="section-card full-width">
+                                <div class="section-header"><h3>Top Vulnerable Repositories</h3></div>
+                                <div class="table-wrapper">
+                                    <table class="data-table">
+                                        <thead>
+                                        <tr>
+                                            <th>Repository</th>
+                                            <th>Team</th>
+                                            <th class="text-center">Critical</th>
+                                            <th class="text-center">High</th>
+                                            <th class="text-center">Total</th>
+                                            <th class="text-end">Fix Time</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr *ngFor="let repo of topRepos">
+                                            <td class="repo-name">{{ repo.repoName }}</td>
+                                            <td class="team-name">{{ repo.teamName }}</td>
+                                            <td class="text-center"><span class="pill pill-critical">{{ repo.criticalCount }}</span></td>
+                                            <td class="text-center"><span class="pill pill-high">{{ repo.highCount }}</span></td>
+                                            <td class="text-center fw-bold">{{ repo.totalVulnerabilities }}</td>
+                                            <td class="text-end text-muted">{{ repo.averageFixTime }}d</td>
+                                        </tr>
+                                        <tr *ngIf="topRepos.length === 0">
+                                            <td colspan="6" class="empty-state">
+                                                <svg cIcon name="cil-check-circle" size="lg"></svg>
+                                                <span>No vulnerability data available</span>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
 
-        <!-- Top Vulnerable Repos -->
-        <div class="table-section">
-            <div class="section-card full-width">
-                <div class="section-header">
-                    <h3>Top Vulnerable Repositories</h3>
-                </div>
-                <div class="table-wrapper">
-                    <table class="data-table">
-                        <thead>
-                        <tr>
-                            <th>Repository</th>
-                            <th>Team</th>
-                            <th class="text-center">Critical</th>
-                            <th class="text-center">High</th>
-                            <th class="text-center">Total</th>
-                            <th class="text-end">Fix Time</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr *ngFor="let repo of topRepos">
-                            <td class="repo-name">{{ repo.repoName }}</td>
-                            <td class="team-name">{{ repo.teamName }}</td>
-                            <td class="text-center">
-                                <span class="pill pill-critical">{{ repo.criticalCount }}</span>
-                            </td>
-                            <td class="text-center">
-                                <span class="pill pill-high">{{ repo.highCount }}</span>
-                            </td>
-                            <td class="text-center fw-bold">{{ repo.totalVulnerabilities }}</td>
-                            <td class="text-end text-muted">{{ repo.averageFixTime }}d</td>
-                        </tr>
-                        <tr *ngIf="topRepos.length === 0">
-                            <td colspan="6" class="empty-state">
-                                <svg cIcon name="cil-check-circle" size="lg"></svg>
-                                <span>No vulnerability data available</span>
-                            </td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+                        <div class="table-section">
+                            <div class="section-card full-width">
+                                <div class="section-header"><h3>Teams Overview</h3></div>
+                                <div class="table-wrapper">
+                                    <table class="data-table">
+                                        <thead>
+                                        <tr>
+                                            <th>Team</th>
+                                            <th class="text-center">Repos</th>
+                                            <th class="text-center">Critical</th>
+                                            <th class="text-center">High</th>
+                                            <th class="text-center">Total</th>
+                                            <th class="text-center">Fixed</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr *ngFor="let team of teamsSummary">
+                                            <td class="team-name-primary">{{ team.teamName }}</td>
+                                            <td class="text-center">{{ team.repoCount }}</td>
+                                            <td class="text-center"><span class="pill pill-critical">{{ team.criticalCount }}</span></td>
+                                            <td class="text-center"><span class="pill pill-high">{{ team.highCount }}</span></td>
+                                            <td class="text-center fw-bold">{{ team.totalVulnerabilities }}</td>
+                                            <td class="text-center"><span class="pill pill-success">{{ team.fixedVulnerabilities }}</span></td>
+                                        </tr>
+                                        <tr *ngIf="teamsSummary.length === 0">
+                                            <td colspan="6" class="empty-state">
+                                                <svg cIcon name="cil-check-circle" size="lg"></svg>
+                                                <span>No teams with vulnerability data</span>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </c-tab-panel>
 
-        <!-- Teams Overview -->
-        <div class="table-section">
-            <div class="section-card full-width">
-                <div class="section-header">
-                    <h3>Teams Overview</h3>
-                </div>
-                <div class="table-wrapper">
-                    <table class="data-table">
-                        <thead>
-                        <tr>
-                            <th>Team</th>
-                            <th class="text-center">Repos</th>
-                            <th class="text-center">Critical</th>
-                            <th class="text-center">High</th>
-                            <th class="text-center">Total</th>
-                            <th class="text-center">Fixed</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr *ngFor="let team of teamsSummary">
-                            <td class="team-name-primary">{{ team.teamName }}</td>
-                            <td class="text-center">{{ team.repoCount }}</td>
-                            <td class="text-center">
-                                <span class="pill pill-critical">{{ team.criticalCount }}</span>
-                            </td>
-                            <td class="text-center">
-                                <span class="pill pill-high">{{ team.highCount }}</span>
-                            </td>
-                            <td class="text-center fw-bold">{{ team.totalVulnerabilities }}</td>
-                            <td class="text-center">
-                                <span class="pill pill-success">{{ team.fixedVulnerabilities }}</span>
-                            </td>
-                        </tr>
-                        <tr *ngIf="teamsSummary.length === 0">
-                            <td colspan="6" class="empty-state">
-                                <svg cIcon name="cil-check-circle" size="lg"></svg>
-                                <span>No teams with vulnerability data</span>
-                            </td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+                <!-- ═══ TAB 1: Top Repositories ═══ -->
+                <c-tab-panel [itemKey]="1">
+                    <div class="tab-body">
+                        <div class="table-section">
+                            <div class="section-card full-width">
+                                <div class="section-header">
+                                    <h3>Top 20 Repositories — Findings by Scanner</h3>
+                                    <span class="section-badge">Active findings (New + Existing)</span>
+                                </div>
+                                <div class="table-wrapper">
+                                    <table class="data-table detailed-table">
+                                        <thead>
+                                        <tr>
+                                            <th class="sticky-col">Repository</th>
+                                            <th>Team</th>
+                                            <th class="text-center group-header group-sast">SAST</th>
+                                            <th class="text-center group-header group-sca">SCA</th>
+                                            <th class="text-center group-header group-iac">IaC</th>
+                                            <th class="text-center group-header group-secrets">Secrets</th>
+                                            <th class="text-center group-header group-dast">DAST</th>
+                                            <th class="text-center group-header group-gitlab">GitLab</th>
+                                            <th class="text-center">Urgent</th>
+                                            <th class="text-center">Notable</th>
+                                            <th class="text-center">Total</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr *ngFor="let repo of topReposDetailed">
+                                            <td class="repo-name sticky-col">{{ repo.repoName }}</td>
+                                            <td class="team-name">{{ repo.teamName }}</td>
+                                            <td class="text-center">{{ repo.sast || 0 }}</td>
+                                            <td class="text-center">{{ repo.sca || 0 }}</td>
+                                            <td class="text-center">{{ repo.iac || 0 }}</td>
+                                            <td class="text-center">{{ repo.secrets || 0 }}</td>
+                                            <td class="text-center">{{ repo.dast || 0 }}</td>
+                                            <td class="text-center">{{ repo.gitlab || 0 }}</td>
+                                            <td class="text-center"><span class="pill pill-critical">{{ repo.urgent || 0 }}</span></td>
+                                            <td class="text-center"><span class="pill pill-medium">{{ repo.notable || 0 }}</span></td>
+                                            <td class="text-center fw-bold">{{ repo.total || 0 }}</td>
+                                        </tr>
+                                        <tr *ngIf="topReposDetailed.length === 0">
+                                            <td colspan="11" class="empty-state">
+                                                <svg cIcon name="cil-check-circle" size="lg"></svg>
+                                                <span>No repository findings data available</span>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </c-tab-panel>
+
+                <!-- ═══ TAB 2: Top Vulnerabilities ═══ -->
+                <c-tab-panel [itemKey]="2">
+                    <div class="tab-body">
+                        <div class="vuln-tables-grid">
+
+                            <!-- SAST -->
+                            <div class="section-card" *ngIf="vulnsBySast.length > 0">
+                                <div class="section-header">
+                                    <h3><span class="source-dot source-sast"></span>SAST</h3>
+                                    <span class="section-badge">Top 20</span>
+                                </div>
+                                <div class="table-wrapper">
+                                    <table class="data-table vuln-source-table">
+                                        <thead>
+                                        <tr>
+                                            <th>Vulnerability</th>
+                                            <th class="text-center">Severity</th>
+                                            <th class="text-center">Count</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr *ngFor="let v of vulnsBySast">
+                                            <td class="vuln-name" [title]="v.vulnName">{{ v.vulnName }}</td>
+                                            <td class="text-center"><span class="pill" [ngClass]="getSeverityClass(v.severity)">{{ v.severity }}</span></td>
+                                            <td class="text-center fw-bold">{{ v.count }}</td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- SCA -->
+                            <div class="section-card" *ngIf="vulnsBySca.length > 0">
+                                <div class="section-header">
+                                    <h3><span class="source-dot source-sca"></span>SCA</h3>
+                                    <span class="section-badge">Top 20</span>
+                                </div>
+                                <div class="table-wrapper">
+                                    <table class="data-table vuln-source-table">
+                                        <thead>
+                                        <tr>
+                                            <th>Vulnerability</th>
+                                            <th class="text-center">Severity</th>
+                                            <th class="text-center">Count</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr *ngFor="let v of vulnsBySca">
+                                            <td class="vuln-name" [title]="v.vulnName">{{ v.vulnName }}</td>
+                                            <td class="text-center"><span class="pill" [ngClass]="getSeverityClass(v.severity)">{{ v.severity }}</span></td>
+                                            <td class="text-center fw-bold">{{ v.count }}</td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- IaC -->
+                            <div class="section-card" *ngIf="vulnsByIac.length > 0">
+                                <div class="section-header">
+                                    <h3><span class="source-dot source-iac"></span>IaC</h3>
+                                    <span class="section-badge">Top 20</span>
+                                </div>
+                                <div class="table-wrapper">
+                                    <table class="data-table vuln-source-table">
+                                        <thead>
+                                        <tr>
+                                            <th>Vulnerability</th>
+                                            <th class="text-center">Severity</th>
+                                            <th class="text-center">Count</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr *ngFor="let v of vulnsByIac">
+                                            <td class="vuln-name" [title]="v.vulnName">{{ v.vulnName }}</td>
+                                            <td class="text-center"><span class="pill" [ngClass]="getSeverityClass(v.severity)">{{ v.severity }}</span></td>
+                                            <td class="text-center fw-bold">{{ v.count }}</td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Secrets -->
+                            <div class="section-card" *ngIf="vulnsBySecrets.length > 0">
+                                <div class="section-header">
+                                    <h3><span class="source-dot source-secrets"></span>Secrets</h3>
+                                    <span class="section-badge">Top 20</span>
+                                </div>
+                                <div class="table-wrapper">
+                                    <table class="data-table vuln-source-table">
+                                        <thead>
+                                        <tr>
+                                            <th>Vulnerability</th>
+                                            <th class="text-center">Severity</th>
+                                            <th class="text-center">Count</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr *ngFor="let v of vulnsBySecrets">
+                                            <td class="vuln-name" [title]="v.vulnName">{{ v.vulnName }}</td>
+                                            <td class="text-center"><span class="pill" [ngClass]="getSeverityClass(v.severity)">{{ v.severity }}</span></td>
+                                            <td class="text-center fw-bold">{{ v.count }}</td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- DAST -->
+                            <div class="section-card" *ngIf="vulnsByDast.length > 0">
+                                <div class="section-header">
+                                    <h3><span class="source-dot source-dast"></span>DAST</h3>
+                                    <span class="section-badge">Top 20</span>
+                                </div>
+                                <div class="table-wrapper">
+                                    <table class="data-table vuln-source-table">
+                                        <thead>
+                                        <tr>
+                                            <th>Vulnerability</th>
+                                            <th class="text-center">Severity</th>
+                                            <th class="text-center">Count</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr *ngFor="let v of vulnsByDast">
+                                            <td class="vuln-name" [title]="v.vulnName">{{ v.vulnName }}</td>
+                                            <td class="text-center"><span class="pill" [ngClass]="getSeverityClass(v.severity)">{{ v.severity }}</span></td>
+                                            <td class="text-center fw-bold">{{ v.count }}</td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- GitLab -->
+                            <div class="section-card" *ngIf="vulnsByGitlab.length > 0">
+                                <div class="section-header">
+                                    <h3><span class="source-dot source-gitlab"></span>GitLab</h3>
+                                    <span class="section-badge">Top 20</span>
+                                </div>
+                                <div class="table-wrapper">
+                                    <table class="data-table vuln-source-table">
+                                        <thead>
+                                        <tr>
+                                            <th>Vulnerability</th>
+                                            <th class="text-center">Severity</th>
+                                            <th class="text-center">Count</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr *ngFor="let v of vulnsByGitlab">
+                                            <td class="vuln-name" [title]="v.vulnName">{{ v.vulnName }}</td>
+                                            <td class="text-center"><span class="pill" [ngClass]="getSeverityClass(v.severity)">{{ v.severity }}</span></td>
+                                            <td class="text-center fw-bold">{{ v.count }}</td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div *ngIf="vulnsBySast.length === 0 && vulnsBySca.length === 0 && vulnsByIac.length === 0 && vulnsBySecrets.length === 0 && vulnsByDast.length === 0 && vulnsByGitlab.length === 0"
+                             class="empty-state-block">
+                            <svg cIcon name="cil-check-circle" size="xl"></svg>
+                            <span>No vulnerability data available for any source</span>
+                        </div>
+                    </div>
+                </c-tab-panel>
+            </c-tabs-content>
+        </c-tabs>
     </div>
 </div>

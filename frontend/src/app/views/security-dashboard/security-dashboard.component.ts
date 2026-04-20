@@ -5,13 +5,22 @@ import {
   LineChartData,
   RepositoryStats,
   TeamStats,
+  TopRepoFindings,
+  TopVulnerability,
   VulnerabilitySummary,
   VulnerabilityTrendDataPoint
 } from "../../model/stats.models";
 import {StatsService} from "../../service/StatsService";
 import {IconDirective} from "@coreui/icons-angular";
 import {NgClass, NgForOf, NgIf} from "@angular/common";
-import {SpinnerComponent} from "@coreui/angular";
+import {
+  SpinnerComponent,
+  TabDirective,
+  TabPanelComponent,
+  TabsComponent,
+  TabsContentComponent,
+  TabsListComponent
+} from "@coreui/angular";
 import {ChartjsComponent} from "@coreui/angular-chartjs";
 import {FormsModule} from "@angular/forms";
 
@@ -27,7 +36,12 @@ import {FormsModule} from "@angular/forms";
     NgClass,
     ChartjsComponent,
     SpinnerComponent,
-    FormsModule
+    FormsModule,
+    TabsComponent,
+    TabsListComponent,
+    TabsContentComponent,
+    TabPanelComponent,
+    TabDirective
   ],
   styleUrls: ['./security-dashboard.component.scss']
 })
@@ -38,6 +52,15 @@ export class SecurityDashboardComponent implements OnInit {
   topRepos: RepositoryStats[] = [];
   teamsSummary: TeamStats[] = [];
   availableTeams: TeamStats[] = [];
+  topReposDetailed: TopRepoFindings[] = [];
+  vulnsBySast: TopVulnerability[] = [];
+  vulnsBySca: TopVulnerability[] = [];
+  vulnsByIac: TopVulnerability[] = [];
+  vulnsBySecrets: TopVulnerability[] = [];
+  vulnsByDast: TopVulnerability[] = [];
+  vulnsByGitlab: TopVulnerability[] = [];
+
+  activeTab = 0;
 
   // Chart data
   vulnerabilityTrendChartData: LineChartData | null = null;
@@ -147,13 +170,27 @@ export class SecurityDashboardComponent implements OnInit {
       summary: this.statsService.getVulnerabilitySummary(this.selectedTeamId),
       trend: this.statsService.getVulnerabilityTrend(this.selectedTeamId, this.timeRange),
       topRepos: this.statsService.getTopVulnerableRepos(this.selectedTeamId, 10),
-      teamsSummary: this.statsService.getTeamsSummary()
+      teamsSummary: this.statsService.getTeamsSummary(),
+      topReposDetailed: this.statsService.getTopReposDetailed(this.selectedTeamId, 20),
+      vulnsSast: this.statsService.getTopVulnerabilities(this.selectedTeamId, 'SAST', 20),
+      vulnsSca: this.statsService.getTopVulnerabilities(this.selectedTeamId, 'SCA', 20),
+      vulnsIac: this.statsService.getTopVulnerabilities(this.selectedTeamId, 'IAC', 20),
+      vulnsSecrets: this.statsService.getTopVulnerabilities(this.selectedTeamId, 'SECRETS', 20),
+      vulnsDast: this.statsService.getTopVulnerabilities(this.selectedTeamId, 'DAST', 20),
+      vulnsGitlab: this.statsService.getTopVulnerabilities(this.selectedTeamId, 'GITLAB_SCANNER', 20)
     }).subscribe({
       next: (results) => {
         this.summaryData = results.summary;
         this.trendData = results.trend;
         this.topRepos = results.topRepos;
         this.teamsSummary = results.teamsSummary;
+        this.topReposDetailed = results.topReposDetailed;
+        this.vulnsBySast = results.vulnsSast;
+        this.vulnsBySca = results.vulnsSca;
+        this.vulnsByIac = results.vulnsIac;
+        this.vulnsBySecrets = results.vulnsSecrets;
+        this.vulnsByDast = results.vulnsDast;
+        this.vulnsByGitlab = results.vulnsGitlab;
 
         this.prepareChartData();
         this.isLoading = false;
@@ -486,6 +523,16 @@ export class SecurityDashboardComponent implements OnInit {
     if (type === 'reviewed') return latestData.reviewedFindings || 0;
 
     return 0;
+  }
+
+  getSeverityClass(severity: string): string {
+    switch (severity?.toUpperCase()) {
+      case 'CRITICAL': return 'pill-critical';
+      case 'HIGH': return 'pill-high';
+      case 'MEDIUM': return 'pill-medium';
+      case 'LOW': return 'pill-low';
+      default: return 'pill-low';
+    }
   }
 
   /**

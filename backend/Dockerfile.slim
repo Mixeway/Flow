@@ -1,0 +1,50 @@
+# Slim build that reuses the pre-baked base image.
+# Requires mixeway/flow-api-base:latest to be built first (see Dockerfile.base).
+# Build time: ~2-3 min (Maven compile + COPY) instead of ~15+ min.
+
+## ── Stage 1: Maven build ────────────────────────────────────
+FROM maven:3.9.8-amazoncorretto-17 AS maven_build
+
+WORKDIR /app
+
+RUN yum update -y && yum install -y which file && yum clean all
+
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+        curl -L https://download.oracle.com/java/22/archive/jdk-22_linux-x64_bin.tar.gz -o jdk.tar.gz; \
+    elif [ "$ARCH" = "aarch64" ]; then \
+        curl -L https://download.oracle.com/java/22/archive/jdk-22_linux-aarch64_bin.tar.gz -o jdk.tar.gz; \
+    else \
+        echo "Unsupported architecture: $ARCH"; exit 1; \
+    fi && \
+    mkdir -p /usr/local/jdk-22 && \
+    tar -xzf jdk.tar.gz -C /usr/local/jdk-22 --strip-components=1 && \
+    rm jdk.tar.gz
+
+ENV JAVA_HOME=/usr/local/jdk-22
+ENV PATH="$JAVA_HOME/bin:$PATH"
+
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+
+COPY src ./src
+RUN mvn clean package -DskipTests -o
+
+## ── Stage 2: Runtime (from pre-baked base) ──────────────────
+FROM mixeway/flow-api-base:latest
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install -r requirements.txt --break-system-packages
+
+COPY --from=maven_build /app/target/MixewayFlowAPI-0.0.1-SNAPSHOT.jar flowapi.jar
+COPY gitleaks.default.toml .gitleaks.default.toml
+COPY gitleaks.toml .gitleaks.toml
+COPY src/main/java/io/mixeway/mixewayflowapi/integrations/scanner/secrets/service/secrets_filtering_service.py .
+COPY src/main/java/io/mixeway/mixewayflowapi/integrations/scanner/secrets/service/secrets_verifying_service.py .
+
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

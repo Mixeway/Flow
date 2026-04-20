@@ -433,6 +433,114 @@ $primary: #3b82f6;
   }
 }
 
+// ─── Tabs ───────────────────────────────────────────────────
+.dashboard-tabs {
+    margin-bottom: 0;
+}
+
+.tab-body {
+    padding-top: 1.5rem;
+}
+
+// ─── Detailed Tables (scanner breakdown) ────────────────────
+.detailed-table {
+    font-size: 0.8rem;
+
+    thead {
+        th {
+            font-size: 0.65rem;
+            padding: 0.5rem 0.55rem;
+            white-space: nowrap;
+        }
+    }
+
+    tbody td {
+        padding: 0.5rem 0.55rem;
+        font-size: 0.8rem;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .sticky-col {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        background: var(--cui-body-bg, #fff);
+    }
+}
+
+.group-header {
+    border-bottom: 2px solid var(--cui-border-color, #e5e7eb);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+
+    &.group-sast { color: #20c997; }
+    &.group-sca { color: #0dcaf0; }
+    &.group-iac { color: #6610f2; }
+    &.group-secrets { color: #d63384; }
+    &.group-dast { color: #8B4513; }
+    &.group-gitlab { color: #fc6d26; }
+}
+
+.sub-header {
+    font-size: 0.6rem !important;
+    font-weight: 600;
+    color: var(--cui-secondary-color, #9da5b1);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.vuln-name {
+    font-weight: 600;
+    color: var(--cui-body-color, #1f2937) !important;
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+// ─── Vulnerability tables grid (per source) ─────────────────
+.vuln-tables-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+}
+
+.vuln-source-table {
+    font-size: 0.8rem;
+
+    thead th {
+        font-size: 0.7rem;
+    }
+}
+
+.source-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 0.4rem;
+    vertical-align: middle;
+
+    &.source-sast { background: #20c997; }
+    &.source-sca { background: #0dcaf0; }
+    &.source-iac { background: #6610f2; }
+    &.source-secrets { background: #d63384; }
+    &.source-dast { background: #8B4513; }
+    &.source-gitlab { background: #fc6d26; }
+}
+
+.empty-state-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    color: var(--cui-secondary-color, #6b7280);
+
+    svg { margin-bottom: 0.75rem; opacity: 0.5; }
+    span { font-size: 0.9rem; }
+}
+
 // ─── Utility ────────────────────────────────────────────────
 .text-center { text-align: center; }
 .text-end { text-align: right; }
@@ -447,13 +555,14 @@ $primary: #3b82f6;
 }
 
 @media (max-width: 992px) {
-  .distribution-grid {
-    grid-template-columns: 1fr;
-  }
+    .distribution-grid,
+    .vuln-tables-grid {
+        grid-template-columns: 1fr;
+    }
 
-  .dashboard-container {
-    padding: 1rem;
-  }
+    .dashboard-container {
+        padding: 1rem;
+    }
 }
 
 @media (max-width: 768px) {
