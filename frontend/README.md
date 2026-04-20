@@ -5,6 +5,7 @@ git clone https://github.com/mixeway/flow
 cd flow
 npm install
 npm start
+
 ```
 
 ### Communication to backend
