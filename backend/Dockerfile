@@ -27,7 +27,7 @@ RUN mvn dependency:go-offline -B
 
 # Now copy source and build
 COPY src ./src
-RUN mvn clean package -DskipTests -o
+RUN mvn clean package -DskipTests
 
 ## ── Stage 2: KICS ──────────────────────────────────────────
 FROM checkmarx/kics:latest AS kics
