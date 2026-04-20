@@ -112,6 +112,17 @@ public final class CodeRepo {
     @Column(name = "type", nullable = false)
     private RepoType type;
 
+    @Column(name = "rag_index_status", nullable = false, length = 30)
+    private String ragIndexStatus = "NOT_PERFORMED";
+
+    @Column(name = "rag_index_commit", length = 64)
+    private String ragIndexCommit;
+
+    @Column(name = "last_ai_fp_analyzed_count", nullable = false)
+    private int lastAiFpAnalyzedCount = 0;
+
+    @Column(name = "last_ai_fp_suppressed_count", nullable = false)
+    private int lastAiFpSuppressedCount = 0;
 
     // Private constructor for JPA
     protected CodeRepo() {
@@ -134,6 +145,9 @@ public final class CodeRepo {
         this.type = RepoType.GITLAB;
         this.scaUUID = null;
         this.appDataTypes = new ArrayList<>();
+        this.ragIndexStatus = "NOT_PERFORMED";
+        this.lastAiFpAnalyzedCount = 0;
+        this.lastAiFpSuppressedCount = 0;
     }
 
     // Public constructor for creating new instances
@@ -155,6 +169,19 @@ public final class CodeRepo {
         this.scaUUID = null;
         this.appDataTypes = new ArrayList<>();
         this.type = repoType;
+        this.ragIndexStatus = "NOT_PERFORMED";
+        this.lastAiFpAnalyzedCount = 0;
+        this.lastAiFpSuppressedCount = 0;
+    }
+
+    public void updateRagIndexState(String status, String commitId) {
+        this.ragIndexStatus = status;
+        this.ragIndexCommit = commitId;
+    }
+
+    public void updateAiFpScanSummary(int analyzedCount, int suppressedCount) {
+        this.lastAiFpAnalyzedCount = analyzedCount;
+        this.lastAiFpSuppressedCount = suppressedCount;
     }
 
     // Methods to change mutable fields

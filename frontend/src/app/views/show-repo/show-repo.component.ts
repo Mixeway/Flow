@@ -90,6 +90,10 @@ interface Vulnerability {
     last_seen: string;
     status: string;
     urgency: string;
+    ai_analyzed?: boolean;
+    ai_verdict?: string;
+    ai_confidence?: string;
+    ai_model?: string;
 }
 
 
@@ -345,6 +349,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
 
     showRemoved: boolean = false;
     showSuppressed: boolean = false;
+    showAiSuppressed: boolean = false;
     showUrgent: boolean = false;
     showNotable: boolean = false;
     hasUrgentFindings: boolean = false;
@@ -395,6 +400,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         filters: { [key: string]: string };
         showRemoved: boolean;
         showSuppressed: boolean;
+        showAiSuppressed: boolean;
         showUrgent: boolean;
         showNotable: boolean;
         statusFilter: string;
@@ -598,6 +604,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
             filters: { ...this.filters },
             showRemoved: this.showRemoved,
             showSuppressed: this.showSuppressed,
+            showAiSuppressed: this.showAiSuppressed,
             showUrgent: this.showUrgent,
             showNotable: this.showNotable,
             statusFilter: this.statusFilter,
@@ -669,6 +676,12 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         this.applyFilters();
     }
 
+    toggleShowAiSuppressed(event: any) {
+        this.showAiSuppressed = event.target.checked;
+        this.saveFilterStateToStorage();
+        this.applyFilters();
+    }
+
     toggleShowUrgent(event: any) {
         this.showUrgent = event.target.checked;
         if (this.showUrgent) {
@@ -720,6 +733,10 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                 (this.showRemoved || vuln.status !== 'REMOVED') &&
                 (this.showSuppressed || vuln.status !== 'SUPRESSED');
 
+            const matchesAiSuppressed =
+                this.showAiSuppressed ||
+                !(vuln.status === 'SUPRESSED' && vuln.ai_verdict === 'FALSE_POSITIVE');
+
             // Filter for Urgency and Notable toggles
             const matchesUrgency = () => {
                 if (this.showUrgent) return vuln.urgency === 'urgent';
@@ -727,7 +744,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                 return true; // If no urgency filter is active, don't filter by it
             };
 
-            return matchesFilters && matchesStatus && matchesUrgency();
+            return matchesFilters && matchesStatus && matchesAiSuppressed && matchesUrgency();
         });
         this.sortByUrgencyThenOriginal(this.filteredVulns);
         this.saveFilterStateToStorage();
@@ -743,6 +760,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
             this.filters = { ...this.filterUiSnapshot.filters };
             this.showRemoved = this.filterUiSnapshot.showRemoved;
             this.showSuppressed = this.filterUiSnapshot.showSuppressed;
+            this.showAiSuppressed = this.filterUiSnapshot.showAiSuppressed;
             this.showUrgent = this.filterUiSnapshot.showUrgent;
             this.showNotable = this.filterUiSnapshot.showNotable;
             this.statusFilter = this.filterUiSnapshot.statusFilter;
@@ -1312,6 +1330,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         };
         this.showRemoved = false;
         this.showSuppressed = false;
+        this.showAiSuppressed = false;
         this.statusFilter = '';
         this.saveFilterStateToStorage();
         this.applyFilters();
@@ -1358,6 +1377,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                 filters: this.filters,
                 showRemoved: this.showRemoved,
                 showSuppressed: this.showSuppressed,
+                showAiSuppressed: this.showAiSuppressed,
                 showUrgent: this.showUrgent,
                 showNotable: this.showNotable,
                 statusFilter: this.statusFilter,
@@ -1378,6 +1398,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                 this.filters = { ...this.filters, ...(s.filters || {}) };
                 this.showRemoved = !!s.showRemoved;
                 this.showSuppressed = !!s.showSuppressed;
+                this.showAiSuppressed = !!s.showAiSuppressed;
                 this.showUrgent = !!s.showUrgent;
                 this.showNotable = !!s.showNotable;
                 this.statusFilter = s.statusFilter || '';

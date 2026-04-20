@@ -85,6 +85,9 @@
             </c-card-header>
 
             <c-card-body class="d-flex flex-column">
+                <p *ngIf="repoData?.lastAiFpAnalyzedCount > 0" class="small text-muted mb-3">
+                    Last scan: AI analyzed {{ repoData.lastAiFpAnalyzedCount }} finding(s), suppressed {{ repoData.lastAiFpSuppressedCount }} as false positives.
+                </p>
                 <div class="repo-metadata mb-4">
                     <div class="repo-link d-flex align-items-center mb-3">
                         <svg cIcon name="cib-github" class="repo-icon me-2"></svg>

@@ -11,6 +11,10 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class GetVulnerabilitiesResponseDto {
-    Vulnerability vulnerability;
-    List<String> affectedRepositories;
+    private Vulnerability vulnerability;
+    private List<String> affectedRepositories;
+    /** True if any accessible finding for this vuln was analyzed by AI. */
+    private boolean anyAiAnalyzed;
+    /** True if any accessible finding was suppressed as AI false positive. */
+    private boolean anyAiFalsePositiveSuppressed;
 }

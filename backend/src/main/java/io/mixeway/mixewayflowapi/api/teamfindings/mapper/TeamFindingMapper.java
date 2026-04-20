@@ -26,6 +26,10 @@ public class TeamFindingMapper {
             }
 
             dto.setJiraTicketKey(finding.getJiraTicketKey());
+            dto.setAiAnalyzed(finding.isAiAnalyzed());
+            dto.setAiVerdict(finding.getAiVerdict());
+            dto.setAiConfidence(finding.getAiConfidence());
+            dto.setAiModel(finding.getAiModel());
 
             return dto;
         }).collect(Collectors.toList());

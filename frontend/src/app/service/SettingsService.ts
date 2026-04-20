@@ -38,4 +38,12 @@ export class SettingsService {
     getAdditionalScannerConfig(): Observable<any> {
         return this.http.get<any>(`${this.loginUrl}/api/v1/admin/settings/additionalscannerconfig`, { withCredentials: true });
     }
+
+    changeOllama(ollamaConfig: any): Observable<any> {
+        return this.http.post<any>(`${this.loginUrl}/api/v1/admin/settings/ollamaconfig`, ollamaConfig, { withCredentials: true });
+    }
+
+    testOllamaConnection(body?: { baseUrl?: string }): Observable<any> {
+        return this.http.post<any>(`${this.loginUrl}/api/v1/admin/settings/ollama/test`, body ?? {}, { withCredentials: true });
+    }
 }

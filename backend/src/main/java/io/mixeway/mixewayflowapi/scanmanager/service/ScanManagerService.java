@@ -29,6 +29,8 @@ import io.mixeway.mixewayflowapi.integrations.scanner.sca.dto.VulnerabilityDto;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.service.SCAGrypeService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.service.SCAService;
 import io.mixeway.mixewayflowapi.integrations.scanner.secrets.service.SecretsService;
+import io.mixeway.mixewayflowapi.integrations.ollama.service.FalsePositiveAnalyzer;
+import io.mixeway.mixewayflowapi.integrations.rag.service.RagIndexerService;
 import io.mixeway.mixewayflowapi.integrations.scanner.zap.service.ZAPService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -105,6 +107,8 @@ public class ScanManagerService {
             .build();
     private final GitLabScannerService gitLabScannerService;
     private final SCAGrypeService sCAGrypeService;
+    private final RagIndexerService ragIndexerService;
+    private final FalsePositiveAnalyzer falsePositiveAnalyzer;
 
 
     /**
@@ -166,6 +170,8 @@ public class ScanManagerService {
                     // Clone or fetch the repository
                     commit = fetchRepository(commitId, repoUrl, accessToken, codeRepoBranch, repoDir, repoType);
 
+                    ragIndexerService.indexRepositoryIfEnabled(repoDir, codeRepo, commit);
+
                     // Run scans in parallel
                     Future<Void> secretScanFuture = runSecretScan(repoDir, codeRepo, codeRepoBranch);
 //                    Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo, codeRepoBranch, scaScanPerformed); Dependency Track version
@@ -212,6 +218,12 @@ public class ScanManagerService {
                     // If scans completed before timeout, cancel the timeout task
                     if (timeoutFuture != null && !timeoutFuture.isDone()) {
                         timeoutFuture.cancel(false);
+                    }
+
+                    try {
+                        falsePositiveAnalyzer.analyzeAfterScan(codeRepo, codeRepoBranch, commit);
+                    } catch (Exception aiEx) {
+                        log.warn("[ScanManagerService] AI false-positive analysis skipped or failed: {}", aiEx.getMessage());
                     }
 
                 } catch (Exception e) {
@@ -301,6 +313,8 @@ public class ScanManagerService {
                     // Clone or fetch the repository
                     commit = fetchRepository(commitId, repoUrl, accessToken, codeRepoBranch, repoDir, repoType);
 
+                    ragIndexerService.indexRepositoryIfEnabled(repoDir, codeRepo, commit);
+
                     // Run scans in parallel
                     Future<Void> secretScanFuture = runSecretScan(repoDir, codeRepo, codeRepoBranch);
 //                    Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo, codeRepoBranch, scaScanPerformed); Dependency Track version
@@ -347,6 +361,12 @@ public class ScanManagerService {
                     // If scans completed before timeout, cancel the timeout task
                     if (timeoutFuture != null && !timeoutFuture.isDone()) {
                         timeoutFuture.cancel(false);
+                    }
+
+                    try {
+                        falsePositiveAnalyzer.analyzeAfterScan(codeRepo, codeRepoBranch, commit);
+                    } catch (Exception aiEx) {
+                        log.warn("[ScanManagerService] AI false-positive analysis skipped or failed: {}", aiEx.getMessage());
                     }
 
                 } catch (Exception e) {

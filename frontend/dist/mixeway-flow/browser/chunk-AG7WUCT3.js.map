@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/service/AppConfigService.ts"],
+  "sourcesContent": ["// app-config.service.ts\nimport {Injectable} from '@angular/core';\nimport {HttpClient} from '@angular/common/http';\nimport {Observable} from 'rxjs';\n\n@Injectable({\n    providedIn: 'root'\n})\nexport class AppConfigService {\n    private baseUrl = '/api/v1/admin/config';\n\n    constructor(private http: HttpClient) { }\n\n    getRunMode(): Observable<string> {\n        return this.http.get<string>(`${this.baseUrl}/runmode`);\n    }\n\n    setRunMode(mode: string): Observable<any> {\n        return this.http.post<any>(`${this.baseUrl}/runmode`, { mode });\n    }\n\n    getAppModeInfo(): Observable<any> {\n        return this.http.get<any>('/api/v1/user/app-info');\n    }\n}"],
+  "mappings": ";;;;;;;AAQM,IAAO,mBAAP,MAAO,kBAAgB;EAGzB,YAAoB,MAAgB;AAAhB,SAAA,OAAA;AAFZ,SAAA,UAAU;EAEsB;EAExC,aAAU;AACN,WAAO,KAAK,KAAK,IAAY,GAAG,KAAK,OAAO,UAAU;EAC1D;EAEA,WAAW,MAAY;AACnB,WAAO,KAAK,KAAK,KAAU,GAAG,KAAK,OAAO,YAAY,EAAE,KAAI,CAAE;EAClE;EAEA,iBAAc;AACV,WAAO,KAAK,KAAK,IAAS,uBAAuB;EACrD;;;uCAfS,mBAAgB,mBAAA,UAAA,CAAA;IAAA;EAAA;;4EAAhB,mBAAgB,SAAhB,kBAAgB,WAAA,YAFb,OAAM,CAAA;EAAA;;",
+  "names": []
+}

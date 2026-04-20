@@ -104,6 +104,21 @@ public final class Finding {
     @Column(name = "jira_ticket_key", length = 50)
     private String jiraTicketKey;
 
+    @Column(name = "ai_analyzed", nullable = false)
+    private boolean aiAnalyzed = false;
+
+    @Column(name = "ai_verdict", length = 20)
+    private String aiVerdict;
+
+    @Column(name = "ai_confidence", length = 10)
+    private String aiConfidence;
+
+    @Column(name = "ai_model", length = 255)
+    private String aiModel;
+
+    @Column(name = "ai_analyzed_at")
+    private LocalDateTime aiAnalyzedAt;
+
     @OneToMany(mappedBy = "finding", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
     private final List<Comment> comments = new ArrayList<>();
@@ -121,6 +136,7 @@ public final class Finding {
         this.severity = null;
         this.status = Status.NEW;
         this.source = null;
+        this.aiAnalyzed = false;
     }
 
     public void addComment(Comment comment) {
@@ -143,6 +159,23 @@ public final class Finding {
         this.severity = severity;
         this.status = Status.NEW;
         this.source = source;
+        this.aiAnalyzed = false;
+    }
+
+    public void markAiReviewedRealIssue(String modelName, String confidence) {
+        this.aiAnalyzed = true;
+        this.aiVerdict = "REAL_ISSUE";
+        this.aiConfidence = confidence;
+        this.aiModel = modelName;
+        this.aiAnalyzedAt = LocalDateTime.now();
+    }
+
+    public void markAiFalsePositive(String modelName, String confidence) {
+        this.aiAnalyzed = true;
+        this.aiVerdict = "FALSE_POSITIVE";
+        this.aiConfidence = confidence;
+        this.aiModel = modelName;
+        this.aiAnalyzedAt = LocalDateTime.now();
     }
 
     // Method to update status and suppressed reason

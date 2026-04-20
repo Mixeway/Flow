@@ -1,6 +1,7 @@
 package io.mixeway.mixewayflowapi.domain.settings;
 
 import io.mixeway.mixewayflowapi.api.admin.dto.ConfigScaRequestDto;
+import io.mixeway.mixewayflowapi.api.admin.dto.OllamaConfigRequestDto;
 import io.mixeway.mixewayflowapi.api.admin.dto.ConfigSmtpRequestDto;
 import io.mixeway.mixewayflowapi.api.admin.dto.ConfigWizRequestDto;
 import io.mixeway.mixewayflowapi.api.admin.dto.OtherConfigRequestDto;
@@ -92,5 +93,22 @@ public class UpdateSettingsService {
             log.error("Gemini API Key cannot be null");
             throw new SettingsException("Gemini API Key cannot be null");
         }
+    }
+
+    @Transactional
+    public void changeOllamaConfig(OllamaConfigRequestDto dto) {
+        Settings settings = findSettingsService.get();
+        settings.setOllamaEnabled(Boolean.TRUE.equals(dto.getOllamaEnabled()));
+        settings.setOllamaFpAnalysisEnabled(Boolean.TRUE.equals(dto.getOllamaFpAnalysisEnabled()));
+        if (dto.getOllamaBaseUrl() != null && !dto.getOllamaBaseUrl().isBlank()) {
+            settings.setOllamaBaseUrl(dto.getOllamaBaseUrl().trim());
+        } else {
+            settings.setOllamaBaseUrl("http://localhost:11434");
+        }
+        settings.setOllamaModel(dto.getOllamaModel() != null ? dto.getOllamaModel().trim() : "");
+        settings.setOllamaTimeoutSeconds(dto.getOllamaTimeoutSeconds());
+        settings.setOllamaFpBatchSize(dto.getOllamaFpBatchSize());
+        settingsRepository.save(settings);
+        log.info("[Settings] Ollama config updated (enabled={}, fp={})", settings.isOllamaEnabled(), settings.isOllamaFpAnalysisEnabled());
     }
 }

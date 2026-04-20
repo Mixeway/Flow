@@ -21,5 +21,13 @@ public class TeamVulnsResponseDto {
     @JsonProperty("jira_ticket_key")
     String jiraTicketKey;
 
+    @JsonProperty("ai_analyzed")
+    Boolean aiAnalyzed;
+    @JsonProperty("ai_verdict")
+    String aiVerdict;
+    @JsonProperty("ai_confidence")
+    String aiConfidence;
+    @JsonProperty("ai_model")
+    String aiModel;
 
 }

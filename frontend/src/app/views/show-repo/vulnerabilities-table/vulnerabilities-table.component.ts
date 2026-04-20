@@ -34,6 +34,10 @@ interface Vulnerability {
   status: string;
   urgency: string;
   jira_ticket_key?: string;
+  ai_analyzed?: boolean;
+  ai_verdict?: string;
+  ai_confidence?: string;
+  ai_model?: string;
 }
 
 @Component({
@@ -75,6 +79,7 @@ export class VulnerabilitiesTableComponent implements OnInit, OnChanges {
   @Input() selectedBranchId: number | null = null;
   @Input() showRemoved: boolean = false;
   @Input() showSuppressed: boolean = false;
+  @Input() showAiSuppressed: boolean = false;
   @Input() showUrgent: boolean = false;
   @Input() showNotable: boolean = false;
   @Input() hasUrgentFindings: boolean = false;
@@ -94,6 +99,7 @@ export class VulnerabilitiesTableComponent implements OnInit, OnChanges {
   @Output() updateFilterSeverityEvent = new EventEmitter<any>();
   @Output() toggleShowRemovedEvent = new EventEmitter<any>();
   @Output() toggleShowSuppressedEvent = new EventEmitter<any>();
+  @Output() toggleShowAiSuppressedEvent = new EventEmitter<any>();
   @Output() toggleShowUrgentEvent = new EventEmitter<any>();
   @Output() toggleShowNotableEvent = new EventEmitter<any>();
   @Output() toggleBulkActionEvent = new EventEmitter<void>();
@@ -200,6 +206,13 @@ export class VulnerabilitiesTableComponent implements OnInit, OnChanges {
       ? stateOrEvent
       : !!stateOrEvent?.target?.checked;
     this.toggleShowSuppressedEvent.emit({ target: { checked } });
+  }
+
+  toggleShowAiSuppressed(stateOrEvent: any): void {
+    const checked = (typeof stateOrEvent === 'boolean')
+      ? stateOrEvent
+      : !!stateOrEvent?.target?.checked;
+    this.toggleShowAiSuppressedEvent.emit({ target: { checked } });
   }
 
   /**

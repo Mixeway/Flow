@@ -80,6 +80,29 @@ public class AdminController {
         }
     }
 
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @PostMapping(value = "/api/v1/admin/settings/ollamaconfig")
+    public ResponseEntity<StatusDTO> changeOllamaConfig(@Valid @RequestBody OllamaConfigRequestDto dto) {
+        try {
+            adminApiService.ollamaConfig(dto);
+            return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("[AdminSettings] Error changing Ollama config {}", e.getLocalizedMessage());
+            return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @PostMapping(value = "/api/v1/admin/settings/ollama/test")
+    public ResponseEntity<OllamaTestConnectionResponseDto> testOllamaConnection(@RequestBody(required = false) OllamaTestRequestDto req) {
+        try {
+            return new ResponseEntity<>(adminApiService.testOllamaConnection(req), HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("[AdminSettings] Ollama test failed {}", e.getLocalizedMessage());
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+    }
+
     @PreAuthorize("hasAuthority('TEAM_MANAGER')")
     @GetMapping(value = "/api/v1/admin/settings/additionalscannerconfig")
     public ResponseEntity<AdditionalScannerConfigDto> getAdditionalScannerConfig() {

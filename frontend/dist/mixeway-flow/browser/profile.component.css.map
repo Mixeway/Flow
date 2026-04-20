@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/views/profile/profile.component.scss"],
+  "sourcesContent": [".section-title {\n  font-weight: 600;\n}\n\n.config-section {\n  background: var(--cui-card-bg);\n}\n\ncode {\n  font-size: 0.9rem;\n}\n"],
+  "mappings": ";AAAA,CAAA;AACE,eAAA;;AAGF,CAAA;AACE,cAAA,IAAA;;AAGF;AACE,aAAA;;",
+  "names": []
+}

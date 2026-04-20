@@ -41,6 +41,14 @@
                                    (ngModelChange)="toggleShowSuppressed($event)" />
                             <label cFormCheckLabel for="showSuppressed">Show Suppressed</label>
                         </c-form-check>
+
+                        <c-form-check class="toggle-check" switch>
+                            <input cFormCheckInput id="showAiSuppressed" type="checkbox"
+                                   [(ngModel)]="showAiSuppressed"
+                                   [ngModelOptions]="{standalone: true}"
+                                   (ngModelChange)="toggleShowAiSuppressed($event)" />
+                            <label cFormCheckLabel for="showAiSuppressed">Show AI-suppressed</label>
+                        </c-form-check>
                         <c-form-check class="toggle-check" switch [ngClass]="{'pulse-urgent': hasUrgentFindings && !showUrgent}">
                             <input cFormCheckInput id="showUrgent" type="checkbox"
                                    [(ngModel)]="showUrgent"
@@ -324,6 +332,10 @@
                                             <svg cIcon [name]="row.urgency === 'urgent' ? 'cil-warning' : 'cil-bell'"></svg>
                                             {{ row.urgency === 'urgent' ? 'Urgent' : 'Notable' }}
                                         </span>
+                                        <span *ngIf="row.ai_verdict === 'FALSE_POSITIVE' && row.status === 'SUPRESSED'"
+                                              class="badge bg-info-subtle text-info ms-2">🤖 AI: False Positive</span>
+                                        <span *ngIf="row.ai_analyzed && row.ai_verdict === 'REAL_ISSUE'"
+                                              class="badge bg-secondary-subtle text-secondary ms-2">🤖 AI Reviewed</span>
                                     </div>
                                     <div class="meta-item date-info">
                                         <span class="date-value">Last seen: {{ row?.last_seen | date:'short' }}</span>

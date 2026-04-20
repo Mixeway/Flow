@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/views/pages/routes.ts"],
+  "sourcesContent": ["import { Routes } from '@angular/router';\n\nexport const routes: Routes = [\n  {\n    path: '404',\n    loadComponent: () => import('./page404/page404.component').then(m => m.Page404Component),\n    data: {\n      title: 'Page 404'\n    }\n  },\n  {\n    path: '500',\n    loadComponent: () => import('./page500/page500.component').then(m => m.Page500Component),\n    data: {\n      title: 'Page 500'\n    }\n  },\n  {\n    path: 'login',\n    loadComponent: () => import('./login/login.component').then(m => m.LoginComponent),\n    data: {\n      title: 'Login Page'\n    }\n  },\n  {\n    path: 'change',\n    loadComponent: () => import('./change-password/change-password.component').then(m => m.ChangePasswordComponent),\n    data: {\n      title: 'Set Password'\n    }\n  },\n  {\n    path: 'register',\n    loadComponent: () => import('./register/register.component').then(m => m.RegisterComponent),\n    data: {\n      title: 'Register Page'\n    }\n  }\n];\n"],
+  "mappings": ";;;AAEO,IAAM,SAAiB;EAC5B;IACE,MAAM;IACN,eAAe,MAAM,OAAO,iCAA6B,EAAE,KAAK,OAAK,EAAE,gBAAgB;IACvF,MAAM;MACJ,OAAO;;;EAGX;IACE,MAAM;IACN,eAAe,MAAM,OAAO,iCAA6B,EAAE,KAAK,OAAK,EAAE,gBAAgB;IACvF,MAAM;MACJ,OAAO;;;EAGX;IACE,MAAM;IACN,eAAe,MAAM,OAAO,+BAAyB,EAAE,KAAK,OAAK,EAAE,cAAc;IACjF,MAAM;MACJ,OAAO;;;EAGX;IACE,MAAM;IACN,eAAe,MAAM,OAAO,yCAA6C,EAAE,KAAK,OAAK,EAAE,uBAAuB;IAC9G,MAAM;MACJ,OAAO;;;EAGX;IACE,MAAM;IACN,eAAe,MAAM,OAAO,kCAA+B,EAAE,KAAK,OAAK,EAAE,iBAAiB;IAC1F,MAAM;MACJ,OAAO;;;;",
+  "names": []
+}

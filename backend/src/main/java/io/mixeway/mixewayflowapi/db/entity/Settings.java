@@ -80,6 +80,48 @@ public class Settings {
     @Setter
     private String geminiApiKey;
 
+    @Column(name = "ollama_enabled", nullable = false)
+    private boolean ollamaEnabled = false;
+
+    @Column(name = "ollama_base_url", length = 512)
+    private String ollamaBaseUrl = "http://localhost:11434";
+
+    @Column(name = "ollama_model", length = 255)
+    private String ollamaModel = "";
+
+    @Column(name = "ollama_timeout_seconds", nullable = false)
+    private int ollamaTimeoutSeconds = 120;
+
+    @Column(name = "ollama_fp_analysis_enabled", nullable = false)
+    private boolean ollamaFpAnalysisEnabled = false;
+
+    @Column(name = "ollama_fp_batch_size", nullable = false)
+    private int ollamaFpBatchSize = 5;
+
+    public void setOllamaEnabled(boolean ollamaEnabled) {
+        this.ollamaEnabled = ollamaEnabled;
+    }
+
+    public void setOllamaBaseUrl(String ollamaBaseUrl) {
+        this.ollamaBaseUrl = ollamaBaseUrl;
+    }
+
+    public void setOllamaModel(String ollamaModel) {
+        this.ollamaModel = ollamaModel;
+    }
+
+    public void setOllamaTimeoutSeconds(int ollamaTimeoutSeconds) {
+        this.ollamaTimeoutSeconds = ollamaTimeoutSeconds;
+    }
+
+    public void setOllamaFpAnalysisEnabled(boolean ollamaFpAnalysisEnabled) {
+        this.ollamaFpAnalysisEnabled = ollamaFpAnalysisEnabled;
+    }
+
+    public void setOllamaFpBatchSize(int ollamaFpBatchSize) {
+        this.ollamaFpBatchSize = ollamaFpBatchSize;
+    }
+
     public void enableWiz(String clientId, String secret) {
         this.enableWiz = true;
         this.wizClientId = clientId;

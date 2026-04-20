@@ -19,6 +19,9 @@
                         <button cTab [itemKey]="4" class="d-flex align-items-center">
                             <svg cIcon name="cil-settings" class="me-2"></svg> Other
                         </button>
+                        <button cTab [itemKey]="5" class="d-flex align-items-center">
+                            <svg cIcon name="cil-code" class="me-2"></svg> AI / Ollama
+                        </button>
                     </c-tabs-list>
                     <c-tabs-content>
                         <c-tab-panel class="p-4" [itemKey]="0">
@@ -412,6 +415,53 @@
                                 </div>
                             </div>
                             <button cButton color="primary" class="mt-3" (click)="saveOtherConfigurationSettings()">Save Configuration</button>
+                        </c-tab-panel>
+
+                        <c-tab-panel class="p-4" [itemKey]="5">
+                            <div class="config-section p-4 rounded shadow-sm">
+                                <h4 class="mb-3 section-title">AI / Ollama Configuration</h4>
+                                <p class="text-muted small">When Ollama or FP analysis is disabled, the scan pipeline behaves as before (no LLM calls).</p>
+
+                                <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+                                    <c-form-check switch>
+                                        <input cFormCheckInput id="ollamaEnabled" type="checkbox" [(ngModel)]="ollamaEnabled" />
+                                        <label cFormCheckLabel for="ollamaEnabled">Enable Ollama</label>
+                                    </c-form-check>
+                                    <c-form-check switch>
+                                        <input cFormCheckInput id="ollamaFpEnabled" type="checkbox" [(ngModel)]="ollamaFpAnalysisEnabled" [disabled]="!ollamaEnabled" />
+                                        <label cFormCheckLabel for="ollamaFpEnabled">Enable false-positive (FP) analysis</label>
+                                    </c-form-check>
+                                    <span class="badge rounded-pill" [ngClass]="ollamaConnectionOk === true ? 'bg-success' : (ollamaConnectionOk === false ? 'bg-danger' : 'bg-secondary')">
+                                        Ollama: {{ ollamaConnectionOk === true ? 'reachable' : (ollamaConnectionOk === false ? 'unreachable' : 'not tested') }}
+                                    </span>
+                                </div>
+
+                                <div class="row g-3">
+                                    <div class="col-md-8">
+                                        <label cLabel for="ollamaBaseUrl" class="mb-1">Base URL</label>
+                                        <input id="ollamaBaseUrl" class="form-control" [(ngModel)]="ollamaBaseUrl"
+                                               placeholder="http://localhost:11434" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label cLabel for="ollamaTimeout" class="mb-1">Timeout (seconds)</label>
+                                        <input id="ollamaTimeout" type="number" class="form-control" [(ngModel)]="ollamaTimeoutSeconds" min="5" max="3600" />
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label cLabel for="ollamaModel" class="mb-1">Model name</label>
+                                        <input id="ollamaModel" class="form-control" [(ngModel)]="ollamaModel"
+                                               placeholder="e.g. codellama:13b or llama3" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label cLabel for="ollamaBatch" class="mb-1">FP batch size</label>
+                                        <input id="ollamaBatch" type="number" class="form-control" [(ngModel)]="ollamaFpBatchSize" min="1" max="50" />
+                                    </div>
+                                </div>
+
+                                <div class="mt-3 d-flex gap-2 flex-wrap">
+                                    <button cButton color="secondary" variant="outline" type="button" (click)="testOllamaConnection()">Test connection</button>
+                                    <button cButton color="primary" type="button" (click)="saveOllamaSettings()">Save settings</button>
+                                </div>
+                            </div>
                         </c-tab-panel>
                     </c-tabs-content>
                 </c-tabs>

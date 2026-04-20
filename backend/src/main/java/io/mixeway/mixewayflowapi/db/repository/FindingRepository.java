@@ -57,6 +57,14 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
 
     @EntityGraph(attributePaths = {"vulnerability"})
     List<Finding> findByCodeRepoAndCodeRepoBranch(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch);
+
+    @Query("SELECT DISTINCT f FROM Finding f JOIN FETCH f.vulnerability v WHERE f.codeRepo = :repo AND f.codeRepoBranch = :branch "
+            + "AND f.source IN :sources AND f.status IN :statuses AND f.aiAnalyzed = false AND f.suppressedReason IS NULL")
+    List<Finding> findForAiFalsePositiveAnalysis(
+            @Param("repo") CodeRepo repo,
+            @Param("branch") CodeRepoBranch branch,
+            @Param("sources") Collection<Finding.Source> sources,
+            @Param("statuses") Collection<Finding.Status> statuses);
     List<Finding> findByVulnerability(Vulnerability vulnerability);
 
     Long countAllByCodeRepoInAndStatusIn(List<CodeRepo> codeRepos, List<String> status);

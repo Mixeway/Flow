@@ -80,6 +80,12 @@ public class CreateCommentService {
         return commentRepository.save(comment);
     }
 
+    @Transactional
+    public Comment createSystemComment(Finding finding, UserInfo systemUser, String message) {
+        Comment comment = new Comment(message, finding, systemUser);
+        finding.addComment(comment);
+        return commentRepository.save(comment);
+    }
 
     private boolean isUserAuthorized(UserInfo user, Finding finding) {
         // Check if user is admin

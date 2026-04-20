@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/environments/environment.ts"],
+  "sourcesContent": ["export const environment = {\n    production: false,\n    backendUrl: ''  // Backend URL for production\n};"],
+  "mappings": ";AAAO,IAAM,cAAc;EACvB,YAAY;EACZ,YAAY;;;",
+  "names": []
+}

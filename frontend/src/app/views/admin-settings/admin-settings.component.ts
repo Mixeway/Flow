@@ -33,7 +33,7 @@ import {
     ToasterComponent,
     ToastHeaderComponent
 } from "@coreui/angular";
-import {DatePipe, NgForOf, NgIf} from "@angular/common";
+import {DatePipe, NgClass, NgForOf, NgIf} from "@angular/common";
 import {IconDirective} from "@coreui/icons-angular";
 import {NgxDatatableModule} from "@swimlane/ngx-datatable";
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from "@angular/forms";
@@ -53,6 +53,7 @@ import {OrganizationService} from "../../service/OrganizationService";
         CardComponent,
         ColComponent,
         DatePipe,
+        NgClass,
         FormCheckComponent,
         FormCheckInputDirective,
         FormCheckLabelDirective,
@@ -143,6 +144,15 @@ export class AdminSettingsComponent implements OnInit{
 
     // For Other Configuration Tab
     geminiApiKey: string = 'API Key';
+
+    // AI / Ollama
+    ollamaEnabled = false;
+    ollamaBaseUrl = 'http://localhost:11434';
+    ollamaModel = '';
+    ollamaTimeoutSeconds = 120;
+    ollamaFpAnalysisEnabled = false;
+    ollamaFpBatchSize = 5;
+    ollamaConnectionOk: boolean | null = null;
 
     constructor(private fb: FormBuilder, private authService: AuthService, private settingsService: SettingsService,
                 private router: Router,
@@ -318,6 +328,66 @@ export class AdminSettingsComponent implements OnInit{
 
                 this.geminiApiKey = this.settings.geminiApiKey;
 
+                this.ollamaEnabled = !!this.settings.ollamaEnabled;
+                this.ollamaBaseUrl = this.settings.ollamaBaseUrl || 'http://localhost:11434';
+                this.ollamaModel = this.settings.ollamaModel ?? '';
+                this.ollamaTimeoutSeconds = this.settings.ollamaTimeoutSeconds ?? 120;
+                this.ollamaFpAnalysisEnabled = !!this.settings.ollamaFpAnalysisEnabled;
+                this.ollamaFpBatchSize = this.settings.ollamaFpBatchSize ?? 5;
+                this.probeOllamaOnLoad();
+            }
+        });
+    }
+
+    private probeOllamaOnLoad(): void {
+        this.settingsService.testOllamaConnection({}).subscribe({
+            next: (r) => {
+                this.ollamaConnectionOk = !!r?.ok;
+            },
+            error: () => {
+                this.ollamaConnectionOk = false;
+            }
+        });
+    }
+
+    testOllamaConnection(): void {
+        this.settingsService.testOllamaConnection({ baseUrl: this.ollamaBaseUrl }).subscribe({
+            next: (r) => {
+                this.ollamaConnectionOk = !!r?.ok;
+                this.toastStatus = r?.ok ? 'success' : 'warning';
+                this.toastMessage = r?.ok
+                    ? ('Ollama OK. Models: ' + (r.models?.length ?? 0))
+                    : (r?.message || 'Could not reach Ollama');
+                this.toggleToast();
+            },
+            error: () => {
+                this.ollamaConnectionOk = false;
+                this.toastStatus = 'danger';
+                this.toastMessage = 'Ollama connection test failed';
+                this.toggleToast();
+            }
+        });
+    }
+
+    saveOllamaSettings(): void {
+        this.settingsService.changeOllama({
+            ollamaEnabled: this.ollamaEnabled,
+            ollamaBaseUrl: this.ollamaBaseUrl,
+            ollamaModel: this.ollamaModel,
+            ollamaTimeoutSeconds: this.ollamaTimeoutSeconds,
+            ollamaFpAnalysisEnabled: this.ollamaFpAnalysisEnabled,
+            ollamaFpBatchSize: this.ollamaFpBatchSize
+        }).subscribe({
+            next: () => {
+                this.toastStatus = 'success';
+                this.toastMessage = 'Ollama settings saved';
+                this.toggleToast();
+                this.probeOllamaOnLoad();
+            },
+            error: () => {
+                this.toastStatus = 'danger';
+                this.toastMessage = 'Failed to save Ollama settings';
+                this.toggleToast();
             }
         });
     }

@@ -809,3 +809,59 @@ ALTER TABLE finding ADD COLUMN jira_ticket_key VARCHAR(50);
 
 --changeset siewer:add_jira_auth_type
 ALTER TABLE jira_configuration ADD COLUMN auth_type VARCHAR(20) NOT NULL DEFAULT 'BASIC';
+
+--changeset flow:add_ollama_settings
+ALTER TABLE settings
+    ADD COLUMN IF NOT EXISTS ollama_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS ollama_base_url VARCHAR(512),
+    ADD COLUMN IF NOT EXISTS ollama_model VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS ollama_timeout_seconds INT NOT NULL DEFAULT 120,
+    ADD COLUMN IF NOT EXISTS ollama_fp_analysis_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS ollama_fp_batch_size INT NOT NULL DEFAULT 5;
+
+UPDATE settings SET ollama_base_url = COALESCE(ollama_base_url, 'http://localhost:11434') WHERE ollama_base_url IS NULL;
+
+--changeset flow:add_ai_fields_to_finding
+ALTER TABLE finding
+    ADD COLUMN IF NOT EXISTS ai_analyzed BOOLEAN NOT NULL DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS ai_verdict VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS ai_confidence VARCHAR(10),
+    ADD COLUMN IF NOT EXISTS ai_model VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS ai_analyzed_at TIMESTAMP;
+
+--changeset flow:add_rag_code_chunk
+CREATE TABLE IF NOT EXISTS rag_code_chunk (
+    id BIGSERIAL PRIMARY KEY,
+    coderepo_id BIGINT NOT NULL REFERENCES coderepo(id) ON DELETE CASCADE,
+    commit_id VARCHAR(64),
+    file_path TEXT NOT NULL,
+    start_line INT NOT NULL,
+    end_line INT NOT NULL,
+    language VARCHAR(40),
+    chunk_text TEXT NOT NULL,
+    embedding BYTEA,
+    embedding_dim INT,
+    content_hash VARCHAR(64),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_rag_chunk_repo ON rag_code_chunk(coderepo_id);
+CREATE INDEX IF NOT EXISTS idx_rag_chunk_repo_file ON rag_code_chunk(coderepo_id, file_path);
+
+--changeset flow:add_coderepo_rag_and_ai_stats
+ALTER TABLE coderepo
+    ADD COLUMN IF NOT EXISTS rag_index_status VARCHAR(30) NOT NULL DEFAULT 'NOT_PERFORMED',
+    ADD COLUMN IF NOT EXISTS rag_index_commit VARCHAR(64),
+    ADD COLUMN IF NOT EXISTS last_ai_fp_analyzed_count INT NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS last_ai_fp_suppressed_count INT NOT NULL DEFAULT 0;
+
+--changeset flow:add_flowai_system_user
+INSERT INTO users (username, password, api_key, reset_password, active)
+SELECT 'flowai', '$2a$12$XJjJYh1oVX33kPiS/JShlebp8WjRSl4.FsW9R5hBWt2IWzAtpCyQi', NULL, FALSE, TRUE
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'flowai');
+
+INSERT INTO users_roles (user_info_id, roles_id)
+SELECT u.id, r.id FROM users u, roles r
+WHERE u.username = 'flowai' AND r.name = 'USER'
+  AND NOT EXISTS (
+    SELECT 1 FROM users_roles ur WHERE ur.user_info_id = u.id AND ur.roles_id = r.id
+  );

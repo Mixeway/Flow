@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/layout/default-layout/default-layout.component.scss"],
+  "sourcesContent": [":host {\n  .ng-scrollbar {\n    --scrollbar-padding: 1px;\n    --scrollbar-size: 5px;\n    --scrollbar-thumb-color: var(--cui-gray-500, #999);\n    --scrollbar-thumb-hover-color: var(--cui-gray-400, #999);\n    --scrollbar-hover-size: calc(var(--scrollbar-size) * 1.5);\n  }\n}\n\n// ng-scrollbar css variables\n//.cui-scrollbar {\n//  --scrollbar-border-radius: 7px;\n//  --scrollbar-padding: 1px;\n//  --scrollbar-viewport-margin: 0;\n//  --scrollbar-track-color: transparent;\n//  --scrollbar-wrapper-color: transparent;\n//  --scrollbar-thumb-color: rgba(0, 0, 0, 0.2);\n//  --scrollbar-thumb-hover-color: var(--scrollbar-thumb-color);\n//  --scrollbar-size: 5px;\n//  --scrollbar-hover-size: var(--scrollbar-size);\n//  --scrollbar-thumb-transition: height ease-out 150ms, width ease-out 150ms;\n//  --scrollbar-track-transition: height ease-out 150ms, width ease-out 150ms;\n//}\n"],
+  "mappings": ";AACE,MAAA,CAAA;AACE,uBAAA;AACA,oBAAA;AACA,2BAAA,IAAA,cAAA,EAAA;AACA,iCAAA,IAAA,cAAA,EAAA;AACA,0BAAA,KAAA,IAAA,kBAAA,EAAA;;",
+  "names": []
+}

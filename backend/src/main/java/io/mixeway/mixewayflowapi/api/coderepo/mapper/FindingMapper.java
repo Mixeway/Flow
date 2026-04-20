@@ -19,6 +19,10 @@ public class FindingMapper {
         dto.setInserted(finding.getInsertedDate().toString());
         dto.setLastSeen(finding.getUpdatedDate().toString());
         dto.setJiraTicketKey(finding.getJiraTicketKey());
+        dto.setAiAnalyzed(finding.isAiAnalyzed());
+        dto.setAiVerdict(finding.getAiVerdict());
+        dto.setAiConfidence(finding.getAiConfidence());
+        dto.setAiModel(finding.getAiModel());
         return dto;
     }
 
