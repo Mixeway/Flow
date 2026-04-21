@@ -9,3 +9,4 @@
 /backend/MixewayFlowAPI.iml
 #frontend/src/environments
 .vscode
+/frontend/dist
