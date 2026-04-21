@@ -676,17 +676,18 @@ INSERT INTO public.scan_info VALUES (6, 6, 6, '4fb9f47dfa66947b20d7b83c0666b27d1
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: flow_user
 --
 
-INSERT INTO public.users VALUES (2, '$2a$10$KtoPDiXK0qnn5kqcn1phK..ogkzljZmkwJU686o60jH8b6rT6xDNO', 'user', NULL, true, true);
-INSERT INTO public.users VALUES (3, '$2a$10$LQuErsbpMCVb/3D2LoU9/epUKpXzUuqUJlexVVODcU1Mz2nDnB8xy', 'manager', NULL, true, true);
+-- Ids 2–3 are reserved by master changelog (e.g. flowai system user); use 4–5 for fixture users
+INSERT INTO public.users VALUES (4, '$2a$10$KtoPDiXK0qnn5kqcn1phK..ogkzljZmkwJU686o60jH8b6rT6xDNO', 'user', NULL, true, true);
+INSERT INTO public.users VALUES (5, '$2a$10$LQuErsbpMCVb/3D2LoU9/epUKpXzUuqUJlexVVODcU1Mz2nDnB8xy', 'manager', NULL, true, true);
 
 
 --
 -- Data for Name: users_roles; Type: TABLE DATA; Schema: public; Owner: flow_user
 --
 
-INSERT INTO public.users_roles VALUES (2, 1);
-INSERT INTO public.users_roles VALUES (3, 3);
-INSERT INTO public.users_roles VALUES (3, 1);
+INSERT INTO public.users_roles VALUES (4, 1);
+INSERT INTO public.users_roles VALUES (5, 3);
+INSERT INTO public.users_roles VALUES (5, 1);
 
 
 --
@@ -695,12 +696,12 @@ INSERT INTO public.users_roles VALUES (3, 1);
 
 
 INSERT INTO public.users_teams (user_info_id, team_id) VALUES (1, 1);
-INSERT INTO public.users_teams (user_info_id, team_id) VALUES (2, 1);
+INSERT INTO public.users_teams (user_info_id, team_id) VALUES (4, 1);
 INSERT INTO public.users_teams (user_info_id, team_id) VALUES (1, 2);
-INSERT INTO public.users_teams (user_info_id, team_id) VALUES (3, 2);
+INSERT INTO public.users_teams (user_info_id, team_id) VALUES (5, 2);
 INSERT INTO public.users_teams (user_info_id, team_id) VALUES (1, 3);
-INSERT INTO public.users_teams (user_info_id, team_id) VALUES (3, 3);
-INSERT INTO public.users_teams (user_info_id, team_id) VALUES (2, 3);
+INSERT INTO public.users_teams (user_info_id, team_id) VALUES (5, 3);
+INSERT INTO public.users_teams (user_info_id, team_id) VALUES (4, 3);
 
 
 --
@@ -783,7 +784,7 @@ SELECT pg_catalog.setval('public.team_id_seq', 3, true);
 -- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: flow_user
 --
 
-SELECT pg_catalog.setval('public.users_id_seq', 3, true);
+SELECT pg_catalog.setval('public.users_id_seq', 5, true);
 
 
 --

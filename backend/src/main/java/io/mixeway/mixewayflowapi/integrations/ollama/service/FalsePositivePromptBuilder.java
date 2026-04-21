@@ -29,7 +29,11 @@ public class FalsePositivePromptBuilder {
         sb.append("1) Does the vulnerable pattern **actually occur** at the indicated location in this codebase snapshot?\n");
         sb.append("2) In **any realistic execution path or deployment**, could this lead to a **meaningful security impact** ");
         sb.append("(confidentiality, integrity, availability, authn/z bypass, injection, etc.)?\n");
-        sb.append("3) If the rule fires on a safe API, dead code, unreachable branch, or fully mitigated usage, treat as FALSE POSITIVE.\n\n");
+        sb.append("3) **Prefer REAL_ISSUE when in doubt** — do not classify as FALSE_POSITIVE unless you can justify it clearly.\n");
+        sb.append("4) Use FALSE_POSITIVE only when the finding is clearly a **rule misfire**, dead/unreachable code, or safe-by-construction usage; ");
+        sb.append("not merely \"low severity\".\n");
+        sb.append("5) Set **confidence** to **HIGH** only if you are **very sure** the finding is not a real security issue; ");
+        sb.append("if you lean toward false positive but are not fully sure, use **REAL_ISSUE** or **FALSE_POSITIVE** with **MEDIUM**/**LOW** (the pipeline treats SAST auto-suppression only for HIGH).\n\n");
         sb.append("Write **reasoning** as **at least 5–8 sentences**, concrete and code-referenced.\n\n");
         appendJsonSchema(sb, true);
         return sb.toString();

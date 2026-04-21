@@ -178,6 +178,18 @@ public final class Finding {
         this.aiAnalyzedAt = LocalDateTime.now();
     }
 
+    /**
+     * SAST: model zwróciło FALSE_POSITIVE, ale pewność była niższa niż HIGH — nie wyciszamy automatycznie,
+     * żeby nie ukrywać prawdziwych problemów (FP tylko przy wysokiej pewności).
+     */
+    public void markAiSastFpNotAutoSuppressed(String modelName, String confidence) {
+        this.aiAnalyzed = true;
+        this.aiVerdict = "LIKELY_FP_REVIEW";
+        this.aiConfidence = confidence;
+        this.aiModel = modelName;
+        this.aiAnalyzedAt = LocalDateTime.now();
+    }
+
     // Method to update status and suppressed reason
     public void updateStatus(Status newStatus, SuppressedReason suppressedReason) {
         if (newStatus == Status.SUPRESSED && suppressedReason == null) {

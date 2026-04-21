@@ -134,6 +134,18 @@ public class FalsePositiveAnalyzer {
         String reasoning = v.getReasoning() != null ? v.getReasoning() : "";
 
         if ("FALSE_POSITIVE".equalsIgnoreCase(vStr)) {
+            // SAST: automatyczne wyciszenie tylko przy wysokiej pewności — unikamy masowego FP przy MEDIUM/LOW
+            if (finding.getSource() == Finding.Source.SAST && !isHighConfidence(conf)) {
+                log.info("[AiFp] SAST finding id={}: verdict=FALSE_POSITIVE confidence={} — not auto-suppressing (SAST requires HIGH confidence to suppress)",
+                        finding.getId(), conf);
+                finding.markAiSastFpNotAutoSuppressed(s.getOllamaModel(), conf);
+                findingRepository.save(finding);
+                if (aiUser != null) {
+                    String msg = buildAiCommentSastFpNotSuppressed(v, s, finding, reasoning);
+                    createCommentService.createSystemComment(finding, aiUser, msg);
+                }
+                return false;
+            }
             finding.markAiFalsePositive(s.getOllamaModel(), conf);
             updateFindingService.suppressFinding(finding, Finding.SuppressedReason.FALSE_POSITIVE.name());
             if (aiUser != null) {
@@ -190,6 +202,29 @@ public class FalsePositiveAnalyzer {
         String base = finding.getExplanation() != null ? finding.getExplanation() : "";
         String block = "\n\n--- AI assessment (not for exfiltration; verify in repo) ---\n" + append + "\n";
         finding.setExplanation(base + block);
+    }
+
+    private static boolean isHighConfidence(String conf) {
+        return conf != null && "HIGH".equalsIgnoreCase(conf.trim());
+    }
+
+    private static String buildAiCommentSastFpNotSuppressed(
+            FpVerdictDto v,
+            Settings s,
+            Finding finding,
+            String reasoning) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("[AI analysis — SAST]\n\n");
+        sb.append("## Decision\n");
+        sb.append("Model zwróciło **FALSE_POSITIVE**, ale **nie wyciszono automatycznie**: dla SAST automatyczne wyciszenie ");
+        sb.append("jest dozwolone tylko przy **confidence: HIGH**, żeby nie ukrywać realnych problemów przy średniej/niskiej pewności.\n\n");
+        sb.append("## Rationale (model)\n");
+        sb.append(reasoning != null ? reasoning.trim() : "").append("\n\n");
+        sb.append("## Szczegóły\n");
+        sb.append("- Zgłoszona pewność: **").append(v.getConfidence() != null ? v.getConfidence() : "UNKNOWN").append("**\n");
+        sb.append("- Model: `").append(s.getOllamaModel()).append("`\n");
+        sb.append("- Status: przejrzyj ręcznie; przy potwierdzeniu FP możesz wyciszyć z poziomu UI.\n");
+        return sb.toString();
     }
 
     private static String buildAiComment(

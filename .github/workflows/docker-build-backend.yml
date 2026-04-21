@@ -17,6 +17,22 @@ concurrency:
 jobs:
   unit-testing:
     runs-on: ubuntu-latest
+    # Profile ut normally uses Testcontainers (Docker). CI uses a real Postgres service so tests
+    # do not depend on Testcontainers detecting the Docker socket on the runner.
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test -d test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -26,6 +42,11 @@ jobs:
           distribution: 'temurin'
           java-version: 22
       - name: Build and test with Maven and profile ut
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/test
+          SPRING_DATASOURCE_USERNAME: test
+          SPRING_DATASOURCE_PASSWORD: test
+          SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
         run: |
           cd backend
           mvn clean test -Dspring.profiles.active=ut

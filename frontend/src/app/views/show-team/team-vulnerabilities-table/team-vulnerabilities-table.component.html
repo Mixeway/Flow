@@ -326,6 +326,8 @@
                                         </span>
                                         <span *ngIf="row.ai_analyzed && row.ai_verdict === 'FALSE_POSITIVE' && row.status === 'SUPRESSED'"
                                               class="badge bg-info-subtle text-info ms-2">🤖 AI: False Positive</span>
+                                        <span *ngIf="row.ai_analyzed && row.ai_verdict === 'LIKELY_FP_REVIEW'"
+                                              class="badge bg-warning-subtle text-warning-emphasis ms-2">🤖 AI: FP suggested (review)</span>
                                         <span *ngIf="row.ai_analyzed && row.ai_verdict === 'REAL_ISSUE'"
                                               class="badge bg-secondary-subtle text-secondary ms-2">🤖 AI: Real issue</span>
                                     </div>
