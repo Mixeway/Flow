@@ -12,6 +12,7 @@ import io.mixeway.mixewayflowapi.domain.comment.CreateCommentService;
 import io.mixeway.mixewayflowapi.domain.finding.UpdateFindingService;
 import io.mixeway.mixewayflowapi.domain.settings.FindSettingsService;
 import io.mixeway.mixewayflowapi.integrations.ollama.dto.FpVerdictDto;
+import io.mixeway.mixewayflowapi.integrations.ollama.dto.SecretAnalysisDto;
 import io.mixeway.mixewayflowapi.integrations.rag.service.RagRetrievalService;
 import io.mixeway.mixewayflowapi.integrations.rag.service.RetrievedChunk;
 import lombok.RequiredArgsConstructor;
@@ -44,23 +45,30 @@ public class FalsePositiveAnalyzer {
     public AiFpScanResult analyzeAfterScan(CodeRepo codeRepo, CodeRepoBranch branch, String commitId) {
         Settings s = findSettingsService.get();
         if (s == null || !s.isOllamaEnabled() || !s.isOllamaFpAnalysisEnabled()) {
+            log.info("[AiFp] Skipped for {} / {}: Ollama disabled or AI false-positive analysis off in settings",
+                    codeRepo.getRepourl(), branch.getName());
             return AiFpScanResult.disabled();
         }
         if (s.getOllamaModel() == null || s.getOllamaModel().isBlank()) {
-            log.debug("[AiFp] Skipping: ollama_model is empty");
+            log.info("[AiFp] Skipped for {} / {}: ollama model is not configured",
+                    codeRepo.getRepourl(), branch.getName());
             return AiFpScanResult.disabled();
         }
 
         CodeRepo managed = codeRepoRepository.findById(codeRepo.getId()).orElse(null);
         if (managed == null) {
+            log.warn("[AiFp] Skipped: code repo id={} not found", codeRepo.getId());
             return AiFpScanResult.disabled();
         }
 
         List<Finding> candidates = findingRepository.findForAiFalsePositiveAnalysis(
                 managed,
                 branch,
-                List.of(Finding.Source.SAST, Finding.Source.IAC),
+                List.of(Finding.Source.SAST, Finding.Source.IAC, Finding.Source.SECRETS),
                 List.of(Finding.Status.NEW, Finding.Status.EXISTING));
+
+        log.info("[AiFp] Phase started after all scanners finished — repo {} branch {} — {} finding(s) queued for AI (SAST/IaC/Secrets, NEW/EXISTING, not yet analyzed)",
+                codeRepo.getRepourl(), branch.getName(), candidates.size());
 
         UserInfo aiUser = userRepository.findByUsername(SYSTEM_USER);
         if (aiUser == null) {
@@ -89,16 +97,14 @@ public class FalsePositiveAnalyzer {
 
         managed.updateAiFpScanSummary(analyzed, suppressed);
         codeRepoRepository.save(managed);
-        if (analyzed > 0) {
-            log.info("[AiFp] Scan summary: analyzed={}, suppressed as false positive={}", analyzed, suppressed);
-        }
+        log.info("[AiFp] Finished — repo {} branch {} — analyzed={}, suppressed as false positive={}",
+                codeRepo.getRepourl(), branch.getName(), analyzed, suppressed);
         return new AiFpScanResult(analyzed, suppressed);
     }
 
     private boolean analyzeOne(Finding finding, Settings s, UserInfo aiUser) {
         List<RetrievedChunk> chunks = ragRetrievalService.retrieveTopChunksForFinding(finding, s);
-        String scannerLabel = finding.getSource() == Finding.Source.SAST ? "SAST" : "IAC";
-        String prompt = promptBuilder.build(finding, chunks, scannerLabel);
+        String prompt = promptBuilder.build(finding, chunks, finding.getSource());
 
         Optional<String> resp = ollamaClient.generate(
                 s.getOllamaBaseUrl(),
@@ -131,14 +137,86 @@ public class FalsePositiveAnalyzer {
             finding.markAiFalsePositive(s.getOllamaModel(), conf);
             updateFindingService.suppressFinding(finding, Finding.SuppressedReason.FALSE_POSITIVE.name());
             if (aiUser != null) {
-                String msg = "[AI Analysis] " + reasoning + " (confidence: " + conf + ", model: " + s.getOllamaModel() + ")";
+                String msg = buildAiComment(v, s, finding, true, reasoning);
                 createCommentService.createSystemComment(finding, aiUser, msg);
             }
             return true;
         }
 
         finding.markAiReviewedRealIssue(s.getOllamaModel(), conf);
+        maybeAppendSecretEnrichment(finding, v);
         findingRepository.save(finding);
+
+        if (aiUser != null && !reasoning.isBlank()) {
+            String msg = buildAiComment(v, s, finding, false, reasoning);
+            createCommentService.createSystemComment(finding, aiUser, msg);
+        }
         return false;
+    }
+
+    private static void maybeAppendSecretEnrichment(Finding finding, FpVerdictDto v) {
+        if (finding.getSource() != Finding.Source.SECRETS) {
+            return;
+        }
+        SecretAnalysisDto sa = v.getSecretAnalysis();
+        if (sa == null) {
+            return;
+        }
+        StringBuilder append = new StringBuilder();
+        if (sa.getEnrichmentForTicket() != null && !sa.getEnrichmentForTicket().isBlank()) {
+            append.append(sa.getEnrichmentForTicket().trim());
+        }
+        if (sa.getMaskedPreview() != null && !sa.getMaskedPreview().isBlank()) {
+            if (append.length() > 0) {
+                append.append('\n');
+            }
+            append.append("Masked preview: ").append(sa.getMaskedPreview().trim());
+        }
+        if (sa.getLikelyService() != null && !sa.getLikelyService().isBlank()) {
+            if (append.length() > 0) {
+                append.append('\n');
+            }
+            append.append("Likely use / service: ").append(sa.getLikelyService().trim());
+        }
+        if (sa.getCredentialCategory() != null && !sa.getCredentialCategory().isBlank()) {
+            if (append.length() > 0) {
+                append.append('\n');
+            }
+            append.append("Category: ").append(sa.getCredentialCategory().trim());
+        }
+        if (append.isEmpty()) {
+            return;
+        }
+        String base = finding.getExplanation() != null ? finding.getExplanation() : "";
+        String block = "\n\n--- AI assessment (not for exfiltration; verify in repo) ---\n" + append + "\n";
+        finding.setExplanation(base + block);
+    }
+
+    private static String buildAiComment(
+            FpVerdictDto v,
+            Settings s,
+            Finding finding,
+            boolean suppressed,
+            String reasoning) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("[AI analysis — ").append(finding.getSource().name()).append("]\n\n");
+        sb.append("## Decision\n");
+        if (suppressed) {
+            sb.append("Classified as **false positive**; finding suppressed.\n\n");
+        } else {
+            sb.append("Classified as **real issue** (not auto-suppressed).\n\n");
+        }
+        sb.append("## Rationale\n");
+        sb.append(reasoning.trim()).append("\n\n");
+        sb.append("## Assessment details\n");
+        sb.append("- Confidence: **").append(v.getConfidence() != null ? v.getConfidence() : "UNKNOWN").append("**\n");
+        sb.append("- Model: `").append(s.getOllamaModel()).append("`\n");
+        if (finding.getSource() == Finding.Source.SECRETS && v.getSecretAnalysis() != null) {
+            SecretAnalysisDto sa = v.getSecretAnalysis();
+            if (sa.getCredentialCategory() != null && !sa.getCredentialCategory().isBlank()) {
+                sb.append("- Credential category: ").append(sa.getCredentialCategory()).append('\n');
+            }
+        }
+        return sb.toString();
     }
 }

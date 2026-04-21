@@ -68,7 +68,7 @@ public final class Finding {
     private final CloudSubscription cloudSubscription;
 
     @Column(columnDefinition = "TEXT")
-    private final String explanation;
+    private String explanation;
 
     @Column(length = 200, nullable = false)
     @ToString.Include
@@ -214,6 +214,11 @@ public final class Finding {
 
     public void setJiraTicketKey(String jiraTicketKey) {
         this.jiraTicketKey = jiraTicketKey;
+    }
+
+    /** Updates scanner explanation text (e.g. AI enrichment for secret findings). */
+    public void setExplanation(String explanation) {
+        this.explanation = explanation;
     }
 
 }

@@ -33,4 +33,17 @@ class OllamaResponseParserTest {
         assertTrue(parser.parseVerdictJson("").isEmpty());
         assertTrue(parser.parseVerdictJson("   ").isEmpty());
     }
+
+    @Test
+    void parsesNestedSecretAnalysis() {
+        Optional<FpVerdictDto> v = parser.parseVerdictJson(
+                "{\"verdict\":\"REAL_ISSUE\",\"confidence\":\"HIGH\",\"reasoning\":\"x\","
+                        + "\"secret_analysis\":{\"credential_category\":\"api_key\","
+                        + "\"likely_service\":\"AWS\",\"masked_preview\":\"ab****cd\","
+                        + "\"enrichment_for_ticket\":\"Uses prod API\"}}");
+        assertTrue(v.isPresent());
+        assertNotNull(v.get().getSecretAnalysis());
+        assertEquals("api_key", v.get().getSecretAnalysis().getCredentialCategory());
+        assertEquals("AWS", v.get().getSecretAnalysis().getLikelyService());
+    }
 }

@@ -1,21 +1,101 @@
-<app-repository-info
-        [repoData]="repoData"
-        [scanRunning]="scanRunning"
-        [userRole]="userRole"
-        [topLanguages]="topLanguages"
-        [chartPieData]="chartPieData"
-        [options]="options"
-        (runScanEvent)="runScan()"
-        (runScanBranchEvent)="runScanForBranch($event)"
-        (openChangeTeamModalEvent)="openChangeTeamModal()"
-        (deleteRepoEvent)="openDeleteRepoModal()"
-></app-repository-info>
+<div
+        class="repo-overview-carousel mb-4"
+        role="region"
+        aria-roledescription="carousel"
+        [attr.aria-label]="repoCarouselSlide === 0 ? 'Repository and vulnerability sources' : 'Findings overview'"
+>
+    <div class="repo-overview-carousel__toolbar card border-0 shadow-sm mb-0">
+        <div class="card-body py-2 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <span class="fw-semibold text-body mb-0">{{ repoCarouselSlide === 0 ? 'Repository & sources' : 'Findings overview' }}</span>
+                <div class="repo-overview-carousel__dots d-flex align-items-center gap-2" role="tablist">
+                    <button
+                            type="button"
+                            class="repo-overview-carousel__dot"
+                            [class.repo-overview-carousel__dot--active]="repoCarouselSlide === 0"
+                            (click)="setRepoCarouselSlide(0)"
+                            role="tab"
+                            [attr.aria-selected]="repoCarouselSlide === 0"
+                            aria-label="Show repository and vulnerability sources"
+                    ></button>
+                    <button
+                            type="button"
+                            class="repo-overview-carousel__dot"
+                            [class.repo-overview-carousel__dot--active]="repoCarouselSlide === 1"
+                            (click)="setRepoCarouselSlide(1)"
+                            role="tab"
+                            [attr.aria-selected]="repoCarouselSlide === 1"
+                            aria-label="Show findings overview"
+                    ></button>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-1">
+                <button
+                        type="button"
+                        cButton
+                        color="secondary"
+                        variant="ghost"
+                        size="sm"
+                        class="px-2"
+                        (click)="prevRepoCarouselSlide()"
+                        [disabled]="repoCarouselSlide === 0"
+                        [cTooltip]="'Previous panel'"
+                        aria-label="Previous panel"
+                >
+                    <svg [cIcon]="icons.cilChevronLeft" width="18" height="18"></svg>
+                </button>
+                <button
+                        type="button"
+                        cButton
+                        color="secondary"
+                        variant="ghost"
+                        size="sm"
+                        class="px-2"
+                        (click)="nextRepoCarouselSlide()"
+                        [disabled]="repoCarouselSlide === 1"
+                        [cTooltip]="'Next panel'"
+                        aria-label="Next panel"
+                >
+                    <svg [cIcon]="icons.cilChevronRight" width="18" height="18"></svg>
+                </button>
+            </div>
+        </div>
+    </div>
 
-<div class="mt-4">
-    <app-vulnerability-summary
-            [counts]="counts"
-            [icons]="icons"
-    ></app-vulnerability-summary>
+    <div class="repo-overview-carousel__panes mt-3">
+        <div
+                class="repo-overview-carousel__pane"
+                [class.d-none]="repoCarouselSlide !== 0"
+                role="tabpanel"
+                [attr.aria-hidden]="repoCarouselSlide !== 0"
+                id="repo-carousel-panel-0"
+        >
+            <app-repository-info
+                    [repoData]="repoData"
+                    [scanRunning]="scanRunning"
+                    [userRole]="userRole"
+                    [topLanguages]="topLanguages"
+                    [chartPieData]="chartPieData"
+                    [options]="options"
+                    (runScanEvent)="runScan()"
+                    (runScanBranchEvent)="runScanForBranch($event)"
+                    (openChangeTeamModalEvent)="openChangeTeamModal()"
+                    (deleteRepoEvent)="openDeleteRepoModal()"
+            ></app-repository-info>
+        </div>
+        <div
+                class="repo-overview-carousel__pane"
+                [class.d-none]="repoCarouselSlide !== 1"
+                role="tabpanel"
+                [attr.aria-hidden]="repoCarouselSlide !== 1"
+                id="repo-carousel-panel-1"
+        >
+            <app-vulnerability-summary
+                    [counts]="counts"
+                    [icons]="icons"
+            ></app-vulnerability-summary>
+        </div>
+    </div>
 </div>
 
 <div class="repo-tabs-container mt-4">
@@ -62,7 +142,6 @@
                             [selectedBranchId]="selectedBranchId"
                             [showRemoved]="showRemoved"
                             [showSuppressed]="showSuppressed"
-                            [showAiSuppressed]="showAiSuppressed"
                             [showUrgent]="showUrgent"
                             [showNotable]="showNotable"
                             [hasUrgentFindings]="hasUrgentFindings"
@@ -71,6 +150,8 @@
                             [selectedFindings]="selectedFindings"
                             [vulnerabilitiesLoading]="vulnerabilitiesLoading"
                             [vulnerabilitiesLimit]="vulnerabilitiesLimit"
+                            [currentFilters]="filters"
+                            [statusFilter]="statusFilter"
                             [jiraEnabled]="jiraEnabled"
                             [teamId]="teamId"
                             (updateFilterNameEvent)="updateFilterName($event)"
@@ -80,7 +161,6 @@
                             (updateFilterSeverityEvent)="updateFilterSeverity($event)"
                             (toggleShowRemovedEvent)="toggleShowRemoved($event)"
                             (toggleShowSuppressedEvent)="toggleShowSuppressed($event)"
-                            (toggleShowAiSuppressedEvent)="toggleShowAiSuppressed($event)"
                             (toggleShowUrgentEvent)="toggleShowUrgent($event)"
                             (toggleShowNotableEvent)="toggleShowNotable($event)"
                             (toggleBulkActionEvent)="toggleBulkAction()"

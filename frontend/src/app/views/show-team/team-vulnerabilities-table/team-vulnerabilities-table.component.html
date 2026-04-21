@@ -320,10 +320,14 @@
                                                 class="meta-icon"
                                         ></svg>
                                         <span [ngClass]="'status-text status-' + row?.status?.toLowerCase()">{{ row?.status }}</span>
-                                        <span *ngIf="row.urgency" class="urgency-badge ms-2" [ngClass]="row.urgency">
+                                        <span *ngIf="row.urgency && !row.ai_analyzed" class="urgency-badge ms-2" [ngClass]="row.urgency">
                                             <svg cIcon [name]="row.urgency === 'urgent' ? 'cil-warning' : 'cil-bell'"></svg>
                                             {{ row.urgency === 'urgent' ? 'Urgent' : 'Notable' }}
                                         </span>
+                                        <span *ngIf="row.ai_analyzed && row.ai_verdict === 'FALSE_POSITIVE' && row.status === 'SUPRESSED'"
+                                              class="badge bg-info-subtle text-info ms-2">🤖 AI: False Positive</span>
+                                        <span *ngIf="row.ai_analyzed && row.ai_verdict === 'REAL_ISSUE'"
+                                              class="badge bg-secondary-subtle text-secondary ms-2">🤖 AI: Real issue</span>
                                     </div>
                                     <div class="meta-item date-info">
                                         <span class="date-value">Last seen: {{ row?.last_seen | date:'short' }}</span>

@@ -7,8 +7,8 @@ import {
     CardBodyComponent,
     CardComponent,
     CardHeaderComponent,
-    ColComponent, FormCheckComponent, FormCheckInputDirective, FormCheckLabelDirective,
-    FormControlDirective,
+        ColComponent,
+        FormControlDirective,
     InputGroupComponent,
     InputGroupTextDirective,
     ListGroupDirective,
@@ -30,9 +30,6 @@ import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} fr
         CardComponent,
         CardHeaderComponent,
         ColComponent,
-        FormCheckComponent,
-        FormCheckInputDirective,
-        FormCheckLabelDirective,
         IconDirective,
         InputGroupComponent,
         InputGroupTextDirective,
@@ -66,8 +63,6 @@ export class VulnerabilitiesComponent implements OnInit {
         vulnerability: '',
         repos: ''
     };
-
-    showAiSuppressed = false;
 
     userRole: string | null = localStorage.getItem('userRole');
     editModalVisible: boolean = false;
@@ -126,14 +121,8 @@ export class VulnerabilitiesComponent implements OnInit {
         this.filteredVulns = this.vulns.filter(vuln => {
             const matchesVulnerability = vuln.vulnerability.name.toLowerCase().includes(this.filters['vulnerability']);
             const matchesRepos = vuln.affectedRepositories.some((repo: string) => repo.toLowerCase().includes(this.filters['repos']));
-            const hideAiFp = !this.showAiSuppressed && vuln.anyAiFalsePositiveSuppressed === true;
-            return matchesVulnerability && matchesRepos && !hideAiFp;
+            return matchesVulnerability && matchesRepos;
         });
-    }
-
-    toggleShowAiSuppressed(checked: boolean): void {
-        this.showAiSuppressed = checked;
-        this.applyFilters();
     }
 
     clearFilter(filterType: string) {

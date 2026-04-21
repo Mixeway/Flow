@@ -1,11 +1,18 @@
-name: Docker Build and Push
+# Backend image: feature/* → *-test tags only; main → latest + latest-test in parallel
+name: Docker Build and Push (backend)
 
 on:
   push:
     branches:
       - main
+      - 'feature/**'
     paths:
       - 'backend/**'
+      - '.github/workflows/docker-build-backend.yml'
+
+concurrency:
+  group: docker-backend-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   unit-testing:
@@ -23,7 +30,9 @@ jobs:
           cd backend
           mvn clean test -Dspring.profiles.active=ut
 
-  build-and-push-backend:
+  # feature/* — single image, tag …-test
+  build-and-push-backend-test-branch:
+    if: startsWith(github.ref, 'refs/heads/feature/')
     runs-on: ubuntu-latest
     needs: unit-testing
     steps:
@@ -42,13 +51,74 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push multi-platform image
+      - name: Build and push (test tag)
         uses: docker/build-push-action@v6
         with:
           context: ./backend
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: |
-            mixeway/flow-api:latest
+          tags: mixeway/flow-api:${{ github.sha }}-test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # main — release tags (no -test suffix)
+  build-and-push-backend-main-release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: unit-testing
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push (release tags)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: mixeway/flow-api:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # main — parallel: same image, -test tag
+  build-and-push-backend-main-test:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: unit-testing
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push (test tag)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: mixeway/flow-api:latest-test
           cache-from: type=gha
           cache-to: type=gha,mode=max

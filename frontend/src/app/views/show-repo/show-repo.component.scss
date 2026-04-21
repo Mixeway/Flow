@@ -1,4 +1,41 @@
 // Remove custom overrides that were affecting CoreUI's native styling// Main container styles
+
+.repo-overview-carousel {
+  .repo-overview-carousel__toolbar {
+    border-radius: 0.5rem;
+  }
+
+  .repo-overview-carousel__dots {
+    line-height: 0;
+  }
+
+  .repo-overview-carousel__dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--cui-secondary-color);
+    opacity: 0.35;
+    cursor: pointer;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+
+    &:hover {
+      opacity: 0.65;
+    }
+
+    &--active {
+      opacity: 1;
+      transform: scale(1.15);
+      background: var(--cui-primary);
+    }
+  }
+
+  .repo-overview-carousel__panes .vs-summary-card {
+    margin-bottom: 0;
+  }
+}
+
 .repo-tabs-container {
   margin-bottom: 2rem;
 }

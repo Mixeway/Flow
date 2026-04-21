@@ -1,13 +1,13 @@
 <c-card class="vuln-table-card">
     <c-card-header class="vuln-table-header">
-        <div class="filter-controls">
-            <div class="filter-row primary-controls d-flex align-items-end gap-3 flex-wrap">
-                <div class="branch-select">
-                    <label cLabel for="branchSelect" class="form-label">Branch</label>
+        <div class="vuln-toolbar">
+            <div class="vuln-toolbar__primary">
+                <div class="vuln-toolbar__branch">
+                    <label cLabel for="branchSelect" class="form-label vuln-toolbar__label">Branch</label>
                     <select
                             cSelect
                             id="branchSelect"
-                            class="form-select branch-selector"
+                            class="form-select form-select-sm branch-selector"
                             (change)="onBranchSelect($event)"
                     >
                         <option [value]="repoData?.defaultBranch.id"
@@ -21,80 +21,41 @@
                     </select>
                 </div>
 
-
-                <div class="toggle-controls d-flex align-items-end">
-                    <div class="toggle-group d-flex align-items-center gap-3 flex-wrap">
-                        <c-form-check class="toggle-check" switch>
-                            <input cFormCheckInput id="showRemoved" type="checkbox"
-                                   [(ngModel)]="showRemoved"
-                                   [ngModelOptions]="{standalone: true}"
-                                   [disabled]="statusFilter === 'NEW' || statusFilter === 'EXISTING'"
-                                   (ngModelChange)="toggleShowRemoved($event)" />
-                            <label cFormCheckLabel for="showRemoved">Show Removed</label>
-                        </c-form-check>
-
-                        <c-form-check class="toggle-check" switch>
-                            <input cFormCheckInput id="showSuppressed" type="checkbox"
-                                   [(ngModel)]="showSuppressed"
-                                   [ngModelOptions]="{standalone: true}"
-                                   [disabled]="statusFilter === 'NEW' || statusFilter === 'EXISTING'"
-                                   (ngModelChange)="toggleShowSuppressed($event)" />
-                            <label cFormCheckLabel for="showSuppressed">Show Suppressed</label>
-                        </c-form-check>
-
-                        <c-form-check class="toggle-check" switch>
-                            <input cFormCheckInput id="showAiSuppressed" type="checkbox"
-                                   [(ngModel)]="showAiSuppressed"
-                                   [ngModelOptions]="{standalone: true}"
-                                   (ngModelChange)="toggleShowAiSuppressed($event)" />
-                            <label cFormCheckLabel for="showAiSuppressed">Show AI-suppressed</label>
-                        </c-form-check>
-                        <c-form-check class="toggle-check" switch [ngClass]="{'pulse-urgent': hasUrgentFindings && !showUrgent}">
-                            <input cFormCheckInput id="showUrgent" type="checkbox"
-                                   [(ngModel)]="showUrgent"
-                                   [ngModelOptions]="{standalone: true}"
-                                   (ngModelChange)="toggleShowUrgent($event)" />
-                            <label cFormCheckLabel for="showUrgent">Urgent Only</label>
-                        </c-form-check>
-                        <c-form-check class="toggle-check" switch [ngClass]="{'pulse-notable': hasNotableFindings && !showNotable}">
-                            <input cFormCheckInput id="showNotable" type="checkbox"
-                                   [(ngModel)]="showNotable"
-                                   [ngModelOptions]="{standalone: true}"
-                                   (ngModelChange)="toggleShowNotable($event)" />
-                            <label cFormCheckLabel for="showNotable">Notable Only</label>
-                        </c-form-check>
-                    </div>
+                <div class="vuln-toolbar__summary" *ngIf="!vulnerabilitiesLoading" aria-live="polite">
+                    <span class="vuln-toolbar__count">{{ filteredVulns.length }}</span>
+                    <span class="vuln-toolbar__count-sep">/</span>
+                    <span class="vuln-toolbar__total">{{ vulns.length }}</span>
+                    <span class="vuln-toolbar__count-label">findings</span>
                 </div>
 
-                <div class="action-controls ms-auto">
-                    <!-- Export filtered icon button -->
+                <div class="vuln-toolbar__actions">
                     <button
-                      cButton
-                      color="success"
-                      variant="ghost"
-                      size="sm"
-                      class="export-icon-btn me-2"
-                      [disabled]="!filteredVulns.length"
-                      (click)="exportToExcel('filtered')"
-                      [cTooltip]="'Export filtered to Excel'"
-                      aria-label="Export filtered to Excel"
+                            cButton
+                            color="success"
+                            variant="ghost"
+                            size="sm"
+                            class="vuln-toolbar__icon-btn"
+                            [disabled]="!filteredVulns.length"
+                            (click)="exportToExcel('filtered')"
+                            [cTooltip]="'Export filtered view to Excel'"
+                            aria-label="Export filtered to Excel"
                     >
-                      <svg cIcon name="cilCloudDownload"></svg>
+                        <svg cIcon name="cilCloudDownload"></svg>
                     </button>
                     <button
                             cButton
                             [color]="bulkActionMode ? 'danger' : 'primary'"
                             variant="outline"
-                            class="bulk-action-btn"
+                            size="sm"
+                            class="vuln-toolbar__bulk-btn"
                             (click)="toggleBulkAction()"
                     >
                         <svg cIcon [name]="bulkActionMode ? 'cil-x' : 'cil-list'" class="me-1"></svg>
-                        {{ bulkActionMode ? 'Exit Bulk Mode' : 'Bulk Actions' }}
+                        {{ bulkActionMode ? 'Exit bulk' : 'Bulk actions' }}
                     </button>
-
-                    <div class="page-size-control ms-2">
-                        <label class="form-label">Page Size</label>
-                        <select class="form-select" [(ngModel)]="vulnerabilitiesLimit">
+                    <div class="vuln-toolbar__page-size">
+                        <label class="form-label vuln-toolbar__label" for="pageSizeSelect">Rows</label>
+                        <select id="pageSizeSelect" class="form-select form-select-sm" [(ngModel)]="vulnerabilitiesLimit">
                             <option [value]="10">10</option>
                             <option [value]="20">20</option>
                             <option [value]="50">50</option>
@@ -105,61 +66,201 @@
                 </div>
             </div>
 
-            <div class="bulk-actions-row" *ngIf="bulkActionMode">
-                <div class="bulk-actions-container">
-                    <button
-                            cButton
-                            color="warning"
-                            [disabled]="selectedFindings.length === 0"
-                            (click)="suppressSelectedFindings()"
-                            class="bulk-suppress-btn"
-                    >
-                        <svg cIcon name="cil-volume-off" class="me-1"></svg>
-                        Suppress Selected ({{ selectedFindings.length }})
-                    </button>
+            <div class="vuln-toolbar__visibility">
+                <span class="vuln-toolbar__visibility-label">Visibility</span>
+                <div class="vuln-toolbar__toggles" role="group" aria-label="Finding visibility">
+                    <c-form-check class="vuln-toggle" switch>
+                        <input cFormCheckInput id="showRemoved" type="checkbox"
+                               [(ngModel)]="showRemoved"
+                               [ngModelOptions]="{standalone: true}"
+                               [disabled]="statusFilter === 'NEW' || statusFilter === 'EXISTING'"
+                               (ngModelChange)="toggleShowRemoved($event)" />
+                        <label cFormCheckLabel for="showRemoved">Removed</label>
+                    </c-form-check>
+                    <c-form-check class="vuln-toggle" switch>
+                        <input cFormCheckInput id="showSuppressed" type="checkbox"
+                               [(ngModel)]="showSuppressed"
+                               [ngModelOptions]="{standalone: true}"
+                               [disabled]="statusFilter === 'NEW' || statusFilter === 'EXISTING'"
+                               (ngModelChange)="toggleShowSuppressed($event)" />
+                        <label cFormCheckLabel for="showSuppressed">Suppressed</label>
+                    </c-form-check>
+                    <c-form-check class="vuln-toggle" switch [ngClass]="{'pulse-urgent': hasUrgentFindings && !showUrgent}">
+                        <input cFormCheckInput id="showUrgent" type="checkbox"
+                               [(ngModel)]="showUrgent"
+                               [ngModelOptions]="{standalone: true}"
+                               (ngModelChange)="toggleShowUrgent($event)" />
+                        <label cFormCheckLabel for="showUrgent">Urgent only</label>
+                    </c-form-check>
+                    <c-form-check class="vuln-toggle" switch [ngClass]="{'pulse-notable': hasNotableFindings && !showNotable}">
+                        <input cFormCheckInput id="showNotable" type="checkbox"
+                               [(ngModel)]="showNotable"
+                               [ngModelOptions]="{standalone: true}"
+                               (ngModelChange)="toggleShowNotable($event)" />
+                        <label cFormCheckLabel for="showNotable">Notable only</label>
+                    </c-form-check>
+                </div>
+            </div>
+        </div>
 
-                    <button *ngIf="jiraEnabled"
-                            cButton
-                            color="info"
-                            [disabled]="selectedFindings.length === 0"
-                            (click)="createJiraTicketsBulk()"
-                            class="bulk-suppress-btn ms-2"
-                    >
-                        <svg cIcon name="cil-task" class="me-1"></svg>
-                        Create JIRA Tickets ({{ selectedFindings.length }})
-                    </button>
+        <div class="bulk-actions-row" *ngIf="bulkActionMode">
+            <div class="bulk-actions-container">
+                <button
+                        cButton
+                        color="warning"
+                        size="sm"
+                        [disabled]="selectedFindings.length === 0"
+                        (click)="suppressSelectedFindings()"
+                        class="bulk-suppress-btn"
+                >
+                    <svg cIcon name="cil-volume-off" class="me-1"></svg>
+                    Suppress selected ({{ selectedFindings.length }})
+                </button>
 
-                    <div class="selection-info" *ngIf="selectedFindings.length > 0">
-                        <span>{{ selectedFindings.length }} items selected</span>
-                    </div>
+                <button *ngIf="jiraEnabled"
+                        cButton
+                        color="info"
+                        size="sm"
+                        [disabled]="selectedFindings.length === 0"
+                        (click)="createJiraTicketsBulk()"
+                        class="bulk-suppress-btn ms-2"
+                >
+                    <svg cIcon name="cil-task" class="me-1"></svg>
+                    Create JIRA ({{ selectedFindings.length }})
+                </button>
+
+                <div class="selection-info" *ngIf="selectedFindings.length > 0">
+                    <span>{{ selectedFindings.length }} selected</span>
                 </div>
             </div>
         </div>
     </c-card-header>
 
     <c-card-body class="vuln-table-body">
-        <div
-                *ngIf="vulnerabilitiesLoading"
-                class="loading-container"
-        >
+        <div *ngIf="vulnerabilitiesLoading" class="loading-container">
             <c-spinner color="primary"></c-spinner>
             <span class="loading-text">Loading vulnerabilities...</span>
         </div>
 
-        <div *ngIf="!vulnerabilitiesLoading" class="table-container">
+        <div *ngIf="!vulnerabilitiesLoading" class="vuln-table-stack">
+            <section class="vuln-filter-panel" aria-labelledby="vuln-filters-heading">
+                <div class="vuln-filter-panel__head">
+                    <h3 id="vuln-filters-heading" class="vuln-filter-panel__title">
+                        <svg cIcon name="cil-magnifying-glass" class="vuln-filter-panel__title-icon" aria-hidden="true"></svg>
+                        Filter results
+                    </h3>
+                    <button
+                            cButton
+                            color="secondary"
+                            variant="ghost"
+                            size="sm"
+                            type="button"
+                            class="vuln-filter-panel__reset"
+                            [disabled]="!hasActiveColumnFilters"
+                            (click)="clearColumnFilters()"
+                    >
+                        Clear filters
+                    </button>
+                </div>
+                <div class="vuln-filter-grid">
+                    <div class="vuln-filter-field vuln-filter-field--grow">
+                        <label class="vuln-filter-field__label" for="fltName">Name</label>
+                        <div class="vuln-filter-field__input-wrap">
+                            <input
+                                    id="fltName"
+                                    type="text"
+                                    class="form-control form-control-sm"
+                                    placeholder="Contains text…"
+                                    [(ngModel)]="cf['name']"
+                                    [ngModelOptions]="{standalone: true}"
+                                    (ngModelChange)="updateFilterName($event)"
+                                    autocomplete="off"
+                            />
+                        </div>
+                    </div>
+                    <div class="vuln-filter-field vuln-filter-field--grow">
+                        <label class="vuln-filter-field__label" for="fltLocation">Location</label>
+                        <div class="vuln-filter-field__input-wrap">
+                            <input
+                                    id="fltLocation"
+                                    type="text"
+                                    class="form-control form-control-sm"
+                                    placeholder="File path or fragment…"
+                                    [(ngModel)]="cf['location']"
+                                    [ngModelOptions]="{standalone: true}"
+                                    (ngModelChange)="updateFilterLocation($event)"
+                                    autocomplete="off"
+                            />
+                        </div>
+                    </div>
+                    <div class="vuln-filter-field">
+                        <label class="vuln-filter-field__label" for="fltStatus">Status</label>
+                        <select
+                                id="fltStatus"
+                                class="form-select form-select-sm"
+                                [(ngModel)]="cf['status']"
+                                [ngModelOptions]="{standalone: true}"
+                                (ngModelChange)="updateFilterStatus($event)"
+                        >
+                            <option value="">All</option>
+                            <option value="NEW">New</option>
+                            <option value="EXISTING">Existing</option>
+                            <option value="REMOVED">Removed</option>
+                            <option value="SUPRESSED">Suppressed</option>
+                        </select>
+                    </div>
+                    <div class="vuln-filter-field">
+                        <label class="vuln-filter-field__label" for="fltSeverity">Severity</label>
+                        <select
+                                id="fltSeverity"
+                                class="form-select form-select-sm"
+                                [(ngModel)]="cf['severity']"
+                                [ngModelOptions]="{standalone: true}"
+                                (ngModelChange)="updateFilterSeverity($event)"
+                        >
+                            <option value="">All</option>
+                            <option value="Critical">Critical</option>
+                            <option value="High">High</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Low">Low</option>
+                            <option value="Info">Info</option>
+                        </select>
+                    </div>
+                    <div class="vuln-filter-field">
+                        <label class="vuln-filter-field__label" for="fltSource">Source</label>
+                        <select
+                                id="fltSource"
+                                class="form-select form-select-sm"
+                                [(ngModel)]="cf['source']"
+                                [ngModelOptions]="{standalone: true}"
+                                (ngModelChange)="updateFilterSource($event)"
+                        >
+                            <option value="">All</option>
+                            <option value="SAST">SAST</option>
+                            <option value="IAC">IaC</option>
+                            <option value="SECRETS">Secrets</option>
+                            <option value="SCA">SCA</option>
+                            <option value="GITLAB_SCANNER">GitLab</option>
+                            <option value="DAST">DAST</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <div class="table-container">
             <ngx-datatable
                     class="bootstrap vuln-datatable"
                     [rows]="filteredVulns"
                     [columnMode]="'force'"
                     [footerHeight]="50"
-                    [headerHeight]="50"
+                    [headerHeight]="42"
                     [rowHeight]="'auto'"
                     [limit]="vulnerabilitiesLimit"
             >
                 <ngx-datatable-column
                         *ngIf="bulkActionMode"
-                        name="Select"
-                        [width]="50"
+                        name=""
+                        [width]="48"
                         [sortable]="false"
                         [resizeable]="false"
                         [draggable]="false"
@@ -174,14 +275,13 @@
                                         type="checkbox"
                                         (change)="selectAllFindings($event)"
                                         [checked]="selectedFindings.length > 0 && selectedFindings.length === filteredVulns.length"
+                                        [attr.aria-label]="'Select all'"
                                 />
                             </c-form-check>
                         </div>
                     </ng-template>
                     <ng-template
                             ngx-datatable-cell-template
-                            let-rowIndex="rowIndex"
-                            let-value="value"
                             let-row="row"
                     >
                         <div class="select-row-container">
@@ -199,17 +299,14 @@
 
                 <ngx-datatable-column
                         name="Actions"
-                        [width]="jiraEnabled ? 100 : 60"
+                        [width]="jiraEnabled ? 100 : 56"
                         [sortable]="false"
                         [resizeable]="false"
                         [draggable]="false"
                         [canAutoResize]="false"
                         [ngClass]="{ 'datatable-column': true, 'centered-column': true }"
                 >
-                    <ng-template
-                            ngx-datatable-cell-template
-                            let-row="row"
-                    >
+                    <ng-template ngx-datatable-cell-template let-row="row">
                         <div class="details-action-container d-flex gap-1">
                             <button
                                     cButton
@@ -217,7 +314,7 @@
                                     variant="ghost"
                                     size="sm"
                                     class="details-btn"
-                                    [cTooltip]="'View vulnerability details'"
+                                    [cTooltip]="'View details'"
                                     (click)="click(row)"
                             >
                                 <svg cIcon name="cil-magnifying-glass"></svg>
@@ -245,34 +342,12 @@
                 <ngx-datatable-column
                         name="Severity"
                         prop="severity"
-                        [width]="100"
+                        [width]="108"
                         [sortable]="true"
                         [canAutoResize]="false"
                         [ngClass]="{ 'datatable-column': true, 'centered-column': true }"
                 >
-                    <ng-template ngx-datatable-header-template>
-                        <div class="column-header header-centered">
-                            <span>Severity</span>
-                            <div class="filter-container">
-                                <select class="form-select form-select-sm"
-                                        [(ngModel)]="cf['severity']"
-                                        [ngModelOptions]="{standalone: true}"
-                                        (ngModelChange)="updateFilterSeverity($event)">
-                                  <option value="">All</option>
-                                  <option value="Critical">Critical</option>
-                                  <option value="High">High</option>
-                                  <option value="Medium">Medium</option>
-                                  <option value="Low">Low</option>
-                                  <option value="Info">Info</option>
-                                </select>
-                            </div>
-                        </div>
-                    </ng-template>
-                    <ng-template
-                            ngx-datatable-cell-template
-                            let-value="value"
-                            let-row="row"
-                    >
+                    <ng-template ngx-datatable-cell-template let-row="row">
                         <div class="severity-cell">
                             <div [ngClass]="'severity-badge severity-' + row?.severity?.toLowerCase()">
                                 {{ row?.severity }}
@@ -281,38 +356,8 @@
                     </ng-template>
                 </ngx-datatable-column>
 
-                <ngx-datatable-column name="Name" prop="name" [sortable]="true">
-                    <ng-template ngx-datatable-header-template>
-                        <div class="column-header">
-                            <span>Name</span>
-                            <div class="multi-filter-container">
-                                <div class="search-input">
-                                    <input type="text"
-                                           class="form-control form-control-sm"
-                                           placeholder="Search name"
-                                           [(ngModel)]="cf['name']"
-                                           [ngModelOptions]="{standalone: true}"
-                                           (ngModelChange)="updateFilterName($event)" />
-                                    <svg cIcon name="cil-magnifying-glass" class="search-icon"></svg>
-                                </div>
-                                <select class="form-select form-select-sm mt-1"
-                                        [(ngModel)]="cf['status']"
-                                        [ngModelOptions]="{standalone: true}"
-                                        (ngModelChange)="updateFilterStatus($event)">
-                                  <option value="">All Statuses</option>
-                                  <option value="NEW">New</option>
-                                  <option value="EXISTING">Existing</option>
-                                  <option value="REMOVED">Removed</option>
-                                  <option value="SUPRESSED">Suppressed</option>
-                                </select>
-                            </div>
-                        </div>
-                    </ng-template>
-                    <ng-template
-                            ngx-datatable-cell-template
-                            let-value="value"
-                            let-row="row"
-                    >
+                <ngx-datatable-column name="Finding" prop="name" [sortable]="true">
+                    <ng-template ngx-datatable-cell-template let-row="row">
                         <div class="vuln-info">
                             <div class="vuln-name">{{ row?.name }}</div>
                             <div class="vuln-metadata">
@@ -328,14 +373,14 @@
                                                 class="meta-icon"
                                         ></svg>
                                         <span [ngClass]="'status-text status-' + row?.status?.toLowerCase()">{{ row?.status }}</span>
-                                        <span *ngIf="row.urgency" class="urgency-badge ms-2" [ngClass]="row.urgency">
+                                        <span *ngIf="row.urgency && !row.ai_analyzed" class="urgency-badge ms-2" [ngClass]="row.urgency">
                                             <svg cIcon [name]="row.urgency === 'urgent' ? 'cil-warning' : 'cil-bell'"></svg>
                                             {{ row.urgency === 'urgent' ? 'Urgent' : 'Notable' }}
                                         </span>
-                                        <span *ngIf="row.ai_verdict === 'FALSE_POSITIVE' && row.status === 'SUPRESSED'"
+                                        <span *ngIf="row.ai_analyzed && row.ai_verdict === 'FALSE_POSITIVE' && row.status === 'SUPRESSED'"
                                               class="badge bg-info-subtle text-info ms-2">🤖 AI: False Positive</span>
                                         <span *ngIf="row.ai_analyzed && row.ai_verdict === 'REAL_ISSUE'"
-                                              class="badge bg-secondary-subtle text-secondary ms-2">🤖 AI Reviewed</span>
+                                              class="badge bg-secondary-subtle text-secondary ms-2">🤖 AI: Real issue</span>
                                     </div>
                                     <div class="meta-item date-info">
                                         <span class="date-value">Last seen: {{ row?.last_seen | date:'short' }}</span>
@@ -349,35 +394,12 @@
                 <ngx-datatable-column
                         name="Source"
                         prop="source"
-                        [width]="150"
+                        [width]="140"
                         [sortable]="true"
                         [canAutoResize]="false"
                         [ngClass]="{ 'datatable-column': true, 'centered-column': true }"
                 >
-                    <ng-template ngx-datatable-header-template>
-                        <div class="column-header header-centered">
-                            <span>Source</span>
-                            <div class="filter-container">
-                                <select class="form-select form-select-sm"
-                                        [(ngModel)]="cf['source']"
-                                        [ngModelOptions]="{standalone: true}"
-                                        (ngModelChange)="updateFilterSource($event)">
-                                  <option value="">All</option>
-                                  <option value="SAST">SAST</option>
-                                  <option value="IAC">IaC</option>
-                                  <option value="SECRETS">Secrets</option>
-                                  <option value="SCA">SCA</option>
-                                  <option value="GITLAB_SCANNER">GitLab</option>
-                                  <option value="DAST">DAST</option>
-                                </select>
-                            </div>
-                        </div>
-                    </ng-template>
-                    <ng-template
-                            ngx-datatable-cell-template
-                            let-value="value"
-                            let-row="row"
-                    >
+                    <ng-template ngx-datatable-cell-template let-row="row">
                         <div class="source-cell">
                             <div [ngClass]="'source-badge source-' + row?.source?.toLowerCase()">
                                 {{ row?.source?.replace("_", ' ') }}
@@ -387,31 +409,12 @@
                 </ngx-datatable-column>
 
                 <ngx-datatable-column name="Location" prop="location" [sortable]="true">
-                    <ng-template ngx-datatable-header-template>
-                        <div class="column-header">
-                            <span>Location</span>
-                            <div class="filter-container">
-                                <div class="search-input">
-                                    <input type="text"
-                                           class="form-control form-control-sm"
-                                           placeholder="Search"
-                                           [(ngModel)]="cf['location']"
-                                           [ngModelOptions]="{standalone: true}"
-                                           (ngModelChange)="updateFilterLocation($event)" />
-                                    <svg cIcon name="cil-magnifying-glass" class="search-icon"></svg>
-                                </div>
-                            </div>
-                        </div>
-                    </ng-template>
-                    <ng-template
-                            ngx-datatable-cell-template
-                            let-value="value"
-                            let-row="row"
-                    >
+                    <ng-template ngx-datatable-cell-template let-row="row">
                         <div class="location-cell">
                             <ng-container *ngIf="isLinkableSource(row.source); else plainTextLocation">
                                 <a [href]="getRepositoryLinkForRow(row)"
                                    target="_blank"
+                                   rel="noopener noreferrer"
                                    class="location-link"
                                    [cTooltip]="'Open in repository'">
                                     <svg cIcon name="cib-git" class="location-icon" *ngIf="row.source !== 'DAST'"></svg>
@@ -431,10 +434,18 @@
             </ngx-datatable>
 
             <div *ngIf="filteredVulns.length === 0" class="empty-state">
-                <svg cIcon name="cil-check-circle" width="48" height="48"></svg>
-                <h4>No vulnerabilities found</h4>
-                <p>No vulnerabilities match your current filter criteria.</p>
-                <button cButton color="primary" (click)="clearFilters()">Clear filters</button>
+                <svg cIcon name="cil-magnifying-glass" width="48" height="48" class="empty-state__icon"></svg>
+                <h4 class="empty-state__title">No matching findings</h4>
+                <p class="empty-state__hint">Adjust filters or visibility options, or clear filters to see results.</p>
+                <div class="empty-state__actions">
+                    <button cButton color="primary" variant="outline" size="sm" (click)="clearColumnFilters()" [disabled]="!hasActiveColumnFilters">
+                        Clear column filters
+                    </button>
+                    <button cButton color="primary" size="sm" (click)="clearFilters()">
+                        Reset all filters
+                    </button>
+                </div>
+            </div>
             </div>
         </div>
     </c-card-body>

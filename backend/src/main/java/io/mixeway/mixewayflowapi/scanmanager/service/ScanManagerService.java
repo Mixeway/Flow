@@ -221,6 +221,8 @@ public class ScanManagerService {
                     }
 
                     try {
+                        log.info("[ScanManagerService] All parallel scans (Secrets, SCA, SAST, IaC, ZAP, …) completed for {} — starting AI false-positive phase",
+                                codeRepo.getRepourl());
                         falsePositiveAnalyzer.analyzeAfterScan(codeRepo, codeRepoBranch, commit);
                     } catch (Exception aiEx) {
                         log.warn("[ScanManagerService] AI false-positive analysis skipped or failed: {}", aiEx.getMessage());
@@ -364,6 +366,8 @@ public class ScanManagerService {
                     }
 
                     try {
+                        log.info("[ScanManagerService] All parallel scans (Secrets, SCA, SAST, IaC, ZAP, …) completed for {} — starting AI false-positive phase",
+                                codeRepo.getRepourl());
                         falsePositiveAnalyzer.analyzeAfterScan(codeRepo, codeRepoBranch, commit);
                     } catch (Exception aiEx) {
                         log.warn("[ScanManagerService] AI false-positive analysis skipped or failed: {}", aiEx.getMessage());

@@ -1,14 +1,8 @@
 <c-row>
     <c-col xs="12">
         <c-card class="mb-4 h-100">
-            <c-card-header class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <c-card-header>
                 <span>List of vulnerabilities and links with all resources You have access to</span>
-                <c-form-check switch class="m-0">
-                    <input cFormCheckInput id="showAiSuppressedGlobal" type="checkbox"
-                           [ngModel]="showAiSuppressed"
-                           (ngModelChange)="toggleShowAiSuppressed($event)" />
-                    <label cFormCheckLabel for="showAiSuppressedGlobal">Show AI-suppressed</label>
-                </c-form-check>
             </c-card-header>
             <c-card-body>
                 <ngx-datatable

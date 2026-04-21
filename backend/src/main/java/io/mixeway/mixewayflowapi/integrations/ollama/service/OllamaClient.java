@@ -13,6 +13,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -174,10 +176,33 @@ public class OllamaClient {
         return names;
     }
 
+    /**
+     * Ollama typically binds to IPv4 loopback only; Java often resolves {@code localhost} to {@code ::1}
+     * first, so requests to {@code http://localhost:11434} fail while {@code curl} (IPv4) succeeds.
+     */
     private static String normalizeBase(String baseUrl) {
-        if (baseUrl == null || baseUrl.isBlank()) {
-            return "http://localhost:11434";
+        String base = (baseUrl == null || baseUrl.isBlank())
+                ? "http://127.0.0.1:11434"
+                : baseUrl.trim();
+        if (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
         }
-        return baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+        try {
+            URI uri = new URI(base);
+            if ("localhost".equalsIgnoreCase(uri.getHost())) {
+                String path = uri.getPath();
+                return new URI(
+                        uri.getScheme(),
+                        uri.getUserInfo(),
+                        "127.0.0.1",
+                        uri.getPort(),
+                        path == null ? "" : path,
+                        uri.getQuery(),
+                        uri.getFragment()).toString();
+            }
+        } catch (URISyntaxException ignored) {
+            // keep trimmed base
+        }
+        return base;
     }
 }

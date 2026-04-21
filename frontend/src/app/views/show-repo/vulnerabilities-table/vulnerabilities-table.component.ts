@@ -79,7 +79,6 @@ export class VulnerabilitiesTableComponent implements OnInit, OnChanges {
   @Input() selectedBranchId: number | null = null;
   @Input() showRemoved: boolean = false;
   @Input() showSuppressed: boolean = false;
-  @Input() showAiSuppressed: boolean = false;
   @Input() showUrgent: boolean = false;
   @Input() showNotable: boolean = false;
   @Input() hasUrgentFindings: boolean = false;
@@ -89,6 +88,8 @@ export class VulnerabilitiesTableComponent implements OnInit, OnChanges {
   @Input() vulnerabilitiesLoading: boolean = false;
   @Input() vulnerabilitiesLimit: number = 20;
   @Input() currentFilters: { [key: string]: string } | null = null;
+  /** Synced from parent so visibility toggles disable correctly when status column filter is set */
+  @Input() statusFilter: string = '';
   @Input() jiraEnabled: boolean = false;
   @Input() teamId: number | null = null;
 
@@ -99,7 +100,6 @@ export class VulnerabilitiesTableComponent implements OnInit, OnChanges {
   @Output() updateFilterSeverityEvent = new EventEmitter<any>();
   @Output() toggleShowRemovedEvent = new EventEmitter<any>();
   @Output() toggleShowSuppressedEvent = new EventEmitter<any>();
-  @Output() toggleShowAiSuppressedEvent = new EventEmitter<any>();
   @Output() toggleShowUrgentEvent = new EventEmitter<any>();
   @Output() toggleShowNotableEvent = new EventEmitter<any>();
   @Output() toggleBulkActionEvent = new EventEmitter<void>();
@@ -111,8 +111,6 @@ export class VulnerabilitiesTableComponent implements OnInit, OnChanges {
   @Output() clearFiltersEvent = new EventEmitter<void>();
   @Output() createJiraTicketEvent = new EventEmitter<number>();
   @Output() createJiraTicketsBulkEvent = new EventEmitter<number[]>();
-  statusFilter: string = '';
-
 
   // Ensure we have a local object to bind to when parent hasn't provided one yet
   private ensureCurrentFilters(): { [key: string]: string } {
@@ -125,6 +123,18 @@ export class VulnerabilitiesTableComponent implements OnInit, OnChanges {
   // Safe proxy for template bindings (always non-null)
   get cf(): { [key: string]: string } {
     return this.ensureCurrentFilters();
+  }
+
+  /** True when any column filter in the filter bar is active */
+  get hasActiveColumnFilters(): boolean {
+    const f = this.cf;
+    return !!(
+      (f['name'] && f['name'].trim() !== '') ||
+      (f['location'] && f['location'].trim() !== '') ||
+      (f['source'] && f['source'] !== '') ||
+      (f['status'] && f['status'] !== '') ||
+      (f['severity'] && f['severity'] !== '')
+    );
   }
 
   ngOnInit(): void {}
@@ -188,6 +198,15 @@ export class VulnerabilitiesTableComponent implements OnInit, OnChanges {
     this.updateFilterSeverityEvent.emit({ target: { value: v } });
   }
 
+  /** Clears column filters only (visibility toggles unchanged). */
+  clearColumnFilters(): void {
+    this.updateFilterName('');
+    this.updateFilterLocation('');
+    this.updateFilterSource('');
+    this.updateFilterStatus('');
+    this.updateFilterSeverity('');
+  }
+
   /**
    * Toggle showing removed vulnerabilities
    */
@@ -206,13 +225,6 @@ export class VulnerabilitiesTableComponent implements OnInit, OnChanges {
       ? stateOrEvent
       : !!stateOrEvent?.target?.checked;
     this.toggleShowSuppressedEvent.emit({ target: { checked } });
-  }
-
-  toggleShowAiSuppressed(stateOrEvent: any): void {
-    const checked = (typeof stateOrEvent === 'boolean')
-      ? stateOrEvent
-      : !!stateOrEvent?.target?.checked;
-    this.toggleShowAiSuppressedEvent.emit({ target: { checked } });
   }
 
   /**

@@ -60,7 +60,10 @@ import {
     cilGraph,
     cilTrash,
     cilVolumeOff,
-    cilMagnifyingGlass, freeSet,
+    cilMagnifyingGlass,
+    cilChevronLeft,
+    cilChevronRight,
+    freeSet,
 } from '@coreui/icons';
 import { ChartjsComponent } from '@coreui/angular-chartjs';
 import { ChartData } from 'chart.js/dist/types';
@@ -233,6 +236,8 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         cilTrash,
         cilVolumeOff,
         cilMagnifyingGlass,
+        cilChevronLeft,
+        cilChevronRight,
     };
     sourceStats: FindingSourceStatDTO = new FindingSourceStatDTO();
     topLanguages: { name: string; value: number; color: string }[] = [];
@@ -251,6 +256,9 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
     };
     scanRunning: boolean = false;
     userRole: string = 'USER';
+
+    /** Karuzela nad zakładkami: 0 = repozytorium + źródła, 1 = podsumowanie podatności */
+    repoCarouselSlide: 0 | 1 = 0;
 
     filteredComponents: any[] = [];
     scanInfos: any[] = [];
@@ -349,7 +357,6 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
 
     showRemoved: boolean = false;
     showSuppressed: boolean = false;
-    showAiSuppressed: boolean = false;
     showUrgent: boolean = false;
     showNotable: boolean = false;
     hasUrgentFindings: boolean = false;
@@ -400,7 +407,6 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         filters: { [key: string]: string };
         showRemoved: boolean;
         showSuppressed: boolean;
-        showAiSuppressed: boolean;
         showUrgent: boolean;
         showNotable: boolean;
         statusFilter: string;
@@ -422,6 +428,22 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
     ) {
         iconSet.icons = { ...brandSet, ...freeSet };
 
+    }
+
+    setRepoCarouselSlide(index: number): void {
+        this.repoCarouselSlide = (index === 1 ? 1 : 0) as 0 | 1;
+    }
+
+    nextRepoCarouselSlide(): void {
+        if (this.repoCarouselSlide < 1) {
+            this.repoCarouselSlide = 1;
+        }
+    }
+
+    prevRepoCarouselSlide(): void {
+        if (this.repoCarouselSlide > 0) {
+            this.repoCarouselSlide = 0;
+        }
     }
 
     ngAfterViewInit() {
@@ -604,7 +626,6 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
             filters: { ...this.filters },
             showRemoved: this.showRemoved,
             showSuppressed: this.showSuppressed,
-            showAiSuppressed: this.showAiSuppressed,
             showUrgent: this.showUrgent,
             showNotable: this.showNotable,
             statusFilter: this.statusFilter,
@@ -676,12 +697,6 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         this.applyFilters();
     }
 
-    toggleShowAiSuppressed(event: any) {
-        this.showAiSuppressed = event.target.checked;
-        this.saveFilterStateToStorage();
-        this.applyFilters();
-    }
-
     toggleShowUrgent(event: any) {
         this.showUrgent = event.target.checked;
         if (this.showUrgent) {
@@ -733,10 +748,6 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                 (this.showRemoved || vuln.status !== 'REMOVED') &&
                 (this.showSuppressed || vuln.status !== 'SUPRESSED');
 
-            const matchesAiSuppressed =
-                this.showAiSuppressed ||
-                !(vuln.status === 'SUPRESSED' && vuln.ai_verdict === 'FALSE_POSITIVE');
-
             // Filter for Urgency and Notable toggles
             const matchesUrgency = () => {
                 if (this.showUrgent) return vuln.urgency === 'urgent';
@@ -744,7 +755,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                 return true; // If no urgency filter is active, don't filter by it
             };
 
-            return matchesFilters && matchesStatus && matchesAiSuppressed && matchesUrgency();
+            return matchesFilters && matchesStatus && matchesUrgency();
         });
         this.sortByUrgencyThenOriginal(this.filteredVulns);
         this.saveFilterStateToStorage();
@@ -760,7 +771,6 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
             this.filters = { ...this.filterUiSnapshot.filters };
             this.showRemoved = this.filterUiSnapshot.showRemoved;
             this.showSuppressed = this.filterUiSnapshot.showSuppressed;
-            this.showAiSuppressed = this.filterUiSnapshot.showAiSuppressed;
             this.showUrgent = this.filterUiSnapshot.showUrgent;
             this.showNotable = this.filterUiSnapshot.showNotable;
             this.statusFilter = this.filterUiSnapshot.statusFilter;
@@ -1330,7 +1340,6 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         };
         this.showRemoved = false;
         this.showSuppressed = false;
-        this.showAiSuppressed = false;
         this.statusFilter = '';
         this.saveFilterStateToStorage();
         this.applyFilters();
@@ -1377,7 +1386,6 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                 filters: this.filters,
                 showRemoved: this.showRemoved,
                 showSuppressed: this.showSuppressed,
-                showAiSuppressed: this.showAiSuppressed,
                 showUrgent: this.showUrgent,
                 showNotable: this.showNotable,
                 statusFilter: this.statusFilter,
@@ -1398,7 +1406,6 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                 this.filters = { ...this.filters, ...(s.filters || {}) };
                 this.showRemoved = !!s.showRemoved;
                 this.showSuppressed = !!s.showSuppressed;
-                this.showAiSuppressed = !!s.showAiSuppressed;
                 this.showUrgent = !!s.showUrgent;
                 this.showNotable = !!s.showNotable;
                 this.statusFilter = s.statusFilter || '';
