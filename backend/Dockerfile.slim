@@ -28,7 +28,7 @@ COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
 COPY src ./src
-RUN mvn clean package -DskipTests -o
+RUN mvn -B clean package -DskipTests
 
 ## ── Stage 2: Runtime (from pre-baked base) ──────────────────
 FROM mixeway/flow-api-base:latest
