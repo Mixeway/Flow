@@ -37,7 +37,7 @@ public class GitHubApiClientService {
      * @return A Flux emitting all found repositories.
      */
     public Flux<ImportCodeRepoGitHubResponseDto> fetchAllRepositories(String repoUrl, String accessToken) {
-        String initialUri = UriComponentsBuilder.fromHttpUrl(repoUrl)
+        String initialUri = UriComponentsBuilder.fromHttpUrl(toApiBaseUrl(repoUrl))
                 .path("/user/repos")
                 .queryParam("per_page", 100)
                 .build()
@@ -75,7 +75,7 @@ public class GitHubApiClientService {
 
 
     public Mono<ImportCodeRepoGitHubResponseDto> getProjectInfo(String name, String repoUrl, String accessToken) {
-        String apiUrl = String.format("%s/repos/%s", repoUrl, name);
+        String apiUrl = String.format("%s/repos/%s", toApiBaseUrl(repoUrl), name);
 
         return webClient.get()
                 .uri(apiUrl)
@@ -87,7 +87,7 @@ public class GitHubApiClientService {
     }
 
     public Mono<HashMap<String, Integer>> getProjectLanguages(String name, String repoUrl, String accessToken) {
-        String apiUrl = String.format("%s/repos/%s/languages", repoUrl.replace("https://github.com","https://api.github.com"), name);
+        String apiUrl = String.format("%s/repos/%s/languages", toApiBaseUrl(repoUrl), name);
 
         return webClient.get()
                 .uri(apiUrl)
@@ -97,6 +97,28 @@ public class GitHubApiClientService {
                 .bodyToMono(new ParameterizedTypeReference<HashMap<String, Double>>() {})
                 .map(this::calculateLanguagePercentages)
                 .doOnError(throwable -> System.err.println("Error fetching project info: " + throwable.getMessage()));
+    }
+
+    /**
+     * Converts a GitHub host URL to the corresponding API base URL.
+     * For github.com: https://github.com -> https://api.github.com
+     * For GHE: https://opl.ghe.com -> https://opl.ghe.com/api/v3
+     */
+    private String toApiBaseUrl(String repoUrl) {
+        try {
+            URL url = new URL(repoUrl);
+            String host = url.getHost();
+            String protocol = url.getProtocol();
+            if ("github.com".equalsIgnoreCase(host)) {
+                return "https://api.github.com";
+            } else {
+                // GitHub Enterprise: API is at /api/v3
+                return protocol + "://" + host + (url.getPort() > 0 ? ":" + url.getPort() : "") + "/api/v3";
+            }
+        } catch (MalformedURLException e) {
+            log.warn("Failed to parse repoUrl '{}', falling back to replacing github.com", repoUrl);
+            return repoUrl.replace("https://github.com", "https://api.github.com");
+        }
     }
 
     private HashMap<String, Integer> calculateLanguagePercentages(HashMap<String, Double> languageData) {
@@ -113,9 +135,9 @@ public class GitHubApiClientService {
 
     public Mono<String> commentMergeRequest(CodeRepo codeRepo, Long iid, String comment) throws MalformedURLException {
         // Construct the URL for the API endpoint
-        URL repoUrlHost = new URL(codeRepo.getRepourl());
-        String apiUrl = String.format("https://api.github.com/repos/%s/issues/%d/comments",
-                codeRepo.getName(), iid);
+        String apiBaseUrl = toApiBaseUrl(codeRepo.getRepourl());
+        String apiUrl = String.format("%s/repos/%s/issues/%d/comments",
+                apiBaseUrl, codeRepo.getName(), iid);
 
         // Create a new CommentMessage object and set the comment body
         CommentMessage commentMessage = new CommentMessage();
