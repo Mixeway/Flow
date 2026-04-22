@@ -2,6 +2,7 @@ package io.mixeway.mixewayflowapi.integrations.scanner.sca.service;
 
 import ch.qos.logback.core.spi.ScanException;
 import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.github.packageurl.MalformedPackageURLException;
 import com.github.packageurl.PackageURL;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
@@ -126,6 +127,9 @@ public class SCAGrypeService {
         if (!grypeReportFile.exists()) {
             throw new ScanException("[GrypeService] Grype scan did not produce a report file.");
         }
+        if (grypeReportFile.length() == 0) {
+            throw new ScanException("[GrypeService] Grype scan produced an empty report file.");
+        }
 
         log.info("[GrypeService] Finished scan, starting processing... - [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
 
@@ -139,7 +143,7 @@ public class SCAGrypeService {
             createFindingService.saveFindings(findings, codeRepoBranch, codeRepo, Finding.Source.SCA, null);
 
             log.info("[GrypeService] Scan results processed successfully - [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
-        } catch (JsonParseException e) {
+        } catch (JsonParseException | JsonMappingException e) {
             log.warn("[GrypeService] Error processing Grype JSON for [{} / {}]: {}",
                     codeRepo.getRepourl(),
                     codeRepoBranch.getName(),
