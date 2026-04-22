@@ -16,7 +16,7 @@ public final class CreateCodeRepoRequestDto implements DTO {
     private final String name;
 
     @NotBlank(message = "Repository URL must not be blank")
-    @Pattern(regexp = "^(http|https)://([a-zA-Z0-9.-]+)(:[0-9]+)?$", message = "Repository URL must be a valid URL with or without a port, without paths")
+    @Pattern(regexp = "^(http|https)://([a-zA-Z0-9.-]+)(:[0-9]+)?(/.*)?$", message = "Repository URL must be a valid URL with or without a port, without paths")
     private final String repoUrl;
 
     @NotBlank(message = "Access token must not be blank")
