@@ -56,6 +56,7 @@ public class CreateFindingService {
                 .collect(Collectors.toMap(this::findingKey, finding -> finding));
 
         // Update or create new findings
+        List<Finding> newlyCreatedFindings = new ArrayList<>();
         for (Finding newFinding : newFindings) {
             String key = findingKey(newFinding);
             if (existingFindingsMap.containsKey(key)) {
@@ -85,8 +86,17 @@ public class CreateFindingService {
                 } else {
                     newFinding.updateStatus(Finding.Status.NEW, null);
                 }
-                checkSuppressRuleService.validate(findingRepository.saveAndFlush(newFinding));
+                Finding savedFinding = findingRepository.saveAndFlush(newFinding);
+                checkSuppressRuleService.validate(savedFinding);
+                if (savedFinding.getStatus() == Finding.Status.NEW) {
+                    newlyCreatedFindings.add(savedFinding);
+                }
             }
+        }
+
+        // Auto-create grouped JIRA tickets for new findings
+        if (!newlyCreatedFindings.isEmpty()) {
+            jiraTicketLifecycleService.onNewFindings(newlyCreatedFindings);
         }
 
         // Mark remaining existing findings as REMOVED

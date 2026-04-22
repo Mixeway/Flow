@@ -2,6 +2,7 @@ package io.mixeway.mixewayflowapi.integrations.jira.apiclient;
 
 import io.mixeway.mixewayflowapi.db.entity.Finding;
 import io.mixeway.mixewayflowapi.db.entity.JiraConfiguration;
+import io.mixeway.mixewayflowapi.db.entity.Vulnerability;
 import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
 import io.mixeway.mixewayflowapi.integrations.jira.dto.JiraIssueResponse;
 import lombok.RequiredArgsConstructor;
@@ -466,28 +467,69 @@ public class JiraApiClientService {
     private String buildSummary(Finding finding) {
         String vulnName = finding.getVulnerability() != null ? finding.getVulnerability().getName() : "Security Finding";
         String repo = finding.getCodeRepo() != null ? finding.getCodeRepo().getName() : "Cloud";
-        return String.format("[%s] %s - %s", finding.getSeverity(), vulnName, repo);
+        String source = finding.getSource() != null ? finding.getSource().name() : "";
+        return String.format("[%s][%s] %s - %s", finding.getSeverity(), source, vulnName, repo);
     }
 
     private String buildDescription(Finding finding) {
         StringBuilder sb = new StringBuilder();
-        sb.append("h3. Security Finding\n\n");
-        sb.append("||Field||Value||\n");
-        sb.append("|Severity|").append(finding.getSeverity()).append("|\n");
-        sb.append("|Source|").append(finding.getSource()).append("|\n");
-        sb.append("|Location|").append(finding.getLocation()).append("|\n");
-        if (finding.getVulnerability() != null) {
-            sb.append("|Vulnerability|").append(finding.getVulnerability().getName()).append("|\n");
-            if (finding.getVulnerability().getDescription() != null) {
-                sb.append("\nh3. Description\n").append(finding.getVulnerability().getDescription()).append("\n");
-            }
-            if (finding.getVulnerability().getRecommendation() != null) {
-                sb.append("\nh3. Recommendation\n").append(finding.getVulnerability().getRecommendation()).append("\n");
-            }
-        }
+
+        // Header with severity icon
+        sb.append("h2. ");
+        sb.append(severityIcon(finding.getSeverity().name()));
+        sb.append(" Security Finding\n\n");
+
+        // Overview table
+        sb.append("||Property||Details||\n");
+        sb.append("|*Severity*|").append(severityIcon(finding.getSeverity().name())).append(" ").append(finding.getSeverity()).append("|\n");
+        sb.append("|*Source*|").append(finding.getSource()).append("|\n");
+        sb.append("|*Location*|{{").append(finding.getLocation()).append("}}|\n");
         if (finding.getCodeRepo() != null) {
-            sb.append("|Repository|").append(finding.getCodeRepo().getName()).append("|\n");
+            sb.append("|*Repository*|").append(finding.getCodeRepo().getName()).append("|\n");
         }
+        if (finding.getCodeRepoBranch() != null) {
+            sb.append("|*Branch*|").append(finding.getCodeRepoBranch().getName()).append("|\n");
+        }
+        if (finding.getComponent() != null) {
+            sb.append("|*Component*|{{").append(finding.getComponent().getName());
+            if (finding.getComponent().getVersion() != null) {
+                sb.append(":").append(finding.getComponent().getVersion());
+            }
+            sb.append("}}|\n");
+        }
+
+        // Vulnerability details
+        if (finding.getVulnerability() != null) {
+            Vulnerability vuln = finding.getVulnerability();
+            sb.append("|*Vulnerability*|").append(vuln.getName()).append("|\n");
+            if (vuln.getRef() != null && !vuln.getRef().isBlank()) {
+                sb.append("|*Reference*|[").append(vuln.getRef()).append("]|\n");
+            }
+            if (vuln.getEpss() != null) {
+                sb.append("|*EPSS Score*|").append(String.format("%.2f%%", vuln.getEpss().doubleValue() * 100)).append("|\n");
+            }
+            if (vuln.getExploitExists() != null && vuln.getExploitExists()) {
+                sb.append("|*Known Exploit*|{color:red}*YES*{color}|\n");
+            }
+
+            if (vuln.getDescription() != null && !vuln.getDescription().isBlank()) {
+                sb.append("\nh3. Description\n");
+                sb.append(truncate(vuln.getDescription(), 4000)).append("\n");
+            }
+
+            if (vuln.getRecommendation() != null && !vuln.getRecommendation().isBlank()) {
+                sb.append("\nh3. ").append((char) 9989).append(" Recommendation\n");
+                sb.append(vuln.getRecommendation()).append("\n");
+            }
+        }
+
+        // Explanation / context
+        if (finding.getExplanation() != null && !finding.getExplanation().isBlank()) {
+            sb.append("\nh3. Context\n");
+            sb.append("{noformat}").append(truncate(finding.getExplanation(), 3000)).append("{noformat}\n");
+        }
+
+        sb.append("\n----\n_Ticket created automatically by Flow_\n");
         return sb.toString();
     }
 
@@ -496,41 +538,77 @@ public class JiraApiClientService {
         String vulnName = first.getVulnerability() != null ? first.getVulnerability().getName() : "Security Findings";
         String repo = first.getCodeRepo() != null ? first.getCodeRepo().getName() : "Cloud";
         String severity = getHighestSeverity(findings);
+        String source = first.getSource() != null ? first.getSource().name() : "";
         if (findings.size() == 1) {
-            return String.format("[%s] %s - %s", severity, vulnName, repo);
+            return String.format("[%s][%s] %s - %s", severity, source, vulnName, repo);
         }
-        return String.format("[%s] %s (%d occurrences) - %s", severity, vulnName, findings.size(), repo);
+        return String.format("[%s][%s] %s (%d occurrences) - %s", severity, source, vulnName, findings.size(), repo);
     }
 
     private String buildGroupDescription(List<Finding> findings) {
         Finding first = findings.get(0);
         StringBuilder sb = new StringBuilder();
-        sb.append("h3. Grouped Security Findings (").append(findings.size()).append(" occurrences)\n\n");
+        String severity = getHighestSeverity(findings);
 
+        // Header
+        sb.append("h2. ");
+        sb.append(severityIcon(severity));
+        sb.append(" Grouped Security Findings (").append(findings.size()).append(" occurrences)\n\n");
+
+        // Summary table
+        sb.append("||Property||Details||\n");
+        sb.append("|*Highest Severity*|").append(severityIcon(severity)).append(" ").append(severity).append("|\n");
+        sb.append("|*Source*|").append(first.getSource()).append("|\n");
+        if (first.getCodeRepo() != null) {
+            sb.append("|*Repository*|").append(first.getCodeRepo().getName()).append("|\n");
+        }
+        sb.append("|*Total Occurrences*|").append(findings.size()).append("|\n");
+
+        // Vulnerability info
         if (first.getVulnerability() != null) {
-            sb.append("*Vulnerability:* ").append(first.getVulnerability().getName()).append("\n");
-            if (first.getVulnerability().getDescription() != null) {
-                sb.append("*Description:* ").append(first.getVulnerability().getDescription()).append("\n\n");
+            Vulnerability vuln = first.getVulnerability();
+            sb.append("|*Vulnerability*|").append(vuln.getName()).append("|\n");
+            if (vuln.getRef() != null && !vuln.getRef().isBlank()) {
+                sb.append("|*Reference*|[").append(vuln.getRef()).append("]|\n");
+            }
+            if (vuln.getEpss() != null) {
+                sb.append("|*EPSS Score*|").append(String.format("%.2f%%", vuln.getEpss().doubleValue() * 100)).append("|\n");
+            }
+            if (vuln.getExploitExists() != null && vuln.getExploitExists()) {
+                sb.append("|*Known Exploit*|{color:red}*YES*{color}|\n");
+            }
+
+            if (vuln.getDescription() != null && !vuln.getDescription().isBlank()) {
+                sb.append("\nh3. Description\n");
+                sb.append(truncate(vuln.getDescription(), 4000)).append("\n");
             }
         }
 
-        sb.append("h3. Affected Locations\n");
-        sb.append("||#||Severity||Source||Location||\n");
+        // Affected locations table
+        sb.append("\nh3. Affected Locations\n");
+        sb.append("||#||Severity||Source||Location||Branch||\n");
         int idx = 1;
         for (Finding f : findings) {
-            sb.append("|").append(idx++).append("|").append(f.getSeverity())
+            String branch = f.getCodeRepoBranch() != null ? f.getCodeRepoBranch().getName() : "-";
+            sb.append("|").append(idx++).append("|")
+              .append(severityIcon(f.getSeverity().name())).append(" ").append(f.getSeverity())
               .append("|").append(f.getSource())
-              .append("|").append(f.getLocation()).append("|\n");
+              .append("|{{").append(f.getLocation()).append("}}")
+              .append("|").append(branch).append("|\n");
             if (idx > 50) {
-                sb.append("|...|...and ").append(findings.size() - 50).append(" more||||\n");
+                sb.append("|...|...and ").append(findings.size() - 50).append(" more|||||\n");
                 break;
             }
         }
 
-        if (first.getVulnerability() != null && first.getVulnerability().getRecommendation() != null) {
-            sb.append("\nh3. Recommendation\n").append(first.getVulnerability().getRecommendation()).append("\n");
+        // Recommendation
+        if (first.getVulnerability() != null && first.getVulnerability().getRecommendation() != null
+                && !first.getVulnerability().getRecommendation().isBlank()) {
+            sb.append("\nh3. ").append((char) 9989).append(" Recommendation\n");
+            sb.append(first.getVulnerability().getRecommendation()).append("\n");
         }
 
+        sb.append("\n----\n_Ticket created automatically by Flow_\n");
         return sb.toString();
     }
 
@@ -560,6 +638,18 @@ public class JiraApiClientService {
             case "LOW" -> "Low";
             case "INFO" -> "Lowest";
             default -> "Medium";
+        };
+    }
+
+    private String severityIcon(String severity) {
+        if (severity == null) return "(!)";
+        return switch (severity.toUpperCase()) {
+            case "CRITICAL" -> "(x)";
+            case "HIGH" -> "(!)";
+            case "MEDIUM" -> "(i)";
+            case "LOW" -> "(?)";
+            case "INFO" -> "(/)";
+            default -> "(!)";
         };
     }
 
