@@ -3,12 +3,17 @@ package io.mixeway.mixewayflowapi.domain.jira;
 import io.mixeway.mixewayflowapi.db.entity.Finding;
 import io.mixeway.mixewayflowapi.db.entity.JiraConfiguration;
 import io.mixeway.mixewayflowapi.db.entity.Team;
+import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
 import io.mixeway.mixewayflowapi.db.repository.JiraConfigurationRepository;
 import io.mixeway.mixewayflowapi.integrations.jira.apiclient.JiraApiClientService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.List;
 import java.util.Optional;
@@ -24,6 +29,7 @@ import java.util.stream.Collectors;
 public class JiraTicketLifecycleService {
     private final JiraConfigurationRepository jiraConfigurationRepository;
     private final JiraApiClientService jiraApiClientService;
+    private final FindingRepository findingRepository;
 
     @Async
     public void onFindingSuppressed(Finding finding) {
@@ -36,43 +42,69 @@ public class JiraTicketLifecycleService {
     }
 
     /**
-     * Automatically creates grouped JIRA tickets for new findings.
-     * Findings are grouped by vulnerability name + source + repo (same logic as manual bulk).
-     * Only findings meeting the severity threshold are included.
+     * Listens for NewFindingsEvent AFTER the transaction that created the findings has committed.
+     * Runs asynchronously so it doesn't block the caller.
+     * Loads findings fresh from DB to ensure lazy associations (codeRepo, team) are accessible.
      */
     @Async
-    public void onNewFindings(List<Finding> findings) {
-        if (findings == null || findings.isEmpty()) return;
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    public void handleNewFindingsEvent(NewFindingsEvent event) {
+        List<Long> findingIds = event.getFindingIds();
+        if (findingIds == null || findingIds.isEmpty()) return;
 
+        log.info("[JIRA Lifecycle] Processing {} new findings for auto-ticket creation", findingIds.size());
+
+        // Load findings fresh from DB with a new transaction/session
+        List<Finding> findings = findingRepository.findAllById(findingIds);
+        if (findings.isEmpty()) {
+            log.warn("[JIRA Lifecycle] No findings found for IDs: {}", findingIds);
+            return;
+        }
+
+        processNewFindings(findings);
+    }
+
+    private void processNewFindings(List<Finding> findings) {
         // Group findings by team, then create grouped tickets per team
         var findingsByTeam = findings.stream()
                 .filter(f -> f.getJiraTicketKey() == null || f.getJiraTicketKey().isBlank())
+                .filter(f -> resolveTeam(f) != null)
                 .collect(Collectors.groupingBy(this::resolveTeam));
 
         for (var entry : findingsByTeam.entrySet()) {
             Team team = entry.getKey();
-            if (team == null) continue;
 
             try {
                 Optional<JiraConfiguration> configOpt = jiraConfigurationRepository.findByTeam(team);
                 if (configOpt.isEmpty()) continue;
 
                 JiraConfiguration config = configOpt.get();
-                if (!config.isAutoCreateEnabled()) continue;
+                if (!config.isAutoCreateEnabled()) {
+                    log.debug("[JIRA Lifecycle] Auto-create disabled for team {}", team.getName());
+                    continue;
+                }
 
                 // Filter findings by severity threshold
                 List<Finding> eligible = entry.getValue().stream()
                         .filter(f -> severityMeetsThreshold(f.getSeverity().name(), config.getAutoSeverityThreshold()))
                         .collect(Collectors.toList());
 
-                if (eligible.isEmpty()) continue;
+                if (eligible.isEmpty()) {
+                    log.debug("[JIRA Lifecycle] No findings meet severity threshold {} for team {}",
+                            config.getAutoSeverityThreshold(), team.getName());
+                    continue;
+                }
+
+                log.info("[JIRA Lifecycle] Creating grouped tickets for {} eligible findings (team: {}, threshold: {})",
+                        eligible.size(), team.getName(), config.getAutoSeverityThreshold());
 
                 int created = jiraApiClientService.createTicketsGrouped(config, eligible);
                 log.info("[JIRA Lifecycle] Auto-created {} grouped tickets for {} findings (team: {})",
                         created, eligible.size(), team.getName());
             } catch (Exception e) {
                 log.error("[JIRA Lifecycle] Error auto-creating grouped tickets for team {}: {}",
-                        team.getName(), e.getMessage());
+                        team.getName(), e.getMessage(), e);
             }
         }
     }

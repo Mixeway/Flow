@@ -6,6 +6,7 @@ import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
 import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.component.GetOrCreateComponentService;
 import io.mixeway.mixewayflowapi.domain.jira.JiraTicketLifecycleService;
+import io.mixeway.mixewayflowapi.domain.jira.NewFindingsEvent;
 import io.mixeway.mixewayflowapi.domain.suppressrule.CheckSuppressRuleService;
 import io.mixeway.mixewayflowapi.domain.vulnerability.GetOrCreateVulnerabilityService;
 import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.dto.CloudIssueReport;
@@ -19,6 +20,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.hibernate.Hibernate;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -39,6 +41,7 @@ public class CreateFindingService {
     private final UpdateCodeRepoService updateCodeRepoService;
     private final CodeRepoRepository codeRepoRepository;
     private final JiraTicketLifecycleService jiraTicketLifecycleService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public void saveFindings(List<Finding> newFindings, CodeRepoBranch repoWhereFindingWasFound, CodeRepo repoInWhichFindingWasFound, Finding.Source source, CloudSubscription cloudSubscription) {
@@ -56,7 +59,7 @@ public class CreateFindingService {
                 .collect(Collectors.toMap(this::findingKey, finding -> finding));
 
         // Update or create new findings
-        List<Finding> newlyCreatedFindings = new ArrayList<>();
+        List<Finding> findingsForJira = new ArrayList<>();
         for (Finding newFinding : newFindings) {
             String key = findingKey(newFinding);
             if (existingFindingsMap.containsKey(key)) {
@@ -69,6 +72,11 @@ public class CreateFindingService {
                 existingFinding.noteFindingDetected();  // Ensure updatedDate is always updated
                 findingRepository.saveAndFlush(existingFinding);
                 existingFindingsMap.remove(key);
+                // Include existing findings without a JIRA ticket (e.g. JIRA integration enabled after scans started)
+                if (existingFinding.getStatus() == Finding.Status.EXISTING
+                        && (existingFinding.getJiraTicketKey() == null || existingFinding.getJiraTicketKey().isBlank())) {
+                    findingsForJira.add(existingFinding);
+                }
             } else {
                 // Auto-suppress across branches: if (repo, vuln, location) is already SUPRESSED in any branch, inherit that state
                 if (repoInWhichFindingWasFound != null) {
@@ -89,14 +97,18 @@ public class CreateFindingService {
                 Finding savedFinding = findingRepository.saveAndFlush(newFinding);
                 checkSuppressRuleService.validate(savedFinding);
                 if (savedFinding.getStatus() == Finding.Status.NEW) {
-                    newlyCreatedFindings.add(savedFinding);
+                    findingsForJira.add(savedFinding);
                 }
             }
         }
 
-        // Auto-create grouped JIRA tickets for new findings
-        if (!newlyCreatedFindings.isEmpty()) {
-            jiraTicketLifecycleService.onNewFindings(newlyCreatedFindings);
+        // Publish event for auto JIRA ticket creation (processed after transaction commits)
+        // Includes both NEW findings and EXISTING findings without a JIRA ticket
+        if (!findingsForJira.isEmpty()) {
+            List<Long> findingIds = findingsForJira.stream()
+                    .map(Finding::getId)
+                    .collect(Collectors.toList());
+            eventPublisher.publishEvent(new NewFindingsEvent(findingIds));
         }
 
         // Mark remaining existing findings as REMOVED
