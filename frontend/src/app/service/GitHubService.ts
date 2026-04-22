@@ -12,10 +12,11 @@ export class GitHubService {
     constructor(private http: HttpClient) {}
 
     setApiUrl(repoUrl: string) {
-        repoUrl = repoUrl.replace("github.com","api.github.com")
-        const urlObject = new URL(repoUrl);
-        const host = `${urlObject.protocol}//${urlObject.host}`;
-        this.gitHubApiUrl = `${host}`;
+        this.gitHubApiUrl = this.resolveApiBaseUrl(repoUrl);
+    }
+
+    getApiUrl(): string {
+        return this.gitHubApiUrl;
     }
 
     // Get repositories from GitHub with pagination
@@ -74,6 +75,15 @@ export class GitHubService {
     // Extract repository path from the URL
     private extractRepositoryPath(repoUrl: string): string {
         return repoUrl.replace(/https?:\/\/[^\/]+\//, '');
+    }
+
+    private resolveApiBaseUrl(repoUrl: string): string {
+        const urlObject = new URL(repoUrl);
+        const host = `${urlObject.protocol}//${urlObject.host}`;
+        if (urlObject.hostname.toLowerCase() === 'github.com') {
+            return `${urlObject.protocol}//api.github.com`;
+        }
+        return `${host}/api/v3`;
     }
 
     // Handle any errors that occur during HTTP requests

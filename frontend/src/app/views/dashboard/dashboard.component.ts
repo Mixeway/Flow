@@ -1293,7 +1293,7 @@ export class DashboardComponent implements OnInit {
                     const repoObject: CreateRepo = {
                         name: response.full_name,
                         remoteId: response.id,
-                        repoUrl: strippedRepoUrl.replace("github.com", "api.github.com"),
+                        repoUrl: this.gitHubService.getApiUrl(),
                         accessToken,
                         team,
                     };
