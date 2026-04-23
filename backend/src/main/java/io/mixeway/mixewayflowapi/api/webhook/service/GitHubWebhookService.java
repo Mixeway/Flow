@@ -23,15 +23,18 @@ public class GitHubWebhookService {
     private final FindCodeRepoService findCodeRepoService;
     private final GetOrCreateCodeRepoBranchService getOrCreateCodeRepoBranchService;
 
-    public void processPush(List<GHPushEventDTO> ghPushEventDTOs) throws ScanException, IOException, InterruptedException {
-        GHPushEventDTO ghPushEventDTO;
-        if (ghPushEventDTOs != null && !ghPushEventDTOs.isEmpty()){
-            ghPushEventDTO = ghPushEventDTOs.get(0);
-            log.info("[GitHub Push] Push event for {} - {}", ghPushEventDTO.getRepository().getId(), ghPushEventDTO.getRef().replace("refs/heads/",""));
-            CodeRepo codeRepo = findCodeRepoService.findByRemoteId(ghPushEventDTO.getRepository().getId());
-            CodeRepoBranch codeRepoBranch = getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(ghPushEventDTO.getRef().replace("refs/heads/",""), codeRepo);
-            scanManagerService.scanRepository(codeRepo,codeRepoBranch, ghPushEventDTO.getAfter(),null);
+    public void processPush(GHPushEventDTO ghPushEventDTO) throws ScanException, IOException, InterruptedException {
+        if (ghPushEventDTO != null) {
+            log.info("[GitHub Push] Push event for {} - {}",
+                    ghPushEventDTO.getRepository().getId(),
+                    ghPushEventDTO.getRef().replace("refs/heads/",""));
 
+            CodeRepo codeRepo = findCodeRepoService.findByRemoteId(ghPushEventDTO.getRepository().getId());
+            CodeRepoBranch codeRepoBranch = getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(
+                    ghPushEventDTO.getRef().replace("refs/heads/",""),
+                    codeRepo
+            );
+            scanManagerService.scanRepository(codeRepo, codeRepoBranch, ghPushEventDTO.getAfter(), null);
         }
     }
 
