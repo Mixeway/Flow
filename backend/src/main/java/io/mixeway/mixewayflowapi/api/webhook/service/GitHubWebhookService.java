@@ -44,7 +44,7 @@ public class GitHubWebhookService {
         if (ghMergeEventDTO.getPullRequest().getState().equals("open")) {
             log.info("[GitHub Webhook] Received open Pull Request event, proceeding with scan..");
             scanManagerService.scanRepository(codeRepo, codeRepoBranch, ghMergeEventDTO.getPullRequest().getHead().getSha(),
-                    ghMergeEventDTO.getPullRequest().getId());
+                    ghMergeEventDTO.getPullRequest().getNumber());
         }
     }
 }
