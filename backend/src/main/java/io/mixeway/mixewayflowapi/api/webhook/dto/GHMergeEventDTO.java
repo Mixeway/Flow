@@ -22,6 +22,8 @@ public class GHMergeEventDTO {
         private Long id;
         private String state;
 
+        private Long number;
+
         @JsonProperty("head")
         private HeadBaseDTO head;
 
