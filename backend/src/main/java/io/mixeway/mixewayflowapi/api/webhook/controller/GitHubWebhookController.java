@@ -41,4 +41,14 @@ public class GitHubWebhookController {
         gitHubWebhookService.processMerge(ghMergeEventDTO);
         return ResponseEntity.ok().build();
     }
+
+    @PostMapping(value = "/api/v1/webhook/github/merge/full-report", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+    public ResponseEntity<?> mergeEventFullReportGH(@RequestParam("payload") String payload)
+            throws ScanException, IOException, InterruptedException {
+
+        GHMergeEventDTO ghMergeEventDTO = objectMapper.readValue(payload, GHMergeEventDTO.class);
+        log.info("[GitHub Merge] Merge event for {}", ghMergeEventDTO.getRepository().getId());
+        gitHubWebhookService.processMergeFullReport(ghMergeEventDTO);
+        return ResponseEntity.ok().build();
+    }
 }
