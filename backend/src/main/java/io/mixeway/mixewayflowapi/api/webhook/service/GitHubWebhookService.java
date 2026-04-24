@@ -7,6 +7,7 @@ import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.domain.coderepo.FindCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.coderepobranch.GetOrCreateCodeRepoBranchService;
+import io.mixeway.mixewayflowapi.integrations.repo.service.GitCommentService;
 import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -22,6 +23,7 @@ public class GitHubWebhookService {
     private final ScanManagerService scanManagerService;
     private final FindCodeRepoService findCodeRepoService;
     private final GetOrCreateCodeRepoBranchService getOrCreateCodeRepoBranchService;
+    private final GitCommentService gitCommentService;
 
     public void processPush(GHPushEventDTO ghPushEventDTO) throws ScanException, IOException, InterruptedException {
         if (ghPushEventDTO != null) {
@@ -45,6 +47,27 @@ public class GitHubWebhookService {
             log.info("[GitHub Webhook] Received open Pull Request event, proceeding with scan..");
             scanManagerService.scanRepository(codeRepo, codeRepoBranch, ghMergeEventDTO.getPullRequest().getHead().getSha(),
                     ghMergeEventDTO.getPullRequest().getNumber());
+        }
+    }
+
+    public void processMergeFullReport(GHMergeEventDTO ghMergeEventDTO) throws ScanException, IOException, InterruptedException {
+        CodeRepo codeRepo = findCodeRepoService.findByRemoteId(ghMergeEventDTO.getRepository().getId());
+        CodeRepoBranch codeRepoBranch = getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(
+                ghMergeEventDTO.getPullRequest().getHead().getRef(), codeRepo);
+
+        if (ghMergeEventDTO.getPullRequest().getState().equals("open")) {
+            log.info("[GitHub Webhook] Received open Pull Request full-report event, proceeding with sync scan..");
+            scanManagerService.scanRepositorySync(
+                    codeRepo,
+                    codeRepoBranch,
+                    ghMergeEventDTO.getPullRequest().getHead().getSha(),
+                    null
+            );
+            gitCommentService.processMergeCriticalComment(
+                    codeRepo,
+                    codeRepoBranch,
+                    ghMergeEventDTO.getPullRequest().getNumber()
+            );
         }
     }
 }
