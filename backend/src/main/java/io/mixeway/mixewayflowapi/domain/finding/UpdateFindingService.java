@@ -31,14 +31,27 @@ public class UpdateFindingService {
 
     @Transactional
     public void suppressFindingAcrossBranches(Finding finding, Long codeRepoId, String location, Long vulnId, String reason) {
+        Finding.SuppressedReason parsedReason = parseReason(reason);
 
-        // Update everything in one go (includes the current finding)
+        // Capture findings with linked JIRA tickets BEFORE the bulk update so we can close
+        // their tickets afterwards (the bulk JPQL update bypasses entity lifecycle hooks).
+        List<Finding> findingsWithJiraTickets = findingRepository
+                .findToSuppressWithJiraTicket(codeRepoId, vulnId, location);
+
         int affected = findingRepository.bulkSuppressInRepoForSameVulnAndLocation(
-                codeRepoId, vulnId, location, parseReason(reason)
+                codeRepoId, vulnId, location, parsedReason
         );
 
         log.info("[UpdateFinding] Suppressed {} finding(s) across repository {} at {}",
                 affected, finding.getCodeRepo().getName(), location);
+
+        for (Finding f : findingsWithJiraTickets) {
+            // Reflect the new state on the detached entity so the JIRA comment carries the reason.
+            f.suppress(reason);
+            jiraTicketLifecycleService.onFindingSuppressed(f);
+            log.info("[UpdateFinding] Triggered JIRA ticket close for finding {} (ticket {})",
+                    f.getId(), f.getJiraTicketKey());
+        }
     }
     private Finding.SuppressedReason parseReason(String text) {
         if (text == null) throw new IllegalArgumentException("Suppressed reason is required");

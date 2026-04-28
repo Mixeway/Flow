@@ -201,6 +201,19 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
                                                  @Param("vulnId") Long vulnId,
                                                  @Param("location") String location,
                                                  @Param("reason") Finding.SuppressedReason reason);
+
+    @Query("""
+    select f from Finding f
+     where f.codeRepo.id = :repoId
+       and f.vulnerability.id = :vulnId
+       and f.location = :location
+       and f.status <> io.mixeway.mixewayflowapi.db.entity.Finding.Status.SUPRESSED
+       and f.jiraTicketKey is not null
+       and f.jiraTicketKey <> ''
+""")
+    List<Finding> findToSuppressWithJiraTicket(@Param("repoId") Long repoId,
+                                               @Param("vulnId") Long vulnId,
+                                               @Param("location") String location);
 }
 
 
