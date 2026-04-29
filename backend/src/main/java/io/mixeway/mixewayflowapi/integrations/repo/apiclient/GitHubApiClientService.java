@@ -100,21 +100,36 @@ public class GitHubApiClientService {
     }
 
     /**
-     * Converts a GitHub host URL to the corresponding API base URL.
-     * For github.com: https://github.com -> https://api.github.com
-     * For GHE: https://opl.ghe.com -> https://opl.ghe.com/api/v3
+     * Converts a GitHub host URL (or already-resolved API URL) to the corresponding API base URL.
+     * Accepts either the host (e.g. https://github.com, https://opl.ghe.com) or the
+     * already-resolved API URL (e.g. https://api.github.com, https://opl.ghe.com/api/v3),
+     * and always returns the API base without a trailing slash.
+     *
+     * For github.com / api.github.com  -> https://api.github.com
+     * For GHE host                     -> https://host[:port]/api/v3
+     * For GHE already-resolved API URL -> https://host[:port]/api/v3 (no doubling)
      */
     private String toApiBaseUrl(String repoUrl) {
         try {
             URL url = new URL(repoUrl);
             String host = url.getHost();
             String protocol = url.getProtocol();
-            if ("github.com".equalsIgnoreCase(host)) {
+            String path = url.getPath() == null ? "" : url.getPath();
+
+            // Public GitHub: accept both github.com and api.github.com.
+            if ("github.com".equalsIgnoreCase(host) || "api.github.com".equalsIgnoreCase(host)) {
                 return "https://api.github.com";
-            } else {
-                // GitHub Enterprise: API is at /api/v3
-                return protocol + "://" + host + (url.getPort() > 0 ? ":" + url.getPort() : "") + "/api/v3";
             }
+
+            String hostPart = protocol + "://" + host + (url.getPort() > 0 ? ":" + url.getPort() : "");
+
+            // GitHub Enterprise where the caller already passed the API URL (.../api/v3[/...]).
+            if (path.contains("/api/v3")) {
+                return hostPart + "/api/v3";
+            }
+
+            // GitHub Enterprise: API lives at /api/v3.
+            return hostPart + "/api/v3";
         } catch (MalformedURLException e) {
             log.warn("Failed to parse repoUrl '{}', falling back to replacing github.com", repoUrl);
             return repoUrl.replace("https://github.com", "https://api.github.com");

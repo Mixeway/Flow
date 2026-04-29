@@ -1,0 +1,32 @@
+# Bamboo Specs 2.x — szkic planu skanowania przez Mixeway Flow.
+# Przed użyciem:
+#   - zamień PROJECT_KEY na klucz projektu Bamboo (np. FLOW),
+#   - zamień PLAN_KEY na unikalny klucz planu (np. BBSEC),
+#   - dodaj repozytorium Bitbucket jako linked repository i włącz ten plik jako Bamboo Specs w repo (wg dokumentacji Atlassian).
+
+version: 2
+plan:
+  project-key: PROJECT_KEY
+  key: PLAN_KEY
+  name: Mixeway Flow — skan Bitbucket (curl)
+  stages:
+    - Security:
+        jobs:
+          - flow-scan-and-gate
+
+flow-scan-and-gate:
+  tasks:
+    - checkout
+    - script:
+        interpreter: /bin/bash
+        scripts:
+          - |
+            set -euo pipefail
+            # Zmienne planu Bamboo (nie committuj sekretów w YAML — ustaw w UI jako zmienne planu):
+            export FLOW_BASE_URL="${bamboo.FLOW_BASE_URL?Ustaw zmienną planu FLOW_BASE_URL}"
+            export FLOW_API_KEY="${bamboo.FLOW_API_KEY?Ustaw zmienną planu FLOW_API_KEY}"
+            export FLOW_UI_DOMAIN="${bamboo.FLOW_UI_DOMAIN?Ustaw zmienną planu FLOW_UI_DOMAIN}"
+            export URGENT_FAIL_THRESHOLD="${bamboo.URGENT_FAIL_THRESHOLD:-1}"
+            export FLOW_SCAN_JSON="${bamboo.build.working.directory}/flow-scan-result.json"
+            bash "${bamboo.build.working.directory}/examples/bamboo/scripts/run-flow-security-scan.sh"
+  # Opcjonalnie: włącz artifacts w UI lub rozszerz spec o sekcję artifacts zgodnie z wersją Bamboo.
