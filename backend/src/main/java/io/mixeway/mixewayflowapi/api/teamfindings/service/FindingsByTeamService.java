@@ -165,6 +165,10 @@ public class FindingsByTeamService {
         String severity = filters.getOrDefault("severity", null);
         String source = filters.getOrDefault("source", null);
         String status = filters.getOrDefault("status", null);
+        String name = filters.getOrDefault("name", null);
+        if (name != null && name.isBlank()) {
+            name = null;
+        }
         String epssString = filters.getOrDefault("epss", null);
         BigDecimal epss = (epssString != null) ? new BigDecimal(epssString) : null;
         String kevStr = filters.getOrDefault("kev", null);
@@ -173,8 +177,8 @@ public class FindingsByTeamService {
         else if ("f".equalsIgnoreCase(kevStr) || "false".equalsIgnoreCase(kevStr)) kev = false;
         String urgencyFilter = filters.getOrDefault("urgency", null); // expected values: "urgent" | "notable"
 
-        Page<Finding> codeRepoFindingsPage = findingRepository.findByCodeReposPageable(codeRepos, pageable, severity, source, status, epss, kev);
-        Page<Finding> cloudSubscriptionFindingsPage = findingRepository.findByCloudSubscriptionsPageable(cloudSubscriptions, pageable, severity, source, status, epss, kev);
+        Page<Finding> codeRepoFindingsPage = findingRepository.findByCodeReposPageable(codeRepos, pageable, severity, source, status, epss, kev, name);
+        Page<Finding> cloudSubscriptionFindingsPage = findingRepository.findByCloudSubscriptionsPageable(cloudSubscriptions, pageable, severity, source, status, epss, kev, name);
 
         List<Finding> combinedFindings = Stream.concat(
                 codeRepoFindingsPage.getContent().stream(),
