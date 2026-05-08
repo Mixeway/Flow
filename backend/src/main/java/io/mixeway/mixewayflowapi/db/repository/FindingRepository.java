@@ -113,8 +113,9 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
            "AND (COALESCE(:status, f.status) = f.status) " +
            "AND (:epss IS NULL OR v.epss >= :epss)" +
            "AND (COALESCE(:kev, v.exploitExists) = v.exploitExists)" +
+           "AND (:name IS NULL OR LOWER(v.name) LIKE LOWER(CONCAT('%', :name, '%')))" +
            "AND b = cr.defaultBranch")
-    Page<Finding> findByCodeReposPageable(@Param("codeRepos") List<CodeRepo> codeRepos, Pageable pageable,  @Param("severity") String severity, @Param("source") String source, @Param("status") String status, @Param("epss") BigDecimal epss,  @Param("kev")  Boolean exploitExists);
+    Page<Finding> findByCodeReposPageable(@Param("codeRepos") List<CodeRepo> codeRepos, Pageable pageable,  @Param("severity") String severity, @Param("source") String source, @Param("status") String status, @Param("epss") BigDecimal epss,  @Param("kev")  Boolean exploitExists, @Param("name") String name);
 
     @Query("SELECT f FROM Finding f " +
            "JOIN f.vulnerability v " +
@@ -123,8 +124,9 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
            "AND (COALESCE(:source, f.source) = f.source) " +
            "AND (COALESCE(:status, f.status) = f.status) " +
            "AND (:epss IS NULL OR v.epss >= :epss)" +
-           "AND (COALESCE(:kev, v.exploitExists) = v.exploitExists)")
-    Page<Finding> findByCloudSubscriptionsPageable(@Param("cloudSubscriptions") List<CloudSubscription> cloudSubscriptions, Pageable pageable, @Param("severity") String severity, @Param("source") String source, @Param("status") String status, @Param("epss") BigDecimal epss,  @Param("kev")  Boolean exploitExists);
+           "AND (COALESCE(:kev, v.exploitExists) = v.exploitExists)" +
+           "AND (:name IS NULL OR LOWER(v.name) LIKE LOWER(CONCAT('%', :name, '%')))")
+    Page<Finding> findByCloudSubscriptionsPageable(@Param("cloudSubscriptions") List<CloudSubscription> cloudSubscriptions, Pageable pageable, @Param("severity") String severity, @Param("source") String source, @Param("status") String status, @Param("epss") BigDecimal epss,  @Param("kev")  Boolean exploitExists, @Param("name") String name);
 
     List<Finding> findAllByCodeRepoAndVulnerabilityAndLocation(CodeRepo repo,
                                                                Vulnerability vuln,
