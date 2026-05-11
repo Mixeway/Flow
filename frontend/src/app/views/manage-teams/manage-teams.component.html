@@ -620,6 +620,37 @@
             </div>
 
             <div class="form-section mt-4">
+                <h6 class="section-title">Labels & Epic (optional)</h6>
+                <c-input-group class="mb-3">
+                    <span cInputGroupText class="input-icon">
+                        <svg cIcon name="cil-tags"></svg>
+                    </span>
+                    <input type="text" cFormControl formControlName="jiraLabels"
+                           placeholder="Labels (comma-separated, e.g. security,flow,automated)">
+                </c-input-group>
+                <small class="text-muted mb-3 d-block">Labels will be added to every ticket created by Flow. Use commas to separate multiple labels.</small>
+
+                <c-input-group class="mb-3">
+                    <span cInputGroupText class="input-icon">
+                        <svg cIcon name="cil-layers"></svg>
+                    </span>
+                    <select *ngIf="jiraEpics.length > 0" cFormControl formControlName="jiraEpicKey" class="form-select">
+                        <option value="">-- No Epic --</option>
+                        <option *ngFor="let epic of jiraEpics" [value]="epic.key">{{ epic.key }} - {{ epic.name }}</option>
+                    </select>
+                    <input *ngIf="jiraEpics.length === 0" type="text" cFormControl formControlName="jiraEpicKey"
+                           placeholder="Epic Key (click Load Epics or type manually, e.g. PROJ-123)">
+                    <button cButton color="info" variant="outline" type="button"
+                            [disabled]="jiraLoadingEpics"
+                            (click)="fetchJiraEpics()">
+                        <span *ngIf="jiraLoadingEpics" class="spinner-border spinner-border-sm me-1"></span>
+                        Load Epics
+                    </button>
+                </c-input-group>
+                <small class="text-muted mb-3 d-block">All tickets will be linked to the selected Epic.</small>
+            </div>
+
+            <div class="form-section mt-4">
                 <h6 class="section-title">Automatic Ticket Creation</h6>
                 <div class="d-flex align-items-center mb-3">
                     <c-form-check switch>
@@ -646,6 +677,19 @@
                     </c-input-group>
                     <small class="text-muted">
                         Tickets will be automatically created (with intelligent grouping) for findings at or above the selected severity.
+                    </small>
+
+                    <div class="d-flex align-items-center mb-3 mt-3">
+                        <c-form-check switch>
+                            <input cFormCheckInput type="checkbox" id="subtaskEnabled"
+                                   formControlName="subtaskEnabled" />
+                            <label cFormCheckLabel for="subtaskEnabled">
+                                Enable subtask mode
+                            </label>
+                        </c-form-check>
+                    </div>
+                    <small *ngIf="jiraConfigForm.get('subtaskEnabled')?.value" class="text-muted d-block mb-2">
+                        A parent task will be created for each vulnerability type (e.g. XSS), and individual findings will be created as subtasks grouped by file.
                     </small>
                 </div>
             </div>

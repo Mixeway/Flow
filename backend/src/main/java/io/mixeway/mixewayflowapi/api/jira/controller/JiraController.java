@@ -127,6 +127,19 @@ public class JiraController {
         }
     }
 
+    @PreAuthorize("hasAuthority('TEAM_MANAGER')")
+    @PostMapping("/epics")
+    public ResponseEntity<List<Map<String, String>>> fetchEpics(
+            @RequestBody JiraConfigRequestDto request) {
+        try {
+            List<Map<String, String>> epics = jiraApiService.fetchEpics(request);
+            return ResponseEntity.ok(epics);
+        } catch (Exception e) {
+            log.error("[JIRA] Error fetching epics: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
     @PreAuthorize("hasAuthority('USER')")
     @PostMapping("/team/{teamId}/finding/{findingId}/ticket")
     public ResponseEntity<StatusDTO> createTicket(

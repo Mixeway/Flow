@@ -48,7 +48,7 @@ public class JiraTicketLifecycleService {
      */
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleNewFindingsEvent(NewFindingsEvent event) {
         List<Long> findingIds = event.getFindingIds();
         if (findingIds == null || findingIds.isEmpty()) return;

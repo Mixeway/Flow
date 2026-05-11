@@ -62,7 +62,10 @@ public class JiraApiService {
                 request.getJiraUsername(),
                 request.getAuthType(),
                 request.isAutoCreateEnabled(),
-                request.getAutoSeverityThreshold()
+                request.getAutoSeverityThreshold(),
+                request.getJiraLabels(),
+                request.getJiraEpicKey(),
+                request.isSubtaskEnabled()
         );
         return mapToResponseDto(config);
     }
@@ -82,7 +85,10 @@ public class JiraApiService {
                 request.getJiraUsername(),
                 request.getAuthType(),
                 request.isAutoCreateEnabled(),
-                request.getAutoSeverityThreshold()
+                request.getAutoSeverityThreshold(),
+                request.getJiraLabels(),
+                request.getJiraEpicKey(),
+                request.isSubtaskEnabled()
         );
         return mapToResponseDto(config);
     }
@@ -116,6 +122,16 @@ public class JiraApiService {
 
     public List<String> fetchIssueTypes(JiraConfigRequestDto request) {
         return jiraApiClientService.fetchIssueTypes(
+                request.getJiraUrl(),
+                request.getJiraUsername(),
+                request.getJiraToken(),
+                request.getJiraProjectKey(),
+                request.getAuthType()
+        );
+    }
+
+    public List<Map<String, String>> fetchEpics(JiraConfigRequestDto request) {
+        return jiraApiClientService.fetchEpics(
                 request.getJiraUrl(),
                 request.getJiraUsername(),
                 request.getJiraToken(),
@@ -196,6 +212,9 @@ public class JiraApiService {
         dto.setAuthType(config.getAuthType());
         dto.setAutoCreateEnabled(config.isAutoCreateEnabled());
         dto.setAutoSeverityThreshold(config.getAutoSeverityThreshold());
+        dto.setJiraLabels(config.getJiraLabels());
+        dto.setJiraEpicKey(config.getJiraEpicKey());
+        dto.setSubtaskEnabled(config.isSubtaskEnabled());
         dto.setConfigured(true);
         return dto;
     }
