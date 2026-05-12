@@ -91,8 +91,14 @@ export class RepositoryInfoComponent implements OnInit {
     selectedBranch = '';
     branchLoadError: string | null = null;
 
+    sbomModalVisible = false;
+    sbomBranch = '';
+    sbomError: string | null = null;
+    sbomFile: File | null = null;
+
   @Output() runScanEvent = new EventEmitter<void>();
   @Output() runScanBranchEvent = new EventEmitter<string>();
+  @Output() uploadSbomScanEvent = new EventEmitter<{ file: File; branch?: string }>();
   @Output() openChangeTeamModalEvent = new EventEmitter<void>();
   @Output() deleteRepoEvent = new EventEmitter<void>();
 
@@ -151,6 +157,39 @@ export class RepositoryInfoComponent implements OnInit {
     if (!this.selectedBranch) return;
     this.branchScanModalVisible = false;
     this.runScanBranchEvent.emit(this.selectedBranch);
+  }
+
+  openSbomUploadModal(): void {
+    this.scanDropdownOpen = false;
+    this.sbomModalVisible = true;
+    this.sbomError = null;
+    this.sbomFile = null;
+    this.sbomBranch = this.repoData?.defaultBranch?.name ?? '';
+  }
+
+  onSbomFileChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    this.sbomFile = file;
+    this.sbomError = null;
+  }
+
+  confirmSbomUpload(): void {
+    if (!this.sbomFile) {
+      this.sbomError = 'Choose a JSON SBOM file.';
+      return;
+    }
+    const name = this.sbomFile.name.toLowerCase();
+    if (!name.endsWith('.json')) {
+      this.sbomError = 'File must be JSON (e.g. CycloneDX .json).';
+      return;
+    }
+    const branch = (this.sbomBranch || '').trim();
+    this.sbomModalVisible = false;
+    this.uploadSbomScanEvent.emit({
+      file: this.sbomFile,
+      branch: branch.length > 0 ? branch : undefined,
+    });
   }
 
     constructor(private codeService: RepoService) {}

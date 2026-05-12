@@ -53,6 +53,19 @@ export class RepoService {
         return this.http.post<any>(this.loginUrl + '/api/v1/coderepo/' + id + '/run/branch', { branchName }, { withCredentials: true });
     }
 
+    /**
+     * Upload a CycloneDX JSON SBOM; backend runs SCA (Grype) only and associates results with the given branch (or default).
+     */
+    uploadSbomScan(id: number, file: File, branch?: string): Observable<any> {
+        const formData = new FormData();
+        formData.append('file', file);
+        let url = `${this.loginUrl}/api/v1/coderepo/${id}/scan/sbom`;
+        if (branch && branch.trim()) {
+            url += `?branch=${encodeURIComponent(branch.trim())}`;
+        }
+        return this.http.post<any>(url, formData, { withCredentials: true });
+    }
+
     suppressMultipleFindings(number: number, selectedFindings: number[]) {
         return this.http.post<any>(this.loginUrl + '/api/v1/coderepo/' + number+ '/supress', selectedFindings,{ withCredentials: true });
 

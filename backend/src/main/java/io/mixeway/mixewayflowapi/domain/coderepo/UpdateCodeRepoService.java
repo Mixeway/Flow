@@ -285,6 +285,16 @@ public class UpdateCodeRepoService {
         codeRepoRepository.save(codeRepo);
     }
 
+    /**
+     * Marks only the SCA scan as running (e.g. SBOM upload flow without a full repository clone).
+     */
+    @Transactional
+    public void setScaScanRunning(CodeRepo codeRepo) {
+        CodeRepo managed = findCodeRepoService.findById(codeRepo.getId()).orElse(codeRepo);
+        managed.updateScaScanStatus(CodeRepo.ScanStatus.RUNNING);
+        codeRepoRepository.save(managed);
+    }
+
     @Modifying
     @Transactional
     public void setScaPending(CodeRepo codeRepo) {

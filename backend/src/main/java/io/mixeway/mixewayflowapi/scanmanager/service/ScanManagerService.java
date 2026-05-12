@@ -13,6 +13,7 @@ import io.mixeway.mixewayflowapi.domain.settings.FindSettingsService;
 import io.mixeway.mixewayflowapi.domain.vulnerability.FindVulnerabilityService;
 import io.mixeway.mixewayflowapi.domain.vulnerability.UpdateVulnerabilityService;
 import io.mixeway.mixewayflowapi.exceptions.GitException;
+import io.mixeway.mixewayflowapi.exceptions.ScanThrottledException;
 import io.mixeway.mixewayflowapi.integrations.repo.service.BitbucketScanReportService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GitCommentService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GitService;
@@ -805,6 +806,59 @@ public class ScanManagerService {
         log.info("[KEV] Done processing KEV...");
 
     }
+    /**
+     * Runs an SCA (Grype) scan using a CycloneDX JSON SBOM already stored as {@code sbom.json} under {@code workDir}.
+     * Does not clone the repository. Uses the same per-repo throttle as full scans.
+     *
+     * @param workDir directory containing {@code sbom.json}; deleted after the scan attempt
+     */
+    public void scanRepositoryFromUploadedSbom(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, Path workDir) {
+        Object repoLock = repoLocks.computeIfAbsent(codeRepo.getId(), k -> new Object());
+
+        synchronized (repoLock) {
+            if (scanThrottler.getIfPresent(codeRepo.getId()) != null) {
+                throw new ScanThrottledException(
+                        "A scan for this repository was started recently. Please wait before uploading again.");
+            }
+            scanThrottler.put(codeRepo.getId(), Boolean.TRUE);
+        }
+
+        String workDirPath = workDir.toAbsolutePath().toString();
+
+        executorService.submit(() -> {
+            try {
+                updateCodeRepoService.setScaScanRunning(codeRepo);
+                validateInputs(codeRepo, codeRepoBranch);
+                try {
+                    sCAGrypeService.runGrype(workDirPath, codeRepo, codeRepoBranch);
+                } catch (Exception e) {
+                    if (Thread.currentThread().isInterrupted()) {
+                        log.warn("[ScanManagerService] Uploaded SBOM SCA scan interrupted for {}.", codeRepo.getRepourl());
+                        Thread.currentThread().interrupt();
+                    } else {
+                        log.error("[ScanManagerService] Uploaded SBOM SCA scan failed for {}: {}",
+                                codeRepo.getRepourl(), e.getMessage(), e);
+                    }
+                } finally {
+                    try {
+                        updateCodeRepoService.updateCodeRepoStatus(codeRepo, codeRepoBranch, "");
+                    } catch (Exception updateEx) {
+                        log.error("[ScanManagerService] Failed to update CodeRepo status after SBOM upload for {}: {}",
+                                codeRepo.getName(), updateEx.getMessage(), updateEx);
+                    }
+                    try {
+                        cleanUp(workDirPath);
+                    } catch (IOException cleanupEx) {
+                        log.error("[ScanManagerService] Failed to clean up SBOM work directory {}: {}",
+                                workDirPath, cleanupEx.getMessage());
+                    }
+                }
+            } finally {
+                repoLocks.remove(codeRepo.getId());
+            }
+        });
+    }
+
     private Future<Void> runZAPScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
         Callable<Void> task = () -> {
             int currentZapScans = zapScansRunning.incrementAndGet();
