@@ -15,15 +15,22 @@ import io.mixeway.mixewayflowapi.domain.finding.FindFindingService;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GitService;
 import io.mixeway.mixewayflowapi.exceptions.CodeRepoNotFoundException;
+import io.mixeway.mixewayflowapi.exceptions.ScanThrottledException;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
 import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import io.mixeway.mixewayflowapi.utils.PermissionFactory;
+import com.fasterxml.jackson.core.JacksonException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import org.aspectj.apache.bcel.classfile.Code;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.security.Principal;
+import java.util.Comparator;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -31,6 +38,9 @@ import java.util.stream.Collectors;
 @Log4j2
 @RequiredArgsConstructor
 public class CodeRepoApiService {
+
+    private static final long MAX_SBOM_UPLOAD_BYTES = 50L * 1024 * 1024;
+
     private final FindCodeRepoService findCodeRepoService;
     private final ScanManagerService scanManagerService;
     private final PermissionFactory permissionFactory;
@@ -40,6 +50,7 @@ public class CodeRepoApiService {
     private final FindFindingService findFindingService;
     private final GitService gitService;
     private final GetOrCreateCodeRepoBranchService getOrCreateCodeRepoBranchService;
+    private final ObjectMapper objectMapper;
 
     public List<GetCodeReposResponseDto> getRepos(Principal principal) {
         return findCodeRepoService.getCodeReposResponseDtos(principal);
@@ -90,6 +101,63 @@ public class CodeRepoApiService {
         }
         CodeRepoBranch branch = getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(branchName, repo);
         scanManagerService.scanRepository(repo, branch, null, null);
+    }
+
+    /**
+     * Validates and stores an uploaded CycloneDX JSON SBOM as {@code sbom.json}, then queues an SCA-only Grype scan.
+     *
+     * @param branchName optional branch to associate findings with; defaults to the repository default branch
+     */
+    public void runScanFromUploadedSbom(Long repoId, MultipartFile file, String branchName, Principal principal)
+            throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("SBOM file is required.");
+        }
+        if (file.getSize() > MAX_SBOM_UPLOAD_BYTES) {
+            throw new IllegalArgumentException("SBOM file exceeds maximum allowed size (50 MB).");
+        }
+
+        CodeRepo repo = findCodeRepoService.findById(repoId, principal);
+        CodeRepoBranch branch;
+        if (branchName != null && !branchName.isBlank()) {
+            branch = getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(branchName.trim(), repo);
+        } else {
+            branch = repo.getDefaultBranch();
+        }
+
+        Path workDir = Files.createTempDirectory("flow-sbom-upload-");
+        Path target = workDir.resolve("sbom.json");
+        try {
+            try (var in = file.getInputStream()) {
+                Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+            objectMapper.readTree(target.toFile());
+            scanManagerService.scanRepositoryFromUploadedSbom(repo, branch, workDir);
+        } catch (ScanThrottledException e) {
+            deleteSbomWorkDirQuietly(workDir);
+            throw e;
+        } catch (JacksonException e) {
+            deleteSbomWorkDirQuietly(workDir);
+            throw new IllegalArgumentException("Invalid JSON SBOM: " + e.getMessage(), e);
+        }
+    }
+
+    private void deleteSbomWorkDirQuietly(Path workDir) {
+        try {
+            if (Files.isDirectory(workDir)) {
+                try (var walk = Files.walk(workDir)) {
+                    walk.sorted(Comparator.reverseOrder()).forEach(p -> {
+                        try {
+                            Files.deleteIfExists(p);
+                        } catch (IOException ignored) {
+                            // best effort
+                        }
+                    });
+                }
+            }
+        } catch (IOException e) {
+            log.warn("[CodeRepo] Failed to delete SBOM work directory {}: {}", workDir, e.getMessage());
+        }
     }
 
     public void changeTeam(Long codeRepoId, Long newTeamId, Principal principal) {

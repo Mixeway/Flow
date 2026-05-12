@@ -54,6 +54,11 @@
                                     Scan Other Branch
                                 </button>
                             </li>
+                            <li>
+                                <button class="dropdown-item" (click)="openSbomUploadModal()">
+                                    Upload SBOM (SCA only)
+                                </button>
+                            </li>
                         </ul>
                     </div>
                     <button *ngIf="userRole === 'ADMIN' || userRole === 'TEAM_MANAGER'"
@@ -173,6 +178,29 @@
         <button cButton color="secondary" variant="ghost" (click)="branchScanModalVisible=false">Cancel</button>
         <button cButton color="info" [disabled]="!selectedBranch" (click)="confirmBranchScan()">
             Run Scan
+        </button>
+    </c-modal-footer>
+</c-modal>
+
+<c-modal [(visible)]="sbomModalVisible" alignment="center" size="sm">
+    <c-modal-header>
+        <h5 cModalTitle>Upload SBOM for SCA</h5>
+        <button cButtonClose (click)="sbomModalVisible=false"></button>
+    </c-modal-header>
+    <c-modal-body>
+        <p class="text-muted small mb-3">
+            CycloneDX JSON (e.g. from cdxgen). Findings are tied to the branch below (default: repository default branch).
+        </p>
+        <label class="form-label">SBOM file (.json)</label>
+        <input type="file" class="form-control" accept=".json,application/json" (change)="onSbomFileChange($event)" />
+        <label class="form-label mt-3">Branch name (optional)</label>
+        <input cFormControl type="text" [(ngModel)]="sbomBranch" placeholder="Default branch" />
+        <div *ngIf="sbomError" class="text-danger mt-2">{{ sbomError }}</div>
+    </c-modal-body>
+    <c-modal-footer>
+        <button cButton color="secondary" variant="ghost" (click)="sbomModalVisible=false">Cancel</button>
+        <button cButton color="info" [disabled]="!sbomFile" (click)="confirmSbomUpload()">
+            Upload &amp; scan
         </button>
     </c-modal-footer>
 </c-modal>

@@ -1105,6 +1105,30 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         });
     }
 
+    uploadSbomScan(payload: { file: File; branch?: string }) {
+        this.repoService.uploadSbomScan(+this.repoId, payload.file, payload.branch).subscribe({
+            next: () => {
+                this.toastStatus = 'success';
+                this.toastMessage = 'SBOM uploaded; SCA scan has been queued';
+                this.toggleToast();
+                this.loadRepoInfo();
+            },
+            error: (err: any) => {
+                this.toastStatus = 'danger';
+                const status = err?.status;
+                const msg = err?.error?.status ?? err?.error?.message ?? err?.message;
+                if (status === 429) {
+                    this.toastMessage = typeof msg === 'string' ? msg : 'Too many scan requests; try again later';
+                } else if (status === 400 && typeof msg === 'string') {
+                    this.toastMessage = msg;
+                } else {
+                    this.toastMessage = 'Failed to upload SBOM or start SCA scan';
+                }
+                this.toggleToast();
+            },
+        });
+    }
+
     openDeleteRepoModal(): void {
         this.deleteConfirmationText = '';
         this.deleteRepoConfirmationVisible = true;

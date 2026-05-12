@@ -4,10 +4,10 @@ import io.mixeway.mixewayflowapi.api.coderepo.dto.*;
 import io.mixeway.mixewayflowapi.api.coderepo.service.CodeRepoApiService;
 import io.mixeway.mixewayflowapi.api.gitlabcicd.dto.GitLabCICDRequestDto;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
-import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.domain.coderepo.CreateCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.coderepo.DeleteCodeRepoService;
 import io.mixeway.mixewayflowapi.exceptions.CodeRepoNotFoundException;
+import io.mixeway.mixewayflowapi.exceptions.ScanThrottledException;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
 import io.mixeway.mixewayflowapi.exceptions.UnauthorizedException;
 import io.mixeway.mixewayflowapi.utils.StatusDTO;
@@ -15,13 +15,16 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 @RestController
 @Validated
@@ -133,6 +136,30 @@ public class CodeRepoController {
         } catch (Exception e){
             log.error("[CodeRepo] Error listing remote branches for {}", id);
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('USER')")
+    @PostMapping(value = "/api/v1/coderepo/{id}/scan/sbom", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<StatusDTO> uploadSbomAndScan(
+            @PathVariable("id") Long id,
+            @RequestPart("file") MultipartFile file,
+            @RequestParam(value = "branch", required = false) String branch,
+            Principal principal) {
+        try {
+            codeRepoApiService.runScanFromUploadedSbom(id, file, branch, principal);
+            return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.ACCEPTED);
+        } catch (ScanThrottledException e) {
+            log.warn("[CodeRepo] SBOM upload throttled for repo {}: {}", id, e.getMessage());
+            return new ResponseEntity<>(new StatusDTO(e.getMessage()), HttpStatus.TOO_MANY_REQUESTS);
+        } catch (IllegalArgumentException e) {
+            log.warn("[CodeRepo] Invalid SBOM upload for {}: {}", id, e.getMessage());
+            return new ResponseEntity<>(new StatusDTO(e.getMessage()), HttpStatus.BAD_REQUEST);
+        } catch (NoSuchElementException e) {
+            return new ResponseEntity<>(new StatusDTO("Repository not found"), HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            log.error("[CodeRepo] SBOM upload failed for {}: {}", id, e.getMessage(), e);
+            return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
         }
     }
 
