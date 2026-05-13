@@ -38,6 +38,13 @@ public interface CodeRepoRepository extends CrudRepository<CodeRepo, Long> {
 
     List<CodeRepo> findByType(CodeRepo.RepoType type);
 
+    /**
+     * Remote IDs already imported for this Git host (same {@code apiUrl} prefix as stored on {@link CodeRepo#getRepourl()}),
+     * so multiple providers of the same {@link CodeRepo.RepoType} on different hosts do not share deduplication.
+     */
+    @Query("SELECT c.remoteId FROM CodeRepo c WHERE c.type = :type AND c.repourl LIKE CONCAT(:prefix, '%')")
+    List<Integer> findRemoteIdsByTypeAndRepourlPrefix(@Param("type") CodeRepo.RepoType type, @Param("prefix") String prefix);
+
     @Query("SELECT count(c) FROM CodeRepo c WHERE c.repourl LIKE CONCAT(:gitHostUrl, '%')")
     long countByRepoUrlStartingWith(@Param("gitHostUrl") String gitHostUrl);
 
