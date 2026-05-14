@@ -22,7 +22,7 @@ public class UserInfo {
     private final long id;
 
     @NotBlank(message = "Username must not be null")
-    @Size(max = 20, message = "Username must be up to 20 characters long")
+    @Size(max = 40, message = "Username must be up to 40 characters long")
     @Pattern(regexp = "^(?=.{1,39}$)[a-zA-Z0-9]([a-zA-Z0-9]|-(?!-))*[a-zA-Z0-9]$", message = "Username must be alphanumeric")
     @Column(name = "username", nullable = false, unique = true)
     private final String username;
