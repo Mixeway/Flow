@@ -83,7 +83,7 @@ public class UserInfo {
     }
 
     private String validateUsername(String username) {
-        if (username == null || username.length() > 20 || !username.matches("[a-zA-Z0-9]+")) {
+        if (username == null || username.length() > 40 || !username.matches("[a-zA-Z0-9]+")) {
             throw new IllegalArgumentException("Invalid username: must be alphanumeric and up to 20 characters long.");
         }
         return username;
