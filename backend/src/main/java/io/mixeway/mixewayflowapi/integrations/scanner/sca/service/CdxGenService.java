@@ -3,14 +3,16 @@ package io.mixeway.mixewayflowapi.integrations.scanner.sca.service;
 import ch.qos.logback.core.spi.ScanException;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -25,20 +27,44 @@ import java.util.concurrent.TimeUnit;
  */
 @Service
 @Log4j2
-@RequiredArgsConstructor
 public class CdxGenService {
+
+    /**
+     * Prepended to {@code PATH} for cdxgen and related subprocesses so the same JVM
+     * can resolve {@code mvn}, {@code npm}, {@code gradle}, etc. as in an interactive shell
+     * (e.g. {@code /opt/tools/bin:/usr/local/bin} in Docker).
+     */
+    @Value("${scan.subprocess.path-extra:}")
+    private String pathExtra;
+
+    /**
+     * If set, exported as {@code JAVA_HOME} for subprocesses when the environment
+     * does not already define it. Otherwise {@code java.home} of the running JVM is used
+     * when {@code JAVA_HOME} is missing (helps Maven/Gradle invoked by cdxgen).
+     */
+    @Value("${scan.subprocess.java-home:}")
+    private String javaHomeOverride;
+
+    /**
+     * When true (default), runs {@code pipreqs .} before cdxgen if {@code pipreqs} is on {@code PATH}.
+     * Set to false to match a manual {@code cdxgen} run and avoid overwriting {@code requirements.txt}.
+     */
+    @Value("${scan.cdxgen.run-pipreqs:true}")
+    private boolean runPipreqs;
+
+    @Value("${proxy.host:#{null}}")
+    private String proxyHost;
+
+    @Value("${proxy.port:#{null}}")
+    private Integer proxyPort;
 
     /**
      * Generates the SBOM (Software Bill of Materials) file using the cdxgen tool.
      *
-     * <p>This method executes the cdxgen command in the specified repository directory,
-     * redirecting both standard output and error streams to prevent blocking.
-     * It conditionally sets environment variables for proxy configuration if the
-     * system properties <code>proxy.host</code> and <code>proxy.port</code> are provided.
-     * The method waits for the process to complete, with a timeout of 2 minutes.
-     * If the process exceeds the timeout, it is forcibly terminated.
-     * After the process completes, the method validates the generated <code>bom.json</code>
-     * file by checking for its existence and ensuring it has content.</p>
+     * <p>This method executes cdxgen in the specified repository directory with
+     * {@link ProcessBuilder#environment()} configured for CDXGEN/CDX_* variables and optional proxy.
+     * Optional {@code scan.subprocess.path-extra} widens {@code PATH} so language toolchains
+     * match non-interactive vs login-shell setups.</p>
      *
      * @param repoDir        the directory of the repository where cdxgen will run
      * @param codeRepo       the code repository entity
@@ -51,69 +77,34 @@ public class CdxGenService {
             throws IOException, InterruptedException {
         log.info("[CdxGen] Starting SBOM generation for: {} branch: {}", codeRepo.getName(), codeRepoBranch.getName());
 
-        // Step 1: Verify if 'pipreqs' command is available
-        boolean isPipreqsAvailable = false;
-        try {
-            ProcessBuilder pbCheckPipreqs = new ProcessBuilder("sh", "-c", "command -v pipreqs");
-            pbCheckPipreqs.redirectErrorStream(true);
-            Process pCheckPipreqs = pbCheckPipreqs.start();
-            int exitCode = pCheckPipreqs.waitFor();
-            if (exitCode == 0) {
-                isPipreqsAvailable = true;
-                log.debug("[CdxGen] 'pipreqs' is available.");
-            } else {
-                log.debug("[CdxGen] 'pipreqs' is not available.");
-            }
-        } catch (IOException e) {
-            // Command not found
-            log.debug("[CdxGen] Exception while checking for 'pipreqs': {}", e.getMessage());
+        if (runPipreqs) {
+            runPipreqsIfAvailable(repoDir);
         }
 
-        // Step 2: If available, execute 'pipreqs .' in repoDir
-        if (isPipreqsAvailable) {
-            log.debug("[CdxGen] Executing 'pipreqs .' in {}", repoDir);
-            ProcessBuilder pbPipreqs = new ProcessBuilder("pipreqs", ".");
-            pbPipreqs.directory(new File(repoDir));
-            pbPipreqs.redirectOutput(ProcessBuilder.Redirect.INHERIT);
-            pbPipreqs.redirectError(ProcessBuilder.Redirect.INHERIT);
-            Process pPipreqs = pbPipreqs.start();
-
-            // Wait for 'pipreqs' to finish
-            boolean finished = pPipreqs.waitFor(10, TimeUnit.MINUTES);
-            if (!finished) {
-                log.debug("[CdxGen] 'pipreqs' did not finish within 10 minutes. Terminating process.");
-                pPipreqs.destroyForcibly();
-            } else {
-                int exitCode = pPipreqs.exitValue();
-                if (exitCode != 0) {
-                    log.debug("[CdxGen] 'pipreqs' exited with non-zero exit code: {}", exitCode);
-                } else {
-                    log.debug("[CdxGen] 'pipreqs' executed successfully.");
-                }
-            }
-        }
-
-        // Step 3: Proceed with executing 'cdxgen'
-        String proxyHost = System.getProperty("proxy.host");
-        String proxyPort = System.getProperty("proxy.port");
-        String command;
-
-        if (proxyHost != null && proxyPort != null) {
-            command = "CDXGEN_DEBUG_MODE=debug "
-                    + "CDX_MAVEN_INCLUDE_TEST_SCOPE=false "
-                    + "HTTP_PROXY=http://" + proxyHost + ":" + proxyPort + " "
-                    + "HTTPS_PROXY=http://" + proxyHost + ":" + proxyPort + " "
-                    + "cdxgen --recurse --required-only --output sbom.json .";
-            log.info("[CdxGen] Proxy settings applied: {}:{}", proxyHost, proxyPort);
-        } else {
-            command = "CDXGEN_DEBUG_MODE=debug CDX_MAVEN_INCLUDE_TEST_SCOPE=false cdxgen --recurse --required-only --output sbom.json .";
-        }
-
-        // Use 'sh -c' to execute the command in a shell
-        ProcessBuilder pb = new ProcessBuilder("sh", "-c", command);
+        ProcessBuilder pb = new ProcessBuilder(
+                "cdxgen",
+                "--recurse",
+                "--required-only",
+                "--output",
+                "sbom.json",
+                "."
+        );
         pb.directory(new File(repoDir));
         pb.redirectOutput(ProcessBuilder.Redirect.PIPE);
         pb.redirectError(ProcessBuilder.Redirect.PIPE);
+
+        applyScannerEnvironment(pb);
+
+        Map<String, String> env = pb.environment();
+        env.put("CDXGEN_DEBUG_MODE", "debug");
+        env.put("CDX_MAVEN_INCLUDE_TEST_SCOPE", "false");
+
+        if (StringUtils.hasText(proxyHost) && proxyPort != null) {
+            String proxyUrl = "http://" + proxyHost + ":" + proxyPort;
+            env.put("HTTP_PROXY", proxyUrl);
+            env.put("HTTPS_PROXY", proxyUrl);
+            log.info("[CdxGen] Proxy settings applied: {}:{}", proxyHost, proxyPort);
+        }
 
         Process process = pb.start();
 
@@ -142,7 +133,6 @@ public class CdxGenService {
                 }
             });
 
-            // Wait for 'cdxgen' to finish with a timeout of 30 minutes
             boolean finished = process.waitFor(30, TimeUnit.MINUTES);
             if (!finished) {
                 log.warn("[CdxGen] SBOM generation did not finish within 30 minutes. Terminating process.");
@@ -166,7 +156,6 @@ public class CdxGenService {
             }
         }
 
-        // Validate the 'sbom.json' file
         File bomFile = new File(repoDir, "sbom.json");
         if (bomFile.exists()) {
             if (bomFile.length() > 0) {
@@ -179,6 +168,79 @@ public class CdxGenService {
         }
     }
 
+    private void runPipreqsIfAvailable(String repoDir) throws IOException, InterruptedException {
+        boolean isPipreqsAvailable = false;
+        try {
+            ProcessBuilder pbCheckPipreqs = new ProcessBuilder("sh", "-c", "command -v pipreqs");
+            applyScannerEnvironment(pbCheckPipreqs);
+            pbCheckPipreqs.redirectErrorStream(true);
+            Process pCheckPipreqs = pbCheckPipreqs.start();
+            int exitCode = pCheckPipreqs.waitFor();
+            if (exitCode == 0) {
+                isPipreqsAvailable = true;
+                log.debug("[CdxGen] 'pipreqs' is available.");
+            } else {
+                log.debug("[CdxGen] 'pipreqs' is not available.");
+            }
+        } catch (IOException e) {
+            log.debug("[CdxGen] Exception while checking for 'pipreqs': {}", e.getMessage());
+        }
 
+        if (!isPipreqsAvailable) {
+            return;
+        }
 
+        log.debug("[CdxGen] Executing 'pipreqs .' in {}", repoDir);
+        ProcessBuilder pbPipreqs = new ProcessBuilder("pipreqs", ".");
+        pbPipreqs.directory(new File(repoDir));
+        applyScannerEnvironment(pbPipreqs);
+        pbPipreqs.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+        pbPipreqs.redirectError(ProcessBuilder.Redirect.INHERIT);
+        Process pPipreqs = pbPipreqs.start();
+
+        boolean finished = pPipreqs.waitFor(10, TimeUnit.MINUTES);
+        if (!finished) {
+            log.debug("[CdxGen] 'pipreqs' did not finish within 10 minutes. Terminating process.");
+            pPipreqs.destroyForcibly();
+        } else {
+            int exitCode = pPipreqs.exitValue();
+            if (exitCode != 0) {
+                log.debug("[CdxGen] 'pipreqs' exited with non-zero exit code: {}", exitCode);
+            } else {
+                log.debug("[CdxGen] 'pipreqs' executed successfully.");
+            }
+        }
+    }
+
+    /**
+     * Ensures subprocesses see the same toolchains as typical CLI usage: optional {@code PATH}
+     * prefix, {@code JAVA_HOME}, and a defined {@code HOME} when missing.
+     */
+    private void applyScannerEnvironment(ProcessBuilder pb) {
+        Map<String, String> env = pb.environment();
+
+        if (StringUtils.hasText(pathExtra)) {
+            String path = env.getOrDefault("PATH", "");
+            env.put("PATH", pathExtra + File.pathSeparator + path);
+            log.debug("[CdxGen] PATH prefix applied (scan.subprocess.path-extra)");
+        }
+
+        if (!StringUtils.hasText(env.get("JAVA_HOME"))) {
+            if (StringUtils.hasText(javaHomeOverride)) {
+                env.put("JAVA_HOME", javaHomeOverride.trim());
+            } else {
+                String jvmHome = System.getProperty("java.home");
+                if (StringUtils.hasText(jvmHome)) {
+                    env.put("JAVA_HOME", jvmHome);
+                }
+            }
+        }
+
+        if (!StringUtils.hasText(env.get("HOME"))) {
+            String userHome = System.getProperty("user.home");
+            if (StringUtils.hasText(userHome)) {
+                env.put("HOME", userHome);
+            }
+        }
+    }
 }
