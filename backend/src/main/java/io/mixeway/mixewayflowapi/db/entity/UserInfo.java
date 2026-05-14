@@ -73,7 +73,7 @@ public class UserInfo {
 
     // Public constructor for creating new UserInfo instances
     public UserInfo(String username, String password, Set<UserRole> roles) {
-        this.username = validateUsername(username);
+        this.username = username;
         this.password = validatePassword(password);
         this.apiKey = null;
         this.resetPassword = true;
@@ -82,12 +82,6 @@ public class UserInfo {
         this.id = 0;
     }
 
-    private String validateUsername(String username) {
-        if (username == null || username.length() > 40 || !username.matches("[a-zA-Z0-9]+")) {
-            throw new IllegalArgumentException("Invalid username: must be alphanumeric and up to 20 characters long.");
-        }
-        return username;
-    }
 
     private String validatePassword(String password) {
         if (password != null && password.length() < 8) {
