@@ -37,7 +37,6 @@ public class GitLabApiClientService {
         // Build the initial URI for the first page of results.
         String initialUri = UriComponentsBuilder.fromHttpUrl(repoUrl)
                 .path(PROJECTS_API_PATH)
-                .queryParam("membership", "true")
                 .queryParam("per_page", 100)
                 .toUriString();
 
