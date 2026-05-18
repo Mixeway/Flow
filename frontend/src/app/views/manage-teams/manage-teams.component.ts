@@ -154,6 +154,8 @@ export class ManageTeamsComponent implements OnInit {
   jiraLoadingIssueTypes = false;
   jiraProjects: {key: string, name: string}[] = [];
   jiraLoadingProjects = false;
+  jiraEpics: {key: string, name: string}[] = [];
+  jiraLoadingEpics = false;
 
   jiraConfigForm = this.fb.group({
     jiraUrl: ['', Validators.required],
@@ -164,6 +166,9 @@ export class ManageTeamsComponent implements OnInit {
     authType: ['BASIC'],
     autoCreateEnabled: [false],
     autoSeverityThreshold: ['HIGH'],
+    jiraLabels: [''],
+    jiraEpicKey: [''],
+    subtaskEnabled: [false],
   });
 
 
@@ -563,6 +568,7 @@ export class ManageTeamsComponent implements OnInit {
     this.jiraConfigEditMode = false;
     this.jiraProjects = [];
     this.jiraIssueTypes = [];
+    this.jiraEpics = [];
 
     const existing = this.jiraConfigs.get(team.id);
     if (existing) {
@@ -576,6 +582,9 @@ export class ManageTeamsComponent implements OnInit {
         authType: existing.authType || 'BASIC',
         autoCreateEnabled: existing.autoCreateEnabled,
         autoSeverityThreshold: existing.autoSeverityThreshold || 'HIGH',
+        jiraLabels: existing.jiraLabels || '',
+        jiraEpicKey: existing.jiraEpicKey || '',
+        subtaskEnabled: existing.subtaskEnabled || false,
       });
       this.jiraConfigForm.get('jiraToken')?.clearValidators();
       this.jiraConfigForm.get('jiraToken')?.updateValueAndValidity();
@@ -589,6 +598,9 @@ export class ManageTeamsComponent implements OnInit {
         authType: 'BASIC',
         autoCreateEnabled: false,
         autoSeverityThreshold: 'HIGH',
+        jiraLabels: '',
+        jiraEpicKey: '',
+        subtaskEnabled: false,
       });
       this.jiraConfigForm.get('jiraToken')?.setValidators(Validators.required);
       this.jiraConfigForm.get('jiraToken')?.updateValueAndValidity();
@@ -608,6 +620,9 @@ export class ManageTeamsComponent implements OnInit {
       authType: this.jiraConfigForm.value.authType || 'BASIC',
       autoCreateEnabled: this.jiraConfigForm.value.autoCreateEnabled || false,
       autoSeverityThreshold: this.jiraConfigForm.value.autoSeverityThreshold || 'HIGH',
+      jiraLabels: this.jiraConfigForm.value.jiraLabels || '',
+      jiraEpicKey: this.jiraConfigForm.value.jiraEpicKey || '',
+      subtaskEnabled: this.jiraConfigForm.value.subtaskEnabled || false,
     };
 
     const teamId = this.selectedTeam.id;
@@ -747,6 +762,36 @@ export class ManageTeamsComponent implements OnInit {
       error: () => {
         this.jiraLoadingIssueTypes = false;
         this.showToast('danger', 'Failed to fetch issue types.');
+      }
+    });
+  }
+
+  fetchJiraEpics() {
+    const payload = this.getJiraRequestPayload();
+    if (!payload) return;
+
+    if (!this.jiraConfigForm.value.jiraProjectKey) {
+      this.showToast('warning', 'Please select a project first');
+      return;
+    }
+    payload.jiraProjectKey = this.jiraConfigForm.value.jiraProjectKey || '';
+
+    this.jiraLoadingEpics = true;
+    this.jiraEpics = [];
+
+    this.jiraService.fetchEpics(payload).subscribe({
+      next: (epics) => {
+        this.jiraLoadingEpics = false;
+        this.jiraEpics = epics;
+        if (epics.length > 0) {
+          this.showToast('success', `Found ${epics.length} epic(s)`);
+        } else {
+          this.showToast('warning', 'No epics found for this project.');
+        }
+      },
+      error: () => {
+        this.jiraLoadingEpics = false;
+        this.showToast('danger', 'Failed to fetch epics.');
       }
     });
   }

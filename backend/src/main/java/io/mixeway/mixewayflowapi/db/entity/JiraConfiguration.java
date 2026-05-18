@@ -44,6 +44,15 @@ public class JiraConfiguration {
     @Column(name = "auto_severity_threshold", length = 20)
     private String autoSeverityThreshold;
 
+    @Column(name = "jira_labels")
+    private String jiraLabels;
+
+    @Column(name = "jira_epic_key", length = 50)
+    private String jiraEpicKey;
+
+    @Column(name = "subtask_enabled", nullable = false)
+    private boolean subtaskEnabled;
+
     @CreationTimestamp
     @Column(name = "created_date", updatable = false)
     private LocalDateTime createdDate;
@@ -56,7 +65,8 @@ public class JiraConfiguration {
 
     public JiraConfiguration(Team team, String jiraUrl, String jiraToken, String jiraProjectKey,
                              String jiraIssueType, String jiraUsername, String authType,
-                             boolean autoCreateEnabled, String autoSeverityThreshold) {
+                             boolean autoCreateEnabled, String autoSeverityThreshold,
+                             String jiraLabels, String jiraEpicKey, boolean subtaskEnabled) {
         this.team = team;
         this.jiraUrl = jiraUrl;
         this.jiraToken = jiraToken;
@@ -66,11 +76,15 @@ public class JiraConfiguration {
         this.authType = authType != null ? authType : "BASIC";
         this.autoCreateEnabled = autoCreateEnabled;
         this.autoSeverityThreshold = autoSeverityThreshold != null ? autoSeverityThreshold : "HIGH";
+        this.jiraLabels = jiraLabels;
+        this.jiraEpicKey = jiraEpicKey;
+        this.subtaskEnabled = subtaskEnabled;
     }
 
     public void update(String jiraUrl, String jiraToken, String jiraProjectKey,
                        String jiraIssueType, String jiraUsername, String authType,
-                       boolean autoCreateEnabled, String autoSeverityThreshold) {
+                       boolean autoCreateEnabled, String autoSeverityThreshold,
+                       String jiraLabels, String jiraEpicKey, boolean subtaskEnabled) {
         this.jiraUrl = jiraUrl;
         if (jiraToken != null && !jiraToken.isBlank()) {
             this.jiraToken = jiraToken;
@@ -81,5 +95,8 @@ public class JiraConfiguration {
         this.authType = authType != null ? authType : "BASIC";
         this.autoCreateEnabled = autoCreateEnabled;
         this.autoSeverityThreshold = autoSeverityThreshold;
+        this.jiraLabels = jiraLabels;
+        this.jiraEpicKey = jiraEpicKey;
+        this.subtaskEnabled = subtaskEnabled;
     }
 }

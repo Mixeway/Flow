@@ -10,10 +10,12 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.net.URLEncoder;
 
 @Service
 @RequiredArgsConstructor
@@ -27,27 +29,41 @@ public class JiraApiClientService {
     /**
      * Creates a single JIRA ticket for one finding.
      */
+    @Transactional
     public String createTicketForFinding(JiraConfiguration config, Finding finding) {
-        String summary = buildSummary(finding);
-        String description = buildDescription(finding);
-        String priority = mapSeverityToJiraPriority(finding.getSeverity().name());
+        Finding managed = findingRepository.findById(finding.getId()).orElse(finding);
+        String summary = buildSummary(managed);
+        String description = buildDescription(managed);
+        String priority = mapSeverityToJiraPriority(managed.getSeverity().name());
 
         String ticketKey = createJiraIssue(config, summary, description, priority);
         if (ticketKey != null) {
-            finding.setJiraTicketKey(ticketKey);
-            findingRepository.save(finding);
-            log.info("[JIRA] Created ticket {} for finding {} in {}", ticketKey, finding.getId(),
-                    finding.getCodeRepo() != null ? finding.getCodeRepo().getName() : "cloud");
+            managed.setJiraTicketKey(ticketKey);
+            findingRepository.save(managed);
+            log.info("[JIRA] Created ticket {} for finding {} in {}", ticketKey, managed.getId(),
+                    managed.getCodeRepo() != null ? managed.getCodeRepo().getName() : "cloud");
         }
         return ticketKey;
     }
 
     /**
      * Creates grouped JIRA tickets for multiple findings.
-     * Groups by vulnerability name + source to avoid ticket flooding.
+     * Groups by vulnerability name + source + repo + filename.
+     * When subtask mode is enabled, creates a parent task per vulnerability name
+     * and subtasks per file grouping under that parent.
      * Returns the number of tickets actually created.
      */
+    @Transactional
     public int createTicketsGrouped(JiraConfiguration config, List<Finding> findings) {
+        List<Long> ids = findings.stream().map(Finding::getId).collect(Collectors.toList());
+        List<Finding> managed = findingRepository.findAllById(ids);
+        if (config.isSubtaskEnabled()) {
+            return createTicketsWithSubtasks(config, managed);
+        }
+        return createTicketsFlat(config, managed);
+    }
+
+    private int createTicketsFlat(JiraConfiguration config, List<Finding> findings) {
         Map<String, List<Finding>> grouped = groupFindings(findings);
 
         int ticketCount = 0;
@@ -71,6 +87,95 @@ public class JiraApiClientService {
                 }
                 ticketCount++;
                 log.info("[JIRA] Created grouped ticket {} for {} findings ({})", ticketKey, groupFindings.size(), entry.getKey());
+            }
+        }
+        return ticketCount;
+    }
+
+    private int createTicketsWithSubtasks(JiraConfiguration config, List<Finding> findings) {
+        String subtaskTypeName = detectSubtaskTypeName(config);
+        int ticketCount = 0;
+
+        // Group by vulnerability name + source + repo (parent level)
+        Map<String, List<Finding>> parentGrouped = findings.stream()
+                .collect(Collectors.groupingBy(f -> {
+                    String vulnName = f.getVulnerability() != null ? f.getVulnerability().getName() : "unknown";
+                    String source = f.getSource() != null ? f.getSource().name() : "unknown";
+                    String repo = f.getCodeRepo() != null ? f.getCodeRepo().getName() : "cloud";
+                    return vulnName + "|" + source + "|" + repo;
+                }));
+
+        for (Map.Entry<String, List<Finding>> parentEntry : parentGrouped.entrySet()) {
+            if (ticketCount >= MAX_TICKETS_PER_BATCH) break;
+
+            List<Finding> parentFindings = parentEntry.getValue();
+            Finding first = parentFindings.get(0);
+            String vulnName = first.getVulnerability() != null ? first.getVulnerability().getName() : "Security Findings";
+            String repo = first.getCodeRepo() != null ? first.getCodeRepo().getName() : "Cloud";
+            String severity = getHighestSeverity(parentFindings);
+            String source = first.getSource() != null ? first.getSource().name() : "";
+
+            String parentSummary = String.format("[%s][%s] %s (%d findings) - %s",
+                    severity, source, vulnName, parentFindings.size(), repo);
+            String parentDescription = buildGroupDescription(parentFindings);
+            String priority = mapSeverityToJiraPriority(severity);
+
+            String parentKey = createJiraIssue(config, parentSummary, parentDescription, priority);
+            if (parentKey == null) continue;
+            ticketCount++;
+            log.info("[JIRA] Created parent task {} for vulnerability '{}' with {} findings", parentKey, vulnName, parentFindings.size());
+
+            // Now group by filename within this vulnerability and create subtasks
+            Map<String, List<Finding>> fileGrouped = parentFindings.stream()
+                    .collect(Collectors.groupingBy(f -> extractFilename(f.getLocation())));
+
+            for (Map.Entry<String, List<Finding>> fileEntry : fileGrouped.entrySet()) {
+                if (ticketCount >= MAX_TICKETS_PER_BATCH) break;
+
+                String filename = fileEntry.getKey();
+                List<Finding> fileFindings = fileEntry.getValue();
+                String fileSeverity = getHighestSeverity(fileFindings);
+
+                String lines = fileFindings.stream()
+                        .map(f -> {
+                            String loc = f.getLocation();
+                            if (loc != null) {
+                                int lastColon = loc.lastIndexOf(':');
+                                if (lastColon > 0 && loc.substring(lastColon + 1).matches("\\d+")) {
+                                    return ":" + loc.substring(lastColon + 1);
+                                }
+                            }
+                            return "";
+                        })
+                        .filter(s -> !s.isEmpty())
+                        .collect(Collectors.joining(", "));
+
+                String subtaskSummary = String.format("[%s] %s - %s %s",
+                        fileSeverity, vulnName, filename, lines.isEmpty() ? "" : "(" + lines + ")");
+
+                StringBuilder subtaskDesc = new StringBuilder();
+                subtaskDesc.append("h3. Findings in {{").append(filename).append("}}\n\n");
+                subtaskDesc.append("||#||Severity||Location||\n");
+                int idx = 1;
+                for (Finding f : fileFindings) {
+                    subtaskDesc.append("|").append(idx++).append("|")
+                            .append(severityIcon(f.getSeverity().name())).append(" ").append(f.getSeverity())
+                            .append("|{{").append(f.getLocation()).append("}}|\n");
+                }
+                subtaskDesc.append("\n_Part of parent task ").append(parentKey).append("_\n");
+
+                String subtaskKey = createJiraIssue(config, subtaskSummary, subtaskDesc.toString(),
+                        mapSeverityToJiraPriority(fileSeverity), subtaskTypeName, parentKey);
+
+                if (subtaskKey != null) {
+                    for (Finding f : fileFindings) {
+                        f.setJiraTicketKey(subtaskKey);
+                        findingRepository.save(f);
+                    }
+                    ticketCount++;
+                    log.info("[JIRA] Created subtask {} under {} for file '{}' ({} findings)",
+                            subtaskKey, parentKey, filename, fileFindings.size());
+                }
             }
         }
         return ticketCount;
@@ -338,12 +443,38 @@ public class JiraApiClientService {
     }
 
     private String createJiraIssue(JiraConfiguration config, String summary, String description, String priority) {
+        return createJiraIssue(config, summary, description, priority, config.getJiraIssueType(), null);
+    }
+
+    private String createJiraIssue(JiraConfiguration config, String summary, String description,
+                                    String priority, String issueType, String parentKey) {
         try {
             Map<String, Object> fields = new LinkedHashMap<>();
             fields.put("project", Map.of("key", config.getJiraProjectKey()));
             fields.put("summary", truncate(summary, 255));
             fields.put("description", truncate(description, 32000));
-            fields.put("issuetype", Map.of("name", config.getJiraIssueType()));
+            fields.put("issuetype", Map.of("name", issueType));
+
+            if (parentKey != null && !parentKey.isBlank()) {
+                fields.put("parent", Map.of("key", parentKey));
+            }
+
+            if (config.getJiraLabels() != null && !config.getJiraLabels().isBlank()) {
+                List<String> labels = Arrays.stream(config.getJiraLabels().split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .collect(Collectors.toList());
+                if (!labels.isEmpty()) {
+                    fields.put("labels", labels);
+                }
+            }
+
+            if (parentKey == null && config.getJiraEpicKey() != null && !config.getJiraEpicKey().isBlank()) {
+                String epicLinkField = detectEpicLinkField(config);
+                if (epicLinkField != null) {
+                    fields.put(epicLinkField, config.getJiraEpicKey());
+                }
+            }
 
             Map<String, Object> body = Map.of("fields", fields);
 
@@ -453,15 +584,29 @@ public class JiraApiClientService {
     }
 
     /**
-     * Groups findings intelligently by vulnerability + source + repo to avoid ticket flooding.
+     * Groups findings by vulnerability + source + repo + filename.
+     * The filename is extracted from the location field (everything before the last ':line').
      */
     Map<String, List<Finding>> groupFindings(List<Finding> findings) {
         return findings.stream().collect(Collectors.groupingBy(f -> {
             String vulnName = f.getVulnerability() != null ? f.getVulnerability().getName() : "unknown";
             String source = f.getSource() != null ? f.getSource().name() : "unknown";
             String repo = f.getCodeRepo() != null ? f.getCodeRepo().getName() : "cloud";
-            return vulnName + "|" + source + "|" + repo;
+            String filename = extractFilename(f.getLocation());
+            return vulnName + "|" + source + "|" + repo + "|" + filename;
         }));
+    }
+
+    private String extractFilename(String location) {
+        if (location == null || location.isBlank()) return "unknown";
+        int lastColon = location.lastIndexOf(':');
+        if (lastColon > 0) {
+            String afterColon = location.substring(lastColon + 1);
+            if (afterColon.matches("\\d+")) {
+                return location.substring(0, lastColon);
+            }
+        }
+        return location;
     }
 
     private String buildSummary(Finding finding) {
@@ -539,10 +684,11 @@ public class JiraApiClientService {
         String repo = first.getCodeRepo() != null ? first.getCodeRepo().getName() : "Cloud";
         String severity = getHighestSeverity(findings);
         String source = first.getSource() != null ? first.getSource().name() : "";
+        String filename = extractFilename(first.getLocation());
         if (findings.size() == 1) {
-            return String.format("[%s][%s] %s - %s", severity, source, vulnName, repo);
+            return String.format("[%s][%s] %s - %s (%s)", severity, source, vulnName, repo, filename);
         }
-        return String.format("[%s][%s] %s (%d occurrences) - %s", severity, source, vulnName, findings.size(), repo);
+        return String.format("[%s][%s] %s (%d occurrences) - %s (%s)", severity, source, vulnName, findings.size(), repo, filename);
     }
 
     private String buildGroupDescription(List<Finding> findings) {
@@ -562,6 +708,8 @@ public class JiraApiClientService {
         if (first.getCodeRepo() != null) {
             sb.append("|*Repository*|").append(first.getCodeRepo().getName()).append("|\n");
         }
+        String filename = extractFilename(first.getLocation());
+        sb.append("|*File*|{{").append(filename).append("}}|\n");
         sb.append("|*Total Occurrences*|").append(findings.size()).append("|\n");
 
         // Vulnerability info
@@ -651,6 +799,107 @@ public class JiraApiClientService {
             case "INFO" -> "(/)";
             default -> "(!)";
         };
+    }
+
+    /**
+     * Detects the correct custom field ID for Epic Link.
+     * Cloud uses "Epic Link" (customfield_10014 typically), Server uses customfield_10008 etc.
+     * Falls back to "parent" field for next-gen projects.
+     */
+    @SuppressWarnings("unchecked")
+    private String detectEpicLinkField(JiraConfiguration config) {
+        try {
+            String raw = webClient.get()
+                    .uri(config.getJiraUrl() + "/rest/api/2/field")
+                    .headers(h -> buildAuthHeaders(h, config))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            if (raw != null) {
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                List<Map<String, Object>> fields = mapper.readValue(raw,
+                        mapper.getTypeFactory().constructCollectionType(List.class, Map.class));
+                for (Map<String, Object> field : fields) {
+                    String name = (String) field.get("name");
+                    if ("Epic Link".equalsIgnoreCase(name) || "Epic".equalsIgnoreCase(name)) {
+                        String id = (String) field.get("id");
+                        log.info("[JIRA] Detected epic link field: {} ({})", name, id);
+                        return id;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[JIRA] Could not detect Epic Link field: {}", e.getMessage());
+        }
+        return "customfield_10014";
+    }
+
+    /**
+     * Fetches epics from the configured JIRA project.
+     */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, String>> fetchEpics(String jiraUrl, String jiraUsername, String jiraToken,
+                                                 String projectKey, String authType) {
+        String normalizedUrl = jiraUrl.endsWith("/") ? jiraUrl.substring(0, jiraUrl.length() - 1) : jiraUrl;
+        String jql = "project=" + projectKey + " AND issuetype=Epic AND resolution=Unresolved ORDER BY created DESC";
+
+        try {
+            String raw = webClient.get()
+                    .uri(normalizedUrl + "/rest/api/2/search?jql=" + URLEncoder.encode(jql, java.nio.charset.StandardCharsets.UTF_8) + "&maxResults=100&fields=summary,key")
+                    .headers(h -> buildTempAuthHeaders(h, jiraUsername, jiraToken, authType))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            if (raw != null) {
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                Map<String, Object> parsed = mapper.readValue(raw, Map.class);
+                List<Map<String, Object>> issues = (List<Map<String, Object>>) parsed.get("issues");
+                if (issues != null) {
+                    return issues.stream().map(issue -> {
+                        String key = (String) issue.get("key");
+                        Map<String, Object> issueFields = (Map<String, Object>) issue.get("fields");
+                        String summary = issueFields != null ? (String) issueFields.get("summary") : "";
+                        return Map.of("key", key, "name", summary != null ? summary : "");
+                    }).collect(Collectors.toList());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[JIRA] Error fetching epics for project {}: {}", projectKey, e.getMessage());
+        }
+        return List.of();
+    }
+
+    /**
+     * Detects the subtask issue type name for the project.
+     */
+    @SuppressWarnings("unchecked")
+    private String detectSubtaskTypeName(JiraConfiguration config) {
+        try {
+            String raw = webClient.get()
+                    .uri(config.getJiraUrl() + "/rest/api/2/project/" + config.getJiraProjectKey())
+                    .headers(h -> buildAuthHeaders(h, config))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            if (raw != null) {
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                Map<String, Object> parsed = mapper.readValue(raw, Map.class);
+                List<Map<String, Object>> issueTypes = (List<Map<String, Object>>) parsed.get("issueTypes");
+                if (issueTypes != null) {
+                    for (Map<String, Object> it : issueTypes) {
+                        if (Boolean.TRUE.equals(it.get("subtask"))) {
+                            return (String) it.get("name");
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[JIRA] Could not detect subtask type: {}", e.getMessage());
+        }
+        return "Sub-task";
     }
 
     private String truncate(String s, int max) {

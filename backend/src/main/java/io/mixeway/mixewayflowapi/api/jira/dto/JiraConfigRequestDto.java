@@ -23,4 +23,10 @@ public class JiraConfigRequestDto {
     private boolean autoCreateEnabled = false;
 
     private String autoSeverityThreshold = "HIGH";
+
+    private String jiraLabels;
+
+    private String jiraEpicKey;
+
+    private boolean subtaskEnabled = false;
 }
