@@ -46,6 +46,7 @@ public class FindingsByTeamController {
             }
             return new ResponseEntity<>(findingsByTeamService.getCloudAndRepoFindingsAndVulns(remoteIdentifier, principal, pageable, filters), HttpStatus.OK);
         } catch (Exception e){
+            log.error("Error fetching findings for team remoteIdentifier={}: {}", remoteIdentifier, e.getMessage(), e);
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }
     }
