@@ -108,25 +108,25 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
            "JOIN f.codeRepo cr " +
            "JOIN f.codeRepoBranch b " +
            "WHERE f.codeRepo IN :codeRepos " +
-           "AND (COALESCE(:severity, f.severity) = f.severity) " +
-           "AND (COALESCE(:source, f.source) = f.source) " +
-           "AND (COALESCE(:status, f.status) = f.status) " +
-           "AND (:epss IS NULL OR v.epss >= :epss)" +
-           "AND (COALESCE(:kev, v.exploitExists) = v.exploitExists)" +
-           "AND (:name IS NULL OR LOWER(v.name) LIKE LOWER(CONCAT('%', :name, '%')))" +
+           "AND (:severity IS NULL OR f.severity = :severity) " +
+           "AND (:source IS NULL OR f.source = :source) " +
+           "AND (:status IS NULL OR f.status = :status) " +
+           "AND (:epss IS NULL OR v.epss >= :epss) " +
+           "AND (:kev IS NULL OR v.exploitExists = :kev) " +
+           "AND (:name IS NULL OR LOWER(v.name) = :name) " +
            "AND b = cr.defaultBranch")
-    Page<Finding> findByCodeReposPageable(@Param("codeRepos") List<CodeRepo> codeRepos, Pageable pageable,  @Param("severity") String severity, @Param("source") String source, @Param("status") String status, @Param("epss") BigDecimal epss,  @Param("kev")  Boolean exploitExists, @Param("name") String name);
+    Page<Finding> findByCodeReposPageable(@Param("codeRepos") List<CodeRepo> codeRepos, Pageable pageable, @Param("severity") Finding.Severity severity, @Param("source") Finding.Source source, @Param("status") Finding.Status status, @Param("epss") BigDecimal epss, @Param("kev") Boolean exploitExists, @Param("name") String name);
 
     @Query("SELECT f FROM Finding f " +
            "JOIN f.vulnerability v " +
            "WHERE f.cloudSubscription IN :cloudSubscriptions " +
-           "AND (COALESCE(:severity, f.severity) = f.severity) " +
-           "AND (COALESCE(:source, f.source) = f.source) " +
-           "AND (COALESCE(:status, f.status) = f.status) " +
-           "AND (:epss IS NULL OR v.epss >= :epss)" +
-           "AND (COALESCE(:kev, v.exploitExists) = v.exploitExists)" +
-           "AND (:name IS NULL OR LOWER(v.name) LIKE LOWER(CONCAT('%', :name, '%')))")
-    Page<Finding> findByCloudSubscriptionsPageable(@Param("cloudSubscriptions") List<CloudSubscription> cloudSubscriptions, Pageable pageable, @Param("severity") String severity, @Param("source") String source, @Param("status") String status, @Param("epss") BigDecimal epss,  @Param("kev")  Boolean exploitExists, @Param("name") String name);
+           "AND (:severity IS NULL OR f.severity = :severity) " +
+           "AND (:source IS NULL OR f.source = :source) " +
+           "AND (:status IS NULL OR f.status = :status) " +
+           "AND (:epss IS NULL OR v.epss >= :epss) " +
+           "AND (:kev IS NULL OR v.exploitExists = :kev) " +
+           "AND (:name IS NULL OR LOWER(v.name) = :name)")
+    Page<Finding> findByCloudSubscriptionsPageable(@Param("cloudSubscriptions") List<CloudSubscription> cloudSubscriptions, Pageable pageable, @Param("severity") Finding.Severity severity, @Param("source") Finding.Source source, @Param("status") Finding.Status status, @Param("epss") BigDecimal epss, @Param("kev") Boolean exploitExists, @Param("name") String name);
 
     List<Finding> findAllByCodeRepoAndVulnerabilityAndLocation(CodeRepo repo,
                                                                Vulnerability vuln,

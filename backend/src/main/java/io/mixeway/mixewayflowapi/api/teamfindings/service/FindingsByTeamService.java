@@ -162,13 +162,14 @@ public class FindingsByTeamService {
                 .flatMap(team -> findCloudSubscriptionService.getByTeam(team.getId(), principal).stream())
                 .collect(Collectors.toList());
 
-        String severity = filters.getOrDefault("severity", null);
-        String source = filters.getOrDefault("source", null);
-        String status = filters.getOrDefault("status", null);
-        String name = filters.getOrDefault("name", null);
-        if (name != null && name.isBlank()) {
-            name = null;
+        String severityStr = filters.getOrDefault("severity", null);
+        String sourceStr = filters.getOrDefault("source", null);
+        String statusStr = filters.getOrDefault("status", null);
+        String nameRaw = filters.getOrDefault("name", null);
+        if (nameRaw != null && nameRaw.isBlank()) {
+            nameRaw = null;
         }
+        String name = nameRaw != null ? nameRaw.toLowerCase() : null;
         String epssString = filters.getOrDefault("epss", null);
         BigDecimal epss = (epssString != null) ? new BigDecimal(epssString) : null;
         String kevStr = filters.getOrDefault("kev", null);
@@ -177,8 +178,16 @@ public class FindingsByTeamService {
         else if ("f".equalsIgnoreCase(kevStr) || "false".equalsIgnoreCase(kevStr)) kev = false;
         String urgencyFilter = filters.getOrDefault("urgency", null); // expected values: "urgent" | "notable"
 
-        Page<Finding> codeRepoFindingsPage = findingRepository.findByCodeReposPageable(codeRepos, pageable, severity, source, status, epss, kev, name);
-        Page<Finding> cloudSubscriptionFindingsPage = findingRepository.findByCloudSubscriptionsPageable(cloudSubscriptions, pageable, severity, source, status, epss, kev, name);
+        Finding.Severity severity = severityStr != null ? Finding.Severity.valueOf(severityStr.toUpperCase()) : null;
+        Finding.Source source = sourceStr != null ? Finding.Source.valueOf(sourceStr.toUpperCase()) : null;
+        Finding.Status status = statusStr != null ? Finding.Status.valueOf(statusStr.toUpperCase()) : null;
+
+        Page<Finding> codeRepoFindingsPage = codeRepos.isEmpty()
+                ? Page.empty(pageable)
+                : findingRepository.findByCodeReposPageable(codeRepos, pageable, severity, source, status, epss, kev, name);
+        Page<Finding> cloudSubscriptionFindingsPage = cloudSubscriptions.isEmpty()
+                ? Page.empty(pageable)
+                : findingRepository.findByCloudSubscriptionsPageable(cloudSubscriptions, pageable, severity, source, status, epss, kev, name);
 
         List<Finding> combinedFindings = Stream.concat(
                 codeRepoFindingsPage.getContent().stream(),
