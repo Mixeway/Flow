@@ -255,4 +255,4 @@ We ❤️ contributions — from bug fixes and docs to new rules and integration
 
 ## License
 
-This project is licensed under the **FlowLicense**. See **[LICENSE.md](LICENSE.md)** for details.
+This project is licensed under the **FlowLicense**. See **[LICENSE.md](LICENSE.md)** for details
