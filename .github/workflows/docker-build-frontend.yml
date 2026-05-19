@@ -10,6 +10,9 @@ on:
 jobs:
   build-and-push-frontend:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -35,5 +38,24 @@ jobs:
           tags: |
             mixeway/flow:latest
             mixeway/flow:latest-beta
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push multi-platform image to GHCR
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/mixeway/flow:latest
+            ghcr.io/mixeway/flow:latest-beta
           cache-from: type=gha
           cache-to: type=gha,mode=max
