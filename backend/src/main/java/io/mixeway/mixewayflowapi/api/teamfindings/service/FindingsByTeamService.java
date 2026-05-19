@@ -27,6 +27,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
@@ -166,7 +168,9 @@ public class FindingsByTeamService {
         String sourceStr = filters.getOrDefault("source", null);
         String statusStr = filters.getOrDefault("status", null);
         String nameRaw = filters.getOrDefault("name", null);
-        if (nameRaw != null && nameRaw.isBlank()) {
+        if (nameRaw != null && !nameRaw.isBlank()) {
+            nameRaw = URLDecoder.decode(nameRaw, StandardCharsets.UTF_8);
+        } else {
             nameRaw = null;
         }
         String name = nameRaw != null ? nameRaw.toLowerCase() : null;
