@@ -6,8 +6,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'backend/Dockerfile.base'
 
 jobs:
   build-base:
