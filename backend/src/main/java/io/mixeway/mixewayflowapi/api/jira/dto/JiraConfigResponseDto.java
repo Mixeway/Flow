@@ -17,5 +17,8 @@ public class JiraConfigResponseDto {
     private String authType;
     private boolean autoCreateEnabled;
     private String autoSeverityThreshold;
+    private String jiraLabels;
+    private String jiraEpicKey;
+    private boolean subtaskEnabled;
     private boolean configured;
 }

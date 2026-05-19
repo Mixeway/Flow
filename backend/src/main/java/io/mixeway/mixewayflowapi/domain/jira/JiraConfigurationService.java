@@ -27,13 +27,15 @@ public class JiraConfigurationService {
     @Transactional
     public JiraConfiguration create(Team team, String jiraUrl, String jiraToken, String jiraProjectKey,
                                      String jiraIssueType, String jiraUsername, String authType,
-                                     boolean autoCreateEnabled, String autoSeverityThreshold) {
+                                     boolean autoCreateEnabled, String autoSeverityThreshold,
+                                     String jiraLabels, String jiraEpicKey, boolean subtaskEnabled) {
         Optional<JiraConfiguration> existing = jiraConfigurationRepository.findByTeam(team);
         if (existing.isPresent()) {
             throw new IllegalStateException("JIRA configuration already exists for team: " + team.getName());
         }
         JiraConfiguration config = new JiraConfiguration(team, jiraUrl, jiraToken, jiraProjectKey,
-                jiraIssueType, jiraUsername, authType, autoCreateEnabled, autoSeverityThreshold);
+                jiraIssueType, jiraUsername, authType, autoCreateEnabled, autoSeverityThreshold,
+                jiraLabels, jiraEpicKey, subtaskEnabled);
         JiraConfiguration saved = jiraConfigurationRepository.save(config);
         log.info("[JIRA] Created configuration for team {} with project {} (auth: {})", team.getName(), jiraProjectKey, authType);
         return saved;
@@ -42,10 +44,12 @@ public class JiraConfigurationService {
     @Transactional
     public JiraConfiguration update(Team team, String jiraUrl, String jiraToken, String jiraProjectKey,
                                      String jiraIssueType, String jiraUsername, String authType,
-                                     boolean autoCreateEnabled, String autoSeverityThreshold) {
+                                     boolean autoCreateEnabled, String autoSeverityThreshold,
+                                     String jiraLabels, String jiraEpicKey, boolean subtaskEnabled) {
         JiraConfiguration config = jiraConfigurationRepository.findByTeam(team)
                 .orElseThrow(() -> new IllegalStateException("No JIRA configuration found for team: " + team.getName()));
-        config.update(jiraUrl, jiraToken, jiraProjectKey, jiraIssueType, jiraUsername, authType, autoCreateEnabled, autoSeverityThreshold);
+        config.update(jiraUrl, jiraToken, jiraProjectKey, jiraIssueType, jiraUsername, authType,
+                autoCreateEnabled, autoSeverityThreshold, jiraLabels, jiraEpicKey, subtaskEnabled);
         JiraConfiguration saved = jiraConfigurationRepository.save(config);
         log.info("[JIRA] Updated configuration for team {} with project {} (auth: {})", team.getName(), jiraProjectKey, authType);
         return saved;

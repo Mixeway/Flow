@@ -22,7 +22,7 @@ public class UserInfo {
     private final long id;
 
     @NotBlank(message = "Username must not be null")
-    @Size(max = 20, message = "Username must be up to 20 characters long")
+    @Size(max = 40, message = "Username must be up to 40 characters long")
     @Pattern(regexp = "^(?=.{1,39}$)[a-zA-Z0-9]([a-zA-Z0-9]|-(?!-))*[a-zA-Z0-9]$", message = "Username must be alphanumeric")
     @Column(name = "username", nullable = false, unique = true)
     private final String username;
@@ -73,7 +73,7 @@ public class UserInfo {
 
     // Public constructor for creating new UserInfo instances
     public UserInfo(String username, String password, Set<UserRole> roles) {
-        this.username = validateUsername(username);
+        this.username = username;
         this.password = validatePassword(password);
         this.apiKey = null;
         this.resetPassword = true;
@@ -82,12 +82,6 @@ public class UserInfo {
         this.id = 0;
     }
 
-    private String validateUsername(String username) {
-        if (username == null || username.length() > 20 || !username.matches("[a-zA-Z0-9]+")) {
-            throw new IllegalArgumentException("Invalid username: must be alphanumeric and up to 20 characters long.");
-        }
-        return username;
-    }
 
     private String validatePassword(String password) {
         if (password != null && password.length() < 8) {

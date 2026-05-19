@@ -12,6 +12,9 @@ export interface JiraConfigRequest {
     authType: string;
     autoCreateEnabled: boolean;
     autoSeverityThreshold: string;
+    jiraLabels: string;
+    jiraEpicKey: string;
+    subtaskEnabled: boolean;
 }
 
 export interface JiraConfigResponse {
@@ -24,6 +27,9 @@ export interface JiraConfigResponse {
     authType: string;
     autoCreateEnabled: boolean;
     autoSeverityThreshold: string;
+    jiraLabels: string;
+    jiraEpicKey: string;
+    subtaskEnabled: boolean;
     configured: boolean;
 }
 
@@ -82,6 +88,14 @@ export class JiraService {
     fetchIssueTypes(config: Partial<JiraConfigRequest>): Observable<string[]> {
         return this.http.post<string[]>(
             `${this.baseUrl}/api/v1/jira/issue-types`,
+            config,
+            { withCredentials: true }
+        );
+    }
+
+    fetchEpics(config: Partial<JiraConfigRequest>): Observable<{key: string, name: string}[]> {
+        return this.http.post<{key: string, name: string}[]>(
+            `${this.baseUrl}/api/v1/jira/epics`,
             config,
             { withCredentials: true }
         );
