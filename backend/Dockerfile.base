@@ -42,17 +42,7 @@ RUN wget -q https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-b
 ENV GRADLE_HOME=/opt/gradle/gradle-${GRADLE_VERSION}
 ENV PATH="$PATH:$GRADLE_HOME/bin"
 
-# ── cdxgen (GitHub binary; avoids npm registry TLS issues) ─
-ENV CDXGEN_VERSION=v12.3.3
-RUN ARCH=$(uname -m) && \
-    if [ "$ARCH" = "x86_64" ]; then \
-        wget -q -O /usr/local/bin/cdxgen "https://github.com/cdxgen/cdxgen/releases/download/${CDXGEN_VERSION}/cdxgen-linux-amd64"; \
-    elif [ "$ARCH" = "aarch64" ]; then \
-        wget -q -O /usr/local/bin/cdxgen "https://github.com/cdxgen/cdxgen/releases/download/${CDXGEN_VERSION}/cdxgen-linux-arm64"; \
-    else \
-        echo "Unsupported architecture: $ARCH"; exit 1; \
-    fi && \
-    chmod +x /usr/local/bin/cdxgen
+RUN npm install -g @cyclonedx/cdxgen@latest
 
 # ── Security scanners ───────────────────────────────────────
 RUN ARCH=$(uname -m) && \
