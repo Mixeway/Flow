@@ -68,17 +68,27 @@ ENV GRADLE_HOME=/opt/gradle/gradle-${GRADLE_VERSION}
 ENV PATH="$PATH:$GRADLE_HOME/bin"
 
 # ── Layer group 3: Security tools (rarely changes) ──────────
-RUN npm install -g @cyclonedx/cdxgen@latest
+# cdxgen: install official GitHub binary (avoids npm registry TLS issues behind some proxies).
+ENV CDXGEN_VERSION=v12.3.3
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+        wget -q -O /usr/local/bin/cdxgen "https://github.com/cdxgen/cdxgen/releases/download/${CDXGEN_VERSION}/cdxgen-linux-amd64"; \
+    elif [ "$ARCH" = "aarch64" ]; then \
+        wget -q -O /usr/local/bin/cdxgen "https://github.com/cdxgen/cdxgen/releases/download/${CDXGEN_VERSION}/cdxgen-linux-arm64"; \
+    else \
+        echo "Unsupported architecture: $ARCH"; exit 1; \
+    fi && \
+    chmod +x /usr/local/bin/cdxgen
 
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then \
         wget -O gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.12.0/gitleaks_8.12.0_linux_x64.tar.gz; \
         wget -O bearer.tar.gz https://github.com/Bearer/bearer/releases/download/v1.50.2/bearer_1.50.2_linux_amd64.tar.gz; \
-        wget -O grype.tar.gz https://github.com/anchore/grype/releases/download/v0.104.2/grype_0.104.2_linux_amd64.tar.gz; \
+        wget -O grype.tar.gz https://github.com/anchore/grype/releases/download/v0.112.0/grype_0.112.0_linux_amd64.tar.gz; \
     elif [ "$ARCH" = "aarch64" ]; then \
         wget -O gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.12.0/gitleaks_8.12.0_linux_arm64.tar.gz; \
         wget -O bearer.tar.gz https://github.com/Bearer/bearer/releases/download/v1.50.2/bearer_1.50.2_linux_arm64.tar.gz; \
-        wget -O grype.tar.gz https://github.com/anchore/grype/releases/download/v0.104.2/grype_0.104.2_linux_arm64.tar.gz; \
+        wget -O grype.tar.gz https://github.com/anchore/grype/releases/download/v0.112.0/grype_0.112.0_linux_arm64.tar.gz; \
     else \
         echo "Unsupported architecture: $ARCH"; exit 1; \
     fi && \

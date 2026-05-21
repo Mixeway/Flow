@@ -83,6 +83,8 @@ public class CdxGenService {
 
         ProcessBuilder pb = new ProcessBuilder(
                 "cdxgen",
+                "--spec-version",
+                "1.5",
                 "--recurse",
                 "--required-only",
                 "--output",
