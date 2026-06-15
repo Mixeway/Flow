@@ -135,6 +135,21 @@ export class DashboardComponent implements OnInit {
     accessToken: string = "";
     selectedRepo: string = "GitLab";
     teams: Team[] = [];
+    teamsForSelect: Team[] = [];
+    private allTeams: Team[] = [];
+    private teamsLoaded = false;
+    private teamsLoading = false;
+    private reposForTeams: CodeRepo[] = [];
+    private reposForTeamsLoaded = false;
+    private reposForTeamsLoading = false;
+    private cloudSubscriptionsLoaded = false;
+    private cloudSubscriptionsLoading = false;
+    private cloudRowsForTeams: CloudSubscription[] = [];
+    private cloudRowsForTeamsLoaded = false;
+    private cloudRowsForTeamsLoading = false;
+    private repositoryProvidersLoaded = false;
+    private repositoryProvidersLoading = false;
+    activeTab = 0;
     widgetStats: any;
     canManage: boolean = false;
     @Output() userRoleSet: EventEmitter<string> = new EventEmitter<string>();
@@ -287,13 +302,28 @@ export class DashboardComponent implements OnInit {
     };
 
     rows: CodeRepo[] = [];
+    repoTotalCount = 0;
+    repoPageSize = 10;
+    repoCurrentPage = 0;
+    reposLoading = false;
     repoRows: RepoRow[] = []
     columns: any[] = [];
 
     cloudRows: CloudSubscription[] = [];
+    cloudTotalCount = 0;
+    cloudPageSize = 10;
+    cloudCurrentPage = 0;
+    cloudLoading = false;
     cloudColumns: any[] = [];
 
     teamsColumns: any[] = [];
+    teamsTotalCount = 0;
+    teamsPageSize = 10;
+    teamsCurrentPage = 0;
+    teamsTableLoading = false;
+    importRepoTotalCount = 0;
+    importRepoPageSize = 50;
+    importRepoCurrentPage = 0;
 
     readonly #destroyRef: DestroyRef = inject(DestroyRef);
     readonly #document: Document = inject(DOCUMENT);
@@ -354,6 +384,7 @@ export class DashboardComponent implements OnInit {
 
 
     openChangeTeamModal() {
+        this.ensureTeamsLoaded();
         this.visibleChangeTeamModal = true;
     }
 
@@ -379,7 +410,7 @@ export class DashboardComponent implements OnInit {
                 this.showToast('success', 'Teams changed successfully for selected repositories.');
                 this.visibleChangeTeamModal = false;
                 this.selectedRepos = []; // Clear selection
-                this.loadCodeRepos(); // Refresh the repository list
+                this.loadCodeRepos(this.repoCurrentPage); // Refresh the repository list
             },
             error: (err) => {
                 this.showToast('danger', `Error changing teams: ${err.error?.message || 'Please try again.'}`);
@@ -389,6 +420,7 @@ export class DashboardComponent implements OnInit {
 
     // Add methods to handle the new modal
     connectProviderModal() {
+        this.ensureTeamsLoaded();
         this.visibleConnectProvider = true;
     }
 
@@ -439,13 +471,7 @@ export class DashboardComponent implements OnInit {
                 this.router.navigate(['/login']);
             }
         });
-        if (this.isAdmin) {
-            this.loadRepositoryProviders();
-        }
-
         this.loadCodeRepos();
-        this.loadCloudSubscriptions();
-        this.loadTeams();
         this.loadSecurityData();
         this.initColumns();
         this.initCloudColumns();
@@ -484,14 +510,31 @@ export class DashboardComponent implements OnInit {
 
     // Add this new method to fetch data
     loadRepositoryProviders() {
+        this.ensureRepositoryProvidersLoaded(true);
+    }
+
+    ensureRepositoryProvidersLoaded(forceReload = false) {
+        if (!this.isAdmin) {
+            return;
+        }
+        if (this.repositoryProvidersLoading) {
+            return;
+        }
+        if (this.repositoryProvidersLoaded && !forceReload) {
+            return;
+        }
+        this.repositoryProvidersLoading = true;
         // A new method in a service like DashboardService or a dedicated ProviderService is needed
         this.dashboardService.getRepositoryProviders().subscribe({
             next: (data) => {
                 this.providerRows = data;
+                this.repositoryProvidersLoaded = true;
+                this.repositoryProvidersLoading = false;
             },
             error: (err) => {
                 console.error('Failed to load repository providers', err);
                 this.showToast('danger', 'Could not load repository providers.');
+                this.repositoryProvidersLoading = false;
             }
         });
     }
@@ -675,29 +718,102 @@ export class DashboardComponent implements OnInit {
         return 'F';
     }
 
-    loadCodeRepos() {
-        this.dashboardService.getRepos().subscribe({
+    loadCodeRepos(page = 0) {
+        this.reposLoading = true;
+        this.dashboardService.getReposPaged(page, this.repoPageSize).subscribe({
             next: (response) => {
-                this.rows = response;
+                this.rows = response.content ?? [];
+                this.repoTotalCount = response.totalElements ?? this.rows.length;
+                this.repoCurrentPage = response.number ?? page;
                 this.temp = [...this.rows]; // Keep a backup of the original rows for filtering
-                this.loadTeams();
+                // Invalidate cached full repo list used for team-level status aggregation.
+                this.reposForTeams = [];
+                this.reposForTeamsLoaded = false;
+                if (this.activeTab === 2) {
+                    this.ensureReposForTeamsLoaded(true);
+                }
+                this.reposLoading = false;
             },
             error: (error) => {
                 // Handle error
                 console.error('Error loading code repos:', error);
+                this.reposLoading = false;
             }
         });
     }
 
-    loadCloudSubscriptions() {
-        this.cloudService.getCloudSubscriptions().subscribe({
+    onRepoPage(event: { offset: number }) {
+        const requestedPage = event?.offset ?? 0;
+        if (requestedPage === this.repoCurrentPage) {
+            return;
+        }
+        this.loadCodeRepos(requestedPage);
+    }
+
+    loadCloudSubscriptions(page = 0) {
+        this.ensureCloudSubscriptionsLoaded(true, page);
+    }
+
+    ensureCloudSubscriptionsLoaded(forceReload = false, page = 0) {
+        if (this.cloudSubscriptionsLoading) {
+            return;
+        }
+        if (this.cloudSubscriptionsLoaded && !forceReload) {
+            return;
+        }
+        this.cloudSubscriptionsLoading = true;
+        this.cloudLoading = true;
+        this.cloudService.getCloudSubscriptionsPaged(page, this.cloudPageSize).subscribe({
             next: (response) => {
-                this.cloudRows = response;
+                this.cloudRows = response.content ?? [];
+                this.cloudTotalCount = response.totalElements ?? this.cloudRows.length;
+                this.cloudCurrentPage = response.number ?? page;
                 this.cloudTemp = [...this.cloudRows];
+                this.cloudSubscriptionsLoaded = true;
+                this.cloudSubscriptionsLoading = false;
+                this.cloudLoading = false;
+                if (this.teamsLoaded && this.reposForTeamsLoaded && this.cloudRowsForTeamsLoaded) {
+                    this.rebuildTeamsWithStatuses();
+                }
             },
             error: (error) => {
                 // Handle error
                 console.error('Error loading cloud subscriptions:', error);
+                this.cloudSubscriptionsLoading = false;
+                this.cloudLoading = false;
+            }
+        });
+    }
+
+    onCloudPage(event: { offset: number }) {
+        const requestedPage = event?.offset ?? 0;
+        if (requestedPage === this.cloudCurrentPage) {
+            return;
+        }
+        this.loadCloudSubscriptions(requestedPage);
+    }
+
+    ensureCloudSubscriptionsForTeamsLoaded(forceReload = false) {
+        if (this.cloudRowsForTeamsLoading) {
+            return;
+        }
+        if (this.cloudRowsForTeamsLoaded && !forceReload) {
+            return;
+        }
+
+        this.cloudRowsForTeamsLoading = true;
+        this.cloudService.getCloudSubscriptions().subscribe({
+            next: (response) => {
+                this.cloudRowsForTeams = response ?? [];
+                this.cloudRowsForTeamsLoaded = true;
+                this.cloudRowsForTeamsLoading = false;
+                if (this.teamsLoaded && this.reposForTeamsLoaded) {
+                    this.rebuildTeamsWithStatuses();
+                }
+            },
+            error: (error) => {
+                console.error('Error loading full cloud subscriptions for team stats:', error);
+                this.cloudRowsForTeamsLoading = false;
             }
         });
     }
@@ -742,23 +858,146 @@ export class DashboardComponent implements OnInit {
     }
 
     loadTeams() {
+        this.ensureTeamsLoaded(true);
+    }
+
+    ensureTeamsLoaded(forceReload = false) {
+        if (this.teamsLoading) {
+            return;
+        }
+        if (this.teamsLoaded && !forceReload) {
+            return;
+        }
+        this.teamsLoading = true;
         this.teamService.get().subscribe({
             next: (response: Team[]) => {
-                this.teams = response.map((team: Team) => {
-                    const teamRepos = this.rows.filter((repo: CodeRepo) => repo.team.toLowerCase() === team.name.toLowerCase());
-                    const {sast, sca, iac, secrets, dast :string, gitlab} = this.getRepoScanStatus(teamRepos);
-
-                    const teamCloudSubscriptions = this.cloudRows.filter((cloudSubscription: CloudSubscription) => cloudSubscription.team.toLowerCase() === team.name.toLowerCase());
-                    const { cloudScan } = this.getCloudScanStatus(teamCloudSubscriptions);
-
-                    return {...team, sastStatus: sast, scaStatus: sca, iacStatus: iac, secretsStatus: secrets, gitlabStatus:gitlab, cloudScanStatus: cloudScan};
-                });
-                this.teamsTemp = [...this.teams];
+                this.allTeams = response ?? [];
+                this.teamsForSelect = [...this.allTeams];
+                this.teamsLoaded = true;
+                if (this.activeTab === 2 && this.reposForTeamsLoaded && this.cloudRowsForTeamsLoaded) {
+                    this.rebuildTeamsWithStatuses();
+                }
+                this.teamsLoading = false;
             },
             error: (error: any) => {
                 console.error('Error loading teams:', error);
+                this.teamsLoading = false;
             }
         });
+    }
+
+    loadTeamsPage(page = 0) {
+        this.teamsTableLoading = true;
+        this.teamService.getPaged(page, this.teamsPageSize).subscribe({
+            next: (response) => {
+                this.teams = response.content ?? [];
+                this.teamsTotalCount = response.totalElements ?? this.teams.length;
+                this.teamsCurrentPage = response.number ?? page;
+
+                if (this.reposForTeamsLoaded && this.cloudRowsForTeamsLoaded) {
+                    this.rebuildTeamsWithStatuses();
+                } else {
+                    this.teamsTemp = [...this.teams];
+                }
+
+                this.teamsTableLoading = false;
+            },
+            error: (error) => {
+                console.error('Error loading paged teams:', error);
+                this.teamsTableLoading = false;
+            }
+        });
+    }
+
+    onTeamsPage(event: { offset: number }) {
+        const requestedPage = event?.offset ?? 0;
+        if (requestedPage === this.teamsCurrentPage) {
+            return;
+        }
+        this.loadTeamsPage(requestedPage);
+    }
+
+    ensureReposForTeamsLoaded(forceReload = false) {
+        if (this.reposForTeamsLoading) {
+            return;
+        }
+        if (this.reposForTeamsLoaded && !forceReload) {
+            return;
+        }
+
+        this.reposForTeamsLoading = true;
+        this.dashboardService.getRepos().subscribe({
+            next: (response) => {
+                this.reposForTeams = response ?? [];
+                this.reposForTeamsLoaded = true;
+                if (this.teamsLoaded) {
+                    this.rebuildTeamsWithStatuses();
+                }
+                this.reposForTeamsLoading = false;
+            },
+            error: (error) => {
+                console.error('Error loading full code repos for team stats:', error);
+                this.reposForTeamsLoading = false;
+            }
+        });
+    }
+
+    rebuildTeamsWithStatuses() {
+        if (!this.teams.length) {
+            return;
+        }
+
+        const currentPageTeams = [...this.teams];
+        this.teams = currentPageTeams.map((team: Team) => {
+            const teamRepos = this.reposForTeams.filter((repo: CodeRepo) => repo.team.toLowerCase() === team.name.toLowerCase());
+            const {sast, sca, iac, secrets, gitlab} = this.getRepoScanStatus(teamRepos);
+
+            const teamCloudSubscriptions = this.cloudRowsForTeams.filter((cloudSubscription: CloudSubscription) => cloudSubscription.team.toLowerCase() === team.name.toLowerCase());
+            const {cloudScan} = this.getCloudScanStatus(teamCloudSubscriptions);
+
+            return {
+                ...team,
+                sastStatus: sast,
+                scaStatus: sca,
+                iacStatus: iac,
+                secretsStatus: secrets,
+                gitlabStatus: gitlab,
+                cloudScanStatus: cloudScan
+            };
+        });
+        this.teamsTemp = [...this.teams];
+    }
+
+    onTabSelected(tabIndex: number) {
+        this.activeTab = tabIndex;
+        if (tabIndex === 1) {
+            this.ensureCloudSubscriptionsLoaded();
+        }
+        if (tabIndex === 2) {
+            this.ensureTeamsLoaded();
+            this.loadTeamsPage(this.teamsCurrentPage);
+            this.ensureReposForTeamsLoaded();
+            this.ensureCloudSubscriptionsForTeamsLoaded();
+        }
+        if (tabIndex === 3) {
+            this.ensureRepositoryProvidersLoaded();
+        }
+    }
+
+    isRepoTabLoading(): boolean {
+        return this.reposLoading;
+    }
+
+    isCloudTabLoading(): boolean {
+        return this.cloudLoading;
+    }
+
+    isTeamsTabLoading(): boolean {
+        return this.teamsLoading || this.teamsTableLoading || this.reposForTeamsLoading || this.cloudRowsForTeamsLoading;
+    }
+
+    isProvidersTabLoading(): boolean {
+        return this.repositoryProvidersLoading;
     }
 
     getRepoScanStatus(repos: CodeRepo[]): { sast: string, sca: string, iac: string, secrets: string, dast: string, gitlab:string } {
@@ -945,6 +1184,95 @@ export class DashboardComponent implements OnInit {
         this.repoRows = filteredRepos;
     }
 
+    onImportRepoPage(event: { offset: number }) {
+        const requestedPage = event?.offset ?? 0;
+        if (requestedPage === this.importRepoCurrentPage) {
+            return;
+        }
+        this.loadImportReposPage(requestedPage);
+    }
+
+    loadImportReposPage(page = 0) {
+        this.isLoading = true;
+        const providerPage = page + 1;
+        const pageSize = this.importRepoPageSize;
+
+        if (this.selectedRepo === 'GitLab') {
+            this.gitLabService.getProjects(this.accessToken, providerPage, pageSize).subscribe({
+                next: (projects) => this.updateImportRepoPage(projects.map((proj: any) => ({
+                    id: proj.id,
+                    name: proj.name,
+                    repo_url: proj.web_url,
+                    namespace: proj.path_with_namespace,
+                    imported: false
+                })), page),
+                error: (error) => this.handleImportRepoPageError(error),
+                complete: () => this.isLoading = false
+            });
+        } else if (this.selectedRepo === 'GitHub') {
+            this.gitHubService.getRepositories(this.accessToken, providerPage, pageSize).subscribe({
+                next: (projects) => this.updateImportRepoPage(projects.map((proj: any) => ({
+                    id: proj.id,
+                    name: proj.name,
+                    repo_url: proj.web_url,
+                    namespace: proj.path_with_namespace,
+                    imported: false
+                })), page),
+                error: (error) => this.handleImportRepoPageError(error),
+                complete: () => this.isLoading = false
+            });
+        } else if (this.selectedRepo === 'Gitea') {
+            this.giteaService.getRepositories(this.accessToken, providerPage, pageSize).subscribe({
+                next: (projects) => this.updateImportRepoPage(projects.map((proj: any) => ({
+                    id: proj.id,
+                    name: proj.name,
+                    repo_url: proj.web_url,
+                    namespace: proj.path_with_namespace,
+                    imported: false
+                })), page),
+                error: (error) => this.handleImportRepoPageError(error),
+                complete: () => this.isLoading = false
+            });
+        } else if (this.selectedRepo === 'Bitbucket') {
+            this.bitbucketService.getRepositories(this.accessToken, providerPage, pageSize).subscribe({
+                next: (projects) => this.updateImportRepoPage(projects.map((proj: any) => ({
+                    id: proj.id,
+                    name: proj.name,
+                    repo_url: proj.web_url,
+                    namespace: proj.path_with_namespace,
+                    imported: false
+                })), page),
+                error: (error) => this.handleImportRepoPageError(error),
+                complete: () => this.isLoading = false
+            });
+        } else {
+            this.isLoading = false;
+            this.toastStatus = "danger";
+            this.toastMessage = "Unknown repo type.";
+            this.toggleToast();
+        }
+    }
+
+    private updateImportRepoPage(repos: RepoRow[], page: number) {
+        this.repoRows = repos;
+        this.importRepoCurrentPage = page;
+        const hasNextPage = repos.length === this.importRepoPageSize;
+        this.importRepoTotalCount = hasNextPage
+            ? ((page + 1) * this.importRepoPageSize) + 1
+            : (page * this.importRepoPageSize) + repos.length;
+        this.repoRows.forEach(repoRow => {
+            repoRow.imported = this.rows.some(row => row.repo_url === repoRow.repo_url);
+        });
+        this.tempRepos = [...this.repoRows];
+    }
+
+    private handleImportRepoPageError(error: any) {
+        console.error('Error fetching repositories page:', error);
+        this.toastStatus = "danger";
+        this.toastMessage = "Error fetching repositories from provider.";
+        this.toggleToast();
+    }
+
     nextPage(row: any) {
         console.log('Navigating to next page for:', row);
         // Add your navigation logic here
@@ -970,6 +1298,7 @@ export class DashboardComponent implements OnInit {
     public visibleNewTeam = false;
 
     importRepoModal() {
+        this.ensureTeamsLoaded();
         this.visible = !this.visible;
     }
 
@@ -997,119 +1326,29 @@ export class DashboardComponent implements OnInit {
     onSubmit(): void {
         if (this.importRepoForm.valid) {
             this.repoImported.emit(this.importRepoForm.value);
-            this.visible = false;
             this.repoUrl = this.importRepoForm.value.repoUrl;  // Store repoUrl
             this.accessToken = this.importRepoForm.value.accessToken;  // Store accessToken
-
-            this.isLoading = true;  // Show the spinner
+            this.importRepoCurrentPage = 0;
+            this.importRepoTotalCount = 0;
 
             if (this.selectedRepo === 'GitLab') {
                 this.gitLabService.setApiUrl(this.repoUrl);
-                this.gitLabService.getAllProjects(this.accessToken).subscribe({
-                    next: (projects) => {
-                        this.repoRows = projects.map(proj => ({
-                            id: proj.id,
-                            name: proj.name,
-                            repo_url: proj.web_url,
-                            namespace: proj.path_with_namespace,
-                            imported: false
-                        }));
-                        this.tempRepos = [...this.repoRows];  // Update the temp array with the new data
-                        this.visible = false;
-                        this.visibleList = true;
-                        // Check if any repo in rows matches the URL and set imported to true
-                        this.repoRows.forEach(repoRow => {
-                            repoRow.imported = this.rows.some(row => row.repo_url === repoRow.repo_url);
-                        });
-                    },
-                    error: (error) => {
-                        console.error('Error fetching projects:', error);
-                    },
-                    complete: () => {
-                        this.isLoading = false;  // Hide the spinner
-                    }
-                });
             } else if (this.selectedRepo === 'GitHub') {
                 this.gitHubService.setApiUrl(this.repoUrl);
-                this.gitHubService.getAllRepositories(this.accessToken).subscribe({
-                    next: (projects) => {
-                        this.repoRows = projects.map(proj => ({
-                            id: proj.id,
-                            name: proj.name,
-                            repo_url: proj.web_url,
-                            namespace: proj.path_with_namespace,
-                            imported: false
-                        }));
-                        this.tempRepos = [...this.repoRows];  // Update the temp array with the new data
-
-                        // Check if any repo in rows matches the URL and set imported to true
-                        this.repoRows.forEach(repoRow => {
-                            repoRow.imported = this.rows.some(row => row.repo_url === repoRow.repo_url);
-                        });
-                    },
-                    error: (error) => {
-                        console.error('Error fetching projects:', error);
-                    },
-                    complete: () => {
-                        this.isLoading = false;  // Hide the spinner
-                    }
-                });
             } else if (this.selectedRepo === 'Gitea') {
                 this.giteaService.setApiUrl(this.repoUrl);
-                this.giteaService.getAllRepositories(this.accessToken).subscribe({
-                    next: (projects) => {
-                        this.repoRows = projects.map(proj => ({
-                            id: proj.id,
-                            name: proj.name,
-                            repo_url: proj.web_url,
-                            namespace: proj.path_with_namespace,
-                            imported: false
-                        }));
-                        this.tempRepos = [...this.repoRows];
-
-                        this.repoRows.forEach(repoRow => {
-                            repoRow.imported = this.rows.some(row => row.repo_url === repoRow.repo_url);
-                        });
-                    },
-                    error: (error) => {
-                        console.error('Error fetching repositories:', error);
-                    },
-                    complete: () => {
-                        this.isLoading = false;
-                    }
-                });
             } else if (this.selectedRepo === 'Bitbucket') {
                 this.bitbucketService.setApiUrl(this.repoUrl);
-                this.bitbucketService.getAllRepositories(this.accessToken).subscribe({
-                    next: (projects) => {
-                        this.repoRows = projects.map(proj => ({
-                            id: proj.id,
-                            name: proj.name,
-                            repo_url: proj.web_url,
-                            namespace: proj.path_with_namespace,
-                            imported: false
-                        }));
-                        this.tempRepos = [...this.repoRows];
-
-                        this.repoRows.forEach(repoRow => {
-                            repoRow.imported = this.rows.some(row => row.repo_url === repoRow.repo_url);
-                        });
-                    },
-                    error: (error) => {
-                        console.error('Error fetching repositories:', error);
-                    },
-                    complete: () => {
-                        this.isLoading = false;
-                    }
-                });
             } else {
                 this.toastStatus = "danger"
                 this.toastMessage = "Unknown repo type."
                 this.toggleToast();
+                return;
             }
 
-            this.closeModal();
+            this.visible = false;
             this.visibleList = true;
+            this.loadImportReposPage(0);
         }
     }
 
@@ -1135,7 +1374,7 @@ export class DashboardComponent implements OnInit {
                 this.toastStatus = "success"
                 this.toastMessage = "Successfully imported repo: " + this.repoUrl
                 this.toggleToast();
-                this.loadCodeRepos();
+                this.loadCodeRepos(this.repoCurrentPage);
                 this.loadSecurityData(); // Reload security data after adding a repository
             },
             error: (error) => {
@@ -1151,6 +1390,7 @@ export class DashboardComponent implements OnInit {
     }
 
     createNewTeamModal() {
+        this.ensureTeamsLoaded();
         this.visibleNewTeam = true;
     }
 
@@ -1177,6 +1417,9 @@ export class DashboardComponent implements OnInit {
                     this.toastMessage = "Team created Successfully"
                     this.toggleToast();
                     this.loadTeams();
+                    if (this.activeTab === 2) {
+                        this.loadTeamsPage(this.teamsCurrentPage);
+                    }
                 },
                 error: (error) => {
                     this.toastStatus = "danger"
@@ -1189,6 +1432,7 @@ export class DashboardComponent implements OnInit {
     }
 
     importSingleRepoModal() {
+        this.ensureTeamsLoaded();
         this.visibleSingleRepoModal = true;
     }
 
@@ -1231,7 +1475,7 @@ export class DashboardComponent implements OnInit {
                     this.dashboardService.createRepo(repoObject, this.selectedRepo.toLowerCase()).subscribe({
                         next: () => {
                             this.showToast("success", `Successfully imported repo: ${repoUrl}`);
-                            this.loadCodeRepos();
+                            this.loadCodeRepos(this.repoCurrentPage);
                             this.loadSecurityData(); // Reload security data after adding a repository
                             this.visibleSingleRepoModal = false;
                         },
@@ -1267,7 +1511,7 @@ export class DashboardComponent implements OnInit {
                     this.dashboardService.createRepo(repoObject, this.selectedRepo.toLowerCase()).subscribe({
                         next: () => {
                             this.showToast("success", `Successfully imported repo: ${repoUrl}`);
-                            this.loadCodeRepos();
+                            this.loadCodeRepos(this.repoCurrentPage);
                             this.loadSecurityData(); // Reload security data after adding a repository
                             this.visibleSingleRepoModal = false;
                         },
@@ -1301,7 +1545,7 @@ export class DashboardComponent implements OnInit {
                     this.dashboardService.createRepo(repoObject, this.selectedRepo.toLowerCase()).subscribe({
                         next: () => {
                             this.showToast("success", `Successfully imported repo: ${repoUrl}`);
-                            this.loadCodeRepos();
+                            this.loadCodeRepos(this.repoCurrentPage);
                             this.loadSecurityData();
                             this.visibleSingleRepoModal = false;
                         },
@@ -1334,7 +1578,7 @@ export class DashboardComponent implements OnInit {
                     this.dashboardService.createRepo(repoObject, this.selectedRepo.toLowerCase()).subscribe({
                         next: () => {
                             this.showToast("success", `Successfully imported repo: ${repoUrl}`);
-                            this.loadCodeRepos();
+                            this.loadCodeRepos(this.repoCurrentPage);
                             this.loadSecurityData();
                             this.visibleSingleRepoModal = false;
                         },

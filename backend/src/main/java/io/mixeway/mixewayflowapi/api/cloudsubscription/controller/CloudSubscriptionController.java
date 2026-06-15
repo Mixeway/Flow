@@ -13,6 +13,8 @@ import io.mixeway.mixewayflowapi.utils.StatusDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -102,6 +104,17 @@ public class CloudSubscriptionController {
             return ResponseEntity.ok(cloudSubscriptionService.getCloudSubscriptions(principal));
         } catch (Exception e) {
             log.error("Error retrieving code repositories: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    @PreAuthorize("hasAuthority('USER')")
+    @GetMapping("/cloudsubscriptions/paged")
+    public ResponseEntity<Page<GetCloudSubscriptionsResponseDto>> getCloudSubscriptionsPaged(Principal principal, Pageable pageable) {
+        try {
+            return ResponseEntity.ok(cloudSubscriptionService.getCloudSubscriptions(principal, pageable));
+        } catch (Exception e) {
+            log.error("Error retrieving paged cloud subscriptions: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }

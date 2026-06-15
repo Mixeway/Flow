@@ -3,6 +3,8 @@ package io.mixeway.mixewayflowapi.db.repository;
 import io.mixeway.mixewayflowapi.api.cloudsubscription.dto.GetCloudSubscriptionsResponseDto;
 import io.mixeway.mixewayflowapi.db.entity.CloudSubscription;
 import io.mixeway.mixewayflowapi.db.entity.Team;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -28,6 +30,13 @@ public interface CloudSubscriptionRepository extends JpaRepository<CloudSubscrip
     @Query("SELECT new io.mixeway.mixewayflowapi.api.cloudsubscription.dto.GetCloudSubscriptionsResponseDto(c.id, c.name, t.name, c.external_project_name, c.scan_status) " +
             "FROM CloudSubscription c JOIN c.team t WHERE t IN :teams")
     List<GetCloudSubscriptionsResponseDto> findCloudSubscriptionDtosByTeamIn(@Param("teams") List<Team> teams);
+
+    @Query(
+            value = "SELECT new io.mixeway.mixewayflowapi.api.cloudsubscription.dto.GetCloudSubscriptionsResponseDto(c.id, c.name, t.name, c.external_project_name, c.scan_status) " +
+                    "FROM CloudSubscription c JOIN c.team t WHERE t IN :teams",
+            countQuery = "SELECT count(c) FROM CloudSubscription c WHERE c.team IN :teams"
+    )
+    Page<GetCloudSubscriptionsResponseDto> findCloudSubscriptionDtosByTeamIn(@Param("teams") List<Team> teams, Pageable pageable);
 
     @Modifying
     @Transactional

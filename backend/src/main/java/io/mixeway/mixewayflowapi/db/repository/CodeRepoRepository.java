@@ -3,6 +3,8 @@ package io.mixeway.mixewayflowapi.db.repository;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.GetCodeReposResponseDto;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.Team;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
@@ -28,6 +30,12 @@ public interface CodeRepoRepository extends CrudRepository<CodeRepo, Long> {
 
     @Query("SELECT new io.mixeway.mixewayflowapi.api.coderepo.dto.GetCodeReposResponseDto(c.id, c.name, c.repourl, t.name, c.sastScan, c.iacScan, c.secretsScan, c.scaScan, c.gitlabScan, c.dastScan) FROM CodeRepo c JOIN c.team t WHERE t IN :teams")
     List<GetCodeReposResponseDto> findCodeRepoDtosByTeamIn(@Param("teams") List<Team> teams);
+
+    @Query(
+            value = "SELECT new io.mixeway.mixewayflowapi.api.coderepo.dto.GetCodeReposResponseDto(c.id, c.name, c.repourl, t.name, c.sastScan, c.iacScan, c.secretsScan, c.scaScan, c.gitlabScan, c.dastScan) FROM CodeRepo c JOIN c.team t WHERE t IN :teams",
+            countQuery = "SELECT count(c) FROM CodeRepo c WHERE c.team IN :teams"
+    )
+    Page<GetCodeReposResponseDto> findCodeRepoDtosByTeamIn(@Param("teams") List<Team> teams, Pageable pageable);
 
     @Query("SELECT c FROM CodeRepo c JOIN FETCH c.team WHERE c.team IN :teams")
     List<CodeRepo> findByTeamIn(@Param("teams") List<Team> teams);

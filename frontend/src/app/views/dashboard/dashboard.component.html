@@ -237,21 +237,21 @@
     <c-col xs="12">
         <c-card class="mb-4">
             <c-card-body>
-                <c-tabs [activeItemKey]="0">
+                <c-tabs [activeItemKey]="activeTab">
                     <c-tabs-list variant="underline-border">
-                        <button cTab [itemKey]="0" class="px-4 py-3">
+                        <button cTab [itemKey]="0" class="px-4 py-3" (click)="onTabSelected(0)">
                             <svg cIcon name="cil-code" class="me-2"></svg>
                             Repositories
                         </button>
-                        <button cTab [itemKey]="1" class="px-4 py-3">
+                        <button cTab [itemKey]="1" class="px-4 py-3" (click)="onTabSelected(1)">
                             <svg cIcon name="cil-cloud" class="me-2"></svg>
                             Cloud Subscriptions
                         </button>
-                        <button cTab [itemKey]="2" class="px-4 py-3">
+                        <button cTab [itemKey]="2" class="px-4 py-3" (click)="onTabSelected(2)">
                             <svg cIcon name="cil-people" class="me-2"></svg>
                             Teams
                         </button>
-                        <button cTab [itemKey]="3" class="px-4 py-3" *ngIf="isAdmin">
+                        <button cTab [itemKey]="3" class="px-4 py-3" *ngIf="isAdmin" (click)="onTabSelected(3)">
                             <svg cIcon name="cil-cloud" class="me-2"></svg>
                             Repository Providers
                         </button>
@@ -259,6 +259,10 @@
 
                     <c-tabs-content>
                         <c-tab-panel class="p-3" [itemKey]="0">
+                            <div *ngIf="isRepoTabLoading()" class="d-flex align-items-center gap-2 mb-3">
+                                <c-spinner size="sm"></c-spinner>
+                                <small class="text-muted">Loading repositories...</small>
+                            </div>
                             <c-row class="mb-4">
                                 <c-col>
                                     <c-input-group class="dashboard-search-box">
@@ -320,16 +324,21 @@
                                     class="bootstrap security-table"
                                     [rows]="rows"
                                     [columns]="columns"
+                                    [count]="repoTotalCount"
+                                    [offset]="repoCurrentPage"
+                                    [limit]="repoPageSize"
+                                    [externalPaging]="true"
+                                    [loadingIndicator]="reposLoading"
                                     [selectionType]="selectionType.multiClick"
                                     (select)="onSelect($event)"
+                                    (page)="onRepoPage($event)"
                                     [selected]="selectedRepos"
                                     [rowIdentity]="rowIdentity"
                                     [selectAllRowsOnPage]="false"
                                     [columnMode]="'force'"
                                     [footerHeight]="50"
                                     [headerHeight]="50"
-                                    [rowHeight]="'auto'"
-                                    [limit]="10">
+                                    [rowHeight]="'auto'">
 
                                 <ngx-datatable-column name="" prop="name2" [width]="60" [sortable]="false" [resizeable]="false">
                                     <ng-template ngx-datatable-cell-template let-row="row">
@@ -386,6 +395,10 @@
 
                     <c-tabs-content>
                         <c-tab-panel class="p-3" [itemKey]="1">
+                            <div *ngIf="isCloudTabLoading()" class="d-flex align-items-center gap-2 mb-3">
+                                <c-spinner size="sm"></c-spinner>
+                                <small class="text-muted">Loading cloud subscriptions...</small>
+                            </div>
                             <c-row class="mb-4">
                                 <c-col>
                                     <c-input-group class="dashboard-search-box">
@@ -407,11 +420,16 @@
                                     class="bootstrap security-table"
                                     [rows]="cloudRows"
                                     [columns]="cloudColumns"
+                                    [count]="cloudTotalCount"
+                                    [offset]="cloudCurrentPage"
+                                    [limit]="cloudPageSize"
+                                    [externalPaging]="true"
+                                    [loadingIndicator]="cloudLoading"
+                                    (page)="onCloudPage($event)"
                                     [columnMode]="'force'"
                                     [footerHeight]="50"
                                     [headerHeight]="50"
                                     [rowHeight]="'auto'"
-                                    [limit]="10"
                             >
                                 <ngx-datatable-column name="" prop="name2" [width]="60" [sortable]="false"
                                                       [resizeable]="false">
@@ -471,6 +489,10 @@
 
                     <c-tabs-content>
                         <c-tab-panel class="p-3" [itemKey]="2">
+                            <div *ngIf="isTeamsTabLoading()" class="d-flex align-items-center gap-2 mb-3">
+                                <c-spinner size="sm"></c-spinner>
+                                <small class="text-muted">Loading teams and statuses...</small>
+                            </div>
                             <c-row class="mb-4">
                                 <c-col>
                                     <c-input-group class="dashboard-search-box">
@@ -492,11 +514,16 @@
                                     class="bootstrap security-table"
                                     [rows]="teams"
                                     [columns]="teamsColumns"
+                                    [count]="teamsTotalCount"
+                                    [offset]="teamsCurrentPage"
+                                    [limit]="teamsPageSize"
+                                    [externalPaging]="true"
+                                    [loadingIndicator]="teamsTableLoading"
+                                    (page)="onTeamsPage($event)"
                                     [columnMode]="'force'"
                                     [footerHeight]="50"
                                     [headerHeight]="50"
                                     [rowHeight]="'auto'"
-                                    [limit]="10"
                             >
                                 <ngx-datatable-column name="" prop="name2" [width]="60" [sortable]="false"
                                                       [resizeable]="false">
@@ -687,10 +714,15 @@
 
 
                     <c-tab-panel class="p-3" [itemKey]="3" *ngIf="isAdmin">
+                        <div *ngIf="isProvidersTabLoading()" class="d-flex align-items-center gap-2 mb-3">
+                            <c-spinner size="sm"></c-spinner>
+                            <small class="text-muted">Loading repository providers...</small>
+                        </div>
                         <ngx-datatable
                                 class="bootstrap security-table"
                                 [rows]="providerRows"
                                 [columns]="providerColumns"
+                                [loadingIndicator]="isProvidersTabLoading()"
                                 [columnMode]="'force'"
                                 [footerHeight]="50"
                                 [headerHeight]="50"
@@ -760,11 +792,16 @@
             <ngx-datatable
                     class="bootstrap"
                     [rows]="repoRows"
+                    [count]="importRepoTotalCount"
+                    [offset]="importRepoCurrentPage"
+                    [limit]="importRepoPageSize"
+                    [externalPaging]="true"
+                    [loadingIndicator]="isLoading"
+                    (page)="onImportRepoPage($event)"
                     [columnMode]="'force'"
                     [footerHeight]="50"
                     [headerHeight]="50"
                     [rowHeight]="'auto'"
-                    [limit]="10"
             >
                 <ngx-datatable-column name="Name" prop="name"></ngx-datatable-column>
                 <ngx-datatable-column name="Namespace" prop="namespace"></ngx-datatable-column>
@@ -934,7 +971,7 @@
                     </span>
                     <select cSelect id="inputGroupSelect01" formControlName="team" required>
                         <option value="" disabled selected>Select Team...</option>
-                        <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
+                        <option *ngFor="let team of teamsForSelect" [value]="team.id">{{ team.name }}</option>
                     </select>
                     <div class="invalid-feedback"
                          *ngIf="importRepoForm.get('team')?.invalid && importRepoForm.get('team')?.touched">
@@ -1101,7 +1138,7 @@
                     </span>
                     <select cSelect id="inputGroupSelect02" formControlName="team" required>
                         <option value="" disabled selected>Select Team...</option>
-                        <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
+                        <option *ngFor="let team of teamsForSelect" [value]="team.id">{{ team.name }}</option>
                     </select>
                     <div class="invalid-feedback"
                          *ngIf="importSingleRepoForm.get('team')?.invalid && importSingleRepoForm.get('team')?.touched">
@@ -1256,7 +1293,7 @@
                 <label for="defaultTeam" class="form-label">Default Team</label>
                 <select cSelect id="defaultTeam" formControlName="defaultTeamId" required>
                     <option value="" disabled selected>Assign to team...</option>
-                    <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
+                    <option *ngFor="let team of teamsForSelect" [value]="team.id">{{ team.name }}</option>
                 </select>
             </div>
         </form>
@@ -1289,7 +1326,7 @@
                 <label for="newTeamIdSelect" class="form-label">New Team</label>
                 <select cSelect id="newTeamIdSelect" formControlName="newTeamId" required>
                     <option value="" disabled selected>Select new team...</option>
-                    <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
+                    <option *ngFor="let team of teamsForSelect" [value]="team.id">{{ team.name }}</option>
                 </select>
             </div>
         </form>

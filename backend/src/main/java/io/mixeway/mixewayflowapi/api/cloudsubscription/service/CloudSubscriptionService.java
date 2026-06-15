@@ -13,6 +13,8 @@ import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
 import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import io.mixeway.mixewayflowapi.utils.PermissionFactory;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.security.Principal;
@@ -51,6 +53,10 @@ public class CloudSubscriptionService {
 
     public List<GetCloudSubscriptionsResponseDto> getCloudSubscriptions(Principal principal) {
         return findCloudSubscriptionService.getCloudSubscriptionResponseDtos(principal);
+    }
+
+    public Page<GetCloudSubscriptionsResponseDto> getCloudSubscriptions(Principal principal, Pageable pageable) {
+        return findCloudSubscriptionService.getCloudSubscriptionResponseDtos(principal, pageable);
     }
 
     public void runScan(Long id, Principal principal) {
