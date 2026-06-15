@@ -11,6 +11,8 @@ import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
 import io.mixeway.mixewayflowapi.utils.PermissionFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.security.Principal;
@@ -48,6 +50,15 @@ public class FindCloudSubscriptionService {
                 : new ArrayList<>(userInfo.getTeams());
 
         return cloudSubscriptionRepository.findCloudSubscriptionDtosByTeamIn(userTeams);
+    }
+
+    public Page<GetCloudSubscriptionsResponseDto> getCloudSubscriptionResponseDtos(Principal principal, Pageable pageable) {
+        UserInfo userInfo = findUserService.findUser(principal.getName());
+        List<Team> userTeams = userInfo.getHighestRole().equals("ADMIN")
+                ? findTeamService.findAll()
+                : new ArrayList<>(userInfo.getTeams());
+
+        return cloudSubscriptionRepository.findCloudSubscriptionDtosByTeamIn(userTeams, pageable);
     }
 
     public CloudSubscription findById(Long id, Principal principal) {

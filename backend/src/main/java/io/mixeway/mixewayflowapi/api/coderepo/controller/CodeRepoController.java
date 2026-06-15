@@ -14,6 +14,8 @@ import io.mixeway.mixewayflowapi.utils.StatusDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -93,6 +95,16 @@ public class CodeRepoController {
             return new ResponseEntity<>(codeRepoApiService.getRepos(principal), HttpStatus.OK);
         } catch (Exception e){
             return new ResponseEntity<>( HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('USER')")
+    @GetMapping(value = "/api/v1/coderepo/paged")
+    public ResponseEntity<Page<GetCodeReposResponseDto>> getReposPaged(Principal principal, Pageable pageable) {
+        try {
+            return new ResponseEntity<>(codeRepoApiService.getRepos(principal, pageable), HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
     }
 

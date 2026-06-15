@@ -10,6 +10,7 @@ import io.mixeway.mixewayflowapi.db.repository.UserRepository;
 import io.mixeway.mixewayflowapi.utils.PermissionFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -43,6 +44,37 @@ public class FindTeamService {
                     .build());
         }
         return  teamDtos;
+    }
+
+    public Page<TeamDto> findAllTeams(Principal principal, Pageable pageable) {
+        List<Team> allTeams = permissionFactory.findTeams(principal);
+
+        int pageSize = pageable.getPageSize();
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageSize, allTeams.size());
+
+        if (start >= allTeams.size()) {
+            return new PageImpl<>(Collections.emptyList(), pageable, allTeams.size());
+        }
+
+        List<TeamDto> pagedDtos = new ArrayList<>();
+        for (Team team : allTeams.subList(start, end)) {
+            List<SimpleUserDto> simpleUserDtos = new ArrayList<>();
+            for (UserInfo userInfo : userRepository.getUsersByTeamId(team.getId())) {
+                simpleUserDtos.add(SimpleUserDto.builder()
+                        .id(userInfo.getId())
+                        .username(userInfo.getUsername())
+                        .build());
+            }
+            pagedDtos.add(TeamDto.builder()
+                    .name(team.getName())
+                    .id(team.getId())
+                    .remoteIdentifier(team.getRemoteIdentifier())
+                    .users(simpleUserDtos)
+                    .build());
+        }
+
+        return new PageImpl<>(pagedDtos, pageable, allTeams.size());
     }
 
     public Page<TeamIdDto> findAllTeamsIds(Principal principal, Pageable pageable) {

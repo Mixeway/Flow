@@ -22,6 +22,8 @@ import io.mixeway.mixewayflowapi.utils.PermissionFactory;
 import com.fasterxml.jackson.core.JacksonException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -54,6 +56,10 @@ public class CodeRepoApiService {
 
     public List<GetCodeReposResponseDto> getRepos(Principal principal) {
         return findCodeRepoService.getCodeReposResponseDtos(principal);
+    }
+
+    public Page<GetCodeReposResponseDto> getRepos(Principal principal, Pageable pageable) {
+        return findCodeRepoService.getCodeReposResponseDtos(principal, pageable);
     }
 
     public CodeRepo getRepo(Long id, Principal principal) {
