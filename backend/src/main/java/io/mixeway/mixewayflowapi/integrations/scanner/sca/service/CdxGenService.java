@@ -100,6 +100,11 @@ public class CdxGenService {
         Map<String, String> env = pb.environment();
         env.put("CDXGEN_DEBUG_MODE", "debug");
         env.put("CDX_MAVEN_INCLUDE_TEST_SCOPE", "false");
+        // Recent cdxgen versions run a startup "secure mode" environment audit that flags
+        // running as root (UID 0) as a HIGH finding and aborts (process.exit(1)), leaving an
+        // empty/partial sbom.json. The app process runs as root inside the container, so we
+        // declare the container context to suppress the root finding and avoid the abort.
+        env.put("CDXGEN_IN_CONTAINER", "true");
 
         if (StringUtils.hasText(proxyHost) && proxyPort != null) {
             String proxyUrl = "http://" + proxyHost + ":" + proxyPort;
