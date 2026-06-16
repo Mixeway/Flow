@@ -24,12 +24,12 @@ INSERT INTO public.team VALUES (3, 'Team C', 'empty');
 --
 ALTER TABLE public.coderepo_branch DISABLE TRIGGER ALL;
 
-INSERT INTO public.coderepo_branch VALUES (1, 'master', 1);
-INSERT INTO public.coderepo_branch VALUES (2, 'master', 2);
-INSERT INTO public.coderepo_branch VALUES (3, 'master', 3);
-INSERT INTO public.coderepo_branch VALUES (4, 'master', 4);
-INSERT INTO public.coderepo_branch VALUES (5, 'master', 5);
-INSERT INTO public.coderepo_branch VALUES (6, 'main', 6);
+INSERT INTO public.coderepo_branch (id, name, coderepo_id, exists_on_remote) VALUES (1, 'master', 1, true);
+INSERT INTO public.coderepo_branch (id, name, coderepo_id, exists_on_remote) VALUES (2, 'master', 2, true);
+INSERT INTO public.coderepo_branch (id, name, coderepo_id, exists_on_remote) VALUES (3, 'master', 3, true);
+INSERT INTO public.coderepo_branch (id, name, coderepo_id, exists_on_remote) VALUES (4, 'master', 4, true);
+INSERT INTO public.coderepo_branch (id, name, coderepo_id, exists_on_remote) VALUES (5, 'master', 5, true);
+INSERT INTO public.coderepo_branch (id, name, coderepo_id, exists_on_remote) VALUES (6, 'main', 6, true);
 
 
 --

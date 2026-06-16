@@ -171,7 +171,6 @@ public class GitService {
                 }
             }
         }
-        log.info("[Git Service] Listed {} remote branches for {}", branches.size(), repoUrl);
         return branches;
     }
 

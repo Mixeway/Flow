@@ -814,3 +814,7 @@ ALTER TABLE jira_configuration ADD COLUMN auth_type VARCHAR(20) NOT NULL DEFAULT
 ALTER TABLE jira_configuration ADD COLUMN jira_labels TEXT;
 ALTER TABLE jira_configuration ADD COLUMN jira_epic_key VARCHAR(50);
 ALTER TABLE jira_configuration ADD COLUMN subtask_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+
+--changeset siewer:coderepo-branch-remote-flag
+ALTER TABLE coderepo_branch
+    ADD COLUMN IF NOT EXISTS exists_on_remote BOOLEAN NOT NULL DEFAULT TRUE;

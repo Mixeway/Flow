@@ -38,6 +38,10 @@ export class DashboardService {
         return this.http.get<any>(this.loginUrl + '/api/v1/coderepo',{ withCredentials: true });
     }
 
+    getReposPaged(page: number, size: number): Observable<any> {
+        return this.http.get<any>(`${this.loginUrl}/api/v1/coderepo/paged?page=${page}&size=${size}`, { withCredentials: true });
+    }
+
     createRepo(createRepo: CreateRepo, repoType: string): Observable<any> {
         return this.http.post<any>(this.loginUrl + '/api/v1/coderepo/create/'+repoType, createRepo,{ withCredentials: true });
     }
