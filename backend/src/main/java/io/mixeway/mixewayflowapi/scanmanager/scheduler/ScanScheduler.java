@@ -6,6 +6,7 @@ import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
 import io.mixeway.mixewayflowapi.db.repository.RepositoryProviderRepository;
 import io.mixeway.mixewayflowapi.domain.scaninfo.FindScanInfoService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GetCodeRepoInfoService;
+import io.mixeway.mixewayflowapi.integrations.repo.service.RepositoryMetadataSyncService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.RepositorySyncService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.service.SCAService;
 import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
@@ -43,6 +44,7 @@ public class ScanScheduler {
     private static final int DAYS_SINCE_LAST_SCAN = 14; // was 7
     private final RepositoryProviderRepository providerRepository;
     private final RepositorySyncService syncService;
+    private final RepositoryMetadataSyncService repositoryMetadataSyncService;
 
     /**
      * Initializes the SCA environment after the application startup.
@@ -58,6 +60,11 @@ public class ScanScheduler {
     @Scheduled(cron = "0 0 1 * * ?") // Every day at 1:00 AM
     public void syncAllRepositories() {
         providerRepository.findAll().forEach(syncService::syncProvider);
+    }
+
+    @Scheduled(cron = "0 30 1 * * ?") // Every day at 1:30 AM
+    public void syncAllRepositoryMetadata() {
+        repositoryMetadataSyncService.syncAllRepositoriesMetadata();
     }
     /**
      * Scheduled task that runs every day at 1 AM.

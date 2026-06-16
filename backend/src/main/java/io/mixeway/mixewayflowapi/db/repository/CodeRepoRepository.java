@@ -53,6 +53,17 @@ public interface CodeRepoRepository extends CrudRepository<CodeRepo, Long> {
     @Query("SELECT c.remoteId FROM CodeRepo c WHERE c.type = :type AND c.repourl LIKE CONCAT(:prefix, '%')")
     List<Integer> findRemoteIdsByTypeAndRepourlPrefix(@Param("type") CodeRepo.RepoType type, @Param("prefix") String prefix);
 
+    @Query("SELECT c FROM CodeRepo c WHERE c.type = :type AND c.repourl LIKE CONCAT(:prefix, '%')")
+    List<CodeRepo> findByTypeAndRepourlPrefix(@Param("type") CodeRepo.RepoType type, @Param("prefix") String prefix);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE CodeRepo c SET c.name = :name, c.repourl = :repoUrl, c.defaultBranch = :defaultBranch WHERE c.id = :repoId")
+    void updateRepositoryMetadata(@Param("repoId") Long repoId,
+                                  @Param("name") String name,
+                                  @Param("repoUrl") String repoUrl,
+                                  @Param("defaultBranch") io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch defaultBranch);
+
     @Query("SELECT count(c) FROM CodeRepo c WHERE c.repourl LIKE CONCAT(:gitHostUrl, '%')")
     long countByRepoUrlStartingWith(@Param("gitHostUrl") String gitHostUrl);
 

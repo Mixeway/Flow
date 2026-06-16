@@ -5,10 +5,13 @@ import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface CodeRepoBranchRepository extends CrudRepository<CodeRepoBranch, Long> {
     Optional<CodeRepoBranch> findByNameAndCodeRepo(String name, CodeRepo codeRepo);
+    List<CodeRepoBranch> findByCodeRepo(CodeRepo codeRepo);
+    List<CodeRepoBranch> findByCodeRepoAndExistsOnRemoteTrue(CodeRepo codeRepo);
 
 }

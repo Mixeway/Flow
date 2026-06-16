@@ -24,6 +24,10 @@ export class CloudService {
         return this.http.get<CloudSubscription[]>(this.loginUrl + '/api/v1/cloudsubscription/cloudsubscriptions', { withCredentials: true });
     }
 
+    getCloudSubscriptionsPaged(page: number, size: number): Observable<any> {
+        return this.http.get<any>(`${this.loginUrl}/api/v1/cloudsubscription/cloudsubscriptions/paged?page=${page}&size=${size}`, { withCredentials: true });
+    }
+
     getAggregatedStats(): Observable<any> {
         return this.http.get<any>(this.loginUrl + '/api/v1/widget_stats', { withCredentials: true });
     }
