@@ -216,7 +216,7 @@ public class ScanManagerService {
                     }
 
                 } catch (Exception e) {
-                    log.error("[ScanManagerService] Exception during scan, failed to fetch repository: {}", codeRepo.getRepourl());
+                    log.error("[ScanManagerService] Exception during scan, failed to fetch repository: {} - {}", codeRepo.getRepourl(), e.getMessage(), e);
                 } finally {
                     // Update status
                     try {
@@ -351,7 +351,7 @@ public class ScanManagerService {
                     }
 
                 } catch (Exception e) {
-                    log.error("[ScanManagerService] Exception during scan, failed to fetch repository: {}", codeRepo.getRepourl());
+                    log.error("[ScanManagerService] Exception during scan, failed to fetch repository: {} - {}", codeRepo.getRepourl(), e.getMessage(), e);
                 } finally {
                     // Update status
                     try {
