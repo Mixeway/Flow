@@ -820,7 +820,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
 
     onBranchSelect(event: any) {
         const branchIdValue = event.target.value;
-        const allBranches = [this.repoData?.defaultBranch, ...(this.repoData?.branches || [])];
+        const allBranches = this.getVisibleRepoBranches();
         const branch = allBranches.find((b: any) => b && String(b.id) === String(branchIdValue));
         this.selectedBranch = branch?.name || null;
         this.selectedBranchId = branch ? +branch.id : null;
@@ -844,10 +844,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
             return;
         }
         const branchName = this.initialBranchName;
-        const allBranches = [...(this.repoData.branches || [])];
-        if (this.repoData.defaultBranch) {
-            allBranches.unshift(this.repoData.defaultBranch);
-        }
+        const allBranches = this.getVisibleRepoBranches();
 
         const matchedBranch = allBranches.find(
             (b: any) => b.name === branchName
@@ -873,6 +870,17 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
             });
         }
         this.initialBranchName = null;
+    }
+
+    private getVisibleRepoBranches(): any[] {
+        const branches = this.repoData?.branches || [];
+        const visibleBranches = branches.filter((branch: any) =>
+            !!branch && branch.existsOnRemote === true
+        );
+        if (this.repoData?.defaultBranch) {
+            return [this.repoData.defaultBranch, ...visibleBranches];
+        }
+        return visibleBranches;
     }
 
     private sortByUrgencyThenOriginal(rows: any[]): any[] {
