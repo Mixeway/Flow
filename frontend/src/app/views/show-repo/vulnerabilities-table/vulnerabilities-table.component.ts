@@ -121,6 +121,16 @@ export class VulnerabilitiesTableComponent implements OnInit, OnChanges {
     return this.ensureCurrentFilters();
   }
 
+  get visibleBranches(): any[] {
+    const branches = this.repoData?.branches || [];
+    const defaultBranchId = this.repoData?.defaultBranch?.id;
+    return branches.filter((branch: any) =>
+      !!branch &&
+      branch.existsOnRemote === true &&
+      String(branch.id) !== String(defaultBranchId)
+    );
+  }
+
   ngOnInit(): void {}
 
   ngOnChanges(changes: SimpleChanges): void {
