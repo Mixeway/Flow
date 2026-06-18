@@ -110,9 +110,12 @@ public class CloudSubscriptionController {
 
     @PreAuthorize("hasAuthority('USER')")
     @GetMapping("/cloudsubscriptions/paged")
-    public ResponseEntity<Page<GetCloudSubscriptionsResponseDto>> getCloudSubscriptionsPaged(Principal principal, Pageable pageable) {
+    public ResponseEntity<Page<GetCloudSubscriptionsResponseDto>> getCloudSubscriptionsPaged(
+            Principal principal,
+            Pageable pageable,
+            @RequestParam(name = "search", required = false) String search) {
         try {
-            return ResponseEntity.ok(cloudSubscriptionService.getCloudSubscriptions(principal, pageable));
+            return ResponseEntity.ok(cloudSubscriptionService.getCloudSubscriptions(principal, pageable, search));
         } catch (Exception e) {
             log.error("Error retrieving paged cloud subscriptions: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();

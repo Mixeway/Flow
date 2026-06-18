@@ -124,6 +124,7 @@ interface CloudSubscription {
     ]
 })
 export class DashboardComponent implements OnInit {
+    private static readonly SEARCH_DEBOUNCE_MS = 300;
 
     @ViewChild('actionsTemplate', {static: true}) actionsTemplate!: TemplateRef<any>;
     @Output() repoImported = new EventEmitter<{ repoUrl: string, accessToken: string }>();
@@ -305,6 +306,7 @@ export class DashboardComponent implements OnInit {
     repoTotalCount = 0;
     repoPageSize = 10;
     repoCurrentPage = 0;
+    repoSearchTerm = '';
     reposLoading = false;
     repoRows: RepoRow[] = []
     columns: any[] = [];
@@ -313,6 +315,7 @@ export class DashboardComponent implements OnInit {
     cloudTotalCount = 0;
     cloudPageSize = 10;
     cloudCurrentPage = 0;
+    cloudSearchTerm = '';
     cloudLoading = false;
     cloudColumns: any[] = [];
 
@@ -320,10 +323,16 @@ export class DashboardComponent implements OnInit {
     teamsTotalCount = 0;
     teamsPageSize = 10;
     teamsCurrentPage = 0;
+    teamsSearchTerm = '';
     teamsTableLoading = false;
     importRepoTotalCount = 0;
     importRepoPageSize = 50;
     importRepoCurrentPage = 0;
+    providerSearchTerm = '';
+    private repoSearchDebounceTimer?: ReturnType<typeof setTimeout>;
+    private cloudSearchDebounceTimer?: ReturnType<typeof setTimeout>;
+    private teamsSearchDebounceTimer?: ReturnType<typeof setTimeout>;
+    private providerSearchDebounceTimer?: ReturnType<typeof setTimeout>;
 
     readonly #destroyRef: DestroyRef = inject(DestroyRef);
     readonly #document: Document = inject(DOCUMENT);
@@ -372,6 +381,20 @@ export class DashboardComponent implements OnInit {
         });
         this.changeTeamForm = this.fb.group({
             newTeamId: ['', Validators.required]
+        });
+        this.#destroyRef.onDestroy(() => {
+            if (this.repoSearchDebounceTimer) {
+                clearTimeout(this.repoSearchDebounceTimer);
+            }
+            if (this.cloudSearchDebounceTimer) {
+                clearTimeout(this.cloudSearchDebounceTimer);
+            }
+            if (this.teamsSearchDebounceTimer) {
+                clearTimeout(this.teamsSearchDebounceTimer);
+            }
+            if (this.providerSearchDebounceTimer) {
+                clearTimeout(this.providerSearchDebounceTimer);
+            }
         });
     }
     onSelect({ selected }: { selected: any[] }) {
@@ -520,15 +543,16 @@ export class DashboardComponent implements OnInit {
         if (this.repositoryProvidersLoading) {
             return;
         }
-        if (this.repositoryProvidersLoaded && !forceReload) {
+        if (!this.providerSearchTerm && this.repositoryProvidersLoaded && !forceReload) {
             return;
         }
         this.repositoryProvidersLoading = true;
-        // A new method in a service like DashboardService or a dedicated ProviderService is needed
-        this.dashboardService.getRepositoryProviders().subscribe({
+        this.dashboardService.getRepositoryProviders(this.providerSearchTerm).subscribe({
             next: (data) => {
                 this.providerRows = data;
-                this.repositoryProvidersLoaded = true;
+                if (!this.providerSearchTerm) {
+                    this.repositoryProvidersLoaded = true;
+                }
                 this.repositoryProvidersLoading = false;
             },
             error: (err) => {
@@ -720,7 +744,7 @@ export class DashboardComponent implements OnInit {
 
     loadCodeRepos(page = 0) {
         this.reposLoading = true;
-        this.dashboardService.getReposPaged(page, this.repoPageSize).subscribe({
+        this.dashboardService.getReposPaged(page, this.repoPageSize, this.repoSearchTerm).subscribe({
             next: (response) => {
                 this.rows = response.content ?? [];
                 this.repoTotalCount = response.totalElements ?? this.rows.length;
@@ -763,7 +787,7 @@ export class DashboardComponent implements OnInit {
         }
         this.cloudSubscriptionsLoading = true;
         this.cloudLoading = true;
-        this.cloudService.getCloudSubscriptionsPaged(page, this.cloudPageSize).subscribe({
+        this.cloudService.getCloudSubscriptionsPaged(page, this.cloudPageSize, this.cloudSearchTerm).subscribe({
             next: (response) => {
                 this.cloudRows = response.content ?? [];
                 this.cloudTotalCount = response.totalElements ?? this.cloudRows.length;
@@ -888,7 +912,7 @@ export class DashboardComponent implements OnInit {
 
     loadTeamsPage(page = 0) {
         this.teamsTableLoading = true;
-        this.teamService.getPaged(page, this.teamsPageSize).subscribe({
+        this.teamService.getPaged(page, this.teamsPageSize, this.teamsSearchTerm).subscribe({
             next: (response) => {
                 this.teams = response.content ?? [];
                 this.teamsTotalCount = response.totalElements ?? this.teams.length;
@@ -1100,72 +1124,67 @@ export class DashboardComponent implements OnInit {
     teamsTemp = [...this.teams]
 
     updateFilter(event: any) {
-        const val = event.target.value.toLowerCase();
-
-        if (!val) {
-            this.rows = [...this.temp];
-            return;
-        }
-
-        const temp = this.temp.filter(row => {
-            return (
-                (row.target?.toLowerCase().includes(val)) ||
-                (row.team?.toLowerCase().includes(val)) ||
-                (row.repo_url?.toLowerCase().includes(val)) ||
-                (row.sast?.toLowerCase().includes(val)) ||
-                (row.sca?.toLowerCase().includes(val)) ||
-                (row.secrets?.toLowerCase().includes(val)) ||
-                (row.iac?.toLowerCase().includes(val)) ||
-                (row.gitlab?.toLowerCase().includes(val))
-            );
-        });
-
-        this.rows = temp;
+        this.repoSearchTerm = (event.target.value || '').trim();
+        this.runDebouncedSearch('repo');
     }
 
     updateCloudFilter(event: any) {
-        const val = event.target.value.toLowerCase();
-
-        // If there's no filter value, reset rows to full list
-        if (!val) {
-            this.cloudRows = [...this.cloudTemp];
-            return;
-        }
-
-        // Filter our data based on multiple columns
-        const cloudTemp = this.cloudTemp.filter(cloudRow => {
-            // Enhanced filter to include all relevant fields
-            return (
-                (cloudRow.name?.toLowerCase().includes(val) || '') ||
-                (cloudRow.team?.toLowerCase().includes(val) || '') ||
-                (cloudRow.externalProjectName?.toLowerCase().includes(val) || '')
-            );
-        });
-
-        // Update the rows with the filtered data
-        this.cloudRows = cloudTemp;
+        this.cloudSearchTerm = (event.target.value || '').trim();
+        this.runDebouncedSearch('cloud');
     }
 
     updateTeamsFilter(event: any) {
-        const val = event.target.value.toLowerCase();
+        this.teamsSearchTerm = (event.target.value || '').trim();
+        this.runDebouncedSearch('teams');
+    }
 
-        // If there's no filter value, reset rows to full list
-        if (!val) {
-            this.teams = [...this.teamsTemp];
-            return;
+    updateProviderFilter(event: any) {
+        this.providerSearchTerm = (event.target.value || '').trim();
+        this.runDebouncedSearch('provider');
+    }
+
+    private runDebouncedSearch(target: 'repo' | 'cloud' | 'teams' | 'provider'): void {
+        const execute = () => {
+            if (target === 'repo') {
+                this.loadCodeRepos(0);
+                return;
+            }
+            if (target === 'cloud') {
+                this.loadCloudSubscriptions(0);
+                return;
+            }
+            if (target === 'teams') {
+                this.loadTeamsPage(0);
+                return;
+            }
+            this.ensureRepositoryProvidersLoaded(true);
+        };
+
+        let timerRef: ReturnType<typeof setTimeout> | undefined;
+        if (target === 'repo') {
+            timerRef = this.repoSearchDebounceTimer;
+        } else if (target === 'cloud') {
+            timerRef = this.cloudSearchDebounceTimer;
+        } else if (target === 'teams') {
+            timerRef = this.teamsSearchDebounceTimer;
+        } else {
+            timerRef = this.providerSearchDebounceTimer;
         }
 
-        // Filter our data based on multiple columns
-        const teamsTemp = this.teamsTemp.filter(team => {
-            // Enhanced filter to include all relevant fields including remoteIdentifier
-            return (
-                (team.name?.toLowerCase().includes(val) || '') ||
-                (team.remoteIdentifier?.toLowerCase().includes(val) || '')
-            );
-        });
+        if (timerRef) {
+            clearTimeout(timerRef);
+        }
 
-        // Update the rows with the filtered data
-        this.teams = teamsTemp;
+        const nextTimer = setTimeout(execute, DashboardComponent.SEARCH_DEBOUNCE_MS);
+        if (target === 'repo') {
+            this.repoSearchDebounceTimer = nextTimer;
+        } else if (target === 'cloud') {
+            this.cloudSearchDebounceTimer = nextTimer;
+        } else if (target === 'teams') {
+            this.teamsSearchDebounceTimer = nextTimer;
+        } else {
+            this.providerSearchDebounceTimer = nextTimer;
+        }
     }
 
     tempRepos = [...this.repoRows]; // a copy of the original rows for filtering

@@ -37,6 +37,25 @@ public interface CodeRepoRepository extends CrudRepository<CodeRepo, Long> {
     )
     Page<GetCodeReposResponseDto> findCodeRepoDtosByTeamIn(@Param("teams") List<Team> teams, Pageable pageable);
 
+    @Query(
+            value = "SELECT new io.mixeway.mixewayflowapi.api.coderepo.dto.GetCodeReposResponseDto(c.id, c.name, c.repourl, t.name, c.sastScan, c.iacScan, c.secretsScan, c.scaScan, c.gitlabScan, c.dastScan) " +
+                    "FROM CodeRepo c JOIN c.team t " +
+                    "WHERE t IN :teams AND (" +
+                    ":search IS NULL OR :search = '' OR " +
+                    "LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+                    "LOWER(c.repourl) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+                    "LOWER(t.name) LIKE LOWER(CONCAT('%', :search, '%'))" +
+                    ")",
+            countQuery = "SELECT count(c) FROM CodeRepo c JOIN c.team t " +
+                    "WHERE t IN :teams AND (" +
+                    ":search IS NULL OR :search = '' OR " +
+                    "LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+                    "LOWER(c.repourl) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+                    "LOWER(t.name) LIKE LOWER(CONCAT('%', :search, '%'))" +
+                    ")"
+    )
+    Page<GetCodeReposResponseDto> findCodeRepoDtosByTeamInAndSearch(@Param("teams") List<Team> teams, @Param("search") String search, Pageable pageable);
+
     @Query("SELECT c FROM CodeRepo c JOIN FETCH c.team WHERE c.team IN :teams")
     List<CodeRepo> findByTeamIn(@Param("teams") List<Team> teams);
 

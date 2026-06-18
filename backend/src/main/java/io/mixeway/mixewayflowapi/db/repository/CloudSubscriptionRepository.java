@@ -38,6 +38,25 @@ public interface CloudSubscriptionRepository extends JpaRepository<CloudSubscrip
     )
     Page<GetCloudSubscriptionsResponseDto> findCloudSubscriptionDtosByTeamIn(@Param("teams") List<Team> teams, Pageable pageable);
 
+    @Query(
+            value = "SELECT new io.mixeway.mixewayflowapi.api.cloudsubscription.dto.GetCloudSubscriptionsResponseDto(c.id, c.name, t.name, c.external_project_name, c.scan_status) " +
+                    "FROM CloudSubscription c JOIN c.team t " +
+                    "WHERE t IN :teams AND (" +
+                    ":search IS NULL OR :search = '' OR " +
+                    "LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+                    "LOWER(t.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+                    "LOWER(c.external_project_name) LIKE LOWER(CONCAT('%', :search, '%'))" +
+                    ")",
+            countQuery = "SELECT count(c) FROM CloudSubscription c JOIN c.team t " +
+                    "WHERE t IN :teams AND (" +
+                    ":search IS NULL OR :search = '' OR " +
+                    "LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+                    "LOWER(t.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+                    "LOWER(c.external_project_name) LIKE LOWER(CONCAT('%', :search, '%'))" +
+                    ")"
+    )
+    Page<GetCloudSubscriptionsResponseDto> findCloudSubscriptionDtosByTeamInAndSearch(@Param("teams") List<Team> teams, @Param("search") String search, Pageable pageable);
+
     @Modifying
     @Transactional
     @Query("UPDATE CloudSubscription c SET c.name = :name WHERE c.id = :id")

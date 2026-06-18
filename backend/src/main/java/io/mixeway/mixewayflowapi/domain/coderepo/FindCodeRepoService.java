@@ -48,10 +48,11 @@ public class FindCodeRepoService {
 
     }
 
-    public Page<GetCodeReposResponseDto> getCodeReposResponseDtos(Principal principal, Pageable pageable) {
+    public Page<GetCodeReposResponseDto> getCodeReposResponseDtos(Principal principal, Pageable pageable, String search) {
         UserInfo userInfo = findUserService.findUser(principal.getName());
         List<Team> userTeams = userInfo.getHighestRole().equals("ADMIN") ? findTeamService.findAll() : new ArrayList<>(userInfo.getTeams());
-        return codeRepoRepository.findCodeRepoDtosByTeamIn(userTeams, pageable);
+        String normalizedSearch = search == null ? "" : search.trim();
+        return codeRepoRepository.findCodeRepoDtosByTeamInAndSearch(userTeams, normalizedSearch, pageable);
     }
 
     public CodeRepo findById(Long id, Principal principal) {

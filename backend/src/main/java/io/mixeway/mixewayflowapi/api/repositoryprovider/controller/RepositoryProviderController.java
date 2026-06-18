@@ -35,9 +35,9 @@ public class RepositoryProviderController {
 
     @PreAuthorize("hasAuthority('ADMIN')")
     @GetMapping("")
-    public ResponseEntity<List<RepositoryProviderDto>> getProviders() {
-        // Assuming repositoryProviderService.findAll() is implemented
-        List<RepositoryProviderDto> providers = repositoryProviderService.findAll()
+    public ResponseEntity<List<RepositoryProviderDto>> getProviders(
+            @RequestParam(name = "search", required = false) String search) {
+        List<RepositoryProviderDto> providers = repositoryProviderService.findAll(search)
                 .stream()
                 .map(RepositoryProviderDto::new)
                 .collect(Collectors.toList());

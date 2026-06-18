@@ -55,8 +55,8 @@ public class CloudSubscriptionService {
         return findCloudSubscriptionService.getCloudSubscriptionResponseDtos(principal);
     }
 
-    public Page<GetCloudSubscriptionsResponseDto> getCloudSubscriptions(Principal principal, Pageable pageable) {
-        return findCloudSubscriptionService.getCloudSubscriptionResponseDtos(principal, pageable);
+    public Page<GetCloudSubscriptionsResponseDto> getCloudSubscriptions(Principal principal, Pageable pageable, String search) {
+        return findCloudSubscriptionService.getCloudSubscriptionResponseDtos(principal, pageable, search);
     }
 
     public void runScan(Long id, Principal principal) {

@@ -58,8 +58,8 @@ public class CodeRepoApiService {
         return findCodeRepoService.getCodeReposResponseDtos(principal);
     }
 
-    public Page<GetCodeReposResponseDto> getRepos(Principal principal, Pageable pageable) {
-        return findCodeRepoService.getCodeReposResponseDtos(principal, pageable);
+    public Page<GetCodeReposResponseDto> getRepos(Principal principal, Pageable pageable, String search) {
+        return findCodeRepoService.getCodeReposResponseDtos(principal, pageable, search);
     }
 
     public CodeRepo getRepo(Long id, Principal principal) {

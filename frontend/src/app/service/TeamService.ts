@@ -27,8 +27,9 @@ export class TeamService {
         return this.http.get<any>(this.loginUrl + '/api/v1/team',{ withCredentials: true });
     }
 
-    getPaged(page: number, size: number): Observable<any> {
-        return this.http.get<any>(`${this.loginUrl}/api/v1/team/paged?page=${page}&size=${size}`, { withCredentials: true });
+    getPaged(page: number, size: number, search = ''): Observable<any> {
+        const searchQuery = search ? `&search=${encodeURIComponent(search)}` : '';
+        return this.http.get<any>(`${this.loginUrl}/api/v1/team/paged?page=${page}&size=${size}${searchQuery}`, { withCredentials: true });
     }
 
     getTeam(id: string): Observable<any> {

@@ -100,9 +100,12 @@ public class CodeRepoController {
 
     @PreAuthorize("hasAuthority('USER')")
     @GetMapping(value = "/api/v1/coderepo/paged")
-    public ResponseEntity<Page<GetCodeReposResponseDto>> getReposPaged(Principal principal, Pageable pageable) {
+    public ResponseEntity<Page<GetCodeReposResponseDto>> getReposPaged(
+            Principal principal,
+            Pageable pageable,
+            @RequestParam(name = "search", required = false) String search) {
         try {
-            return new ResponseEntity<>(codeRepoApiService.getRepos(principal, pageable), HttpStatus.OK);
+            return new ResponseEntity<>(codeRepoApiService.getRepos(principal, pageable, search), HttpStatus.OK);
         } catch (Exception e) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
