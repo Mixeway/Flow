@@ -1,6 +1,5 @@
 package io.mixeway.mixewayflowapi.api.repositoryprovider.service;
 
-import com.opencsv.bean.CsvToBean;
 import io.mixeway.mixewayflowapi.api.repositoryprovider.dto.CreateProviderRequestDto;
 import io.mixeway.mixewayflowapi.db.entity.RepositoryProvider;
 import io.mixeway.mixewayflowapi.db.entity.Team;
@@ -42,7 +41,8 @@ public class RepositoryProviderService {
         repositorySyncService.syncProvider(savedProvider);
     }
 
-    public List<RepositoryProvider> findAll() {
-        return repositoryProviderRepository.findAll();
+    public List<RepositoryProvider> findAll(String search) {
+        String normalizedSearch = search == null ? "" : search.trim();
+        return repositoryProviderRepository.findAllBySearch(normalizedSearch);
     }
 }

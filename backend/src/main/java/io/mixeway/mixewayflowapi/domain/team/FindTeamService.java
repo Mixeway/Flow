@@ -46,19 +46,29 @@ public class FindTeamService {
         return  teamDtos;
     }
 
-    public Page<TeamDto> findAllTeams(Principal principal, Pageable pageable) {
+    public Page<TeamDto> findAllTeams(Principal principal, Pageable pageable, String search) {
         List<Team> allTeams = permissionFactory.findTeams(principal);
+        String normalizedSearch = search == null ? "" : search.trim().toLowerCase();
+        List<Team> filteredTeams = normalizedSearch.isEmpty()
+                ? allTeams
+                : allTeams.stream()
+                .filter(team -> {
+                    String name = team.getName() == null ? "" : team.getName().toLowerCase();
+                    String remoteIdentifier = team.getRemoteIdentifier() == null ? "" : team.getRemoteIdentifier().toLowerCase();
+                    return name.contains(normalizedSearch) || remoteIdentifier.contains(normalizedSearch);
+                })
+                .toList();
 
         int pageSize = pageable.getPageSize();
         int start = (int) pageable.getOffset();
-        int end = Math.min(start + pageSize, allTeams.size());
+        int end = Math.min(start + pageSize, filteredTeams.size());
 
-        if (start >= allTeams.size()) {
-            return new PageImpl<>(Collections.emptyList(), pageable, allTeams.size());
+        if (start >= filteredTeams.size()) {
+            return new PageImpl<>(Collections.emptyList(), pageable, filteredTeams.size());
         }
 
         List<TeamDto> pagedDtos = new ArrayList<>();
-        for (Team team : allTeams.subList(start, end)) {
+        for (Team team : filteredTeams.subList(start, end)) {
             List<SimpleUserDto> simpleUserDtos = new ArrayList<>();
             for (UserInfo userInfo : userRepository.getUsersByTeamId(team.getId())) {
                 simpleUserDtos.add(SimpleUserDto.builder()
@@ -74,7 +84,7 @@ public class FindTeamService {
                     .build());
         }
 
-        return new PageImpl<>(pagedDtos, pageable, allTeams.size());
+        return new PageImpl<>(pagedDtos, pageable, filteredTeams.size());
     }
 
     public Page<TeamIdDto> findAllTeamsIds(Principal principal, Pageable pageable) {

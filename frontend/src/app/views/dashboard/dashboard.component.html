@@ -259,10 +259,6 @@
 
                     <c-tabs-content>
                         <c-tab-panel class="p-3" [itemKey]="0">
-                            <div *ngIf="isRepoTabLoading()" class="d-flex align-items-center gap-2 mb-3">
-                                <c-spinner size="sm"></c-spinner>
-                                <small class="text-muted">Loading repositories...</small>
-                            </div>
                             <c-row class="mb-4">
                                 <c-col>
                                     <c-input-group class="dashboard-search-box">
@@ -273,7 +269,8 @@
                                                 aria-label="Filter repositories"
                                                 type="text"
                                                 class="form-control"
-                                                placeholder="Search repositories by name, team, or status..."
+                                                placeholder="Search repositories by name, URL, or team..."
+                                                [value]="repoSearchTerm"
                                                 (input)="updateFilter($event)"
                                         />
                                     </c-input-group>
@@ -395,10 +392,6 @@
 
                     <c-tabs-content>
                         <c-tab-panel class="p-3" [itemKey]="1">
-                            <div *ngIf="isCloudTabLoading()" class="d-flex align-items-center gap-2 mb-3">
-                                <c-spinner size="sm"></c-spinner>
-                                <small class="text-muted">Loading cloud subscriptions...</small>
-                            </div>
                             <c-row class="mb-4">
                                 <c-col>
                                     <c-input-group class="dashboard-search-box">
@@ -409,7 +402,8 @@
                                                 aria-label="Filter cloud subscriptions"
                                                 type="text"
                                                 class="form-control"
-                                                placeholder="Search cloud subscriptions..."
+                                                placeholder="Search cloud subscriptions by name, external project, or team..."
+                                                [value]="cloudSearchTerm"
                                                 (input)="updateCloudFilter($event)"
                                         />
                                     </c-input-group>
@@ -489,10 +483,6 @@
 
                     <c-tabs-content>
                         <c-tab-panel class="p-3" [itemKey]="2">
-                            <div *ngIf="isTeamsTabLoading()" class="d-flex align-items-center gap-2 mb-3">
-                                <c-spinner size="sm"></c-spinner>
-                                <small class="text-muted">Loading teams and statuses...</small>
-                            </div>
                             <c-row class="mb-4">
                                 <c-col>
                                     <c-input-group class="dashboard-search-box">
@@ -504,6 +494,7 @@
                                                 type="text"
                                                 class="form-control"
                                                 placeholder="Search teams..."
+                                                [value]="teamsSearchTerm"
                                                 (input)="updateTeamsFilter($event)"
                                         />
                                     </c-input-group>
@@ -714,10 +705,23 @@
 
 
                     <c-tab-panel class="p-3" [itemKey]="3" *ngIf="isAdmin">
-                        <div *ngIf="isProvidersTabLoading()" class="d-flex align-items-center gap-2 mb-3">
-                            <c-spinner size="sm"></c-spinner>
-                            <small class="text-muted">Loading repository providers...</small>
-                        </div>
+                        <c-row class="mb-4">
+                            <c-col>
+                                <c-input-group class="dashboard-search-box">
+                    <span cInputGroupText>
+                      <svg cIcon name="cil-magnifying-glass"></svg>
+                    </span>
+                                    <input
+                                            aria-label="Filter repository providers"
+                                            type="text"
+                                            class="form-control"
+                                            placeholder="Search repository providers..."
+                                            [value]="providerSearchTerm"
+                                            (input)="updateProviderFilter($event)"
+                                    />
+                                </c-input-group>
+                            </c-col>
+                        </c-row>
                         <ngx-datatable
                                 class="bootstrap security-table"
                                 [rows]="providerRows"

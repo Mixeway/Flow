@@ -61,9 +61,12 @@ public class TeamController {
 
     @PreAuthorize("hasAuthority('USER')")
     @GetMapping(value = "/api/v1/team/paged")
-    public ResponseEntity<Page<TeamDto>> getTeamsPaged(Principal principal, Pageable pageable) {
+    public ResponseEntity<Page<TeamDto>> getTeamsPaged(
+            Principal principal,
+            Pageable pageable,
+            @RequestParam(name = "search", required = false) String search) {
         try {
-            return new ResponseEntity<>(findTeamService.findAllTeams(principal, pageable), HttpStatus.OK);
+            return new ResponseEntity<>(findTeamService.findAllTeams(principal, pageable, search), HttpStatus.OK);
         } catch (Exception e) {
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }

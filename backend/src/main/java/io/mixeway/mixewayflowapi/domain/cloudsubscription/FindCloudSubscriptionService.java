@@ -52,13 +52,14 @@ public class FindCloudSubscriptionService {
         return cloudSubscriptionRepository.findCloudSubscriptionDtosByTeamIn(userTeams);
     }
 
-    public Page<GetCloudSubscriptionsResponseDto> getCloudSubscriptionResponseDtos(Principal principal, Pageable pageable) {
+    public Page<GetCloudSubscriptionsResponseDto> getCloudSubscriptionResponseDtos(Principal principal, Pageable pageable, String search) {
         UserInfo userInfo = findUserService.findUser(principal.getName());
         List<Team> userTeams = userInfo.getHighestRole().equals("ADMIN")
                 ? findTeamService.findAll()
                 : new ArrayList<>(userInfo.getTeams());
 
-        return cloudSubscriptionRepository.findCloudSubscriptionDtosByTeamIn(userTeams, pageable);
+        String normalizedSearch = search == null ? "" : search.trim();
+        return cloudSubscriptionRepository.findCloudSubscriptionDtosByTeamInAndSearch(userTeams, normalizedSearch, pageable);
     }
 
     public CloudSubscription findById(Long id, Principal principal) {

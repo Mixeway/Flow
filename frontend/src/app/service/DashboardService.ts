@@ -38,8 +38,9 @@ export class DashboardService {
         return this.http.get<any>(this.loginUrl + '/api/v1/coderepo',{ withCredentials: true });
     }
 
-    getReposPaged(page: number, size: number): Observable<any> {
-        return this.http.get<any>(`${this.loginUrl}/api/v1/coderepo/paged?page=${page}&size=${size}`, { withCredentials: true });
+    getReposPaged(page: number, size: number, search = ''): Observable<any> {
+        const searchQuery = search ? `&search=${encodeURIComponent(search)}` : '';
+        return this.http.get<any>(`${this.loginUrl}/api/v1/coderepo/paged?page=${page}&size=${size}${searchQuery}`, { withCredentials: true });
     }
 
     createRepo(createRepo: CreateRepo, repoType: string): Observable<any> {
@@ -54,8 +55,9 @@ export class DashboardService {
     }
 
 
-    getRepositoryProviders() {
-        return this.http.get<any>(this.loginUrl + '/api/v1/repository-provider',{ withCredentials: true });
+    getRepositoryProviders(search = '') {
+        const searchQuery = search ? `?search=${encodeURIComponent(search)}` : '';
+        return this.http.get<any>(`${this.loginUrl}/api/v1/repository-provider${searchQuery}`,{ withCredentials: true });
 
     }
 
