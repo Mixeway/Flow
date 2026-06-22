@@ -210,7 +210,7 @@ public class GitService {
                     errorOutput.append(line).append(System.lineSeparator());
                 }
             }
-            throw new GitException("Command execution failed: " + String.join(" ", pb.command()) +
+            throw new GitException("Command execution failed: " + sanitizeCommand(pb.command()) +
                     "\nError Output: " + errorOutput.toString());
         }
     }
@@ -243,10 +243,33 @@ public class GitService {
                     errorOutput.append(line).append(System.lineSeparator());
                 }
             }
-            throw new GitException("Command execution failed: " + String.join(" ", pb.command()) +
+            throw new GitException("Command execution failed: " + sanitizeCommand(pb.command()) +
                     "\nError Output: " + errorOutput.toString());
         }
 
         return output.toString();
+    }
+
+    /**
+     * Joins a command for logging while masking any inline credentials in URLs
+     * (e.g. {@code https://user:token@host} becomes {@code https://***@host}) so access
+     * tokens are never written to logs or exception messages.
+     */
+    private String sanitizeCommand(List<String> command) {
+        StringBuilder sb = new StringBuilder();
+        for (String arg : command) {
+            if (sb.length() > 0) {
+                sb.append(' ');
+            }
+            sb.append(maskCredentials(arg));
+        }
+        return sb.toString();
+    }
+
+    private String maskCredentials(String arg) {
+        if (arg == null) {
+            return null;
+        }
+        return arg.replaceAll("(https?://)[^@/\\s]+@", "$1***@");
     }
 }
