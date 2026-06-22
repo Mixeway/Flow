@@ -38,7 +38,7 @@ public class GitService {
      */
     public void cloneRepo(String repoUrl, String accessToken, String repoDir) throws IOException, InterruptedException {
         String authenticatedUrl = buildAuthenticatedUrl(repoUrl, accessToken, null);
-        ProcessBuilder pb = new ProcessBuilder("git", "clone", authenticatedUrl, repoDir);
+        ProcessBuilder pb = new ProcessBuilder(gitWithAuth(repoUrl, accessToken, null, "clone", authenticatedUrl, repoDir));
         executeCommand(pb);
     }
 
@@ -56,9 +56,8 @@ public class GitService {
     public String fetchBranch(String repoUrl, String accessToken, CodeRepoBranch branch, String repoDir, CodeRepo.RepoType repoType) throws IOException, InterruptedException {
         new java.io.File(repoDir).getParentFile().mkdirs();
         String authenticatedUrl = buildAuthenticatedUrl(repoUrl, accessToken, repoType);
-        ProcessBuilder pb = new ProcessBuilder("git", "clone", "--branch", branch.getName(), authenticatedUrl, repoDir);
+        ProcessBuilder pb = new ProcessBuilder(gitWithAuth(repoUrl, accessToken, repoType, "clone", "--branch", branch.getName(), authenticatedUrl, repoDir));
         pb.environment().put("GIT_ASKPASS", "echo");
-        pb.environment().put("GIT_TOKEN", accessToken);
         executeCommand(pb);
 
         // Get the current commit ID after cloning the branch
@@ -90,19 +89,19 @@ public class GitService {
         }
 
         // Clone the repository
-        ProcessBuilder pb = new ProcessBuilder("git", "clone", authenticatedUrl, repoDir);
+        ProcessBuilder pb = new ProcessBuilder(gitWithAuth(repoUrl, accessToken, repoType, "clone", authenticatedUrl, repoDir));
         executeCommand(pb);
 
         // Navigate to the repo directory
         pb.directory(dir);
 
         // Fetch all references to ensure origin/HEAD is available
-        pb = new ProcessBuilder("git", "fetch", "--all");
+        pb = new ProcessBuilder(gitWithAuth(repoUrl, accessToken, repoType, "fetch", "--all"));
         pb.directory(dir);
         executeCommand(pb);
 
         // Fetch the specific commit with depth 1
-        pb = new ProcessBuilder("git", "fetch", "--depth", "1", "origin", commitId);
+        pb = new ProcessBuilder(gitWithAuth(repoUrl, accessToken, repoType, "fetch", "--depth", "1", "origin", commitId));
         pb.directory(dir);
         executeCommand(pb);
 
@@ -159,7 +158,7 @@ public class GitService {
      */
     public List<String> listRemoteBranches(String repoUrl, String accessToken, CodeRepo.RepoType repoType) throws IOException, InterruptedException {
         String authenticatedUrl = buildAuthenticatedUrl(repoUrl, accessToken, repoType);
-        ProcessBuilder pb = new ProcessBuilder("git", "ls-remote", "--heads", authenticatedUrl);
+        ProcessBuilder pb = new ProcessBuilder(gitWithAuth(repoUrl, accessToken, repoType, "ls-remote", "--heads", authenticatedUrl));
         String output = executeCommandAndGetOutput(pb);
         List<String> branches = new ArrayList<>();
         for (String line : output.split("\n")) {
@@ -175,20 +174,49 @@ public class GitService {
     }
 
     /**
-     * Builds an authenticated git clone URL.
+     * Detects whether the repository is hosted on Bitbucket.
+     * Relies on the explicit {@code repoType}, falling back to a hostname check when it is {@code null}.
+     */
+    private boolean isBitbucket(String repoUrl, CodeRepo.RepoType repoType) {
+        return repoType == CodeRepo.RepoType.BITBUCKET
+                || (repoType == null && repoUrl != null && repoUrl.contains("bitbucket"));
+    }
+
+    /**
+     * Builds the URL used for git commands.
      * <ul>
-     *   <li>Bitbucket Cloud and Bitbucket Server/DC both use {@code x-token-auth} with HTTP access tokens.</li>
-     *   <li>GitLab, GitHub and Gitea use {@code OAUTH2}.</li>
+     *   <li>Bitbucket Server/Data Center HTTP access tokens authenticate via the
+     *       {@code Authorization: Bearer <token>} header (see {@link #gitWithAuth}), so the URL
+     *       is kept credential-free. The legacy {@code x-token-auth} basic-auth form is rejected
+     *       by Bitbucket DC.</li>
+     *   <li>GitLab, GitHub and Gitea embed the token as {@code OAUTH2:<token>@} basic auth.</li>
      * </ul>
-     * When {@code repoType} is {@code null} the method falls back to URL-based detection
-     * (legacy path, Cloud only via {@code bitbucket.org} hostname check).
      */
     private String buildAuthenticatedUrl(String repoUrl, String accessToken, CodeRepo.RepoType repoType) {
-        boolean isBitbucket = repoType == CodeRepo.RepoType.BITBUCKET
-                || (repoType == null && repoUrl.contains("bitbucket.org"));
-        String gitUsername = isBitbucket ? "x-token-auth" : "OAUTH2";
+        if (isBitbucket(repoUrl, repoType)) {
+            return repoUrl;
+        }
         String encodedToken = URLEncoder.encode(accessToken, StandardCharsets.UTF_8);
-        return repoUrl.replace("https://", "https://" + gitUsername + ":" + encodedToken + "@");
+        return repoUrl.replace("https://", "https://OAUTH2:" + encodedToken + "@");
+    }
+
+    /**
+     * Assembles a {@code git} command, injecting the Bitbucket bearer-token header
+     * ({@code -c http.extraHeader=Authorization: Bearer <token>}) for Bitbucket repositories.
+     * For other providers the token travels in the URL (see {@link #buildAuthenticatedUrl}),
+     * so no extra config is added.
+     */
+    private List<String> gitWithAuth(String repoUrl, String accessToken, CodeRepo.RepoType repoType, String... args) {
+        List<String> command = new ArrayList<>();
+        command.add("git");
+        if (isBitbucket(repoUrl, repoType) && accessToken != null && !accessToken.isBlank()) {
+            command.add("-c");
+            command.add("http.extraHeader=Authorization: Bearer " + accessToken);
+        }
+        for (String arg : args) {
+            command.add(arg);
+        }
+        return command;
     }
 
     /**
@@ -270,6 +298,8 @@ public class GitService {
         if (arg == null) {
             return null;
         }
-        return arg.replaceAll("(https?://)[^@/\\s]+@", "$1***@");
+        String masked = arg.replaceAll("(https?://)[^@/\\s]+@", "$1***@");
+        masked = masked.replaceAll("(?i)(Authorization:\\s*Bearer\\s+)\\S+", "$1***");
+        return masked;
     }
 }
