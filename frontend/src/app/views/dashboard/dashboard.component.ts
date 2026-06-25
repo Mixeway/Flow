@@ -309,6 +309,9 @@ export class DashboardComponent implements OnInit {
     repoSearchTerm = '';
     reposLoading = false;
     repoRows: RepoRow[] = []
+    allImportRepoRows: RepoRow[] = [];
+    filteredImportRepoRows: RepoRow[] = [];
+    importRepoSearchTerm = '';
     columns: any[] = [];
 
     cloudRows: CloudSubscription[] = [];
@@ -1187,20 +1190,9 @@ export class DashboardComponent implements OnInit {
         }
     }
 
-    tempRepos = [...this.repoRows]; // a copy of the original rows for filtering
-
     updateFilterRepo(event: any) {
-        const val = event.target.value.toLowerCase();
-
-        // filter our data based on multiple columns
-        const filteredRepos = this.tempRepos.filter(d =>
-            d.name.toLowerCase().includes(val) ||
-            d.namespace.toLowerCase().includes(val) ||
-            d.repo_url.toLowerCase().includes(val)
-        );
-
-        // update the rows
-        this.repoRows = filteredRepos;
+        this.importRepoSearchTerm = (event?.target?.value || '').toLowerCase().trim();
+        this.applyImportRepoFilter();
     }
 
     onImportRepoPage(event: { offset: number }) {
@@ -1212,55 +1204,59 @@ export class DashboardComponent implements OnInit {
     }
 
     loadImportReposPage(page = 0) {
+        if (this.allImportRepoRows.length > 0) {
+            this.importRepoCurrentPage = page;
+            this.refreshImportRepoView();
+            return;
+        }
+
         this.isLoading = true;
-        const providerPage = page + 1;
-        const pageSize = this.importRepoPageSize;
 
         if (this.selectedRepo === 'GitLab') {
-            this.gitLabService.getProjects(this.accessToken, providerPage, pageSize).subscribe({
-                next: (projects) => this.updateImportRepoPage(projects.map((proj: any) => ({
+            this.gitLabService.getAllProjects(this.accessToken).subscribe({
+                next: (projects) => this.updateImportRepoRows(projects.map((proj: any) => ({
                     id: proj.id,
                     name: proj.name,
                     repo_url: proj.web_url,
                     namespace: proj.path_with_namespace,
                     imported: false
-                })), page),
+                }))),
                 error: (error) => this.handleImportRepoPageError(error),
                 complete: () => this.isLoading = false
             });
         } else if (this.selectedRepo === 'GitHub') {
-            this.gitHubService.getRepositories(this.accessToken, providerPage, pageSize).subscribe({
-                next: (projects) => this.updateImportRepoPage(projects.map((proj: any) => ({
+            this.gitHubService.getAllRepositories(this.accessToken).subscribe({
+                next: (projects) => this.updateImportRepoRows(projects.map((proj: any) => ({
                     id: proj.id,
                     name: proj.name,
                     repo_url: proj.web_url,
                     namespace: proj.path_with_namespace,
                     imported: false
-                })), page),
+                }))),
                 error: (error) => this.handleImportRepoPageError(error),
                 complete: () => this.isLoading = false
             });
         } else if (this.selectedRepo === 'Gitea') {
-            this.giteaService.getRepositories(this.accessToken, providerPage, pageSize).subscribe({
-                next: (projects) => this.updateImportRepoPage(projects.map((proj: any) => ({
+            this.giteaService.getAllRepositories(this.accessToken).subscribe({
+                next: (projects) => this.updateImportRepoRows(projects.map((proj: any) => ({
                     id: proj.id,
                     name: proj.name,
                     repo_url: proj.web_url,
                     namespace: proj.path_with_namespace,
                     imported: false
-                })), page),
+                }))),
                 error: (error) => this.handleImportRepoPageError(error),
                 complete: () => this.isLoading = false
             });
         } else if (this.selectedRepo === 'Bitbucket') {
-            this.bitbucketService.getRepositories(this.accessToken, providerPage, pageSize).subscribe({
-                next: (projects) => this.updateImportRepoPage(projects.map((proj: any) => ({
+            this.bitbucketService.getAllRepositories(this.accessToken).subscribe({
+                next: (projects) => this.updateImportRepoRows(projects.map((proj: any) => ({
                     id: proj.id,
                     name: proj.name,
                     repo_url: proj.web_url,
                     namespace: proj.path_with_namespace,
                     imported: false
-                })), page),
+                }))),
                 error: (error) => this.handleImportRepoPageError(error),
                 complete: () => this.isLoading = false
             });
@@ -1272,17 +1268,33 @@ export class DashboardComponent implements OnInit {
         }
     }
 
-    private updateImportRepoPage(repos: RepoRow[], page: number) {
-        this.repoRows = repos;
-        this.importRepoCurrentPage = page;
-        const hasNextPage = repos.length === this.importRepoPageSize;
-        this.importRepoTotalCount = hasNextPage
-            ? ((page + 1) * this.importRepoPageSize) + 1
-            : (page * this.importRepoPageSize) + repos.length;
-        this.repoRows.forEach(repoRow => {
-            repoRow.imported = this.rows.some(row => row.repo_url === repoRow.repo_url);
-        });
-        this.tempRepos = [...this.repoRows];
+    private updateImportRepoRows(repos: RepoRow[]) {
+        this.allImportRepoRows = repos.map((repo) => ({
+            ...repo,
+            imported: this.rows.some(row => row.repo_url === repo.repo_url)
+        }));
+        this.applyImportRepoFilter();
+    }
+
+    private applyImportRepoFilter() {
+        if (!this.importRepoSearchTerm) {
+            this.filteredImportRepoRows = [...this.allImportRepoRows];
+        } else {
+            this.filteredImportRepoRows = this.allImportRepoRows.filter((repo) =>
+                repo.name.toLowerCase().includes(this.importRepoSearchTerm) ||
+                repo.namespace.toLowerCase().includes(this.importRepoSearchTerm) ||
+                repo.repo_url.toLowerCase().includes(this.importRepoSearchTerm)
+            );
+        }
+        this.importRepoCurrentPage = 0;
+        this.refreshImportRepoView();
+    }
+
+    private refreshImportRepoView() {
+        const start = this.importRepoCurrentPage * this.importRepoPageSize;
+        const end = start + this.importRepoPageSize;
+        this.importRepoTotalCount = this.filteredImportRepoRows.length;
+        this.repoRows = this.filteredImportRepoRows.slice(start, end);
     }
 
     private handleImportRepoPageError(error: any) {
@@ -1349,6 +1361,10 @@ export class DashboardComponent implements OnInit {
             this.accessToken = this.importRepoForm.value.accessToken;  // Store accessToken
             this.importRepoCurrentPage = 0;
             this.importRepoTotalCount = 0;
+            this.importRepoSearchTerm = '';
+            this.repoRows = [];
+            this.allImportRepoRows = [];
+            this.filteredImportRepoRows = [];
 
             if (this.selectedRepo === 'GitLab') {
                 this.gitLabService.setApiUrl(this.repoUrl);
@@ -1388,6 +1404,16 @@ export class DashboardComponent implements OnInit {
             repoObject.repoUrl = this.bitbucketService.getApiUrl()
         }
         row.imported = true;
+        const importedUrl = row.repo_url;
+        this.allImportRepoRows = this.allImportRepoRows.map(repo => ({
+            ...repo,
+            imported: repo.repo_url === importedUrl ? true : repo.imported
+        }));
+        this.filteredImportRepoRows = this.filteredImportRepoRows.map(repo => ({
+            ...repo,
+            imported: repo.repo_url === importedUrl ? true : repo.imported
+        }));
+        this.refreshImportRepoView();
         this.dashboardService.createRepo(repoObject, this.selectedRepo.toLowerCase()).subscribe({
             next: (response) => {
                 this.toastStatus = "success"
