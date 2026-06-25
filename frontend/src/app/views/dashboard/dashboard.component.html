@@ -789,6 +789,7 @@
                         type="text"
                         class="form-control"
                         placeholder="Filter repositories..."
+                        [value]="importRepoSearchTerm"
                         (input)="updateFilterRepo($event)"
                 />
             </c-input-group>
