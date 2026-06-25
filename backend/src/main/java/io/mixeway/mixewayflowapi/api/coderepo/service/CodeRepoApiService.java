@@ -202,6 +202,10 @@ public class CodeRepoApiService {
         updateCodeRepoService.bulkChangeTeam(repositoryIds, newTeam);
     }
 
+    public void bulkChangeAccessToken(List<Long> repositoryIds, String accessToken) {
+        updateCodeRepoService.bulkChangeAccessToken(repositoryIds, accessToken);
+    }
+
     public void renameCodeRepo(Long repoId, String newName, Principal principal) {
         CodeRepo repo = findCodeRepoService.findById(repoId)
                 .orElseThrow(() -> new CodeRepoNotFoundException("Repository not found"));

@@ -94,6 +94,10 @@ public interface CodeRepoRepository extends CrudRepository<CodeRepo, Long> {
     @Query("UPDATE CodeRepo c SET c.team.id = :newTeamId WHERE c.id IN :repositoryIds")
     void updateTeamForRepositories(@Param("repositoryIds") List<Long> repositoryIds, @Param("newTeamId") Long newTeamId);
 
+    @Modifying
+    @Query("UPDATE CodeRepo c SET c.accessToken = :accessToken WHERE c.id IN :repositoryIds")
+    void updateAccessTokenForRepositories(@Param("repositoryIds") List<Long> repositoryIds, @Param("accessToken") String accessToken);
+
     Optional<CodeRepo> findByRemoteIdAndRepourl(Long id, String repoUrl);
 
     boolean existsByTeamAndNameIgnoreCase(Team team, String trimmed);

@@ -43,6 +43,14 @@ import {Router} from "@angular/router";
 import {UserService} from "../../service/UserService";
 import {AppConfigService} from "../../service/AppConfigService";
 import {OrganizationService} from "../../service/OrganizationService";
+import {RepoService} from "../../service/RepoService";
+
+interface AdminRepoTokenRow {
+    id: number;
+    target: string;
+    repo_url: string;
+    team: string;
+}
 
 @Component({
   selector: 'app-admin-settings',
@@ -143,12 +151,20 @@ export class AdminSettingsComponent implements OnInit{
 
     // For Other Configuration Tab
     geminiApiKey: string = 'API Key';
+    repoTokenSearchTerm: string = '';
+    repoTokenValue: string = '';
+    repoTokenRows: AdminRepoTokenRow[] = [];
+    filteredRepoTokenRows: AdminRepoTokenRow[] = [];
+    selectedRepoTokenIds: number[] = [];
+    repoTokenLoading: boolean = false;
+    repoTokenSaving: boolean = false;
 
     constructor(private fb: FormBuilder, private authService: AuthService, private settingsService: SettingsService,
                 private router: Router,
                 private organizationService: OrganizationService,
                 private appConfigService: AppConfigService,
-                private userService: UserService) {
+                private userService: UserService,
+                private repoService: RepoService) {
         this.scaConfigForm = this.fb.group({
             scaTypeEmbedded: [true],
             scaTypeExternal: [false],
@@ -192,6 +208,7 @@ export class AdminSettingsComponent implements OnInit{
         this.loadOrganizations();
         this.loadAvailableUsers();
         this.loadAppRunMode();
+        this.loadRepositoriesForTokenUpdate();
     }
     onWizToggleChange() {
         this.isWizEnabled = !this.isWizEnabled;
@@ -555,6 +572,106 @@ export class AdminSettingsComponent implements OnInit{
                 this.toastStatus = "danger";
                 this.toastMessage = "Failed to update";
                 this.toggleToast();
+            }
+        });
+    }
+
+    loadRepositoriesForTokenUpdate() {
+        this.repoTokenLoading = true;
+        this.repoService.getRepos().subscribe({
+            next: (repos: AdminRepoTokenRow[]) => {
+                this.repoTokenRows = repos ?? [];
+                this.applyRepoTokenFilter();
+                this.repoTokenLoading = false;
+            },
+            error: () => {
+                this.toastStatus = "danger";
+                this.toastMessage = "Failed to load repositories for token update";
+                this.toggleToast();
+                this.repoTokenLoading = false;
+            }
+        });
+    }
+
+    onRepoTokenSearchChange(value: string) {
+        this.repoTokenSearchTerm = value;
+        this.applyRepoTokenFilter();
+    }
+
+    applyRepoTokenFilter() {
+        const term = (this.repoTokenSearchTerm || '').trim().toLowerCase();
+        if (!term) {
+            this.filteredRepoTokenRows = [...this.repoTokenRows];
+            return;
+        }
+
+        this.filteredRepoTokenRows = this.repoTokenRows.filter((repo) => {
+            return (repo.repo_url || '').toLowerCase().includes(term)
+                || (repo.target || '').toLowerCase().includes(term)
+                || (repo.team || '').toLowerCase().includes(term);
+        });
+    }
+
+    isRepoTokenSelected(repoId: number): boolean {
+        return this.selectedRepoTokenIds.includes(repoId);
+    }
+
+    toggleRepoTokenSelection(repoId: number, checked: boolean) {
+        if (checked) {
+            if (!this.selectedRepoTokenIds.includes(repoId)) {
+                this.selectedRepoTokenIds = [...this.selectedRepoTokenIds, repoId];
+            }
+            return;
+        }
+        this.selectedRepoTokenIds = this.selectedRepoTokenIds.filter((id) => id !== repoId);
+    }
+
+    areAllVisibleReposSelected(): boolean {
+        if (!this.filteredRepoTokenRows.length) {
+            return false;
+        }
+        return this.filteredRepoTokenRows.every((repo) => this.selectedRepoTokenIds.includes(repo.id));
+    }
+
+    toggleSelectAllVisible(checked: boolean) {
+        const visibleIds = this.filteredRepoTokenRows.map((repo) => repo.id);
+        if (checked) {
+            const merged = new Set([...this.selectedRepoTokenIds, ...visibleIds]);
+            this.selectedRepoTokenIds = Array.from(merged);
+            return;
+        }
+        this.selectedRepoTokenIds = this.selectedRepoTokenIds.filter((id) => !visibleIds.includes(id));
+    }
+
+    saveRepoTokenForSelected() {
+        if (!this.selectedRepoTokenIds.length) {
+            this.toastStatus = "danger";
+            this.toastMessage = "Select at least one repository";
+            this.toggleToast();
+            return;
+        }
+        if (!this.repoTokenValue || !this.repoTokenValue.trim()) {
+            this.toastStatus = "danger";
+            this.toastMessage = "Token cannot be empty";
+            this.toggleToast();
+            return;
+        }
+
+        this.repoTokenSaving = true;
+        this.repoService.changeAccessTokenForRepos(this.selectedRepoTokenIds, this.repoTokenValue).subscribe({
+            next: () => {
+                this.toastStatus = "success";
+                this.toastMessage = "Token updated for selected repositories";
+                this.toggleToast();
+                this.repoTokenValue = '';
+                this.selectedRepoTokenIds = [];
+                this.repoTokenSaving = false;
+            },
+            error: () => {
+                this.toastStatus = "danger";
+                this.toastMessage = "Failed to update token for selected repositories";
+                this.toggleToast();
+                this.repoTokenSaving = false;
             }
         });
     }
