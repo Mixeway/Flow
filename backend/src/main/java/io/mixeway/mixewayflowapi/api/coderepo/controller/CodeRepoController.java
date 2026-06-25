@@ -228,6 +228,18 @@ public class CodeRepoController {
         }
     }
 
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @PutMapping(value = "/api/v1/coderepo/bulk/change-token")
+    public ResponseEntity<StatusDTO> bulkChangeToken(@Valid @RequestBody BulkChangeTokenRequestDto request, Principal principal) {
+        try {
+            codeRepoApiService.bulkChangeAccessToken(request.getRepositoryIds(), request.getAccessToken());
+            return ResponseEntity.ok(new StatusDTO("Access token updated for selected repositories."));
+        } catch (Exception e) {
+            log.error("[CodeRepo] Error during bulk token change by {}: {}", principal.getName(), e.getMessage());
+            return new ResponseEntity<>(new StatusDTO(e.getMessage()), HttpStatus.BAD_REQUEST);
+        }
+    }
+
     @PreAuthorize("hasAnyAuthority('ADMIN','TEAM_MANAGER')")
     @PutMapping(value = "/api/v1/coderepo/{id}/rename")
     public ResponseEntity<StatusDTO> renameCodeRepo(
