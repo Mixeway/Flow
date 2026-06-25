@@ -398,6 +398,92 @@
                         </c-tab-panel>
 
                         <c-tab-panel class="p-4" [itemKey]="4">
+                            <div class="config-section p-4 mb-4 rounded shadow-sm">
+                                <h4 class="mb-3 section-title">Repository Access Token Update (Admin)</h4>
+                                <p class="text-muted mb-3">
+                                    Search by repository URL, repository name, or team name. Update token for one or many repositories at once.
+                                </p>
+
+                                <div class="row g-3 align-items-end mb-3">
+                                    <div class="col-md-8">
+                                        <label cLabel for="repoTokenSearch" class="mb-2">Search repositories</label>
+                                        <input
+                                                id="repoTokenSearch"
+                                                cFormControl
+                                                type="text"
+                                                class="form-control"
+                                                placeholder="Search by repo URL, repository name, or team name..."
+                                                [ngModel]="repoTokenSearchTerm"
+                                                (ngModelChange)="onRepoTokenSearchChange($event)"/>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label cLabel for="repoTokenValue" class="mb-2">New access token</label>
+                                        <input
+                                                id="repoTokenValue"
+                                                cFormControl
+                                                type="password"
+                                                class="form-control"
+                                                [(ngModel)]="repoTokenValue"
+                                                placeholder="Enter new token"/>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <c-form-check>
+                                        <input
+                                                cFormCheckInput
+                                                id="selectAllVisibleRepos"
+                                                type="checkbox"
+                                                [checked]="areAllVisibleReposSelected()"
+                                                (change)="toggleSelectAllVisible($any($event.target).checked)"/>
+                                        <label cFormCheckLabel for="selectAllVisibleRepos">
+                                            Select all visible
+                                        </label>
+                                    </c-form-check>
+                                </div>
+
+                                <div class="table-responsive table-container repo-token-table-container">
+                                    <table cTable class="align-middle table-striped">
+                                        <thead class="table-header">
+                                        <tr>
+                                            <th class="repo-token-select-col"></th>
+                                            <th>Repository</th>
+                                            <th>Repo URL</th>
+                                            <th>Team</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr *ngIf="repoTokenLoading">
+                                            <td colspan="4" class="text-center py-4">Loading repositories...</td>
+                                        </tr>
+                                        <tr *ngFor="let repo of filteredRepoTokenRows">
+                                            <td class="repo-token-select-col">
+                                                <input
+                                                        cFormCheckInput
+                                                        type="checkbox"
+                                                        [checked]="isRepoTokenSelected(repo.id)"
+                                                        (change)="toggleRepoTokenSelection(repo.id, $any($event.target).checked)"/>
+                                            </td>
+                                            <td>{{ repo.target }}</td>
+                                            <td>{{ repo.repo_url }}</td>
+                                            <td>{{ repo.team }}</td>
+                                        </tr>
+                                        <tr *ngIf="!repoTokenLoading && filteredRepoTokenRows.length === 0">
+                                            <td colspan="4" class="text-center py-4">No repositories match your search</td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <button
+                                        cButton
+                                        color="primary"
+                                        class="mt-3"
+                                        [disabled]="repoTokenSaving"
+                                        (click)="saveRepoTokenForSelected()">
+                                    {{ repoTokenSaving ? 'Updating token...' : 'Update token for selected repositories' }}
+                                </button>
+                            </div>
                             <!-- Other Configuration -->
                             <div class="config-section p-4 rounded shadow-sm">
                                 <h4 class="mb-3 section-title">Other Settings</h4>

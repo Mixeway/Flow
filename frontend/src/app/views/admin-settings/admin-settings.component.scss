@@ -71,6 +71,15 @@ table {
   font-weight: 600;
 }
 
+.repo-token-table-container {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.repo-token-select-col {
+  width: 52px;
+}
+
 // Form elements
 label {
   font-size: 0.9rem;

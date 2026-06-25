@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -317,6 +318,30 @@ public class UpdateCodeRepoService {
         }
         codeRepoRepository.updateTeamForRepositories(repositoryIds, newTeam.getId());
         log.info("Bulk changed team to '{}' for {} repositories.", newTeam.getName(), repositoryIds.size());
+    }
+
+    @Modifying
+    @Transactional
+    public void bulkChangeAccessToken(List<Long> repositoryIds, String accessToken) {
+        if (repositoryIds == null || repositoryIds.isEmpty()) {
+            throw new IllegalArgumentException("Repository IDs cannot be empty.");
+        }
+        if (!StringUtils.hasText(accessToken)) {
+            throw new IllegalArgumentException("Access token cannot be empty.");
+        }
+
+        List<String> changedRepoUrls = new ArrayList<>();
+        for (CodeRepo codeRepo : codeRepoRepository.findAllById(repositoryIds)) {
+            changedRepoUrls.add(codeRepo.getRepourl());
+        }
+
+        String sanitizedToken = accessToken.trim();
+        codeRepoRepository.updateAccessTokenForRepositories(repositoryIds, sanitizedToken);
+        log.info(
+                "Bulk changed access token for {} repositories. repoUrls={}",
+                repositoryIds.size(),
+                changedRepoUrls
+        );
     }
 
     @Transactional

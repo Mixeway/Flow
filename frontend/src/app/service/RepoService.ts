@@ -15,6 +15,9 @@ export class RepoService {
     getRepo(id: number): Observable<any> {
         return this.http.get<any>(this.loginUrl + '/api/v1/coderepo/' + id,{ withCredentials: true });
     }
+    getRepos(): Observable<any> {
+        return this.http.get<any>(this.loginUrl + '/api/v1/coderepo',{ withCredentials: true });
+    }
     getReposByTeam(id: number): Observable<any> {
         return this.http.get<any>(this.loginUrl + '/api/v1/coderepo/team/' + id,{ withCredentials: true });
     }
@@ -93,6 +96,13 @@ export class RepoService {
     deleteRepo(repoId: number): Observable<any> {
         return this.http.delete<any>(
             `${this.loginUrl}/api/v1/coderepo/${repoId}`,
+            { withCredentials: true }
+        );
+    }
+    changeAccessTokenForRepos(repoIds: number[], accessToken: string): Observable<any> {
+        return this.http.put<any>(
+            `${this.loginUrl}/api/v1/coderepo/bulk/change-token`,
+            { repositoryIds: repoIds, accessToken },
             { withCredentials: true }
         );
     }
