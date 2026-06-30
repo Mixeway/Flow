@@ -44,21 +44,35 @@ RUN apt-get update && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # ── Layer group 2: JDKs + Gradle (rarely changes) ───────────
+# Multiple JDKs so cdxgen can build arbitrary Gradle/Maven projects regardless
+# of the Java version their toolchain requires (11/17/21/23). Pulled from
+# Adoptium Temurin (one API for every GA feature release, no login, amd64+arm64).
 RUN ARCH=$(uname -m) && \
-    if [ "$ARCH" = "x86_64" ]; then \
-        wget -O jdk22.tar.gz https://download.oracle.com/java/22/archive/jdk-22_linux-x64_bin.tar.gz; \
-        wget -O jdk17.tar.gz https://download.oracle.com/java/17/archive/jdk-17_linux-x64_bin.tar.gz; \
-    elif [ "$ARCH" = "aarch64" ]; then \
-        wget -O jdk22.tar.gz https://download.oracle.com/java/22/archive/jdk-22_linux-aarch64_bin.tar.gz; \
-        wget -O jdk17.tar.gz https://download.oracle.com/java/17/archive/jdk-17_linux-aarch64_bin.tar.gz; \
-    else \
-        echo "Unsupported architecture: $ARCH"; exit 1; \
-    fi && \
-    mkdir -p /usr/local/jdk-22 && tar -xzf jdk22.tar.gz -C /usr/local/jdk-22 --strip-components=1 && rm jdk22.tar.gz && \
-    mkdir -p /usr/local/jdk-17 && tar -xzf jdk17.tar.gz -C /usr/local/jdk-17 --strip-components=1 && rm jdk17.tar.gz
+    case "$ARCH" in \
+        x86_64)  AJ=x64 ;; \
+        aarch64) AJ=aarch64 ;; \
+        *) echo "Unsupported architecture: $ARCH"; exit 1 ;; \
+    esac && \
+    for V in 11 17 21 22 23; do \
+        wget -O jdk${V}.tar.gz "https://api.adoptium.net/v3/binary/latest/${V}/ga/linux/${AJ}/jdk/hotspot/normal/eclipse" && \
+        mkdir -p /usr/local/jdk-${V} && \
+        tar -xzf jdk${V}.tar.gz -C /usr/local/jdk-${V} --strip-components=1 && \
+        rm jdk${V}.tar.gz; \
+    done
 
 ENV JAVA_HOME=/usr/local/jdk-22
 ENV PATH="$JAVA_HOME/bin:$PATH"
+
+# Register all installed JDKs globally so every Gradle invocation (including a
+# scanned project's own ./gradlew) resolves Java toolchains to a pre-installed
+# JDK, offline and deterministically. Gradle auto-detection alone never scans
+# /usr/local/jdk-*, so without this toolchain resolution fails and the SBOM is empty.
+ENV GRADLE_USER_HOME=/root/.gradle
+RUN mkdir -p "$GRADLE_USER_HOME" && \
+    printf '%s\n' \
+      'org.gradle.java.installations.paths=/usr/local/jdk-11,/usr/local/jdk-17,/usr/local/jdk-21,/usr/local/jdk-22,/usr/local/jdk-23' \
+      'org.gradle.java.installations.auto-download=false' \
+      > "$GRADLE_USER_HOME/gradle.properties"
 
 ENV GRADLE_VERSION=8.6
 RUN wget -q https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -P /tmp && \
