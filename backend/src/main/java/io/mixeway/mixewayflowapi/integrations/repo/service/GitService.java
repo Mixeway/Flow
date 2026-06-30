@@ -193,11 +193,33 @@ public class GitService {
      * </ul>
      */
     private String buildAuthenticatedUrl(String repoUrl, String accessToken, CodeRepo.RepoType repoType) {
+        String normalizedRepoUrl = normalizeRepoUrl(repoUrl);
         if (isBitbucket(repoUrl, repoType)) {
-            return repoUrl;
+            return normalizedRepoUrl;
+        }
+        if (accessToken == null || accessToken.isBlank()) {
+            return normalizedRepoUrl;
         }
         String encodedToken = URLEncoder.encode(accessToken, StandardCharsets.UTF_8);
-        return repoUrl.replace("https://", "https://OAUTH2:" + encodedToken + "@");
+        return normalizedRepoUrl.replace("https://", "https://oauth2:" + encodedToken + "@");
+    }
+
+    /**
+     * Ensures the repository URL is canonical for git clone.
+     * Some providers redirect non-".git" URLs to ".git", and HTTP auth credentials may be
+     * lost during that redirect depending on git/curl behavior.
+     */
+    private String normalizeRepoUrl(String repoUrl) {
+        if (repoUrl == null || repoUrl.isBlank()) {
+            return repoUrl;
+        }
+        int querySeparator = repoUrl.indexOf('?');
+        String baseUrl = querySeparator >= 0 ? repoUrl.substring(0, querySeparator) : repoUrl;
+        String query = querySeparator >= 0 ? repoUrl.substring(querySeparator) : "";
+        if (baseUrl.endsWith(".git")) {
+            return repoUrl;
+        }
+        return baseUrl + ".git" + query;
     }
 
     /**
@@ -239,7 +261,7 @@ public class GitService {
                 }
             }
             throw new GitException("Command execution failed: " + sanitizeCommand(pb.command()) +
-                    "\nError Output: " + errorOutput.toString());
+                    "\nError Output: " + sanitizeOutput(errorOutput.toString()));
         }
     }
 
@@ -272,7 +294,7 @@ public class GitService {
                 }
             }
             throw new GitException("Command execution failed: " + sanitizeCommand(pb.command()) +
-                    "\nError Output: " + errorOutput.toString());
+                    "\nError Output: " + sanitizeOutput(errorOutput.toString()));
         }
 
         return output.toString();
@@ -294,12 +316,23 @@ public class GitService {
         return sb.toString();
     }
 
+    private String sanitizeOutput(String output) {
+        if (output == null) {
+            return null;
+        }
+        return maskCredentials(output);
+    }
+
     private String maskCredentials(String arg) {
         if (arg == null) {
             return null;
         }
         String masked = arg.replaceAll("(https?://)[^@/\\s]+@", "$1***@");
         masked = masked.replaceAll("(?i)(Authorization:\\s*Bearer\\s+)\\S+", "$1***");
+        masked = masked.replaceAll("(?i)(PRIVATE-TOKEN:\\s*)\\S+", "$1***");
+        masked = masked.replaceAll("(?i)(X-Auth-Token:\\s*)\\S+", "$1***");
+        masked = masked.replaceAll("(?i)(x-token-auth:)\\S+", "$1***");
+        masked = masked.replaceAll("(?i)([?&](?:access_token|token|private_token)=)[^&\\s]+", "$1***");
         return masked;
     }
 }
