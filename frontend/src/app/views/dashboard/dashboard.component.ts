@@ -1424,7 +1424,7 @@ export class DashboardComponent implements OnInit {
             },
             error: (error) => {
                 this.toastStatus = "danger"
-                this.toastMessage = "Problem during repo import. If it will keep occurring contact system administrator."
+                this.toastMessage = this.resolveRepoImportErrorMessage(error)
                 this.toggleToast();
             }
         });
@@ -1524,8 +1524,8 @@ export class DashboardComponent implements OnInit {
                             this.loadSecurityData(); // Reload security data after adding a repository
                             this.visibleSingleRepoModal = false;
                         },
-                        error: () => {
-                            this.showToast("danger", "Problem during repo import. If it will keep occurring contact system administrator.");
+                        error: (error) => {
+                            this.showToast("danger", this.resolveRepoImportErrorMessage(error));
                         },
                     });
                 },
@@ -1560,8 +1560,8 @@ export class DashboardComponent implements OnInit {
                             this.loadSecurityData(); // Reload security data after adding a repository
                             this.visibleSingleRepoModal = false;
                         },
-                        error: () => {
-                            this.showToast("danger", "Problem during repo import. If it will keep occurring contact system administrator.");
+                        error: (error) => {
+                            this.showToast("danger", this.resolveRepoImportErrorMessage(error));
                         },
                     });
                 },
@@ -1594,8 +1594,8 @@ export class DashboardComponent implements OnInit {
                             this.loadSecurityData();
                             this.visibleSingleRepoModal = false;
                         },
-                        error: () => {
-                            this.showToast("danger", "Problem during repo import. If it will keep occurring contact system administrator.");
+                        error: (error) => {
+                            this.showToast("danger", this.resolveRepoImportErrorMessage(error));
                         },
                     });
                 },
@@ -1627,8 +1627,8 @@ export class DashboardComponent implements OnInit {
                             this.loadSecurityData();
                             this.visibleSingleRepoModal = false;
                         },
-                        error: () => {
-                            this.showToast("danger", "Problem during repo import. If it will keep occurring contact system administrator.");
+                        error: (error) => {
+                            this.showToast("danger", this.resolveRepoImportErrorMessage(error));
                         },
                     });
                 },
@@ -1644,6 +1644,14 @@ export class DashboardComponent implements OnInit {
         this.toastStatus = status;
         this.toastMessage = message;
         this.toggleToast();
+    }
+
+    private resolveRepoImportErrorMessage(error: any): string {
+        const apiMessage = error?.error?.status || error?.error?.message;
+        if (typeof apiMessage === 'string' && apiMessage.trim().length > 0) {
+            return apiMessage;
+        }
+        return "Problem during repo import. If it will keep occurring contact system administrator.";
     }
 
     // Helper method to get the base URL

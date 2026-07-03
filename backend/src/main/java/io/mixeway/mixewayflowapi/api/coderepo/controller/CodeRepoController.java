@@ -37,6 +37,22 @@ public class CodeRepoController {
     private final CodeRepoApiService codeRepoApiService;
     private final DeleteCodeRepoService deleteCodeRepoService;
 
+    private ResponseEntity<StatusDTO> buildCreateRepoErrorResponse(Exception e) {
+        Throwable rootCause = e;
+        while (rootCause.getCause() != null) {
+            rootCause = rootCause.getCause();
+        }
+        String message = rootCause.getMessage();
+        boolean repoAlreadyExists = message != null && message.toLowerCase().contains("already exists");
+        if (repoAlreadyExists) {
+            return new ResponseEntity<>(new StatusDTO("Repository already exists."), HttpStatus.CONFLICT);
+        }
+        return new ResponseEntity<>(
+                new StatusDTO("Error during repository import. Please contact administrator."),
+                HttpStatus.BAD_REQUEST
+        );
+    }
+
     @PreAuthorize("hasAuthority('USER')")
     @PostMapping(value= "/api/v1/coderepo/create/gitlab")
     public ResponseEntity<StatusDTO> createCodeRepoGitlab(@Valid @RequestBody CreateCodeRepoRequestDto createCodeRepoRequestDto, Principal principal){
@@ -44,9 +60,8 @@ public class CodeRepoController {
             createCodeRepoService.createCodeRepo(createCodeRepoRequestDto, CodeRepo.RepoType.GITLAB).block();
             return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.CREATED);
         } catch (Exception e){
-            e.printStackTrace();
-            log.error("[CodeRepo] Error Creating CodeRepo {} by {}", createCodeRepoRequestDto.getName(), principal.getName());
-            return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
+            log.error("[CodeRepo] Error creating CodeRepo {} by {}: {}", createCodeRepoRequestDto.getName(), principal.getName(), e.getMessage());
+            return buildCreateRepoErrorResponse(e);
         }
     }
     @PreAuthorize("hasAuthority('USER')")
@@ -56,9 +71,8 @@ public class CodeRepoController {
             createCodeRepoService.createCodeRepo(createCodeRepoRequestDto, CodeRepo.RepoType.GITHUB).block();
             return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.CREATED);
         } catch (Exception e){
-            e.printStackTrace();
-            log.error("[CodeRepo] Error Creating CodeRepo {} by {}", createCodeRepoRequestDto.getName(), principal.getName());
-            return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
+            log.error("[CodeRepo] Error creating CodeRepo {} by {}: {}", createCodeRepoRequestDto.getName(), principal.getName(), e.getMessage());
+            return buildCreateRepoErrorResponse(e);
         }
     }
 
@@ -69,9 +83,8 @@ public class CodeRepoController {
             createCodeRepoService.createCodeRepo(createCodeRepoRequestDto, CodeRepo.RepoType.GITEA).block();
             return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.CREATED);
         } catch (Exception e){
-            e.printStackTrace();
-            log.error("[CodeRepo] Error Creating CodeRepo {} by {}", createCodeRepoRequestDto.getName(), principal.getName());
-            return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
+            log.error("[CodeRepo] Error creating CodeRepo {} by {}: {}", createCodeRepoRequestDto.getName(), principal.getName(), e.getMessage());
+            return buildCreateRepoErrorResponse(e);
         }
     }
 
@@ -82,9 +95,8 @@ public class CodeRepoController {
             createCodeRepoService.createCodeRepo(createCodeRepoRequestDto, CodeRepo.RepoType.BITBUCKET).block();
             return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.CREATED);
         } catch (Exception e){
-            e.printStackTrace();
-            log.error("[CodeRepo] Error Creating CodeRepo {} by {}", createCodeRepoRequestDto.getName(), principal.getName());
-            return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
+            log.error("[CodeRepo] Error creating CodeRepo {} by {}: {}", createCodeRepoRequestDto.getName(), principal.getName(), e.getMessage());
+            return buildCreateRepoErrorResponse(e);
         }
     }
 

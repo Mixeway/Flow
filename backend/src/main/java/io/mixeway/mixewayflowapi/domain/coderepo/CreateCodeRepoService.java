@@ -103,9 +103,11 @@ public class CreateCodeRepoService {
                                         }
                                     }
                                     else {
-                                        // FIX: Uncommented this block to throw an exception when the team is not found or the repo already exists.
-                                        log.warn("[CodeRepoService] Trying to add repository that exsits");
-                                        //throw new TeamNotFoundException("[CreateCodeRepoService] Team " + createCodeRepoRequestDto.getTeam() + " not found or repo already exists.");
+                                        if (team.isEmpty()) {
+                                            throw new TeamNotFoundException("[CreateCodeRepoService] Team " + createCodeRepoRequestDto.getTeam() + " not found.");
+                                        }
+                                        log.warn("[CodeRepoService] Trying to add repository that already exists: {}", repoResponse.getWebUrl());
+                                        throw new IllegalArgumentException("Repository already exists.");
                                     }
                                 })
                                 // Schedule the execution of the blocking code on the 'boundedElastic' scheduler.
