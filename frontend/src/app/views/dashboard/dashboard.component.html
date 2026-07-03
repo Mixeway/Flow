@@ -224,9 +224,13 @@
                     <svg cIcon class="me-2" name="cil-sync"></svg>
                     Connect Repository Provider
                 </button>
-                <button *ngIf="selectedRepos.length > 0 && isAdmin" cButton color="primary" (click)="openChangeTeamModal()">
+                <button *ngIf="selectedRepos.length > 0 && (isAdmin || isTeamManager)" cButton color="primary" (click)="openChangeTeamModal()">
                     <svg cIcon name="cil-pencil" class="me-2"></svg>
-                    Edit Selected ({{ selectedRepos.length }})
+                    Change Team ({{ selectedRepos.length }})
+                </button>
+                <button *ngIf="selectedRepos.length > 0 && (isAdmin || isTeamManager)" cButton color="dark" (click)="openChangeTokenModal()">
+                    <svg cIcon name="cil-lock-locked" class="me-2"></svg>
+                    Change Token ({{ selectedRepos.length }})
                 </button>
             </c-card-body>
         </c-card>
@@ -1340,6 +1344,35 @@
         <button (click)="visibleChangeTeamModal = false" cButton color="secondary">Cancel</button>
         <button (click)="onSubmitChangeTeam()" cButton color="primary" [disabled]="changeTeamForm.invalid">
             Change Team
+        </button>
+    </c-modal-footer>
+</c-modal>
+
+<c-modal id="changeTokenModal" alignment="center" [visible]="visibleChangeTokenModal" (visibleChange)="handleChangeTokenModalChange($event)">
+    <c-modal-header>
+        <h5 cModalTitle>Change Access Token for Selected Repositories</h5>
+    </c-modal-header>
+    <c-modal-body>
+        <p>You are about to change the access token for <strong>{{ selectedRepos.length }}</strong> selected repositories.</p>
+
+        <div class="mb-3">
+            <small>Repositories:</small>
+            <ul class="list-group list-group-flush" style="max-height: 150px; overflow-y: auto;">
+                <li *ngFor="let repo of selectedRepos" class="list-group-item py-1 px-0">{{ repo.target }}</li>
+            </ul>
+        </div>
+
+        <form [formGroup]="changeTokenForm" cForm>
+            <div class="mb-3">
+                <label for="newAccessTokenInput" class="form-label">New Access Token</label>
+                <input cFormControl id="newAccessTokenInput" type="password" formControlName="accessToken" required />
+            </div>
+        </form>
+    </c-modal-body>
+    <c-modal-footer>
+        <button (click)="visibleChangeTokenModal = false" cButton color="secondary">Cancel</button>
+        <button (click)="onSubmitChangeToken()" cButton color="dark" [disabled]="changeTokenForm.invalid">
+            Change Token
         </button>
     </c-modal-footer>
 </c-modal>

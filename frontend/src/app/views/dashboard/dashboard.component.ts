@@ -160,6 +160,7 @@ export class DashboardComponent implements OnInit {
     public visibleConnectProvider = false;
     connectProviderForm: FormGroup;
     isAdmin = false;
+    isTeamManager = false;
     providerRows: any[] = [];
     providerColumns: any[] = [
         { prop: 'providerType', name: 'Provider' },
@@ -171,6 +172,8 @@ export class DashboardComponent implements OnInit {
     selectedRepos: any[] = [];
     visibleChangeTeamModal = false;
     changeTeamForm: FormGroup;
+    visibleChangeTokenModal = false;
+    changeTokenForm: FormGroup;
     selectionType = SelectionType;
     public rowIdentity = (row: any): any => {
         return row.id;
@@ -385,6 +388,9 @@ export class DashboardComponent implements OnInit {
         this.changeTeamForm = this.fb.group({
             newTeamId: ['', Validators.required]
         });
+        this.changeTokenForm = this.fb.group({
+            accessToken: ['', Validators.required]
+        });
         this.#destroyRef.onDestroy(() => {
             if (this.repoSearchDebounceTimer) {
                 clearTimeout(this.repoSearchDebounceTimer);
@@ -418,6 +424,14 @@ export class DashboardComponent implements OnInit {
         this.visibleChangeTeamModal = event;
     }
 
+    openChangeTokenModal() {
+        this.visibleChangeTokenModal = true;
+    }
+
+    handleChangeTokenModalChange(event: boolean) {
+        this.visibleChangeTokenModal = event;
+    }
+
     onSubmitChangeTeam() {
         if (this.changeTeamForm.invalid) {
             this.showToast('danger', 'Please select a new team.');
@@ -440,6 +454,37 @@ export class DashboardComponent implements OnInit {
             },
             error: (err) => {
                 this.showToast('danger', `Error changing teams: ${err.error?.message || 'Please try again.'}`);
+            }
+        });
+    }
+
+    onSubmitChangeToken() {
+        if (this.changeTokenForm.invalid) {
+            this.showToast('danger', 'Please provide a new access token.');
+            return;
+        }
+        if (this.selectedRepos.length === 0) {
+            this.showToast('danger', 'No repositories selected.');
+            return;
+        }
+
+        const repoIds = this.selectedRepos.map(repo => repo.id);
+        const accessToken = (this.changeTokenForm.value.accessToken || '').trim();
+        if (!accessToken) {
+            this.showToast('danger', 'Access token cannot be empty.');
+            return;
+        }
+
+        this.dashboardService.changeAccessTokenForRepos(repoIds, accessToken).subscribe({
+            next: () => {
+                this.showToast('success', 'Access token updated for selected repositories.');
+                this.visibleChangeTokenModal = false;
+                this.selectedRepos = [];
+                this.changeTokenForm.reset();
+                this.loadCodeRepos(this.repoCurrentPage);
+            },
+            error: (err) => {
+                this.showToast('danger', `Error changing access token: ${err.error?.message || 'Please try again.'}`);
             }
         });
     }
@@ -484,6 +529,7 @@ export class DashboardComponent implements OnInit {
         let userRole = localStorage.getItem('userRole');
         this.role = userRole;
         this.isAdmin = userRole === 'ADMIN';
+        this.isTeamManager = userRole === 'TEAM_MANAGER';
         this.authService.hc().subscribe({
             next: (response) => {
                 if (!userRole) {
@@ -1348,6 +1394,7 @@ export class DashboardComponent implements OnInit {
         this.visibleNewTeam = false;
         this.visibleSingleRepoModal = false;
         this.visibleConnectProvider = false; // Add this line
+        this.visibleChangeTokenModal = false;
     }
 
     closeNewTeamModal() {

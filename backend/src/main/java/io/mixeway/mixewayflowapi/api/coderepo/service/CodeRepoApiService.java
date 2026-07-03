@@ -202,7 +202,19 @@ public class CodeRepoApiService {
         updateCodeRepoService.bulkChangeTeam(repositoryIds, newTeam);
     }
 
-    public void bulkChangeAccessToken(List<Long> repositoryIds, String accessToken) {
+    public void changeAccessToken(Long repoId, String accessToken, Principal principal) {
+        CodeRepo repo = findCodeRepoService.findById(repoId)
+                .orElseThrow(() -> new CodeRepoNotFoundException("Repository not found"));
+        permissionFactory.canUserManageTeam(repo.getTeam(), principal);
+        updateCodeRepoService.changeAccessToken(repo, accessToken);
+    }
+
+    public void bulkChangeAccessToken(List<Long> repositoryIds, String accessToken, Principal principal) {
+        for (Long repositoryId : repositoryIds) {
+            CodeRepo repository = findCodeRepoService.findById(repositoryId)
+                    .orElseThrow(() -> new CodeRepoNotFoundException("Repository not found: " + repositoryId));
+            permissionFactory.canUserManageTeam(repository.getTeam(), principal);
+        }
         updateCodeRepoService.bulkChangeAccessToken(repositoryIds, accessToken);
     }
 

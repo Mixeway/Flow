@@ -65,4 +65,12 @@ export class DashboardService {
         return this.http.put<any>(this.loginUrl + '/api/v1/coderepo/bulk/change-team', {"repositoryIds":repoIds,"newTeamId":newTeamId},{ withCredentials: true });
 
     }
+
+    changeAccessTokenForRepos(repoIds: number[], accessToken: string): Observable<any> {
+        return this.http.post<any>(
+            `${this.loginUrl}/api/v1/coderepo/bulk/change-token`,
+            { repositoryIds: repoIds, accessToken },
+            { withCredentials: true }
+        );
+    }
 }
