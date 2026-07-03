@@ -79,6 +79,13 @@
                         <svg cIcon name="cil-pencil" class="me-1"></svg>
                         Rename
                     </button>
+                    <button *ngIf="userRole === 'ADMIN' || userRole === 'TEAM_MANAGER'"
+                            cButton color="dark" variant="ghost" size="sm"
+                            [cTooltip]="'Change repository access token'"
+                            (click)="openTokenModal()">
+                        <svg cIcon name="cil-lock-locked" class="me-1"></svg>
+                        Token
+                    </button>
                     <button *ngIf="userRole === 'ADMIN'"
                             cButton color="danger" variant="ghost" size="sm"
                             [cTooltip]="'Delete repository'"
@@ -201,6 +208,25 @@
         <button cButton color="secondary" variant="ghost" (click)="sbomModalVisible=false">Cancel</button>
         <button cButton color="info" [disabled]="!sbomFile" (click)="confirmSbomUpload()">
             Upload &amp; scan
+        </button>
+    </c-modal-footer>
+</c-modal>
+
+<c-modal [(visible)]="tokenModalVisible" alignment="center" size="sm">
+    <c-modal-header>
+        <h5 cModalTitle>Change access token</h5>
+        <button cButtonClose (click)="tokenModalVisible=false"></button>
+    </c-modal-header>
+    <c-modal-body>
+        <label class="form-label">New access token</label>
+        <input cFormControl type="password" [(ngModel)]="tokenForm.accessToken" />
+        <div *ngIf="tokenError" class="text-danger mt-2">{{ tokenError }}</div>
+    </c-modal-body>
+    <c-modal-footer>
+        <button cButton color="secondary" variant="ghost" (click)="tokenModalVisible=false">Cancel</button>
+        <button cButton color="dark" [disabled]="tokenSaving" (click)="confirmTokenChange()">
+            <c-spinner size="sm" *ngIf="tokenSaving" class="me-2"></c-spinner>
+            Save
         </button>
     </c-modal-footer>
 </c-modal>

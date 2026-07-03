@@ -86,6 +86,13 @@ export class RepoService {
             { withCredentials: true }
         );
     }
+    changeAccessToken(repoId: number, accessToken: string): Observable<any> {
+        return this.http.post<any>(
+            `${this.loginUrl}/api/v1/coderepo/${repoId}/change-token`,
+            { accessToken },
+            { withCredentials: true }
+        );
+    }
     rename(repoId: number, newName: string) {
         return this.http.put<any>(
             `${this.loginUrl}/api/v1/coderepo/${repoId}/rename`,
@@ -100,7 +107,7 @@ export class RepoService {
         );
     }
     changeAccessTokenForRepos(repoIds: number[], accessToken: string): Observable<any> {
-        return this.http.put<any>(
+        return this.http.post<any>(
             `${this.loginUrl}/api/v1/coderepo/bulk/change-token`,
             { repositoryIds: repoIds, accessToken },
             { withCredentials: true }

@@ -240,15 +240,30 @@ public class CodeRepoController {
         }
     }
 
-    @PreAuthorize("hasAuthority('ADMIN')")
-    @PutMapping(value = "/api/v1/coderepo/bulk/change-token")
+    @PreAuthorize("hasAnyAuthority('ADMIN','TEAM_MANAGER')")
+    @PostMapping(value = "/api/v1/coderepo/bulk/change-token")
     public ResponseEntity<StatusDTO> bulkChangeToken(@Valid @RequestBody BulkChangeTokenRequestDto request, Principal principal) {
         try {
-            codeRepoApiService.bulkChangeAccessToken(request.getRepositoryIds(), request.getAccessToken());
+            codeRepoApiService.bulkChangeAccessToken(request.getRepositoryIds(), request.getAccessToken(), principal);
             return ResponseEntity.ok(new StatusDTO("Access token updated for selected repositories."));
         } catch (Exception e) {
             log.error("[CodeRepo] Error during bulk token change by {}: {}", principal.getName(), e.getMessage());
-            return new ResponseEntity<>(new StatusDTO(e.getMessage()), HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(new StatusDTO("Error during access token update."), HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAnyAuthority('ADMIN','TEAM_MANAGER')")
+    @PostMapping(value = "/api/v1/coderepo/{id}/change-token")
+    public ResponseEntity<StatusDTO> changeToken(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody ChangeAccessTokenRequestDto request,
+            Principal principal) {
+        try {
+            codeRepoApiService.changeAccessToken(id, request.getAccessToken(), principal);
+            return ResponseEntity.ok(new StatusDTO("Access token updated for repository."));
+        } catch (Exception e) {
+            log.error("[CodeRepo] Error during token change for repo {} by {}: {}", id, principal.getName(), e.getMessage());
+            return new ResponseEntity<>(new StatusDTO("Error during access token update."), HttpStatus.BAD_REQUEST);
         }
     }
 

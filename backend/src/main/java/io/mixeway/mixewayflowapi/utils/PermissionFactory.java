@@ -72,19 +72,19 @@ public class PermissionFactory {
     public void canUserManageTeam(Team team, Principal principal) {
         UserInfo userInfo = findUserService.findUser(principal.getName());
         UserRole adminRole = findRoleService.findUserRole("ADMIN");
+        boolean isAdmin = userInfo.getRoles().contains(adminRole);
+        boolean isTeamMember = userInfo.getTeams().contains(team);
 
-        // In SaaS mode, check organization boundaries
-        if (appConfigService.isSaasMode()) {
-            if (!userInfo.getRoles().contains(adminRole) ||
-                    (team.getOrganization() != null &&
-                            !userInfo.getOrganizations().contains(team.getOrganization()))) {
-                throw new UnauthorizedException("");
-            }
-        } else {
-            // STANDALONE mode - existing logic
-            if (!userInfo.getRoles().contains(adminRole) && !userInfo.getTeams().contains(team)) {
-                throw new UnauthorizedException("");
-            }
+        // Non-admins (including TEAM_MANAGER) can manage only their own teams.
+        if (!isAdmin && !isTeamMember) {
+            throw new UnauthorizedException("");
+        }
+
+        // In SaaS mode, also enforce organization boundary for both admin and team members.
+        if (appConfigService.isSaasMode()
+                && team.getOrganization() != null
+                && !userInfo.getOrganizations().contains(team.getOrganization())) {
+            throw new UnauthorizedException("");
         }
     }
     public void canUserAccessTeam(Team team, Principal principal) {

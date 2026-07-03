@@ -8,7 +8,6 @@ import io.mixeway.mixewayflowapi.domain.scaninfo.CreateScanInfoService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import org.checkerframework.checker.units.qual.C;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -342,6 +341,17 @@ public class UpdateCodeRepoService {
                 repositoryIds.size(),
                 changedRepoUrls
         );
+    }
+
+    @Modifying
+    @Transactional
+    public void changeAccessToken(CodeRepo codeRepo, String accessToken) {
+        if (!StringUtils.hasText(accessToken)) {
+            throw new IllegalArgumentException("Access token cannot be empty.");
+        }
+        String sanitizedToken = accessToken.trim();
+        codeRepoRepository.updateAccessTokenForRepository(codeRepo.getId(), sanitizedToken);
+        log.info("Changed access token for repository {}", codeRepo.getRepourl());
     }
 
     @Transactional

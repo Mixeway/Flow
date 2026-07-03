@@ -83,6 +83,10 @@ export class RepositoryInfoComponent implements OnInit {
     renameSaving = false;
     renameError: string | null = null;
     renameForm = { name: '' };
+    tokenModalVisible = false;
+    tokenSaving = false;
+    tokenError: string | null = null;
+    tokenForm = { accessToken: '' };
 
     scanDropdownOpen = false;
     branchScanModalVisible = false;
@@ -204,6 +208,11 @@ export class RepositoryInfoComponent implements OnInit {
         this.renameForm.name = this.repoData?.name ?? '';
         this.renameModalVisible = true;
     }
+    openTokenModal() {
+        this.tokenError = null;
+        this.tokenForm.accessToken = '';
+        this.tokenModalVisible = true;
+    }
     requestDeleteRepo(): void {
         this.deleteRepoEvent.emit();
     }
@@ -234,6 +243,29 @@ export class RepositoryInfoComponent implements OnInit {
             error: (err) => {
                 this.renameSaving = false;
                 this.renameError = err?.error?.message || 'Rename failed.';
+            }
+        });
+    }
+    confirmTokenChange() {
+        const id = this.repoData?.id;
+        if (!id) return;
+
+        const trimmed = (this.tokenForm.accessToken || '').trim();
+        if (!trimmed) {
+            this.tokenError = 'Access token cannot be empty.';
+            return;
+        }
+
+        this.tokenSaving = true;
+        this.codeService.changeAccessToken(id, trimmed).subscribe({
+            next: () => {
+                this.tokenSaving = false;
+                this.tokenModalVisible = false;
+                this.tokenForm.accessToken = '';
+            },
+            error: (err) => {
+                this.tokenSaving = false;
+                this.tokenError = err?.error?.message || 'Token update failed.';
             }
         });
     }
