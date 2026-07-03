@@ -5,10 +5,11 @@ import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.db.entity.ScanInfo;
 import io.mixeway.mixewayflowapi.db.repository.ScanInfoRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
+import java.util.List;
 
 /**
  * Service class for creating or updating immutable {@link ScanInfo} entities.
@@ -20,6 +21,7 @@ import java.util.Optional;
  */
 @Service
 @RequiredArgsConstructor
+@Log4j2
 public class CreateScanInfoService {
 
     private final ScanInfoRepository scanInfoRepository;
@@ -54,12 +56,16 @@ public class CreateScanInfoService {
                                            int iacHigh, int iacCritical, int secretsHigh, int secretsCritical, int gitlabHigh, int gitlabCritical,
                                            int dastHigh, int dastCritical) {
 
-        Optional<ScanInfo> existingScanInfoOpt = scanInfoRepository.findByCodeRepoAndCodeRepoBranchAndCommitId(codeRepo, codeRepoBranch, commitId);
-
         ScanInfo scanInfo;
+        List<ScanInfo> existingScanInfos = scanInfoRepository
+                .findAllByCodeRepoAndCodeRepoBranchAndCommitIdOrderByInsertedDateDesc(codeRepo, codeRepoBranch, commitId);
 
-        if (existingScanInfoOpt.isPresent()) {
-            scanInfo = existingScanInfoOpt.get();
+        if (!existingScanInfos.isEmpty()) {
+            if (existingScanInfos.size() > 1) {
+                log.warn("[ScanInfo] Found {} duplicate scan_info rows for repoId={}, branchId={}, commitId={}. Updating latest row only.",
+                        existingScanInfos.size(), codeRepo.getId(), codeRepoBranch.getId(), commitId);
+            }
+            scanInfo = existingScanInfos.get(0);
             scanInfo.updateScanInfo(scaScanStatus, sastScanStatus, iacScanStatus, secretsScanStatus, gitlabScanStatus, scaHigh, scaCritical,
                     sastHigh, sastCritical, iacHigh, iacCritical, secretsHigh, secretsCritical, gitlabHigh, gitlabCritical);
         } else {

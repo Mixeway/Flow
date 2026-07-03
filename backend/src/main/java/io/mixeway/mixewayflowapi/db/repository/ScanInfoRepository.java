@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface ScanInfoRepository extends CrudRepository<ScanInfo, Long> {
 
     Optional<ScanInfo> findByCodeRepoAndCodeRepoBranchAndCommitId(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId);
+    List<ScanInfo> findAllByCodeRepoAndCodeRepoBranchAndCommitIdOrderByInsertedDateDesc(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId);
     List<ScanInfo> findByCodeRepo(CodeRepo repo);
     boolean existsByCodeRepoBranch(CodeRepoBranch codeRepoBranch);
     void deleteByCodeRepo(CodeRepo codeRepo);
