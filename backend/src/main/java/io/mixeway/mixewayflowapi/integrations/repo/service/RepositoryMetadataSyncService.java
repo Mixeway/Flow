@@ -10,6 +10,7 @@ import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GitHubApiClientServ
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GitLabApiClientService;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GiteaApiClientService;
 import io.mixeway.mixewayflowapi.integrations.repo.dto.ImportCodeRepoResponseDto;
+import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,7 @@ public class RepositoryMetadataSyncService {
     private final GitHubApiClientService gitHubApiClientService;
     private final GiteaApiClientService giteaApiClientService;
     private final BitbucketApiClientService bitbucketApiClientService;
+    private final ScanManagerService scanManagerService;
 
     public void syncAllRepositoriesMetadata() {
         codeRepoRepository.findAll().forEach(this::syncRepositoryMetadata);
@@ -38,6 +40,7 @@ public class RepositoryMetadataSyncService {
 
     private void syncRepositoryMetadata(CodeRepo codeRepo) {
         try {
+            CodeRepo currentCodeRepo = codeRepo;
             RepoMetadata metadata = fetchRepositoryMetadata(codeRepo);
             if (metadata == null || !hasText(metadata.name()) || !hasText(metadata.webUrl()) || !hasText(metadata.defaultBranch())) {
                 return;
@@ -52,9 +55,10 @@ public class RepositoryMetadataSyncService {
 
             if (nameChanged || urlChanged || defaultBranchChanged) {
                 codeRepoRepository.updateRepositoryMetadata(codeRepo.getId(), normalizedName, metadata.webUrl(), defaultBranch);
+                currentCodeRepo = codeRepoRepository.findById(codeRepo.getId()).orElse(codeRepo);
             }
 
-            BranchSyncResult branchSyncResult = syncRepositoryBranches(codeRepo, metadata.defaultBranch(), metadata.webUrl());
+            BranchSyncResult branchSyncResult = syncRepositoryBranches(currentCodeRepo, metadata.defaultBranch(), metadata.webUrl());
             if (nameChanged || urlChanged || defaultBranchChanged || branchSyncResult.hasChanges()) {
                 log.info(
                         "Repository metadata sync updated repoId={} remoteId={} [nameChanged={}, urlChanged={}, defaultBranchChanged={}, branchesAdded={}, branchesMarkedExisting={}, branchesMarkedMissing={}]",
@@ -67,6 +71,12 @@ public class RepositoryMetadataSyncService {
                         branchSyncResult.branchesMarkedExisting(),
                         branchSyncResult.branchesMarkedMissing()
                 );
+            }
+
+            if (defaultBranchChanged) {
+                log.info("Default branch changed for repoId={} (remoteId={}). Triggering scan on branch {}.",
+                        currentCodeRepo.getId(), currentCodeRepo.getRemoteId(), currentCodeRepo.getDefaultBranch().getName());
+                scanManagerService.scanRepository(currentCodeRepo, currentCodeRepo.getDefaultBranch(), null, null);
             }
         } catch (Exception e) {
             log.warn("Failed to sync metadata for repo {} (id={}): {}", codeRepo.getName(), codeRepo.getId(), e.getMessage());
