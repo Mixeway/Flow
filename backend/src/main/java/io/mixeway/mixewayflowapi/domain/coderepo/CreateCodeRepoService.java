@@ -89,7 +89,7 @@ public class CreateCodeRepoService {
                                                     .forEach(finalCodeRepo::upsertLanguage);
 
                                             finalCodeRepo = codeRepoRepository.save(finalCodeRepo);
-                                            scaService.createDtrackProject(finalCodeRepo);
+                                            // scaService.createDtrackProject(finalCodeRepo);
                                             log.info("[CodeRepoService] Creating initial scan for {} default branch {}", codeRepo.getRepourl(), codeRepoBranch.getName());
                                             scanManagerService.scanRepository(finalCodeRepo, finalCodeRepo.getDefaultBranch(), null, null);
 
