@@ -99,6 +99,7 @@ export class RepositoryInfoComponent implements OnInit {
     sbomBranch = '';
     sbomError: string | null = null;
     sbomFile: File | null = null;
+    sbomAvailableBranches: string[] = [];
 
   @Output() runScanEvent = new EventEmitter<void>();
   @Output() runScanBranchEvent = new EventEmitter<string>();
@@ -168,7 +169,11 @@ export class RepositoryInfoComponent implements OnInit {
     this.sbomModalVisible = true;
     this.sbomError = null;
     this.sbomFile = null;
+    this.sbomAvailableBranches = this.getDbBranchNames();
     this.sbomBranch = this.repoData?.defaultBranch?.name ?? '';
+    if (!this.sbomAvailableBranches.includes(this.sbomBranch)) {
+      this.sbomBranch = this.sbomAvailableBranches[0] ?? '';
+    }
   }
 
   onSbomFileChange(event: Event): void {
@@ -194,6 +199,24 @@ export class RepositoryInfoComponent implements OnInit {
       file: this.sbomFile,
       branch: branch.length > 0 ? branch : undefined,
     });
+  }
+
+  private getDbBranchNames(): string[] {
+    const names = new Set<string>();
+    const defaultBranchName = this.repoData?.defaultBranch?.name;
+    if (defaultBranchName) {
+      names.add(defaultBranchName);
+    }
+
+    const branches = this.repoData?.branches ?? [];
+    for (const branch of branches) {
+      const branchName = branch?.name;
+      if (branchName) {
+        names.add(branchName);
+      }
+    }
+
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
   }
 
     constructor(private codeService: RepoService) {}

@@ -200,8 +200,14 @@
         </p>
         <label class="form-label">SBOM file (.json)</label>
         <input type="file" class="form-control" accept=".json,application/json" (change)="onSbomFileChange($event)" />
-        <label class="form-label mt-3">Branch name (optional)</label>
-        <input cFormControl type="text" [(ngModel)]="sbomBranch" placeholder="Default branch" />
+        <label class="form-label mt-3">Branch</label>
+        <select class="form-select" [(ngModel)]="sbomBranch" [disabled]="sbomAvailableBranches.length === 0">
+            <option value="">-- Select branch --</option>
+            <option *ngFor="let b of sbomAvailableBranches" [value]="b">{{ b }}</option>
+        </select>
+        <small class="text-muted d-block mt-1" *ngIf="sbomAvailableBranches.length === 0">
+            No branches found in database. Scan will use default branch.
+        </small>
         <div *ngIf="sbomError" class="text-danger mt-2">{{ sbomError }}</div>
     </c-modal-body>
     <c-modal-footer>
