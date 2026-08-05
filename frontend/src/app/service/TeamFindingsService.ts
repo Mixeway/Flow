@@ -33,9 +33,12 @@ export class TeamFindingsService {
         return this.http.post<any>(this.loginUrl + '/api/v1/teamfindings/' + number+ '/supress', selectedFindings,{ withCredentials: true });
 
     }
-    supressFinding(id: number, finding: number, reason: string): Observable<any> {
-        return this.http.get<any>(this.loginUrl + '/api/v1/teamfindings/' + id + '/supress/' + finding
-            + '/reason/' + reason,{ withCredentials: true });
+    supressFinding(id: number, finding: number, reason: string, days?: number | null): Observable<any> {
+        let url = this.loginUrl + '/api/v1/teamfindings/' + id + '/supress/' + finding + '/reason/' + reason;
+        if (days != null) {
+            url += '?days=' + days;
+        }
+        return this.http.get<any>(url,{ withCredentials: true });
     }
     reActivateFinding(id: number, finding: number): Observable<any> {
         return this.http.get<any>(this.loginUrl + '/api/v1/teamfindings/' + id + '/reactivate/' + finding

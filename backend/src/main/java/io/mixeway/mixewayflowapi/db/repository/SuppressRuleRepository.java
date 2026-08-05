@@ -9,6 +9,7 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -70,7 +71,9 @@ public interface SuppressRuleRepository extends CrudRepository<SuppressRule, Lon
         sr.pathRegex,
         ui.username,
         sr.createdDate,
-        sr.comment
+        sr.comment,
+        sr.expirationDate,
+        sr.active
     )
     FROM SuppressRule sr
     JOIN sr.vulnerability v
@@ -93,6 +96,7 @@ public interface SuppressRuleRepository extends CrudRepository<SuppressRule, Lon
 
     @Query("SELECT sr FROM SuppressRule sr " +
             "WHERE sr.scope = :scope " +
+            "AND sr.active = true " +
             "AND sr.vulnerability = :vulnerability " +
             "AND (:teamId IS NULL OR sr.team.id = :teamId) " +
             "AND (:codeRepoId IS NULL OR sr.codeRepo.id = :codeRepoId) " +
@@ -109,6 +113,8 @@ public interface SuppressRuleRepository extends CrudRepository<SuppressRule, Lon
             "   (sr.scope = 'GLOBAL' AND f.vulnerability = sr.vulnerability) OR " +
             "   (sr.scope = 'TEAM' AND f.vulnerability = sr.vulnerability AND f.codeRepo.team = sr.team) OR " +
             "   (sr.scope = 'PROJECT' AND f.vulnerability = sr.vulnerability AND f.codeRepo = sr.codeRepo) " +
-            "WHERE f.id = :findingId")
+            "WHERE f.id = :findingId AND sr.active = true")
     List<SuppressRule> findApplicableSuppressRules(@Param("findingId") Long findingId);
+
+    List<SuppressRule> findByActiveTrueAndExpirationDateLessThanEqual(LocalDate date);
 }

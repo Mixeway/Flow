@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.13] - 2026-08-05
+
+### Introduced
+- Temporary (time-boxed) suppressions: findings can be suppressed for a given number of days and are automatically re-activated once the period expires
+- Temporary suppress rules (waivers) with an expiration date; expired rules are deactivated automatically and marked as "Expired" in the Waivers view
+- "Suppressed until" date visible in finding details (repo and team views) and in the findings API response
+- Daily scheduler (with catch-up on application startup) that re-activates findings and deactivates suppress rules whose expiration date has passed
+
+### Changed
+- Removed the background scheduler that periodically analyzed vulnerability constraints via AI; constraints are now updated only on vulnerability insert/update events or on demand
+
 ## [1.2.12] - 2025-12-14
 
 ### Intrduced

@@ -28,6 +28,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.net.URLDecoder;
+import java.time.LocalDate;
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.List;
@@ -229,15 +230,16 @@ public class FindingsByTeamService {
     }
 
 
-    public StatusDTO supressTeamFindingBulk(Long id, List<Long> findingIds, Principal principal) {
+    public StatusDTO supressTeamFindingBulk(Long id, List<Long> findingIds, Integer days, Principal principal) {
         Optional<Team> teamOptional = findTeamService.findById(id);
         if (teamOptional.isPresent()) {
             Team team = teamOptional.get();
             List<CodeRepo> codeRepos = findCodeRepoService.findByTeam(team);
+            LocalDate suppressedUntil = FindingService.resolveSuppressedUntil(days);
             for (Long findingId : findingIds) {
                 Optional<Finding> finding = findFindingService.findById(findingId);
                 if (finding.isPresent() && codeRepos.contains(finding.get().getCodeRepo())) {
-                    updateFindingService.suppressFinding(finding.get(), Finding.SuppressedReason.FALSE_POSITIVE.toString());
+                    updateFindingService.suppressFinding(finding.get(), Finding.SuppressedReason.FALSE_POSITIVE.toString(), suppressedUntil);
                 }
             }
             return new StatusDTO("OK");
@@ -245,7 +247,7 @@ public class FindingsByTeamService {
         return new StatusDTO("Team not found");
     }
 
-    public StatusDTO supressTeamFinding(Long id, Long findingId, String reason, Principal principal) {
+    public StatusDTO supressTeamFinding(Long id, Long findingId, String reason, Integer days, Principal principal) {
         Optional<Team> teamOptional = findTeamService.findById(id);
         if (teamOptional.isPresent()) {
             Team team = teamOptional.get();
@@ -256,7 +258,8 @@ public class FindingsByTeamService {
                         finding.get().getCodeRepo().getId(),
                         finding.get().getLocation(),
                         finding.get().getVulnerability().getId(),
-                        reason);
+                        reason,
+                        FindingService.resolveSuppressedUntil(days));
             }
 
             return new StatusDTO("OK");

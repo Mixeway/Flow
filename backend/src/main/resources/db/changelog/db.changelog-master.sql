@@ -818,3 +818,8 @@ ALTER TABLE jira_configuration ADD COLUMN subtask_enabled BOOLEAN NOT NULL DEFAU
 --changeset siewer:coderepo-branch-remote-flag
 ALTER TABLE coderepo_branch
     ADD COLUMN IF NOT EXISTS exists_on_remote BOOLEAN NOT NULL DEFAULT TRUE;
+
+--changeset siewer:suppress-expiration
+ALTER TABLE finding ADD COLUMN IF NOT EXISTS suppressed_until DATE;
+ALTER TABLE suppress_rule ADD COLUMN IF NOT EXISTS expiration_date DATE;
+ALTER TABLE suppress_rule ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE;

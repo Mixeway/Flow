@@ -59,9 +59,9 @@ public class FindingController {
 
     @PreAuthorize("hasAuthority('USER')")
     @GetMapping(value= "/api/v1/coderepo/{id}/supress/{finding}/reason/{reason}")
-    public ResponseEntity<StatusDTO> supressFinding(@PathVariable("id") Long id, @PathVariable("finding") Long findingId, @PathVariable("reason") String reason, Principal principal){
+    public ResponseEntity<StatusDTO> supressFinding(@PathVariable("id") Long id, @PathVariable("finding") Long findingId, @PathVariable("reason") String reason, @RequestParam(value = "days", required = false) Integer days, Principal principal){
         try {
-            return new ResponseEntity<>(findingService.supressFinding(id,findingId,reason,principal), HttpStatus.OK);
+            return new ResponseEntity<>(findingService.supressFinding(id,findingId,reason,days,principal), HttpStatus.OK);
         } catch (Exception e){
             e.printStackTrace();
             return new ResponseEntity<>( HttpStatus.BAD_REQUEST);
@@ -69,9 +69,9 @@ public class FindingController {
     }
     @PreAuthorize("hasAuthority('USER')")
     @PostMapping(value= "/api/v1/coderepo/{id}/supress")
-    public ResponseEntity<StatusDTO> supressFindingList(@PathVariable("id") Long id, @RequestBody List<Long> findingIds, Principal principal){
+    public ResponseEntity<StatusDTO> supressFindingList(@PathVariable("id") Long id, @RequestBody List<Long> findingIds, @RequestParam(value = "days", required = false) Integer days, Principal principal){
         try {
-            return new ResponseEntity<>(findingService.supressFindingBulk(id,findingIds,principal), HttpStatus.OK);
+            return new ResponseEntity<>(findingService.supressFindingBulk(id,findingIds,days,principal), HttpStatus.OK);
         } catch (Exception e){
             return new ResponseEntity<>( HttpStatus.BAD_REQUEST);
         }

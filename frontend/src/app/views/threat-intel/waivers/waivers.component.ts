@@ -43,6 +43,7 @@ interface RuleDTO{
   codeRepoId: number;
   pathRegex?: string; // Added pathRegex field
   comment?: string;   // Optional comment for suppress rule
+  expirationDays?: number | null; // Optional, number of days the rule stays active; null means it never expires
 }
 interface Team {
   id: number;
@@ -58,6 +59,8 @@ interface SuppressRuleResponseDTO {
   comment?: string; // Optional comment returned by backend
   insertedBy: string;
   insertedDate: Date;
+  expirationDate?: Date | null; // When the rule expires; null means it never expires
+  active: boolean; // False once the rule has expired
 }
 
 @Component({
@@ -118,7 +121,9 @@ export class WaiversComponent implements OnInit {
       project: [''],
       team: [''],
       pathRegex: [''], // Added pathRegex field to form
-      comment: [''] // Optional comment
+      comment: [''], // Optional comment
+      temporary: [false], // Whether the rule should expire automatically
+      expirationDays: [3] // Number of days the rule stays active (used only when temporary)
     });
   }
 
@@ -227,6 +232,20 @@ export class WaiversComponent implements OnInit {
     this.errorMessage = '';
   }
 
+  onTemporaryChange(event: any) {
+    const expirationDaysControl = this.createRuleForm.get('expirationDays');
+    if (event.target.checked) {
+      expirationDaysControl?.setValidators([Validators.required, Validators.min(1)]);
+    } else {
+      expirationDaysControl?.clearValidators();
+    }
+    expirationDaysControl?.updateValueAndValidity();
+  }
+
+  get isTemporaryRule(): boolean {
+    return !!this.createRuleForm.get('temporary')?.value;
+  }
+
   onCreateRuleSubmit() {
     if (this.createRuleForm.valid) {
       const formData = this.createRuleForm.value;
@@ -238,6 +257,7 @@ export class WaiversComponent implements OnInit {
         codeRepoId: formData.project,
         pathRegex: formData.pathRegex, // Include pathRegex in the request
         comment: formData.comment,
+        expirationDays: formData.temporary ? formData.expirationDays : null,
       }
 
       this.threatIntelService.createRule(rule).subscribe({
@@ -247,7 +267,18 @@ export class WaiversComponent implements OnInit {
           // Close the modal
           this.createRuleModalVisible = false;
           // Reset the form
-          this.createRuleForm.reset();
+          this.createRuleForm.reset({
+            vulnerabilityName: '',
+            scope: '',
+            project: '',
+            team: '',
+            pathRegex: '',
+            comment: '',
+            temporary: false,
+            expirationDays: 3
+          });
+          this.createRuleForm.get('expirationDays')?.clearValidators();
+          this.createRuleForm.get('expirationDays')?.updateValueAndValidity();
           this.showProjectSelect = false;
           this.showTeamSelect = false;
         },

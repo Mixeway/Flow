@@ -29,8 +29,8 @@ public class CheckSuppressRuleService {
                 }
             }
 
-            // If we reach here, the rule applies
-            updateFindingService.suppressFinding(finding, Finding.SuppressedReason.WONT_FIX.toString());
+            // If we reach here, the rule applies; temporary rules propagate their expiration date
+            updateFindingService.suppressFinding(finding, Finding.SuppressedReason.WONT_FIX.toString(), rule.getExpirationDate());
             return; // Stop processing after first applicable rule
         }
     }

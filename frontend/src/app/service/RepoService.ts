@@ -33,9 +33,12 @@ export class RepoService {
     getFinding(id: number, finding: number): Observable<any> {
         return this.http.get<any>(this.loginUrl + '/api/v1/coderepo/' + id + '/finding/' + finding,{ withCredentials: true });
     }
-    supressFinding(id: number, finding: number, reason: string): Observable<any> {
-        return this.http.get<any>(this.loginUrl + '/api/v1/coderepo/' + id + '/supress/' + finding
-            + '/reason/' + reason,{ withCredentials: true });
+    supressFinding(id: number, finding: number, reason: string, days?: number | null): Observable<any> {
+        let url = this.loginUrl + '/api/v1/coderepo/' + id + '/supress/' + finding + '/reason/' + reason;
+        if (days != null) {
+            url += '?days=' + days;
+        }
+        return this.http.get<any>(url,{ withCredentials: true });
     }
     reActivateFinding(id: number, finding: number): Observable<any> {
         return this.http.get<any>(this.loginUrl + '/api/v1/coderepo/' + id + '/reactivate/' + finding

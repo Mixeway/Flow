@@ -8,6 +8,7 @@ import lombok.ToString;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -88,6 +89,12 @@ public final class Finding {
     @ToString.Include
     private SuppressedReason suppressedReason;
 
+    /**
+     * Date until which the finding stays suppressed (exclusive). Null means the suppression is indefinite.
+     */
+    @Column(name = "suppressed_until")
+    private LocalDate suppressedUntil;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @ToString.Include
@@ -147,13 +154,19 @@ public final class Finding {
 
     // Method to update status and suppressed reason
     public void updateStatus(Status newStatus, SuppressedReason suppressedReason) {
+        updateStatus(newStatus, suppressedReason, null);
+    }
+
+    public void updateStatus(Status newStatus, SuppressedReason suppressedReason, LocalDate suppressedUntil) {
         if (newStatus == Status.SUPRESSED && suppressedReason == null) {
             throw new IllegalArgumentException("SuppressedReason must be set if status is SUPRESSED");
         }
         if (newStatus != Status.SUPRESSED) {
             this.suppressedReason = null;
+            this.suppressedUntil = null;
         } else {
             this.suppressedReason = suppressedReason;
+            this.suppressedUntil = suppressedUntil;
         }
         this.status = newStatus;
     }
@@ -164,6 +177,10 @@ public final class Finding {
     }
 
     public void suppress(String reason){
+        suppress(reason, null);
+    }
+
+    public void suppress(String reason, LocalDate suppressedUntil){
         if (reason.equals(SuppressedReason.ACCEPTED.toString())){
             this.status = Status.SUPRESSED;
             this.suppressedReason = SuppressedReason.ACCEPTED;
@@ -173,6 +190,9 @@ public final class Finding {
         } else if ( reason.equals(SuppressedReason.WONT_FIX.toString())){
             this.status = Status.SUPRESSED;
             this.suppressedReason = SuppressedReason.WONT_FIX;
+        }
+        if (this.status == Status.SUPRESSED) {
+            this.suppressedUntil = suppressedUntil;
         }
     }
     public void noteFindingDetected() {

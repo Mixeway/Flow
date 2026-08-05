@@ -13,15 +13,17 @@ public class SuppressRuleDTO {
     private Long codeRepoId; // Optional, required if scope is "PROJECT"
     private String pathRegex; // Optional, path regex pattern for file paths
     private String comment;
+    private Integer expirationDays; // Optional, number of days the rule stays active; null means the rule never expires
 
     // Constructor
-    public SuppressRuleDTO(long ownerId, String scope, String vulnerabilityId, Long teamId, Long codeRepoId, String pathRegex, String comment) {
+    public SuppressRuleDTO(long ownerId, String scope, String vulnerabilityId, Long teamId, Long codeRepoId, String pathRegex, String comment, Integer expirationDays) {
         this.scope = scope;
         this.vulnerabilityId = vulnerabilityId;
         this.teamId = teamId;
         this.codeRepoId = codeRepoId;
         this.pathRegex = pathRegex;
         this.comment = comment;
+        this.expirationDays = expirationDays;
     }
 
     // Default constructor

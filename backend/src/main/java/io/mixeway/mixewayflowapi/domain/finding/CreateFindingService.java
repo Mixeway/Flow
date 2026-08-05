@@ -87,7 +87,7 @@ public class CreateFindingService {
                             Finding.Status.SUPRESSED
                     );
                     if (exemplar != null) {
-                        newFinding.updateStatus(Finding.Status.SUPRESSED, exemplar.getSuppressedReason());
+                        newFinding.updateStatus(Finding.Status.SUPRESSED, exemplar.getSuppressedReason(), exemplar.getSuppressedUntil());
                     } else {
                         newFinding.updateStatus(Finding.Status.NEW, null);
                     }

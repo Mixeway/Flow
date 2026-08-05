@@ -63,6 +63,15 @@
                     {{ row.insertedDate | date }}
                 </ng-template>
             </ngx-datatable-column>
+            <ngx-datatable-column name="Expires" prop="expirationDate">
+                <ng-template ngx-datatable-cell-template let-rowIndex="rowIndex" let-row="row">
+                    <ng-container *ngIf="row.expirationDate; else neverExpires">
+                        {{ row.expirationDate | date }}
+                        <span *ngIf="!row.active" class="badge bg-secondary ms-1">Expired</span>
+                    </ng-container>
+                    <ng-template #neverExpires>Never</ng-template>
+                </ng-template>
+            </ngx-datatable-column>
         </ngx-datatable>
     </c-card-body>
 </c-card>
@@ -151,6 +160,31 @@
                   maxlength="500"
                 />
                 <small class="form-text text-muted">This note will be visible as a tooltip next to the rule owner.</small>
+            </div>
+            <div class="mb-3">
+                <div class="form-check">
+                    <input
+                            class="form-check-input"
+                            type="checkbox"
+                            id="temporary"
+                            formControlName="temporary"
+                            (change)="onTemporaryChange($event)"
+                    />
+                    <label class="form-check-label" for="temporary">Temporary rule</label>
+                </div>
+                <small class="form-text text-muted">When enabled, the rule (and the suppressions it applied) automatically expires after the given number of days. Otherwise the rule never expires.</small>
+            </div>
+            <div *ngIf="isTemporaryRule" class="mb-3">
+                <label for="expirationDays" class="form-label">Expires after (days)</label>
+                <input
+                        type="number"
+                        class="form-control"
+                        id="expirationDays"
+                        formControlName="expirationDays"
+                        min="1"
+                        placeholder="e.g., 3"
+                />
+                <small class="form-text text-muted">Number of days the rule stays active.</small>
             </div>
         </form>
     </c-modal-body>

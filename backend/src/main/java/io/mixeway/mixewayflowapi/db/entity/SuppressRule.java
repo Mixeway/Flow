@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -48,8 +49,17 @@ public class SuppressRule {
     @Column(name = "comment")
     private String comment; // optional textual note provided at creation time
 
+    /**
+     * Date until which the rule stays active (exclusive). Null means the rule never expires.
+     */
+    @Column(name = "expiration_date")
+    private LocalDate expirationDate;
+
+    @Column(name = "active", nullable = false)
+    private boolean active = true;
+
     // Constructor for new SuppressRule
-    public SuppressRule(UserInfo owner, Scope scope, Vulnerability vulnerability, Team team, CodeRepo codeRepo, String pathRegex, String comment) {
+    public SuppressRule(UserInfo owner, Scope scope, Vulnerability vulnerability, Team team, CodeRepo codeRepo, String pathRegex, String comment, LocalDate expirationDate) {
         this.owner = owner;
         this.scope = scope;
         this.vulnerability = vulnerability;
@@ -58,8 +68,13 @@ public class SuppressRule {
         this.pathRegex = pathRegex;
         this.createdDate = LocalDateTime.now();
         this.comment = comment;
+        this.expirationDate = expirationDate;
+        this.active = true;
     }
 
+    public void deactivate() {
+        this.active = false;
+    }
 
     // Default constructor for JPA
     protected SuppressRule() {

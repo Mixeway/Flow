@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -23,14 +24,23 @@ public class UpdateFindingService {
 
 
     public void suppressFinding(Finding finding, String reason) {
-        finding.suppress(reason);
+        suppressFinding(finding, reason, null);
+    }
+
+    public void suppressFinding(Finding finding, String reason, LocalDate suppressedUntil) {
+        finding.suppress(reason, suppressedUntil);
         findingRepository.save(finding);
         jiraTicketLifecycleService.onFindingSuppressed(finding);
-        log.info("[UpdateFinding] Suppressed finding {} in {} reason {}", finding.getVulnerability().getName(), finding.getCodeRepo().getRepourl(), reason);
+        log.info("[UpdateFinding] Suppressed finding {} in {} reason {} until {}", finding.getVulnerability().getName(), finding.getCodeRepo().getRepourl(), reason, suppressedUntil != null ? suppressedUntil : "indefinitely");
     }
 
     @Transactional
     public void suppressFindingAcrossBranches(Finding finding, Long codeRepoId, String location, Long vulnId, String reason) {
+        suppressFindingAcrossBranches(finding, codeRepoId, location, vulnId, reason, null);
+    }
+
+    @Transactional
+    public void suppressFindingAcrossBranches(Finding finding, Long codeRepoId, String location, Long vulnId, String reason, LocalDate suppressedUntil) {
         Finding.SuppressedReason parsedReason = parseReason(reason);
 
         // Capture findings with linked JIRA tickets BEFORE the bulk update so we can close
@@ -39,7 +49,7 @@ public class UpdateFindingService {
                 .findToSuppressWithJiraTicket(codeRepoId, vulnId, location);
 
         int affected = findingRepository.bulkSuppressInRepoForSameVulnAndLocation(
-                codeRepoId, vulnId, location, parsedReason
+                codeRepoId, vulnId, location, parsedReason, suppressedUntil
         );
 
         log.info("[UpdateFinding] Suppressed {} finding(s) across repository {} at {}",

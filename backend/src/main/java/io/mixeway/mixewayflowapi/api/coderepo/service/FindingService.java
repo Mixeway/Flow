@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.Principal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -61,15 +62,29 @@ public class FindingService {
     }
 
     @Transactional
-    public StatusDTO supressFinding(Long id, Long findingId, String reason, Principal principal) {
+    public StatusDTO supressFinding(Long id, Long findingId, String reason, Integer days, Principal principal) {
         CodeRepo codeRepo = findCodeRepoService.findById(id, principal);
         Optional<Finding> finding = findFindingService.findById(findingId);
         if (finding.isPresent() && finding.get().getCodeRepo().equals(codeRepo)) {
-            updateFindingService.suppressFindingAcrossBranches(finding.get(),finding.get().getCodeRepo().getId(), finding.get().getLocation(), finding.get().getVulnerability().getId(), reason);
+            updateFindingService.suppressFindingAcrossBranches(finding.get(),finding.get().getCodeRepo().getId(), finding.get().getLocation(), finding.get().getVulnerability().getId(), reason, resolveSuppressedUntil(days));
             return new StatusDTO("OK");
         } else {
             return null;
         }
+    }
+
+    /**
+     * Translates an optional number of days into the date until which a finding stays suppressed.
+     * Null means the suppression is indefinite.
+     */
+    public static LocalDate resolveSuppressedUntil(Integer days) {
+        if (days == null) {
+            return null;
+        }
+        if (days <= 0) {
+            throw new IllegalArgumentException("Suppression duration must be a positive number of days");
+        }
+        return LocalDate.now().plusDays(days);
     }
 
     public StatusDTO reactivate(Long id, Long findingId, Principal principal) {
@@ -94,12 +109,13 @@ public class FindingService {
         }
     }
 
-    public StatusDTO supressFindingBulk(Long id, List<Long> findingIds, Principal principal) {
+    public StatusDTO supressFindingBulk(Long id, List<Long> findingIds, Integer days, Principal principal) {
         CodeRepo codeRepo = findCodeRepoService.findById(id, principal);
+        LocalDate suppressedUntil = resolveSuppressedUntil(days);
         for (Long findingId : findingIds) {
             Optional<Finding> finding = findFindingService.findById(findingId);
             if (finding.isPresent() && finding.get().getCodeRepo().equals(codeRepo)) {
-                updateFindingService.suppressFinding(finding.get(), Finding.SuppressedReason.FALSE_POSITIVE.toString());
+                updateFindingService.suppressFinding(finding.get(), Finding.SuppressedReason.FALSE_POSITIVE.toString(), suppressedUntil);
             }
         }
         return new StatusDTO("OK");

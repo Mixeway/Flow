@@ -18,6 +18,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -194,7 +195,8 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
     @Query("""
     update Finding f
        set f.status = io.mixeway.mixewayflowapi.db.entity.Finding.Status.SUPRESSED,
-           f.suppressedReason = :reason
+           f.suppressedReason = :reason,
+           f.suppressedUntil = :suppressedUntil
      where f.codeRepo.id = :repoId
        and f.vulnerability.id = :vulnId
        and f.location = :location
@@ -203,7 +205,10 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
     int bulkSuppressInRepoForSameVulnAndLocation(@Param("repoId") Long repoId,
                                                  @Param("vulnId") Long vulnId,
                                                  @Param("location") String location,
-                                                 @Param("reason") Finding.SuppressedReason reason);
+                                                 @Param("reason") Finding.SuppressedReason reason,
+                                                 @Param("suppressedUntil") LocalDate suppressedUntil);
+
+    List<Finding> findByStatusAndSuppressedUntilLessThanEqual(Finding.Status status, LocalDate date);
 
     @Query("""
     select f from Finding f

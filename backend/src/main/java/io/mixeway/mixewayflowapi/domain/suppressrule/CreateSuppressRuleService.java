@@ -14,6 +14,7 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
 import java.security.Principal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -89,6 +90,16 @@ public class CreateSuppressRuleService {
             throw new IllegalArgumentException("SuppressRule already exists for the given parameters.");
         }
 
+        // Compute expiration date for temporary rules
+        LocalDate expirationDate = null;
+        if (suppressRuleDTO.getExpirationDays() != null) {
+            if (suppressRuleDTO.getExpirationDays() <= 0) {
+                throw new IllegalArgumentException("[SuppressRule] Expiration days must be a positive number.");
+            }
+            expirationDate = LocalDate.now().plusDays(suppressRuleDTO.getExpirationDays());
+            log.info("[SuppressRule] Rule will expire on {}", expirationDate);
+        }
+
         // Create new SuppressRule
         SuppressRule suppressRule = new SuppressRule(
                 owner,
@@ -97,8 +108,8 @@ public class CreateSuppressRuleService {
                 team,
                 codeRepo,
                 pathRegex,
-                suppressRuleDTO.getComment()
-
+                suppressRuleDTO.getComment(),
+                expirationDate
         );
         suppressRule = suppressRuleRepository.save(suppressRule);
         this.applySuppressRule(suppressRule);
@@ -127,9 +138,9 @@ public class CreateSuppressRuleService {
                     .collect(Collectors.toList());
         }
 
-        // Suppress matching findings
+        // Suppress matching findings; temporary rules propagate their expiration date to the findings
         for (Finding finding : findingsToSuppress) {
-            updateFindingService.suppressFinding(finding, Finding.SuppressedReason.WONT_FIX.toString());
+            updateFindingService.suppressFinding(finding, Finding.SuppressedReason.WONT_FIX.toString(), suppressRule.getExpirationDate());
             log.info("[SuppressRule] Suppressed finding {} in project {}", finding.getVulnerability().getName(), finding.getCodeRepo().getName());
         }
     }
