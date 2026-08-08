@@ -11,5 +11,6 @@
 .vscode/
 
 frontend/dist/
+frontend/dist-budget-check/
 
 workspace/

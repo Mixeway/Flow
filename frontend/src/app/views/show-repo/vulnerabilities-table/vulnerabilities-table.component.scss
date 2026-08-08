@@ -15,10 +15,39 @@
   }
 }
 
+// Shared by the toolbar field and the in-header column search
+.search-input {
+  position: relative;
+
+  input {
+    padding-right: 2rem;
+  }
+
+  .search-icon {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
+    color: var(--cui-body-color);
+    opacity: 0.5;
+  }
+}
+
 // Header styling
 .vuln-table-header {
   padding: 1rem;
   border-bottom: 1px solid var(--cui-card-border-color);
+
+  // Shared by the branch, affected and page-size fields
+  .form-label {
+    margin-bottom: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--cui-body-color);
+    opacity: 0.8;
+  }
 
   .filter-row {
     display: flex;
@@ -40,45 +69,11 @@
     min-width: 190px;
     max-width: 240px;
 
-    .form-label {
-      margin-bottom: 0.25rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: var(--cui-body-color);
-      opacity: 0.8;
-    }
-
-    .search-input {
-      position: relative;
-
-      input {
-        padding-right: 2rem;
-      }
-
-      .search-icon {
-        position: absolute;
-        right: 0.5rem;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 14px;
-        height: 14px;
-        color: var(--cui-body-color);
-        opacity: 0.5;
-      }
-    }
   }
 
   .branch-select {
     min-width: 180px;
     max-width: 250px;
-
-    .form-label {
-      margin-bottom: 0.25rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: var(--cui-body-color);
-      opacity: 0.8;
-    }
 
     .branch-selector {
       font-size: 0.875rem;
@@ -122,14 +117,6 @@
       display: flex;
       flex-direction: column;
       min-width: 80px;
-
-      .form-label {
-        margin-bottom: 0.25rem;
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: var(--cui-body-color);
-        opacity: 0.8;
-      }
 
       select {
         font-size: 0.875rem;
@@ -246,39 +233,15 @@
       align-self: center;
     }
 
-    .filter-container, .multi-filter-container {
+    .filter-container {
       width: 100%;
 
       select, input {
         width: 100%;
         font-size: 0.75rem;
       }
-
-      .search-input {
-        position: relative;
-
-        input {
-          padding-right: 2rem;
-        }
-
-        .search-icon {
-          position: absolute;
-          right: 0.5rem;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 14px;
-          height: 14px;
-          color: var(--cui-body-color);
-          opacity: 0.5;
-        }
-      }
     }
 
-    .multi-filter-container {
-      display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
-    }
   }
 
   // Select column styling
@@ -291,25 +254,6 @@
   }
 
   // Details button styling
-  .details-action-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-
-    .details-btn {
-      border-radius: 6px;
-      padding: 0.25rem;
-      min-width: auto;
-
-      svg {
-        width: 16px;
-        height: 16px;
-      }
-    }
-  }
-
-  // Severity styling
   .severity-cell {
     display: flex;
     align-items: center;
@@ -330,30 +274,15 @@
       color: var(--sev-fg);
       background-color: var(--sev-bg);
 
-      &.severity-critical {
-        --sev-fg: #b02a37;
-        --sev-bg: rgba(220, 53, 69, 0.1);
-      }
+      &.severity-critical { --sev-fg: #b02a37; --sev-bg: rgba(220, 53, 69, 0.1); }
 
-      &.severity-high {
-        --sev-fg: #8a4b00;
-        --sev-bg: rgba(253, 126, 20, 0.12);
-      }
+      &.severity-high { --sev-fg: #8a4b00; --sev-bg: rgba(253, 126, 20, 0.12); }
 
-      &.severity-medium {
-        --sev-fg: #7a5300;
-        --sev-bg: rgba(249, 177, 21, 0.15);
-      }
+      &.severity-medium { --sev-fg: #7a5300; --sev-bg: rgba(249, 177, 21, 0.15); }
 
-      &.severity-low {
-        --sev-fg: #1d6fbf;
-        --sev-bg: rgba(51, 153, 255, 0.12);
-      }
+      &.severity-low { --sev-fg: #1d6fbf; --sev-bg: rgba(51, 153, 255, 0.12); }
 
-      &.severity-info {
-        --sev-fg: #5c636a;
-        --sev-bg: rgba(0, 0, 21, 0.06);
-      }
+      &.severity-info { --sev-fg: #5c636a; --sev-bg: rgba(0, 0, 21, 0.06); }
     }
   }
 
@@ -371,34 +300,16 @@
       font-weight: 600;
       letter-spacing: 0.3px;
 
-      &.source-sast {
-        background-color: rgba(var(--cui-primary-rgb), 0.15);
-        color: var(--cui-primary);
-      }
-      &.source-dast {
-        background-color: rgba(var(--cui-primary-rgb), 0.15);
-        color: var(--cui-primary);
-      }
+      &.source-sast { background-color: rgba(var(--cui-primary-rgb), 0.15); color: var(--cui-primary); }
+      &.source-dast { background-color: rgba(var(--cui-primary-rgb), 0.15); color: var(--cui-primary); }
 
-      &.source-iac {
-        background-color: rgba(var(--cui-info-rgb), 0.15);
-        color: var(--cui-info);
-      }
+      &.source-iac { background-color: rgba(var(--cui-info-rgb), 0.15); color: var(--cui-info); }
 
-      &.source-secrets {
-        background-color: rgba(var(--cui-danger-rgb), 0.15);
-        color: var(--cui-danger);
-      }
+      &.source-secrets { background-color: rgba(var(--cui-danger-rgb), 0.15); color: var(--cui-danger); }
 
-      &.source-sca {
-        background-color: rgba(var(--cui-warning-rgb), 0.15);
-        color: var(--cui-warning);
-      }
+      &.source-sca { background-color: rgba(var(--cui-warning-rgb), 0.15); color: var(--cui-warning); }
 
-      &.source-gitlab_scanner {
-        background-color: rgba(var(--cui-success-rgb), 0.15);
-        color: var(--cui-success);
-      }
+      &.source-gitlab_scanner { background-color: rgba(var(--cui-success-rgb), 0.15); color: var(--cui-success); }
     }
   }
 
@@ -427,25 +338,13 @@
       }
 
       // NEW is the only status that demands attention; the rest stay quiet.
-      &.status-new {
-        --st-fg: #b02a37;
-        --st-bg: rgba(220, 53, 69, 0.1);
-      }
+      &.status-new { --st-fg: #b02a37; --st-bg: rgba(220, 53, 69, 0.1); }
 
-      &.status-existing {
-        --st-fg: #5c636a;
-        --st-bg: rgba(0, 0, 21, 0.06);
-      }
+      &.status-existing { --st-fg: #5c636a; --st-bg: rgba(0, 0, 21, 0.06); }
 
-      &.status-removed {
-        --st-fg: #0f6d34;
-        --st-bg: rgba(25, 135, 84, 0.1);
-      }
+      &.status-removed { --st-fg: #0f6d34; --st-bg: rgba(25, 135, 84, 0.1); }
 
-      &.status-supressed {
-        --st-fg: #5c636a;
-        --st-bg: rgba(0, 0, 21, 0.06);
-      }
+      &.status-supressed { --st-fg: #5c636a; --st-bg: rgba(0, 0, 21, 0.06); }
     }
   }
 
@@ -546,84 +445,6 @@
       white-space: nowrap;
     }
   }
-
-  // Relative age, right-aligned so the numbers line up down the column
-  .age-cell {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    font-size: 0.8125rem;
-    font-variant-numeric: tabular-nums;
-    color: var(--cui-secondary-color);
-    white-space: nowrap;
-  }
-
-  // Location styling
-  .location-cell {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    height: 100%;
-
-    .location-link {
-      display: flex;
-      align-items: center;
-      gap: 0.35rem;
-      color: var(--cui-primary);
-      text-decoration: none;
-      font-size: 0.875rem;
-      transition: color 0.2s;
-      text-align: left;
-
-      &:hover {
-        color: var(--cui-primary-hover);
-        text-decoration: underline;
-      }
-
-      .location-icon {
-        width: 14px;
-        height: 14px;
-        flex-shrink: 0;
-      }
-
-      .location-text {
-        white-space: normal;
-        word-break: break-word;
-      }
-
-      .external-link-icon {
-        width: 12px;
-        height: 12px;
-        flex-shrink: 0;
-        opacity: 0.7;
-      }
-    }
-  }
-
-  // Dates styling
-  .dates-cell {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    padding: 0.25rem 0;
-
-    .date-item {
-      display: flex;
-      font-size: 0.75rem;
-
-      .date-label {
-        width: 65px;
-        font-weight: 600;
-        color: var(--cui-body-color);
-        opacity: 0.7;
-      }
-
-      .date-value {
-        color: var(--cui-body-color);
-      }
-    }
-  }
 }
 
 // Responsive adjustments
@@ -683,74 +504,54 @@
     margin-right: 0.3rem;
   }
 
-  &.urgent {
-    color: #b02a37;
-    background-color: rgba(220, 53, 69, 0.1);
-  }
+  &.urgent { color: #b02a37; background-color: rgba(220, 53, 69, 0.1); }
 
-  &.notable {
-    color: #7a5300;
-    background-color: rgba(249, 177, 21, 0.15);
-  }
+  &.notable { color: #7a5300; background-color: rgba(249, 177, 21, 0.15); }
 }
 
 :host-context([data-coreui-theme="dark"]) {
   // Must match the nesting depth of the light rules above to win on specificity.
   .vuln-datatable .severity-cell .severity-badge {
-    &.severity-critical {
-      --sev-fg: #f19a9a;
-      --sev-bg: rgba(229, 83, 83, 0.18);
-    }
+    &.severity-critical { --sev-fg: #f19a9a; --sev-bg: rgba(229, 83, 83, 0.18); }
 
-    &.severity-high {
-      --sev-fg: #f0a955;
-      --sev-bg: rgba(253, 126, 20, 0.18);
-    }
+    &.severity-high { --sev-fg: #f0a955; --sev-bg: rgba(253, 126, 20, 0.18); }
 
-    &.severity-medium {
-      --sev-fg: #e8c05a;
-      --sev-bg: rgba(249, 177, 21, 0.18);
-    }
+    &.severity-medium { --sev-fg: #e8c05a; --sev-bg: rgba(249, 177, 21, 0.18); }
 
-    &.severity-low {
-      --sev-fg: #7cc4f0;
-      --sev-bg: rgba(51, 153, 255, 0.18);
-    }
+    &.severity-low { --sev-fg: #7cc4f0; --sev-bg: rgba(51, 153, 255, 0.18); }
 
-    &.severity-info {
-      --sev-fg: #9aa2ad;
-      --sev-bg: rgba(255, 255, 255, 0.08);
-    }
+    &.severity-info { --sev-fg: #9aa2ad; --sev-bg: rgba(255, 255, 255, 0.08); }
   }
 
   .urgency-badge {
-    &.urgent {
-      color: #f19a9a;
-      background-color: rgba(229, 83, 83, 0.18);
-    }
+    &.urgent { color: #f19a9a; background-color: rgba(229, 83, 83, 0.18); }
 
-    &.notable {
-      color: #e8c05a;
-      background-color: rgba(249, 177, 21, 0.18);
-    }
+    &.notable { color: #e8c05a; background-color: rgba(249, 177, 21, 0.18); }
+  }
+
+  .vuln-datatable .sla-cell .sla-badge {
+    &.sla-ok { color: #6ddc96; background-color: rgba(46, 184, 92, 0.18); }
+    &.sla-due { color: #f0a955; background-color: rgba(253, 126, 20, 0.18); }
+    &.sla-overdue { color: #f19a9a; background-color: rgba(229, 83, 83, 0.18); }
+  }
+
+  .vuln-datatable .ticket-cell .ticket-chip {
+    background-color: rgba(46, 184, 92, 0.18);
+    color: #6ddc96;
+  }
+
+  // --cui-primary is too dark for 12px link text on the dark card (2.96:1)
+  .vuln-datatable .finding-cell .affected-link {
+    color: #7cc4f0;
   }
 
   .vuln-datatable .status-cell .status-badge {
-    &.status-new {
-      --st-fg: #f19a9a;
-      --st-bg: rgba(229, 83, 83, 0.18);
-    }
+    &.status-new { --st-fg: #f19a9a; --st-bg: rgba(229, 83, 83, 0.18); }
 
     &.status-existing,
-    &.status-supressed {
-      --st-fg: #9aa2ad;
-      --st-bg: rgba(255, 255, 255, 0.08);
-    }
+    &.status-supressed { --st-fg: #9aa2ad; --st-bg: rgba(255, 255, 255, 0.08); }
 
-    &.status-removed {
-      --st-fg: #6ddc96;
-      --st-bg: rgba(46, 184, 92, 0.18);
-    }
+    &.status-removed { --st-fg: #6ddc96; --st-bg: rgba(46, 184, 92, 0.18); }
   }
 
   ::ng-deep .form-check.pulse-notable .form-check-label {
@@ -794,48 +595,15 @@
       font-weight: 500;
     }
 
-    &.sla-ok {
-      color: #0f6d34;
-      background-color: rgba(25, 135, 84, 0.1);
-    }
+    &.sla-ok { color: #0f6d34; background-color: rgba(25, 135, 84, 0.1); }
 
-    &.sla-due {
-      color: #8a4b00;
-      background-color: rgba(253, 126, 20, 0.12);
-    }
+    &.sla-due { color: #8a4b00; background-color: rgba(253, 126, 20, 0.12); }
 
-    &.sla-overdue {
-      color: #b02a37;
-      background-color: rgba(220, 53, 69, 0.1);
-    }
+    &.sla-overdue { color: #b02a37; background-color: rgba(220, 53, 69, 0.1); }
   }
 }
 
-:host-context([data-coreui-theme="dark"]) {
-  .vuln-datatable .sla-cell .sla-badge {
-    &.sla-ok {
-      color: #6ddc96;
-      background-color: rgba(46, 184, 92, 0.18);
-    }
 
-    &.sla-due {
-      color: #f0a955;
-      background-color: rgba(253, 126, 20, 0.18);
-    }
-
-    &.sla-overdue {
-      color: #f19a9a;
-      background-color: rgba(229, 83, 83, 0.18);
-    }
-  }
-}
-
-/* --cui-primary is too dark for 12px link text on the dark card (2.96:1). */
-:host-context([data-coreui-theme="dark"]) {
-  .vuln-datatable .finding-cell .affected-link {
-    color: #7cc4f0;
-  }
-}
 
 /* Ticket column: one fixed-size control, never text that can wrap.
    Several keys collapse into a count, with the keys in the tooltip. */
@@ -889,11 +657,4 @@
 /* The row itself opens the detail panel */
 :host ::ng-deep .vuln-datatable .datatable-body-row {
   cursor: pointer;
-}
-
-:host-context([data-coreui-theme="dark"]) {
-  .vuln-datatable .ticket-cell .ticket-chip {
-    background-color: rgba(46, 184, 92, 0.18);
-    color: #6ddc96;
-  }
 }
