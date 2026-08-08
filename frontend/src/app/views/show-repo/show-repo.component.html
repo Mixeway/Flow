@@ -4,6 +4,7 @@
         [userRole]="userRole"
         [topLanguages]="topLanguages"
         [chartPieData]="chartPieData"
+        [counts]="counts"
         [options]="options"
         (runScanEvent)="runScan()"
         (runScanBranchEvent)="runScanForBranch($event)"
@@ -12,16 +13,9 @@
         (deleteRepoEvent)="openDeleteRepoModal()"
 ></app-repository-info>
 
-<div class="mt-4">
-    <app-vulnerability-summary
-            [counts]="counts"
-            [icons]="icons"
-    ></app-vulnerability-summary>
-</div>
-
-<div class="repo-tabs-container mt-4">
+<div class="repo-tabs-container">
     <c-card>
-        <c-tabs>
+        <c-tabs (activeItemKeyChange)="onRepoTabChange()">
             <c-tabs-list variant="underline-border">
                 <button cTab [itemKey]="0">
                     <svg cIcon name="cil-bug" class="me-2"></svg>
@@ -42,14 +36,6 @@
                 <button cTab [itemKey]="4">
                     <svg cIcon name="cil-puzzle" class="me-2"></svg>
                     Components
-                </button>
-                <button cTab [itemKey]="5">
-                    <svg cIcon name="cil-burn" class="me-2"></svg>
-                    Notifications
-                </button>
-                <button cTab [itemKey]="6">
-                    <svg cIcon name="cil-info" class="me-2"></svg>
-                    Additional Info
                 </button>
             </c-tabs-list>
 
@@ -73,6 +59,7 @@
                             [vulnerabilitiesLimit]="vulnerabilitiesLimit"
                             [jiraEnabled]="jiraEnabled"
                             [teamId]="teamId"
+                            [slaConfig]="slaConfig"
                             (updateFilterNameEvent)="updateFilterName($event)"
                             (updateFilterLocationEvent)="updateFilterLocation($event)"
                             (updateFilterSourceEvent)="updateFilterSource($event)"
@@ -88,8 +75,10 @@
                             (suppressSelectedFindingsEvent)="suppressSelectedFindings()"
                             (onBranchSelectEvent)="onBranchSelect($event)"
                             (viewVulnerabilityDetailsEvent)="viewVulnerabilityDetails($event)"
+                            (viewFindingGroupEvent)="onViewFindingGroup($event)"
                             (clearFiltersEvent)="clearVulnerabilityFilters()"
                             (createJiraTicketEvent)="createJiraTicket($event)"
+                            (createTicketForGroupEvent)="createJiraTicketForGroup($event)"
                             (createJiraTicketsBulkEvent)="createJiraTicketsBulk($event)"
                     ></app-vulnerabilities-table>
                 </c-tab-panel>
@@ -99,12 +88,19 @@
                         <c-card class="trend-chart-card mb-4">
                             <c-card-header class="d-flex justify-content-between align-items-center">
                                 <h5 class="mb-0">Vulnerability Trend - Default Branch</h5>
-                                <button cButton color="light" variant="ghost" class="refresh-btn" (click)="refreshData()" [cTooltip]="'Refresh data'">
+                                <button cButton color="secondary" variant="ghost" size="sm" class="refresh-btn"
+                                        (click)="refreshData()" [cTooltip]="'Refresh data'" aria-label="Refresh data">
                                     <svg cIcon name="cil-sync"></svg>
                                 </button>
                             </c-card-header>
                             <c-card-body>
-                                <c-chart type="line" [data]="chartLineData" [options]="options2"></c-chart>
+                                <c-chart *ngIf="hasTrendData()" type="line" [data]="chartLineData"
+                                         [options]="options2"></c-chart>
+                                <div *ngIf="!hasTrendData()" class="empty-state">
+                                    <svg cIcon name="cil-chart-line" width="40" height="40"></svg>
+                                    <h5>No trend data yet</h5>
+                                    <p>Trends appear once this repository has been scanned more than once.</p>
+                                </div>
                             </c-card-body>
                         </c-card>
 
@@ -113,13 +109,12 @@
                                 <c-col [md]="6" [sm]="12" class="mb-4">
                                     <div class="metric-card opened-findings">
                                         <div class="metric-icon">
-                                            <svg cIcon name="cilChartLine" height="36"></svg>
+                                            <svg cIcon name="cilChartLine" height="24"></svg>
                                         </div>
                                         <div class="metric-content">
                                             <h6 class="metric-title">Opened Findings</h6>
-                                            <div class="metric-value">{{ getLastOpenedFindings() === 0 ? 'None' : getLastOpenedFindings() }}</div>
-                                            <c-progress class="metric-progress" thin [value]="75"
-                                                        color="info"></c-progress>
+                                            <div class="metric-value">{{ getLastOpenedFindings() }}</div>
+                                            <div class="metric-caption">Since the previous scan</div>
                                         </div>
                                     </div>
                                 </c-col>
@@ -127,13 +122,12 @@
                                 <c-col [md]="6" [sm]="12" class="mb-4">
                                     <div class="metric-card closed-findings">
                                         <div class="metric-icon">
-                                            <svg cIcon name="cilInput" height="36"></svg>
+                                            <svg cIcon name="cilInput" height="24"></svg>
                                         </div>
                                         <div class="metric-content">
                                             <h6 class="metric-title">Closed Findings</h6>
-                                            <div class="metric-value">{{ getLastRemovedFinding() === 0 ? 'None' : getLastRemovedFinding() }}</div>
-                                            <c-progress class="metric-progress" thin [value]="75"
-                                                        color="success"></c-progress>
+                                            <div class="metric-value">{{ getLastRemovedFinding() }}</div>
+                                            <div class="metric-caption">Since the previous scan</div>
                                         </div>
                                     </div>
                                 </c-col>
@@ -141,13 +135,12 @@
                                 <c-col [md]="6" [sm]="12" class="mb-4">
                                     <div class="metric-card reviewed-findings">
                                         <div class="metric-icon">
-                                            <svg cIcon name="cilBrush" height="36"></svg>
+                                            <svg cIcon name="cilBrush" height="24"></svg>
                                         </div>
                                         <div class="metric-content">
                                             <h6 class="metric-title">Reviewed Findings</h6>
-                                            <div class="metric-value">{{ getLastRevievedFinding() === 0 ? 'None' : getLastRevievedFinding() }}</div>
-                                            <c-progress class="metric-progress" thin [value]="80"
-                                                        color="warning"></c-progress>
+                                            <div class="metric-value">{{ getLastRevievedFinding() }}</div>
+                                            <div class="metric-caption">Suppressed or triaged</div>
                                         </div>
                                     </div>
                                 </c-col>
@@ -155,14 +148,17 @@
                                 <c-col [md]="6" [sm]="12" class="mb-4">
                                     <div class="metric-card fix-time">
                                         <div class="metric-icon">
-                                            <svg cIcon name="cilClock" height="36"></svg>
+                                            <svg cIcon name="cilClock" height="24"></svg>
                                         </div>
                                         <div class="metric-content">
                                             <h6 class="metric-title">Time to Fix</h6>
-                                            <div class="metric-value">{{ getLastFixTime() === 0 ? 'Unknown' : getLastFixTime() }}
-                                                <span class="metric-unit">days</span></div>
-                                            <c-progress class="metric-progress" thin [value]="65"
-                                                        color="danger"></c-progress>
+                                            <div class="metric-value">
+                                                <ng-container *ngIf="getLastFixTime() > 0; else noFixTime">
+                                                    {{ getLastFixTime() }}<span class="metric-unit">days</span>
+                                                </ng-container>
+                                                <ng-template #noFixTime>&mdash;</ng-template>
+                                            </div>
+                                            <div class="metric-caption">Average across fixed findings</div>
                                         </div>
                                     </div>
                                 </c-col>
@@ -201,11 +197,11 @@
                                     <div class="scan-page-size">
                                         <label class="page-size-label">Show</label>
                                         <select class="form-select page-size-select" [(ngModel)]="scanInfoLimit">
-                                            <option [value]="10">10</option>
-                                            <option [value]="20">20</option>
-                                            <option [value]="50">50</option>
-                                            <option [value]="100">100</option>
-                                            <option [value]="200">200</option>
+                                            <option [ngValue]="10">10</option>
+                                            <option [ngValue]="20">20</option>
+                                            <option [ngValue]="50">50</option>
+                                            <option [ngValue]="100">100</option>
+                                            <option [ngValue]="200">200</option>
                                         </select>
                                     </div>
                                 </div>
@@ -467,17 +463,17 @@
 
                                 <div class="components-pagination mt-3 d-flex justify-content-between align-items-center">
                                     <div class="components-count" *ngIf="filteredComponents.length > 0">
-                                        <span class="badge bg-info">{{ filteredComponents.length }} components</span>
+                                        <span class="components-count-text">{{ filteredComponents.length }} components</span>
                                     </div>
 
                                     <div class="components-page-size d-flex align-items-center">
                                         <label class="page-size-label me-2">Show</label>
                                         <select class="form-select page-size-select" [(ngModel)]="componentsLimit">
-                                            <option [value]="10">10</option>
-                                            <option [value]="20">20</option>
-                                            <option [value]="50">50</option>
-                                            <option [value]="100">100</option>
-                                            <option [value]="200">200</option>
+                                            <option [ngValue]="10">10</option>
+                                            <option [ngValue]="20">20</option>
+                                            <option [ngValue]="50">50</option>
+                                            <option [ngValue]="100">100</option>
+                                            <option [ngValue]="200">200</option>
                                         </select>
                                     </div>
                                 </div>
@@ -521,7 +517,7 @@
                                                 let-row="row"
                                         >
                                             <div class="version-cell">
-                                                <c-badge color="info">{{ row?.version }}</c-badge>
+                                                <code class="version-tag">{{ row?.version }}</code>
                                             </div>
                                         </ng-template>
                                     </ngx-datatable-column>
@@ -539,41 +535,6 @@
                     </c-card>
                 </c-tab-panel>
 
-                <c-tab-panel class="tab-content-panel" [itemKey]="5">
-                    <c-alert color="primary" class="d-flex align-items-center">
-                        <svg
-                                class="bi flex-shrink-0 me-2"
-                                width="24"
-                                height="24"
-                                role="img"
-                                aria-label="Info:"
-                        >
-                            <use xlink:href="#info-fill"/>
-                        </svg>
-                        <div>
-                            This part will be developed in next releases. In this section You will discover
-                            information about notification
-                        </div>
-                    </c-alert>
-                </c-tab-panel>
-
-                <c-tab-panel class="tab-content-panel" [itemKey]="6">
-                    <c-alert color="primary" class="d-flex align-items-center">
-                        <svg
-                                class="bi flex-shrink-0 me-2"
-                                width="24"
-                                height="24"
-                                role="img"
-                                aria-label="Info:"
-                        >
-                            <use xlink:href="#info-fill"/>
-                        </svg>
-                        <div>
-                            This part will be developed in next releases. In this section You will discover
-                            information about how to integrate MixewayFlow for this repo into CICD smoothly
-                        </div>
-                    </c-alert>
-                </c-tab-panel>
             </c-tabs-content>
         </c-tabs>
     </c-card>
@@ -596,6 +557,13 @@
         (addCommentEvent)="addComment()"
         (newCommentChange)="newComment = $event"
         [repoId]="repoId"
+        [group]="selectedGroup"
+        [groupIndex]="selectedGroupIndex"
+        [groupCount]="findingGroups.length"
+        [jiraEnabled]="jiraEnabled"
+        (navigateGroupEvent)="onNavigateGroup($event)"
+        (selectInstanceEvent)="onSelectGroupInstance($event)"
+        (createTicketForGroupEvent)="createJiraTicketForGroup($event)"
         (suppressed)="onFindingSuppressed()"
 ></app-vulnerability-details>
 

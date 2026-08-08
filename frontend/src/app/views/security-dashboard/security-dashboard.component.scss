@@ -200,10 +200,11 @@ $primary: #3b82f6;
     box-shadow: $shadow-md;
   }
 
+  // Only the risk-bearing tiles get colour; the rest stay neutral so colour means something.
   &.kpi-blue::before { background: $primary; }
   &.kpi-red::before { background: $critical; }
-  &.kpi-purple::before { background: #8b5cf6; }
-  &.kpi-teal::before { background: #14b8a6; }
+  &.kpi-purple::before,
+  &.kpi-teal::before { background: var(--cui-border-color); }
 }
 
 .kpi-icon {
@@ -223,13 +224,10 @@ $primary: #3b82f6;
     background: rgba($critical, 0.12);
     color: $critical;
   }
-  .kpi-purple & {
-    background: rgba(#8b5cf6, 0.12);
-    color: #8b5cf6;
-  }
+  .kpi-purple &,
   .kpi-teal & {
-    background: rgba(#14b8a6, 0.12);
-    color: #14b8a6;
+    background: var(--cui-tertiary-bg);
+    color: var(--cui-secondary-color);
   }
 }
 
@@ -324,6 +322,24 @@ $primary: #3b82f6;
   c-chart, .c-chart {
     background: transparent !important;
   }
+
+  .chart-empty {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    text-align: center;
+    color: var(--cui-secondary-color);
+    font-size: 0.875rem;
+
+    svg {
+      width: 28px;
+      height: 28px;
+      opacity: 0.45;
+    }
+  }
 }
 
 // ─── Chart Grid Layouts ─────────────────────────────────────
@@ -414,6 +430,13 @@ $primary: #3b82f6;
   &.pill-medium { background: $medium; color: #1f2937; }
   &.pill-low { background: $low; }
   &.pill-success { background: $success; }
+
+  // A count of zero carries no risk signal, so it stays neutral.
+  &.pill-zero {
+    background: transparent;
+    color: var(--cui-secondary-color);
+    font-weight: 500;
+  }
 }
 
 // ─── Empty State ────────────────────────────────────────────

@@ -1,6 +1,7 @@
 package io.mixeway.mixewayflowapi.domain.settings;
 
 import io.mixeway.mixewayflowapi.api.admin.dto.AdditionalScannerConfigDto;
+import io.mixeway.mixewayflowapi.api.admin.dto.SlaConfigDto;
 import io.mixeway.mixewayflowapi.db.entity.Settings;
 import io.mixeway.mixewayflowapi.db.repository.SettingsRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,10 @@ public class FindSettingsService {
     // ASUME Settings have only one row
     public Settings get(){
         return settingsRepository.findAll().stream().findFirst().orElse(null);
+    }
+
+    public SlaConfigDto getSlaConfig() {
+        return SlaConfigDto.fromSettings(get());
     }
 
     public AdditionalScannerConfigDto getAdditionalScannerConfig() {

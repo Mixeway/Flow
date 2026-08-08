@@ -1,84 +1,58 @@
 <div class="statistics-dashboard">
-    <c-row class="stats-row g-4">
-        <!-- Repositories Covered -->
+    <c-row class="stats-row g-3">
+        <!-- Open Vulnerabilities: the number that actually carries risk -->
         <c-col sm="6" xl="3">
-            <div class="stat-card primary">
-                <div class="stat-content">
-                    <div>
-                        <div class="stat-title">REPOSITORIES COVERED</div>
-                        <div class="stat-value">{{ allProjects | number }}</div>
-                    </div>
-                    <div class="stat-change positive" *ngIf="repositoriesTrend > 0">
-                        <svg cIcon name="cilArrowTop" size="sm"></svg>
-                        <span>{{ repositoriesTrend }}% from last month</span>
-                    </div>
-                </div>
+            <div class="stat-tile accent-danger">
                 <div class="stat-icon">
-                    <svg [cIcon]="icons.cilChartPie" width="24"></svg>
+                    <svg [cIcon]="icons.cilBug" width="18"></svg>
                 </div>
-                <div class="bg-decoration"></div>
-            </div>
-        </c-col>
-
-        <!-- Number of Teams -->
-        <c-col sm="6" xl="3">
-            <div class="stat-card warning">
-                <div class="stat-content">
-                    <div>
-                        <div class="stat-title">ACTIVE TEAMS</div>
-                        <div class="stat-value">{{ teams | number }}</div>
-                    </div>
-                    <div class="stat-change positive" *ngIf="teamsTrend > 0">
-                        <svg cIcon name="cilArrowTop" size="sm"></svg>
-                        <span>{{ teamsTrend }}% from last month</span>
-                    </div>
+                <div class="stat-body">
+                    <div class="stat-label">Open Vulnerabilities</div>
+                    <div class="stat-value">{{ openedVulns | number }}</div>
+                    <div class="stat-sub">In monitored repos</div>
                 </div>
-                <div class="stat-icon">
-                    <svg [cIcon]="icons.cilPeople" width="24"></svg>
-                </div>
-                <div class="bg-decoration"></div>
-            </div>
-        </c-col>
-
-        <!-- Open Vulnerabilities -->
-        <c-col sm="6" xl="3">
-            <div class="stat-card success">
-                <div class="stat-content">
-                    <div>
-                        <div class="stat-title">OPEN VULNERABILITIES</div>
-                        <div class="stat-value">{{ openedVulns | number }}</div>
-                    </div>
-                    <div *ngIf="vulnChange !== 0" [ngClass]="vulnChange > 0 ? 'stat-change negative' : 'stat-change positive'">
-                        <svg *ngIf="vulnChange > 0" cIcon name="cilArrowTop" size="sm"></svg>
-                        <svg *ngIf="vulnChange < 0" cIcon name="cilArrowBottom" size="sm"></svg>
-                        <span>{{ absVulnChange }}% from last week</span>
-                    </div>
-                </div>
-                <div class="stat-icon">
-                    <svg [cIcon]="icons.cilBug" width="24"></svg>
-                </div>
-                <div class="bg-decoration"></div>
             </div>
         </c-col>
 
         <!-- Repositories at Risk -->
         <c-col sm="6" xl="3">
-            <div class="stat-card danger">
-                <div class="stat-content">
-                    <div>
-                        <div class="stat-title">REPOS AT RISK</div>
-                        <div class="stat-value">{{ percentage }}%</div>
-                    </div>
-                    <div *ngIf="riskChange !== 0" [ngClass]="riskChange > 0 ? 'stat-change negative' : 'stat-change positive'">
-                        <svg *ngIf="riskChange > 0" cIcon name="cilArrowTop" size="sm"></svg>
-                        <svg *ngIf="riskChange < 0" cIcon name="cilArrowBottom" size="sm"></svg>
-                        <span>{{ absRiskChange }}% from last week</span>
-                    </div>
-                </div>
+            <div class="stat-tile" [class.accent-warning]="affectedProjects > 0">
                 <div class="stat-icon">
-                    <svg [cIcon]="icons.cilChart" width="24"></svg>
+                    <svg [cIcon]="icons.cilChart" width="18"></svg>
                 </div>
-                <div class="bg-decoration"></div>
+                <div class="stat-body">
+                    <div class="stat-label">Repos at Risk</div>
+                    <div class="stat-value">{{ percentage }}<span class="stat-unit">%</span></div>
+                    <div class="stat-sub">{{ affectedProjects | number }} of {{ allProjects | number }} repos affected</div>
+                </div>
+            </div>
+        </c-col>
+
+        <!-- Repositories Covered -->
+        <c-col sm="6" xl="3">
+            <div class="stat-tile">
+                <div class="stat-icon">
+                    <svg [cIcon]="icons.cilChartPie" width="18"></svg>
+                </div>
+                <div class="stat-body">
+                    <div class="stat-label">Repositories Covered</div>
+                    <div class="stat-value">{{ allProjects | number }}</div>
+                    <div class="stat-sub">Under active scanning</div>
+                </div>
+            </div>
+        </c-col>
+
+        <!-- Active Teams -->
+        <c-col sm="6" xl="3">
+            <div class="stat-tile">
+                <div class="stat-icon">
+                    <svg [cIcon]="icons.cilPeople" width="18"></svg>
+                </div>
+                <div class="stat-body">
+                    <div class="stat-label">Active Teams</div>
+                    <div class="stat-value">{{ teams | number }}</div>
+                    <div class="stat-sub">With owned repos</div>
+                </div>
             </div>
         </c-col>
     </c-row>

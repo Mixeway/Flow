@@ -20,7 +20,7 @@ import {
     TooltipDirective,
 } from '@coreui/angular';
 import { IconDirective } from '@coreui/icons-angular';
-import { DatePipe, NgFor, NgIf } from '@angular/common';
+import { DatePipe, NgClass, NgFor, NgIf } from '@angular/common';
 import { ChartjsComponent } from "@coreui/angular-chartjs";
 import {FormsModule} from "@angular/forms";
 import {RepoService} from "../../../service/RepoService";
@@ -40,6 +40,7 @@ import {RepoService} from "../../../service/RepoService";
         ProgressComponent,
         NgIf,
         NgFor,
+        NgClass,
         TooltipDirective,
         CardHeaderComponent,
         ChartjsComponent,
@@ -62,6 +63,7 @@ export class RepositoryInfoComponent implements OnInit {
   @Input() userRole: string = 'USER';
   @Input() topLanguages: { name: string; value: number; color: string }[] = [];
   @Input() chartPieData: any;
+  @Input() counts: any;
   @Input() options: any = {
     maintainAspectRatio: false,
     plugins: {
@@ -89,6 +91,7 @@ export class RepositoryInfoComponent implements OnInit {
     tokenForm = { accessToken: '' };
 
     scanDropdownOpen = false;
+    manageDropdownOpen = false;
     branchScanModalVisible = false;
     loadingBranches = false;
     availableBranches: string[] = [];
@@ -128,6 +131,39 @@ export class RepositoryInfoComponent implements OnInit {
     };
   }
 
+  get totalFindings(): number {
+    const c = this.counts;
+    if (!c) {
+      return 0;
+    }
+    return (c.critical || 0) + (c.high || 0) + (c.rest || 0);
+  }
+
+  /** Width of one segment of the severity bar, as a percentage of all open findings. */
+  severityShare(value: number | null | undefined): number {
+    const total = this.totalFindings;
+    if (!total) {
+      return 0;
+    }
+    return ((value || 0) / total) * 100;
+  }
+
+  /**
+   * The scanner breakdown that used to be a pie chart. Exact counts are more useful than
+   * slice areas here, and this costs a single line of vertical space instead of ~200px.
+   */
+  get sourceBreakdown(): { label: string; value: number; color: string }[] {
+    const labels: string[] = this.chartPieData?.labels ?? [];
+    const dataset = this.chartPieData?.datasets?.[0];
+    const values: number[] = dataset?.data ?? [];
+    const colors: string[] = dataset?.backgroundColor ?? [];
+
+    return labels
+      .map((label, i) => ({ label, value: values[i] ?? 0, color: colors[i] ?? 'var(--cui-secondary-color)' }))
+      .filter((entry) => entry.value > 0)
+      .sort((a, b) => b.value - a.value);
+  }
+
   runScan(): void {
     this.scanDropdownOpen = false;
     this.runScanEvent.emit();
@@ -135,6 +171,16 @@ export class RepositoryInfoComponent implements OnInit {
 
   toggleScanDropdown(): void {
     this.scanDropdownOpen = !this.scanDropdownOpen;
+    if (this.scanDropdownOpen) {
+      this.manageDropdownOpen = false;
+    }
+  }
+
+  toggleManageDropdown(): void {
+    this.manageDropdownOpen = !this.manageDropdownOpen;
+    if (this.manageDropdownOpen) {
+      this.scanDropdownOpen = false;
+    }
   }
 
   openBranchScanModal(): void {
@@ -223,20 +269,24 @@ export class RepositoryInfoComponent implements OnInit {
 
 
     openChangeTeamModal(): void {
+    this.manageDropdownOpen = false;
     this.openChangeTeamModalEvent.emit();
   }
 
     openRenameModal() {
+        this.manageDropdownOpen = false;
         this.renameError = null;
         this.renameForm.name = this.repoData?.name ?? '';
         this.renameModalVisible = true;
     }
     openTokenModal() {
+        this.manageDropdownOpen = false;
         this.tokenError = null;
         this.tokenForm.accessToken = '';
         this.tokenModalVisible = true;
     }
     requestDeleteRepo(): void {
+        this.manageDropdownOpen = false;
         this.deleteRepoEvent.emit();
     }
     confirmRename() {

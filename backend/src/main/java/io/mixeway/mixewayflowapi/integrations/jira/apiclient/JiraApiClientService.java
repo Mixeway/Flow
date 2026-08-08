@@ -63,6 +63,33 @@ public class JiraApiClientService {
         return createTicketsFlat(config, managed);
     }
 
+    /**
+     * Creates exactly one ticket covering every supplied finding, without re-grouping them.
+     * Used when the caller already decided what belongs together - for example a package
+     * with several CVEs, where one upgrade resolves all of them.
+     */
+    public String createTicketForFindingGroup(JiraConfiguration config, List<Finding> findings) {
+        List<Long> ids = findings.stream().map(Finding::getId).collect(Collectors.toList());
+        List<Finding> managed = findingRepository.findAllById(ids);
+        if (managed.isEmpty()) {
+            return null;
+        }
+
+        String summary = buildGroupSummary(managed);
+        String description = buildGroupDescription(managed);
+        String priority = mapSeverityToJiraPriority(getHighestSeverity(managed));
+
+        String ticketKey = createJiraIssue(config, summary, description, priority);
+        if (ticketKey != null) {
+            for (Finding finding : managed) {
+                finding.setJiraTicketKey(ticketKey);
+                findingRepository.save(finding);
+            }
+            log.info("[JIRA] Created single ticket {} covering {} findings", ticketKey, managed.size());
+        }
+        return ticketKey;
+    }
+
     private int createTicketsFlat(JiraConfiguration config, List<Finding> findings) {
         Map<String, List<Finding>> grouped = groupFindings(findings);
 

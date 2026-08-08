@@ -19,14 +19,14 @@
             <c-card-body *ngIf="showSecurityOverview">
                 <c-row class="g-3 mb-4">
                     <c-col md="6" lg="3">
-                        <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
-                            <div class="summary-icon total-icon me-3">
-                                <svg cIcon name="cil-list" size="xl" class="text-white"></svg>
+                        <div class="stat-tile">
+                            <div class="stat-icon accent-primary">
+                                <svg cIcon name="cil-list"></svg>
                             </div>
-                            <div class="summary-data">
-                                <div class="summary-title text-muted">Total Open Findings</div>
-                                <div class="summary-value fs-4 fw-bold">{{ securityStats?.openTotal || '0' }}</div>
-                                <div class="summary-trend d-flex align-items-center">
+                            <div class="stat-body">
+                                <div class="stat-label">Open Findings</div>
+                                <div class="stat-value">{{ securityStats?.openTotal || '0' }}</div>
+                                <div class="stat-sub d-flex align-items-center">
                                     <svg cIcon [name]="getSecurityTrendIcon('total')" class="me-1" size="sm"></svg>
                                     <span [ngClass]="getSecurityTrendClass('total')">
                                         {{ getSecurityTrendText('total') }}
@@ -37,14 +37,14 @@
                     </c-col>
 
                     <c-col md="6" lg="3">
-                        <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
-                            <div class="summary-icon critical-icon me-3">
-                                <svg cIcon name="cil-warning" size="xl" class="text-white"></svg>
+                        <div class="stat-tile">
+                            <div class="stat-icon accent-danger">
+                                <svg cIcon name="cil-warning"></svg>
                             </div>
-                            <div class="summary-data">
-                                <div class="summary-title text-muted">Critical Findings</div>
-                                <div class="summary-value fs-4 fw-bold">{{ securityStats?.criticalTotal || '0' }}</div>
-                                <div class="summary-trend d-flex align-items-center">
+                            <div class="stat-body">
+                                <div class="stat-label">Critical Findings</div>
+                                <div class="stat-value">{{ securityStats?.criticalTotal || '0' }}</div>
+                                <div class="stat-sub d-flex align-items-center">
                                     <svg cIcon [name]="getSecurityTrendIcon('critical')" class="me-1" size="sm"></svg>
                                     <span [ngClass]="getSecurityTrendClass('critical')">
                                         {{ getSecurityTrendText('critical') }}
@@ -55,32 +55,28 @@
                     </c-col>
 
                     <c-col md="6" lg="3">
-                        <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
-                            <div class="summary-icon fix-time-icon me-3">
-                                <svg cIcon name="cil-clock" size="xl" class="text-white"></svg>
+                        <div class="stat-tile">
+                            <div class="stat-icon">
+                                <svg cIcon name="cil-clock"></svg>
                             </div>
-                            <div class="summary-data">
-                                <div class="summary-title text-muted">Avg. Fix Time</div>
-                                <div class="summary-value fs-4 fw-bold">{{ securityStats?.averageFixTime || '0' }}
-                                    days
-                                </div>
-                                <div class="summary-trend d-flex align-items-center">
-                                    <span class="text-muted">Current statistics</span>
-                                </div>
+                            <div class="stat-body">
+                                <div class="stat-label">Avg. Fix Time</div>
+                                <div class="stat-value">{{ securityStats?.averageFixTime || '0' }}<span class="stat-unit">days</span></div>
+                                <div class="stat-sub">Across resolved findings</div>
                             </div>
                         </div>
                     </c-col>
 
                     <c-col md="6" lg="3">
-                        <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
-                            <div class="summary-icon score-icon me-3">
-                                <svg cIcon name="cil-storage" size="xl" class="text-white"></svg>
+                        <div class="stat-tile">
+                            <div class="stat-icon accent-success">
+                                <svg cIcon name="cil-shield-alt"></svg>
                             </div>
-                            <div class="summary-data">
-                                <div class="summary-title text-muted">Total Repositories</div>
-                                <div class="summary-value fs-4 fw-bold">{{ securityStats?.totalRepos || '0' }}</div>
-                                <div class="summary-trend d-flex align-items-center">
-                                    <a [routerLink]="['/security-dashboard']" class="text-decoration-none">
+                            <div class="stat-body">
+                                <div class="stat-label">Security Score</div>
+                                <div class="stat-value">{{ calculateSecurityScore() }}</div>
+                                <div class="stat-sub">
+                                    <a [routerLink]="['/stats']" class="stat-link">
                                         View details
                                         <svg cIcon name="cil-arrow-right" size="sm"></svg>
                                     </a>
@@ -92,64 +88,58 @@
 
                 <c-row class="g-3 mb-4" *ngIf="widgetStats">
                     <c-col md="6" lg="3">
-                        <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
-                            <div class="summary-icon team-icon me-3">
-                                <svg cIcon name="cil-people" size="xl" class="text-white"></svg>
+                        <div class="stat-tile">
+                            <div class="stat-icon">
+                                <svg cIcon name="cil-storage"></svg>
                             </div>
-                            <div class="summary-data">
-                                <div class="summary-title text-muted">Monitored Teams</div>
-                                <div class="summary-value fs-4 fw-bold">{{ widgetStats?.teams || '0' }}</div>
-                                <div class="summary-trend d-flex align-items-center">
-                                    <span class="text-muted">Active teams</span>
-                                </div>
-                            </div>
-                        </div>
-                    </c-col>
-
-                    <c-col md="6" lg="3">
-                        <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
-                            <div class="summary-icon scan-icon me-3">
-                                <svg cIcon name="cil-magnifying-glass" size="xl" class="text-white"></svg>
-                            </div>
-                            <div class="summary-data">
-                                <div class="summary-title text-muted">Total Scans</div>
-                                <div class="summary-value fs-4 fw-bold">{{ widgetStats?.totalScans || '0' }}</div>
-                                <div class="summary-trend d-flex align-items-center">
-                                    <span class="text-muted">All-time scans</span>
-                                </div>
-                            </div>
-                        </div>
-                    </c-col>
-
-                    <c-col md="6" lg="3">
-                        <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
-                            <div class="summary-icon monthly-icon me-3">
-                                <svg cIcon name="cil-calendar" size="xl" class="text-white"></svg>
-                            </div>
-                            <div class="summary-data">
-                                <div class="summary-title text-muted">Monthly Scans</div>
-                                <div class="summary-value fs-4 fw-bold">{{ widgetStats?.monthlyScans || '0' }}</div>
-                                <div class="summary-trend d-flex align-items-center">
-                                    <span class="text-muted">Last 30 days</span>
-                                </div>
-                            </div>
-                        </div>
-                    </c-col>
-
-                    <c-col md="6" lg="3">
-                        <div class="security-summary-card d-flex align-items-center p-3 h-100 rounded">
-                            <div class="summary-icon grade-icon me-3">
-                                <svg cIcon name="cil-shield-alt" size="xl" class="text-white"></svg>
-                            </div>
-                            <div class="summary-data">
-                                <div class="summary-title text-muted">Security Score</div>
-                                <div class="summary-value fs-4 fw-bold">{{ calculateSecurityScore() }}</div>
-                                <div class="summary-trend d-flex align-items-center">
-                                    <a [routerLink]="['/stats']" class="text-decoration-none">
+                            <div class="stat-body">
+                                <div class="stat-label">Repositories</div>
+                                <div class="stat-value">{{ securityStats?.totalRepos || '0' }}</div>
+                                <div class="stat-sub">
+                                    <a [routerLink]="['/security-dashboard']" class="stat-link">
                                         View details
                                         <svg cIcon name="cil-arrow-right" size="sm"></svg>
                                     </a>
                                 </div>
+                            </div>
+                        </div>
+                    </c-col>
+
+                    <c-col md="6" lg="3">
+                        <div class="stat-tile">
+                            <div class="stat-icon">
+                                <svg cIcon name="cil-people"></svg>
+                            </div>
+                            <div class="stat-body">
+                                <div class="stat-label">Monitored Teams</div>
+                                <div class="stat-value">{{ widgetStats?.teams || '0' }}</div>
+                                <div class="stat-sub">Active teams</div>
+                            </div>
+                        </div>
+                    </c-col>
+
+                    <c-col md="6" lg="3">
+                        <div class="stat-tile">
+                            <div class="stat-icon">
+                                <svg cIcon name="cil-magnifying-glass"></svg>
+                            </div>
+                            <div class="stat-body">
+                                <div class="stat-label">Total Scans</div>
+                                <div class="stat-value">{{ widgetStats?.totalScans || '0' }}</div>
+                                <div class="stat-sub">All-time</div>
+                            </div>
+                        </div>
+                    </c-col>
+
+                    <c-col md="6" lg="3">
+                        <div class="stat-tile">
+                            <div class="stat-icon">
+                                <svg cIcon name="cil-calendar"></svg>
+                            </div>
+                            <div class="stat-body">
+                                <div class="stat-label">Monthly Scans</div>
+                                <div class="stat-value">{{ widgetStats?.monthlyScans || '0' }}</div>
+                                <div class="stat-sub">Last 30 days</div>
                             </div>
                         </div>
                     </c-col>
@@ -197,45 +187,40 @@
     </c-col>
 </c-row>
 
-<c-row *ngIf="canManage" class="mb-4">
-    <c-col>
-        <c-card class="dashboard-actions-card">
-            <c-card-header>
-                <strong>Administrative Actions</strong>
-            </c-card-header>
-            <c-card-body class="d-flex flex-wrap gap-3">
-                <button color="primary" cButton (click)="importRepoModal()"
-                        cTooltip="Import multiple repositories from a Git provider">
-                    <svg cIcon class="me-2" name="cil-code"></svg>
-                    Bulk Repository Import
-                </button>
-                <button color="light" cButton (click)="importSingleRepoModal()"
-                        cTooltip="Import a single specific repository">
-                    <svg cIcon class="me-2" name="cil-clone"></svg>
-                    Single Repository Import
-                </button>
-                <button color="info" cButton (click)="createNewTeamModal()"
-                        *ngIf="appInfo?.quotaInfo?.planType != 'FREE'" cTooltip="Create a new team">
-                    <svg cIcon class="me-2" name="cil-people"></svg>
-                    Add New Team
-                </button>
-                <button color="success" cButton (click)="connectProviderModal()"
-                        *ngIf="role=='ADMIN'" cTooltip="Connect to a Git provider to sync all repositories">
-                    <svg cIcon class="me-2" name="cil-sync"></svg>
-                    Connect Repository Provider
-                </button>
-                <button *ngIf="selectedRepos.length > 0 && (isAdmin || isTeamManager)" cButton color="primary" (click)="openChangeTeamModal()">
-                    <svg cIcon name="cil-pencil" class="me-2"></svg>
-                    Change Team ({{ selectedRepos.length }})
-                </button>
-                <button *ngIf="selectedRepos.length > 0 && (isAdmin || isTeamManager)" cButton color="dark" (click)="openChangeTokenModal()">
-                    <svg cIcon name="cil-lock-locked" class="me-2"></svg>
-                    Change Token ({{ selectedRepos.length }})
-                </button>
-            </c-card-body>
-        </c-card>
-    </c-col>
-</c-row>
+<div *ngIf="canManage" class="dashboard-toolbar mb-4">
+    <button color="primary" cButton (click)="importRepoModal()"
+            cTooltip="Import multiple repositories from a Git provider">
+        <svg cIcon class="me-2" name="cil-cloud-download"></svg>
+        Import Repositories
+    </button>
+    <button cButton color="secondary" variant="outline" (click)="importSingleRepoModal()"
+            cTooltip="Import a single specific repository">
+        <svg cIcon class="me-2" name="cil-clone"></svg>
+        Single Repository
+    </button>
+    <button cButton color="secondary" variant="outline" (click)="createNewTeamModal()"
+            *ngIf="appInfo?.quotaInfo?.planType != 'FREE'" cTooltip="Create a new team">
+        <svg cIcon class="me-2" name="cil-people"></svg>
+        New Team
+    </button>
+    <button cButton color="secondary" variant="outline" (click)="connectProviderModal()"
+            *ngIf="role=='ADMIN'" cTooltip="Connect to a Git provider to sync all repositories">
+        <svg cIcon class="me-2" name="cil-sync"></svg>
+        Connect Provider
+    </button>
+
+    <div class="selection-actions ms-auto d-flex gap-2" *ngIf="selectedRepos.length > 0 && (isAdmin || isTeamManager)">
+        <span class="selection-count align-self-center">{{ selectedRepos.length }} selected</span>
+        <button cButton color="primary" variant="outline" (click)="openChangeTeamModal()">
+            <svg cIcon name="cil-pencil" class="me-2"></svg>
+            Change Team
+        </button>
+        <button cButton color="primary" variant="outline" (click)="openChangeTokenModal()">
+            <svg cIcon name="cil-lock-locked" class="me-2"></svg>
+            Change Token
+        </button>
+    </div>
+</div>
 
 <c-row>
     <c-col xs="12">
@@ -285,10 +270,10 @@
                                 <c-col>
                                     <button
                                             cButton
-                                            color="light"
+                                            color="secondary"
                                             size="sm"
                                             variant="ghost"
-                                            class="mb-2"
+                                            class="mb-2 text-body-secondary"
                                             (click)="toggleStatusLegend()"
                                     >
                                         <svg cIcon name="cil-info" class="me-1"></svg>
@@ -343,7 +328,8 @@
 
                                 <ngx-datatable-column name="" prop="name2" [width]="60" [sortable]="false" [resizeable]="false">
                                     <ng-template ngx-datatable-cell-template let-row="row">
-                                        <button type="button" class="btn btn-sm btn-primary" (click)="click(row)">
+                                        <button type="button" class="btn btn-sm row-open-btn" (click)="click(row)"
+                                                cTooltip="Open repository details">
                                             <svg cIcon name="cil-magnifying-glass"></svg>
                                         </button>
                                     </ng-template>
@@ -351,8 +337,8 @@
 
                                 <ngx-datatable-column name="Repository" prop="target" [width]="350">
                                     <ng-template ngx-datatable-cell-template let-row="row">
-                                        <div class="d-flex flex-column">
-                                            <span class="fw-bold">{{ row.target }}</span>
+                                        <div class="d-flex flex-column repo-name-cell">
+                                            <a class="repo-name" role="button" (click)="click(row)">{{ row.target }}</a>
                                             <small class="text-muted">
                                                 <a href="{{ row.repo_url }}" target="_blank" class="repo-link">
                                                     <svg cIcon name="cil-external-link" size="sm" class="me-1"></svg>

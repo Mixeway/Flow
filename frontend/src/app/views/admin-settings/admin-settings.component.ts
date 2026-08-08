@@ -38,7 +38,7 @@ import {IconDirective} from "@coreui/icons-angular";
 import {NgxDatatableModule} from "@swimlane/ngx-datatable";
 import {FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators} from "@angular/forms";
 import {AuthService} from "../../service/AuthService";
-import {SettingsService} from "../../service/SettingsService";
+import {SettingsService, SlaConfig} from "../../service/SettingsService";
 import {Router} from "@angular/router";
 import {UserService} from "../../service/UserService";
 import {AppConfigService} from "../../service/AppConfigService";
@@ -151,6 +151,9 @@ export class AdminSettingsComponent implements OnInit{
 
     // For Other Configuration Tab
     geminiApiKey: string = 'API Key';
+
+    /** Remediation SLA per severity in days; null means no SLA is tracked. */
+    slaConfig: SlaConfig = { criticalDays: 14, highDays: 30, mediumDays: null, lowDays: null };
     repoTokenSearchTerm: string = '';
     repoTokenValue: string = '';
     repoTokenRows: AdminRepoTokenRow[] = [];
@@ -335,6 +338,52 @@ export class AdminSettingsComponent implements OnInit{
 
                 this.geminiApiKey = this.settings.geminiApiKey;
 
+            }
+        });
+        this.loadSlaConfig();
+    }
+
+    private loadSlaConfig() {
+        this.settingsService.getSlaConfig().subscribe({
+            next: (response) => {
+                this.slaConfig = response;
+            },
+            error: () => {
+                this.toastStatus = "danger";
+                this.toastMessage = "Failed to load SLA configuration";
+                this.toggleToast();
+            }
+        });
+    }
+
+    saveSlaConfiguration() {
+        const normalise = (value: any): number | null => {
+            // Empty input means "no SLA for this severity", which the API expects as null.
+            if (value === null || value === undefined || value === '') {
+                return null;
+            }
+            const days = Number(value);
+            return Number.isFinite(days) && days > 0 ? Math.floor(days) : null;
+        };
+
+        const payload: SlaConfig = {
+            criticalDays: normalise(this.slaConfig.criticalDays),
+            highDays: normalise(this.slaConfig.highDays),
+            mediumDays: normalise(this.slaConfig.mediumDays),
+            lowDays: normalise(this.slaConfig.lowDays),
+        };
+
+        this.settingsService.changeSlaConfig(payload).subscribe({
+            next: () => {
+                this.slaConfig = payload;
+                this.toastStatus = "success";
+                this.toastMessage = "Successfully changed remediation SLA";
+                this.toggleToast();
+            },
+            error: () => {
+                this.toastStatus = "danger";
+                this.toastMessage = "Problem saving SLA configuration. Days must be between 1 and 3650.";
+                this.toggleToast();
             }
         });
     }

@@ -2,177 +2,363 @@
   display: block;
 }
 
-.repository-card, .vulnerability-card {
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  transition: box-shadow 0.3s ease;
-  border-radius: 8px;
-  overflow: hidden;
-
-  &:hover {
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  }
+// One consolidated header card: identity, key metadata and security posture.
+// Previously this was three stacked blocks (repo card + sources donut + severity cards),
+// which pushed the first finding below the fold on a 1100px-tall window.
+.repo-header-card {
+  margin-bottom: 1.5rem;
 }
 
-// Header styling
-.repo-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--cui-body-color);
+.repo-header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.25rem;
+}
+
+.repo-identity {
+  min-width: 0;
+  flex: 1;
+
+  .repo-title-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+  }
+
+  .repo-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--cui-body-color);
+    word-break: break-word;
+  }
+
+  .branch-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.2em 0.5em;
+    border-radius: 4px;
+    background-color: var(--cui-tertiary-bg);
+    color: var(--cui-secondary-color);
+
+    svg {
+      width: 12px;
+      height: 12px;
+    }
+  }
+
+  .repo-meta-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    font-size: 0.8125rem;
+    color: var(--cui-secondary-color);
+    min-width: 0;
+
+    .repo-url {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: var(--cui-primary);
+      text-decoration: none;
+      max-width: min(420px, 60vw);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+
+      &:hover {
+        text-decoration: underline;
+      }
+
+      .repo-icon {
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+      }
+    }
+
+    .meta-sep {
+      opacity: 0.5;
+    }
+
+    .lang-list {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .lang-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      white-space: nowrap;
+    }
+
+    .lang-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      display: inline-block;
+      background-color: var(--cui-secondary-color);
+    }
+  }
 }
 
 .scan-status {
   display: inline-flex;
   align-items: center;
+  gap: 0.4rem;
 
   .scan-spinner {
     color: var(--cui-info);
   }
 
   .scan-text {
-    font-size: 0.85rem;
+    font-size: 0.8125rem;
     color: var(--cui-info);
   }
 }
 
-// Repository details
-.repo-metadata {
-  .repo-link {
-    font-size: 0.9rem;
-
-    .repo-icon {
-      color: #333;
-
-      :host-context([class*="dark-theme"]) & {
-        color: #e9ecef;
-      }
-    }
-
-    .repo-url {
-      text-decoration: none;
-      color: var(--cui-primary);
-      word-break: break-all;
-
-      &:hover {
-        text-decoration: underline;
-      }
-    }
-  }
-
-  .repo-details {
-    margin-top: 1rem;
-
-    .detail-item {
-      .detail-label {
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: var(--cui-body-color-rgb);
-        opacity: 0.7;
-        margin-bottom: 0.25rem;
-      }
-
-      .detail-value {
-        font-size: 0.9rem;
-        font-weight: 500;
-      }
-    }
-  }
+// Posture strip: total, urgency flags, severity split and scanner breakdown
+.repo-posture {
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+  flex-wrap: wrap;
+  padding: 0.875rem 1.25rem 1rem;
+  border-top: 1px solid var(--cui-border-color);
+  background-color: var(--cui-tertiary-bg);
 }
 
-// Language section
-.language-section {
-  .language-title {
-    font-size: 1rem;
-    font-weight: 600;
-    margin-bottom: 1rem;
-    color: var(--cui-body-color);
+.posture-main {
+  flex: 1 1 340px;
+  min-width: 0;
+
+  .posture-heading {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+
+    .posture-total {
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--cui-body-color);
+    }
+
+    .posture-total-label {
+      font-size: 0.8125rem;
+      color: var(--cui-secondary-color);
+    }
   }
 
-  .language-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 1.25rem;
+  .posture-flag {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.2em 0.5em;
+    border-radius: 4px;
 
-    .language-item {
-      .language-name {
-        font-size: 0.85rem;
+    &.urgent {
+      background-color: rgba(220, 53, 69, 0.1);
+      color: #b02a37;
+    }
+
+    &.notable {
+      background-color: rgba(249, 177, 21, 0.15);
+      color: #7a5300;
+    }
+
+    &.fixable {
+      background-color: rgba(25, 135, 84, 0.1);
+      color: #0f6d34;
+    }
+  }
+
+  .severity-bar {
+    display: flex;
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+    background-color: var(--cui-border-color);
+    margin-bottom: 0.5rem;
+
+    .seg {
+      height: 100%;
+      transition: width 0.5s ease-out;
+
+      &.seg-critical { background-color: #dc3545; }
+      &.seg-high { background-color: #fd7e14; }
+      &.seg-other { background-color: var(--cui-primary); }
+    }
+
+    &.empty {
+      background-color: var(--cui-border-color);
+    }
+  }
+
+  .severity-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    font-size: 0.8125rem;
+    color: var(--cui-secondary-color);
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+
+      strong {
         color: var(--cui-body-color);
       }
-
-      .language-percent {
-        font-size: 0.85rem;
-        font-weight: 600;
-      }
-
-      .language-progress {
-        height: 4px;
-        overflow: hidden;
-        border-radius: 2px;
-      }
     }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .critical .legend-dot { background-color: #dc3545; }
+    .high .legend-dot { background-color: #fd7e14; }
+    .other .legend-dot { background-color: var(--cui-primary); }
   }
 }
 
-// Vulnerability card
-.vuln-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--cui-body-color);
+.posture-sources {
+  flex: 0 1 auto;
+  min-width: 0;
+
+  .sources-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--cui-secondary-color);
+    margin-bottom: 0.4rem;
+  }
+
+  .sources-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.75rem;
+  }
+
+  .source-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8125rem;
+    color: var(--cui-secondary-color);
+    white-space: nowrap;
+
+    strong {
+      color: var(--cui-body-color);
+    }
+  }
+
+  .source-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    display: inline-block;
+    flex-shrink: 0;
+  }
 }
 
-.chart-container {
-  position: relative;
-  height: 180px;
-  margin: 0 auto;
-  max-width: 300px;
+.scan-split-btn {
+  button:first-child {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .scan-caret {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.3);
+  }
 }
 
-.chart-legend {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 0.1rem;
-  margin-top: 1.5rem;
+.min-w-0 {
+  min-width: 0;
+}
 
-  .legend-item {
+.repo-actions {
+  flex-shrink: 0;
+
+  button {
+    white-space: nowrap;
+  }
+
+  // CoreUI's outline-secondary label sits at ~3.5:1 in both themes; use body color instead.
+  .btn-outline-secondary {
+    color: var(--cui-body-color);
+    border-color: var(--cui-border-color);
+
+    &:hover,
+    &:focus-visible {
+      color: var(--cui-primary);
+      border-color: var(--cui-primary);
+      background-color: rgba(var(--cui-primary-rgb), 0.08);
+    }
+  }
+
+  .dropdown-item {
     display: flex;
     align-items: center;
-    font-size: 0.8rem;
-    margin-right: 1rem;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    font-size: 0.875rem;
 
-    .legend-color {
-      width: 12px;
-      height: 12px;
-      border-radius: 3px;
-      margin-right: 8px;
-      flex-shrink: 0;
-    }
-
-    .legend-label {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: calc(100% - 20px);
+    svg {
+      width: 15px;
+      height: 15px;
+      opacity: 0.75;
     }
   }
 }
 
-// Responsive adjustments
 @media (max-width: 768px) {
-  .repo-actions {
-    margin-top: 1rem;
-  }
-
-  c-card-header {
+  .repo-header-top {
     flex-direction: column;
-    align-items: flex-start !important;
   }
 
-  .language-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .repo-posture {
+    gap: 1.25rem;
+  }
+
+  .repo-identity .repo-meta-row .repo-url {
+    max-width: 100%;
+  }
+}
+
+:host-context([data-coreui-theme="dark"]) {
+  .posture-main .posture-flag {
+    &.urgent {
+      background-color: rgba(229, 83, 83, 0.18);
+      color: #f19a9a;
+    }
+
+    &.notable {
+      background-color: rgba(249, 177, 21, 0.18);
+      color: #e8c05a;
+    }
+
+    &.fixable {
+      background-color: rgba(46, 184, 92, 0.18);
+      color: #6ddc96;
+    }
   }
 }

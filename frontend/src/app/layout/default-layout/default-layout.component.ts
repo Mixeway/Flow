@@ -16,7 +16,7 @@ import {
 } from '@coreui/angular';
 
 import { DefaultFooterComponent, DefaultHeaderComponent } from './';
-import { navItems } from './_nav';
+import { getNavItems } from './_nav';
 import {FormBuilder} from "@angular/forms";
 import {freeSet} from "@coreui/icons";
 import {SettingsService} from "../../service/SettingsService";
@@ -52,7 +52,9 @@ function isOverflown(element: HTMLElement) {
   ]
 })
 export class DefaultLayoutComponent {
-  public navItems = navItems;
+  // Resolved per instance, not at module load: the role is only known after login, and a
+  // module-level constant kept a stale menu when the signed-in user changed.
+  public navItems = getNavItems();
 
   constructor(public iconSet: IconSetService, private fb: FormBuilder, private router: Router, private settingsService: SettingsService) {
     // iconSet singleton

@@ -3,6 +3,8 @@ import {
     ChangeDetectorRef,
     Component,
     OnInit,
+    QueryList,
+    ViewChildren,
     ViewEncapsulation,
 } from '@angular/core';
 import {
@@ -65,9 +67,10 @@ import {
 import { ChartjsComponent } from '@coreui/angular-chartjs';
 import { ChartData } from 'chart.js/dist/types';
 import { ChartOptions } from 'chart.js';
-import { NgxDatatableModule } from '@swimlane/ngx-datatable';
+import { DatatableComponent, NgxDatatableModule } from '@swimlane/ngx-datatable';
 import {DatePipe, JsonPipe, NgForOf, NgIf} from '@angular/common';
 import { RepoService } from '../../service/RepoService';
+import { SettingsService, SlaConfig } from '../../service/SettingsService';
 import { AuthService } from '../../service/AuthService';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FindingSourceStatDTO } from '../../model/FindingSourceStatDTO';
@@ -76,8 +79,7 @@ import { FormsModule } from '@angular/forms';
 import { TeamService } from "../../service/TeamService";
 import { JiraService } from "../../service/JiraService";
 import {RepositoryInfoComponent} from "./repository-info/repository-info.component";
-import {VulnerabilitySummaryComponent} from "./vulnerability-summary/vulnerability-summary.component";
-import {VulnerabilitiesTableComponent} from "./vulnerabilities-table/vulnerabilities-table.component";
+import {FindingGroup, VulnerabilitiesTableComponent} from "./vulnerabilities-table/vulnerabilities-table.component";
 import {VulnerabilityDetailsComponent} from "./vulnerability-details/vulnerability-details.component";
 
 interface Vulnerability {
@@ -204,7 +206,6 @@ interface TeamUser {
         TooltipDirective,
         MarkdownModule,
         RepositoryInfoComponent,
-        VulnerabilitySummaryComponent,
         VulnerabilitiesTableComponent,
         VulnerabilityDetailsComponent,
         JsonPipe,
@@ -353,15 +354,23 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
     detailsModal: boolean = false;
     selectedRowId: number | null = null;
 
+    /** Remediation SLA thresholds, shared with the findings table. */
+    slaConfig: SlaConfig | null = null;
+
+    /** Rows in display order plus the open one, so the panel can walk prev/next. */
+    findingGroups: FindingGroup[] = [];
+    selectedGroupIndex: number = -1;
+    selectedGroup: FindingGroup | null = null;
+
     bulkActionMode: boolean = false;
     selectedFindings: number[] = [];
 
     // New properties for loading indicators and limits
     vulnerabilitiesLoading: boolean = false;
-    vulnerabilitiesLimit: number = 15;
+    vulnerabilitiesLimit: number = 20;
 
     scanInfoLoading: boolean = false;
-    scanInfoLimit: number = 15;
+    scanInfoLimit: number = 20;
 
     componentsLimit: number = 10;
 
@@ -403,6 +412,8 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
     jiraEnabled: boolean = false;
     teamId: number | null = null;
 
+    @ViewChildren(DatatableComponent) datatables?: QueryList<DatatableComponent>;
+
     constructor(
         public iconSet: IconSetService,
         private repoService: RepoService,
@@ -412,7 +423,8 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         private cdr: ChangeDetectorRef,
         private datePipe: DatePipe,
         private teamService: TeamService,
-        private jiraService: JiraService
+        private jiraService: JiraService,
+        private settingsService: SettingsService
     ) {
         iconSet.icons = { ...brandSet, ...freeSet };
 
@@ -422,10 +434,35 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         //this.cdr.detectChanges();
     }
 
+    /**
+     * ngx-datatable measures its container on init. Tables inside an inactive tab panel
+     * measure zero and render collapsed columns, so re-measure once the panel is shown.
+     * The panel fades in over 150ms, so measure again after that to catch the final width.
+     */
+    onRepoTabChange(): void {
+        this.recalculateDatatables();
+        setTimeout(() => this.recalculateDatatables(), 250);
+    }
+
+    private recalculateDatatables(): void {
+        this.datatables?.forEach((table) => table.recalculate());
+        this.cdr.detectChanges();
+    }
+
     ngOnInit(): void {
         // @ts-ignore
         this.userRole = localStorage.getItem('userRole');
         this.cdr.detectChanges();
+
+        this.settingsService.getSlaConfig().subscribe({
+            next: (config) => {
+                this.slaConfig = config;
+                this.cdr.markForCheck();
+            },
+            error: () => {
+                // SLA is optional context; the table falls back to showing no SLA.
+            },
+        });
 
         this.route.paramMap.subscribe((params) => {
             this.repoId = params.get('id') || '';
@@ -604,7 +641,50 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         };
         this.selectedRowId = row.id;
         this.detailsModal = true;
-        this.repoService.getFinding(+this.repoId, this.selectedRowId).subscribe({
+        this.loadFinding(row.id);
+    }
+
+    /**
+     * Opens the panel for a grouped row. The group list is kept so the panel's prev/next
+     * arrows walk the rows in the order the table is currently showing them.
+     */
+    onViewFindingGroup(event: { group: FindingGroup; groups: FindingGroup[]; index: number }) {
+        this.findingGroups = event.groups;
+        this.selectedGroupIndex = event.index;
+        this.openGroupAt(event.index >= 0 ? event.index : 0, event.group);
+    }
+
+    /** Called by the panel's prev/next arrows. */
+    onNavigateGroup(offset: number) {
+        const target = this.selectedGroupIndex + offset;
+        if (target < 0 || target >= this.findingGroups.length) {
+            return;
+        }
+        this.openGroupAt(target);
+    }
+
+    private openGroupAt(index: number, fallbackGroup?: FindingGroup) {
+        const group = this.findingGroups[index] ?? fallbackGroup;
+        if (!group) {
+            return;
+        }
+        this.selectedGroupIndex = index;
+        this.selectedGroup = group;
+        this.selectedRowId = group.representative.id;
+        this.detailsModal = true;
+        this.singleVuln = undefined;
+        this.loadFinding(group.representative.id);
+    }
+
+    /** Shows a specific instance of the open group without leaving the panel. */
+    onSelectGroupInstance(instanceId: number) {
+        this.selectedRowId = instanceId;
+        this.singleVuln = undefined;
+        this.loadFinding(instanceId);
+    }
+
+    private loadFinding(findingId: number) {
+        this.repoService.getFinding(+this.repoId, findingId).subscribe({
             next: (response) => {
                 this.singleVuln = response;
                 this.cdr.markForCheck();
@@ -1032,6 +1112,10 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
             ],
         };
     }
+    hasTrendData(): boolean {
+        return this.codeRepoFindingStats.length > 0;
+    }
+
     getLastOpenedFindings(): number {
         return this.codeRepoFindingStats.length > 0
             ? this.codeRepoFindingStats[this.codeRepoFindingStats.length - 1].openedFindings
@@ -1440,6 +1524,27 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
             next: (response) => {
                 this.toastStatus = 'success';
                 this.toastMessage = 'JIRA ticket created: ' + (response?.message || '');
+                this.visible = true;
+                this.loadFindings();
+            },
+            error: (error) => {
+                this.toastStatus = 'danger';
+                this.toastMessage = error?.error?.message || 'Error creating JIRA ticket';
+                this.visible = true;
+            }
+        });
+    }
+
+    /**
+     * A grouped row is one unit of work, so it gets one ticket describing every finding it
+     * covers - not one ticket per CVE or per location.
+     */
+    createJiraTicketForGroup(findingIds: number[]): void {
+        if (!this.teamId || !findingIds?.length) return;
+        this.jiraService.createTicketForGroup(this.teamId, findingIds).subscribe({
+            next: (response) => {
+                this.toastStatus = response.ticketsCreated > 0 ? 'success' : 'danger';
+                this.toastMessage = response.message;
                 this.visible = true;
                 this.loadFindings();
             },

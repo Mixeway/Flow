@@ -1,28 +1,43 @@
-<c-row>
-    <!-- Repository overview card -->
-    <c-col [md]="7" [sm]="12">
-        <c-card class="mb-4 h-100 repository-card">
-            <c-card-header class="d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center gap-2">
-                    <h2 class="mb-0 repo-title">
-                        {{ repoData?.name }}
-                    </h2>
-                    <div class="scan-status">
-                        <c-spinner
-                                *ngIf="scanRunning"
-                                size="sm"
-                                [cTooltip]="'Scan in progress'"
-                                class="scan-spinner"
-                        ></c-spinner>
-                        <span *ngIf="scanRunning" class="scan-text ms-2">Scanning</span>
-                    </div>
-                </div>
-                <div class="repo-actions" >
-                    <div *ngIf="!scanRunning" class="position-relative d-inline-flex">
+<c-card class="repo-header-card">
+    <!-- Identity + primary actions -->
+    <div class="repo-header-top">
+        <div class="repo-identity">
+            <div class="repo-title-row">
+                <h2 class="repo-title">{{ repoData?.name }}</h2>
+                <span class="branch-chip" *ngIf="repoData?.defaultBranch?.name">
+                    <svg cIcon name="cil-share-alt"></svg>
+                    {{ repoData?.defaultBranch?.name }}
+                </span>
+                <span class="scan-status" *ngIf="scanRunning">
+                    <c-spinner size="sm" [cTooltip]="'Scan in progress'" class="scan-spinner"></c-spinner>
+                    <span class="scan-text">Scanning</span>
+                </span>
+            </div>
+
+            <div class="repo-meta-row">
+                <a href="{{ repoData?.repourl }}" target="_blank" class="repo-url" [cTooltip]="repoData?.repourl">
+                    <svg cIcon name="cib-github" class="repo-icon"></svg>
+                    {{ repoData?.repourl }}
+                </a>
+                <span class="meta-sep">&middot;</span>
+                <span class="meta-item">Added {{ repoData?.insertedDate | date:'mediumDate' }}</span>
+                <ng-container *ngIf="topLanguages?.length">
+                    <span class="meta-sep">&middot;</span>
+                    <span class="meta-item lang-list">
+                        <span class="lang-chip" *ngFor="let lang of topLanguages">
+                            <span class="lang-dot" [ngClass]="'bg-' + lang.color"></span>
+                            {{ lang.name }} {{ lang.value }}%
+                        </span>
+                    </span>
+                </ng-container>
+            </div>
+        </div>
+
+<div class="repo-actions d-flex align-items-center gap-2">
+                    <div *ngIf="!scanRunning" class="position-relative d-inline-flex scan-split-btn">
                         <button
                                 cButton
-                                color="info"
-                                variant="ghost"
+                                color="primary"
                                 size="sm"
                                 [cTooltip]="'Scan default branch'"
                                 (click)="runScan()"
@@ -32,10 +47,10 @@
                         </button>
                         <button
                                 cButton
-                                color="info"
-                                variant="ghost"
+                                color="primary"
                                 size="sm"
-                                class="px-1 border-start"
+                                class="px-2 scan-caret"
+                                aria-label="More scan options"
                                 [cTooltip]="'Choose branch to scan'"
                                 (click)="toggleScanDropdown()"
                         >
@@ -43,7 +58,7 @@
                         </button>
                         <ul *ngIf="scanDropdownOpen"
                             class="dropdown-menu show position-absolute"
-                            style="top:100%;right:0;z-index:1050;min-width:180px;">
+                            style="top:100%;right:0;z-index:1050;min-width:200px;">
                             <li>
                                 <button class="dropdown-item" (click)="runScan()">
                                     Scan Default Branch
@@ -61,104 +76,109 @@
                             </li>
                         </ul>
                     </div>
-                    <button *ngIf="userRole === 'ADMIN' || userRole === 'TEAM_MANAGER'"
-                            cButton
-                            color="primary"
-                            variant="ghost"
-                            size="sm"
-                            [cTooltip]="'Change repository team'"
-                            (click)="openChangeTeamModal()"
-                    >
-                        <svg cIcon name="cil-people" class="me-1"></svg>
-                        Team
-                    </button>
-                    <button *ngIf="userRole === 'ADMIN' || userRole === 'TEAM_MANAGER'"
-                            cButton color="warning" variant="ghost" size="sm"
-                            [cTooltip]="'Rename repository'"
-                            (click)="openRenameModal()">
-                        <svg cIcon name="cil-pencil" class="me-1"></svg>
-                        Rename
-                    </button>
-                    <button *ngIf="userRole === 'ADMIN' || userRole === 'TEAM_MANAGER'"
-                            cButton color="dark" variant="ghost" size="sm"
-                            [cTooltip]="'Change repository access token'"
-                            (click)="openTokenModal()">
-                        <svg cIcon name="cil-lock-locked" class="me-1"></svg>
-                        Token
-                    </button>
-                    <button *ngIf="userRole === 'ADMIN'"
-                            cButton color="danger" variant="ghost" size="sm"
-                            [cTooltip]="'Delete repository'"
-                            (click)="requestDeleteRepo()">
-                        <svg cIcon name="cil-trash" class="me-1"></svg>
-                        Delete
-                    </button>
-                </div>
-            </c-card-header>
 
-            <c-card-body class="d-flex flex-column">
-                <div class="repo-metadata mb-4">
-                    <div class="repo-link d-flex align-items-center mb-3">
-                        <svg cIcon name="cib-github" class="repo-icon me-2"></svg>
-                        <a href="{{ repoData?.repourl }}" target="_blank" class="repo-url">
-                            {{ repoData?.repourl }}
-                        </a>
-                    </div>
-
-                    <div class="repo-details d-flex flex-wrap gap-4">
-                        <div class="detail-item">
-                            <div class="detail-label">Default Branch</div>
-                            <div class="detail-value">{{ repoData?.defaultBranch.name }}</div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Created</div>
-                            <div class="detail-value">{{ repoData?.insertedDate | date:'mediumDate' }}</div>
-                        </div>
+                    <div *ngIf="userRole === 'ADMIN' || userRole === 'TEAM_MANAGER'"
+                         class="position-relative d-inline-flex">
+                        <button
+                                cButton
+                                color="secondary"
+                                variant="outline"
+                                size="sm"
+                                (click)="toggleManageDropdown()"
+                        >
+                            <svg cIcon name="cil-settings" class="me-1"></svg>
+                            Manage
+                            <svg cIcon name="cil-chevron-bottom" class="ms-1" size="sm"></svg>
+                        </button>
+                        <ul *ngIf="manageDropdownOpen"
+                            class="dropdown-menu show position-absolute"
+                            style="top:100%;right:0;z-index:1050;min-width:200px;">
+                            <li>
+                                <button class="dropdown-item" (click)="openChangeTeamModal()">
+                                    <svg cIcon name="cil-people" class="me-2"></svg>
+                                    Change Team
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item" (click)="openRenameModal()">
+                                    <svg cIcon name="cil-pencil" class="me-2"></svg>
+                                    Rename Repository
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item" (click)="openTokenModal()">
+                                    <svg cIcon name="cil-lock-locked" class="me-2"></svg>
+                                    Change Access Token
+                                </button>
+                            </li>
+                            <ng-container *ngIf="userRole === 'ADMIN'">
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <button class="dropdown-item text-danger" (click)="requestDeleteRepo()">
+                                        <svg cIcon name="cil-trash" class="me-2"></svg>
+                                        Delete Repository
+                                    </button>
+                                </li>
+                            </ng-container>
+                        </ul>
                     </div>
                 </div>
+    </div>
 
-                <!-- Language breakdown section -->
-                <div class="language-section mt-auto">
-                    <h3 class="language-title">Languages</h3>
-                    <div class="language-grid">
-                        <div class="language-item" *ngFor="let lang of topLanguages">
-                            <div class="d-flex justify-content-between mb-1">
-                                <span class="language-name">{{ lang.name }}</span>
-                                <span class="language-percent">{{ lang.value }}%</span>
-                            </div>
-                            <c-progress
-                                    thin
-                                    [color]="lang.color"
-                                    [value]="lang.value"
-                                    class="language-progress"
-                            ></c-progress>
-                        </div>
-                    </div>
-                </div>
-            </c-card-body>
-        </c-card>
-    </c-col>
+    <!-- Security posture: the reason anyone opens this page -->
+    <div class="repo-posture">
+        <div class="posture-main">
+            <div class="posture-heading">
+                <span class="posture-total">{{ totalFindings }}</span>
+                <span class="posture-total-label">open findings</span>
+                <span class="posture-flag urgent" *ngIf="counts?.urgent > 0"
+                      [cTooltip]="'Exploited or exploitable in the wild'">
+                    {{ counts.urgent }} Urgent
+                </span>
+                <span class="posture-flag notable" *ngIf="counts?.notable > 0">
+                    {{ counts.notable }} Notable
+                </span>
+                <span class="posture-flag fixable" *ngIf="counts?.autoFixable > 0"
+                      [cTooltip]="'Can be remediated automatically'">
+                    {{ counts.autoFixable }} Auto-fixable
+                </span>
+            </div>
 
-    <!-- Vulnerabilities chart card -->
-    <c-col [md]="5" [sm]="12">
-        <c-card class="mb-4 h-100 vulnerability-card">
-            <c-card-header>
-                <h3 class="vuln-title mb-0">Vulnerability Sources</h3>
-            </c-card-header>
-            <c-card-body>
-                <div class="chart-container">
-                    <c-chart type="pie" [data]="chartPieData" [options]="options" class="vulnerability-chart"></c-chart>
-                </div>
-                <div class="chart-legend mt-3" *ngIf="chartPieData?.labels?.length">
-                    <div class="legend-item" *ngFor="let label of chartPieData.labels; let i = index">
-                        <div class="legend-color" [style.background-color]="chartPieData.datasets[0].backgroundColor[i]"></div>
-                        <div class="legend-label">{{ label }}</div>
-                    </div>
-                </div>
-            </c-card-body>
-        </c-card>
-    </c-col>
-</c-row>
+            <div class="severity-bar" *ngIf="totalFindings > 0" role="img"
+                 [attr.aria-label]="'Critical ' + (counts?.critical || 0) + ', High ' + (counts?.high || 0) + ', Other ' + (counts?.rest || 0)">
+                <span class="seg seg-critical" [style.width.%]="severityShare(counts?.critical)"
+                      [cTooltip]="(counts?.critical || 0) + ' critical'"></span>
+                <span class="seg seg-high" [style.width.%]="severityShare(counts?.high)"
+                      [cTooltip]="(counts?.high || 0) + ' high'"></span>
+                <span class="seg seg-other" [style.width.%]="severityShare(counts?.rest)"
+                      [cTooltip]="(counts?.rest || 0) + ' other'"></span>
+            </div>
+            <div class="severity-bar empty" *ngIf="totalFindings === 0"></div>
+
+            <div class="severity-legend">
+                <span class="legend-item critical">
+                    <span class="legend-dot"></span>Critical <strong>{{ counts?.critical || 0 }}</strong>
+                </span>
+                <span class="legend-item high">
+                    <span class="legend-dot"></span>High <strong>{{ counts?.high || 0 }}</strong>
+                </span>
+                <span class="legend-item other">
+                    <span class="legend-dot"></span>Other <strong>{{ counts?.rest || 0 }}</strong>
+                </span>
+            </div>
+        </div>
+
+        <div class="posture-sources" *ngIf="sourceBreakdown.length">
+            <div class="sources-label">By scanner</div>
+            <div class="sources-list">
+                <span class="source-chip" *ngFor="let s of sourceBreakdown">
+                    <span class="source-dot" [style.background-color]="s.color"></span>
+                    {{ s.label }} <strong>{{ s.value }}</strong>
+                </span>
+            </div>
+        </div>
+    </div>
+</c-card>
 
 <c-modal [(visible)]="branchScanModalVisible" alignment="center" size="sm">
     <c-modal-header>

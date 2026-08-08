@@ -48,6 +48,33 @@ public class AdminController {
     }
 
     @PreAuthorize("hasAuthority('ADMIN')")
+    @PostMapping(value = "/api/v1/admin/settings/slaconfig")
+    public ResponseEntity<StatusDTO> changeSlaConfig(@Valid @RequestBody SlaConfigDto slaConfigDto) {
+        try {
+            adminApiService.slaConfig(slaConfigDto);
+            return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("[AdminSettings] Error changing SLA config {}", e.getLocalizedMessage());
+            return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    /**
+     * Readable by any authenticated user: the finding lists render SLA status per row,
+     * so they need the configured thresholds even when the user is not an admin.
+     */
+    @PreAuthorize("hasAuthority('USER')")
+    @GetMapping(value = "/api/v1/settings/sla")
+    public ResponseEntity<SlaConfigDto> getSlaConfig() {
+        try {
+            return new ResponseEntity<>(adminApiService.getSlaConfig(), HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("[AdminSettings] Error getting SLA config {}", e.getLocalizedMessage());
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('ADMIN')")
     @GetMapping(value= "/api/v1/admin/settings")
     public ResponseEntity<Settings> getSettings(){
         try {

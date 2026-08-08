@@ -823,3 +823,10 @@ ALTER TABLE coderepo_branch
 ALTER TABLE finding ADD COLUMN IF NOT EXISTS suppressed_until DATE;
 ALTER TABLE suppress_rule ADD COLUMN IF NOT EXISTS expiration_date DATE;
 ALTER TABLE suppress_rule ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE;
+--changeset siewer:sla-configuration
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sla_critical_days INTEGER DEFAULT 14;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sla_high_days INTEGER DEFAULT 30;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sla_medium_days INTEGER;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sla_low_days INTEGER;
+UPDATE settings SET sla_critical_days = 14 WHERE sla_critical_days IS NULL;
+UPDATE settings SET sla_high_days = 30 WHERE sla_high_days IS NULL;

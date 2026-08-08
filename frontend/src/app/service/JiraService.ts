@@ -117,6 +117,15 @@ export class JiraService {
         );
     }
 
+    /** One ticket covering every finding in a grouped row (e.g. all CVEs of one package). */
+    createTicketForGroup(teamId: number, findingIds: number[]): Observable<CreateTicketsResponse> {
+        return this.http.post<CreateTicketsResponse>(
+            `${this.baseUrl}/api/v1/jira/team/${teamId}/ticket-group`,
+            { findingIds },
+            { withCredentials: true }
+        );
+    }
+
     createTicketsBulk(teamId: number, findingIds: number[]): Observable<CreateTicketsResponse> {
         return this.http.post<CreateTicketsResponse>(
             `${this.baseUrl}/api/v1/jira/team/${teamId}/tickets`,

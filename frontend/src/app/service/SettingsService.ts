@@ -38,4 +38,21 @@ export class SettingsService {
     getAdditionalScannerConfig(): Observable<any> {
         return this.http.get<any>(`${this.loginUrl}/api/v1/admin/settings/additionalscannerconfig`, { withCredentials: true });
     }
+
+    /** Readable by any authenticated user - finding lists render SLA status per row. */
+    getSlaConfig(): Observable<SlaConfig> {
+        return this.http.get<SlaConfig>(`${this.loginUrl}/api/v1/settings/sla`, { withCredentials: true });
+    }
+
+    changeSlaConfig(slaConfig: SlaConfig): Observable<any> {
+        return this.http.post<any>(`${this.loginUrl}/api/v1/admin/settings/slaconfig`, slaConfig, { withCredentials: true });
+    }
+}
+
+/** Remediation SLA in days per severity. A null value means no SLA is tracked. */
+export interface SlaConfig {
+    criticalDays: number | null;
+    highDays: number | null;
+    mediumDays: number | null;
+    lowDays: number | null;
 }

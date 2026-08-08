@@ -4,6 +4,7 @@ import io.mixeway.mixewayflowapi.api.admin.dto.ConfigScaRequestDto;
 import io.mixeway.mixewayflowapi.api.admin.dto.ConfigSmtpRequestDto;
 import io.mixeway.mixewayflowapi.api.admin.dto.ConfigWizRequestDto;
 import io.mixeway.mixewayflowapi.api.admin.dto.OtherConfigRequestDto;
+import io.mixeway.mixewayflowapi.api.admin.dto.SlaConfigDto;
 import io.mixeway.mixewayflowapi.db.entity.Settings;
 import io.mixeway.mixewayflowapi.db.repository.SettingsRepository;
 import io.mixeway.mixewayflowapi.exceptions.SettingsException;
@@ -81,6 +82,30 @@ public class UpdateSettingsService {
             settingsRepository.save(settings);
             log.info("[Settings] Disabled Wiz Config");
         }
+    }
+
+    /**
+     * Stores the remediation SLA per severity. A null value clears the SLA for that severity,
+     * which is how "no SLA tracked" is expressed.
+     */
+    @Transactional
+    public void changeSlaConfig(SlaConfigDto slaConfigDto) throws SettingsException {
+        Settings settings = findSettingsService.get();
+        if (settings == null) {
+            log.error("[Settings] Cannot store SLA config, settings row is missing");
+            throw new SettingsException("Settings are not initialized");
+        }
+
+        settings.configSla(
+                slaConfigDto.getCriticalDays(),
+                slaConfigDto.getHighDays(),
+                slaConfigDto.getMediumDays(),
+                slaConfigDto.getLowDays()
+        );
+        settingsRepository.save(settings);
+        log.info("[Settings] Changed SLA config - critical: {}, high: {}, medium: {}, low: {}",
+                slaConfigDto.getCriticalDays(), slaConfigDto.getHighDays(),
+                slaConfigDto.getMediumDays(), slaConfigDto.getLowDays());
     }
 
     public void changeSettingsOther(OtherConfigRequestDto otherConfigRequestDto) throws SettingsException {

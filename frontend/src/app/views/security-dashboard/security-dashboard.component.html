@@ -118,10 +118,14 @@
                                     <span class="section-badge">Last {{ timeRange }} days</span>
                                 </div>
                                 <div class="chart-wrapper" style="height: 300px;">
-                                    <c-chart *ngIf="vulnerabilityTrendChartData" type="line"
+                                    <c-chart *ngIf="vulnerabilityTrendChartData && hasChartValues(vulnerabilityTrendChartData)" type="line"
                                              [data]="vulnerabilityTrendChartData"
                                              [options]="lineChartOptions"
                                              style="max-height: 100%; width: 100%;"></c-chart>
+                                    <div *ngIf="!hasChartValues(vulnerabilityTrendChartData)" class="chart-empty">
+                                        <svg cIcon name="cil-chart-line"></svg>
+                                        <span>No findings recorded in the last {{ timeRange }} days</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -130,25 +134,37 @@
                             <div class="section-card">
                                 <div class="section-header"><h3>By Severity</h3></div>
                                 <div class="chart-wrapper" style="height: 240px;">
-                                    <c-chart *ngIf="severityDistributionChartData" type="doughnut"
+                                    <c-chart *ngIf="severityDistributionChartData && hasChartValues(severityDistributionChartData)" type="doughnut"
                                              [data]="severityDistributionChartData"
                                              [options]="doughnutChartOptions"></c-chart>
+                                    <div *ngIf="!hasChartValues(severityDistributionChartData)" class="chart-empty">
+                                        <svg cIcon name="cil-chart-pie"></svg>
+                                        <span>No open findings</span>
+                                    </div>
                                 </div>
                             </div>
                             <div class="section-card">
                                 <div class="section-header"><h3>By Source</h3></div>
                                 <div class="chart-wrapper" style="height: 240px;">
-                                    <c-chart *ngIf="sourceDistributionChartData" type="doughnut"
+                                    <c-chart *ngIf="sourceDistributionChartData && hasChartValues(sourceDistributionChartData)" type="doughnut"
                                              [data]="sourceDistributionChartData"
                                              [options]="doughnutChartOptions"></c-chart>
+                                    <div *ngIf="!hasChartValues(sourceDistributionChartData)" class="chart-empty">
+                                        <svg cIcon name="cil-chart-pie"></svg>
+                                        <span>No open findings</span>
+                                    </div>
                                 </div>
                             </div>
                             <div class="section-card">
                                 <div class="section-header"><h3>By Status</h3></div>
                                 <div class="chart-wrapper" style="height: 240px;">
-                                    <c-chart *ngIf="statusDistributionChartData" type="doughnut"
+                                    <c-chart *ngIf="statusDistributionChartData && hasChartValues(statusDistributionChartData)" type="doughnut"
                                              [data]="statusDistributionChartData"
                                              [options]="doughnutChartOptions"></c-chart>
+                                    <div *ngIf="!hasChartValues(statusDistributionChartData)" class="chart-empty">
+                                        <svg cIcon name="cil-chart-pie"></svg>
+                                        <span>No open findings</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -157,10 +173,14 @@
                             <div class="section-card full-width">
                                 <div class="section-header"><h3>Fix Progress</h3></div>
                                 <div class="chart-wrapper" style="height: 260px;">
-                                    <c-chart *ngIf="fixProgressChartData" type="line"
+                                    <c-chart *ngIf="fixProgressChartData && hasChartValues(fixProgressChartData)" type="line"
                                              [data]="fixProgressChartData"
                                              [options]="lineChartOptions"
                                              style="max-height: 100%; width: 100%;"></c-chart>
+                                    <div *ngIf="!hasChartValues(fixProgressChartData)" class="chart-empty">
+                                        <svg cIcon name="cil-chart-line"></svg>
+                                        <span>No findings opened or fixed in this period</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -184,8 +204,8 @@
                                         <tr *ngFor="let repo of topRepos">
                                             <td class="repo-name">{{ repo.repoName }}</td>
                                             <td class="team-name">{{ repo.teamName }}</td>
-                                            <td class="text-center"><span class="pill pill-critical">{{ repo.criticalCount }}</span></td>
-                                            <td class="text-center"><span class="pill pill-high">{{ repo.highCount }}</span></td>
+                                            <td class="text-center"><span class="pill" [ngClass]="pillClass(repo.criticalCount, 'pill-critical')">{{ repo.criticalCount }}</span></td>
+                                            <td class="text-center"><span class="pill" [ngClass]="pillClass(repo.highCount, 'pill-high')">{{ repo.highCount }}</span></td>
                                             <td class="text-center fw-bold">{{ repo.totalVulnerabilities }}</td>
                                             <td class="text-end text-muted">{{ repo.averageFixTime }}d</td>
                                         </tr>
@@ -220,10 +240,10 @@
                                         <tr *ngFor="let team of teamsSummary">
                                             <td class="team-name-primary">{{ team.teamName }}</td>
                                             <td class="text-center">{{ team.repoCount }}</td>
-                                            <td class="text-center"><span class="pill pill-critical">{{ team.criticalCount }}</span></td>
-                                            <td class="text-center"><span class="pill pill-high">{{ team.highCount }}</span></td>
+                                            <td class="text-center"><span class="pill" [ngClass]="pillClass(team.criticalCount, 'pill-critical')">{{ team.criticalCount }}</span></td>
+                                            <td class="text-center"><span class="pill" [ngClass]="pillClass(team.highCount, 'pill-high')">{{ team.highCount }}</span></td>
                                             <td class="text-center fw-bold">{{ team.totalVulnerabilities }}</td>
-                                            <td class="text-center"><span class="pill pill-success">{{ team.fixedVulnerabilities }}</span></td>
+                                            <td class="text-center"><span class="pill" [ngClass]="pillClass(team.fixedVulnerabilities, 'pill-success')">{{ team.fixedVulnerabilities }}</span></td>
                                         </tr>
                                         <tr *ngIf="teamsSummary.length === 0">
                                             <td colspan="6" class="empty-state">
@@ -275,8 +295,8 @@
                                             <td class="text-center">{{ repo.secrets || 0 }}</td>
                                             <td class="text-center">{{ repo.dast || 0 }}</td>
                                             <td class="text-center">{{ repo.gitlab || 0 }}</td>
-                                            <td class="text-center"><span class="pill pill-critical">{{ repo.urgent || 0 }}</span></td>
-                                            <td class="text-center"><span class="pill pill-medium">{{ repo.notable || 0 }}</span></td>
+                                            <td class="text-center"><span class="pill" [ngClass]="pillClass(repo.urgent, 'pill-critical')">{{ repo.urgent || 0 }}</span></td>
+                                            <td class="text-center"><span class="pill" [ngClass]="pillClass(repo.notable, 'pill-medium')">{{ repo.notable || 0 }}</span></td>
                                             <td class="text-center fw-bold">{{ repo.total || 0 }}</td>
                                         </tr>
                                         <tr *ngIf="topReposDetailed.length === 0">

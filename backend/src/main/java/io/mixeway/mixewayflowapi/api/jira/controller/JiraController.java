@@ -176,4 +176,25 @@ public class JiraController {
                     new CreateJiraTicketsResponseDto(0, 0, "Error: " + e.getMessage()));
         }
     }
+
+    /**
+     * One ticket for a set of findings that share a remediation, e.g. a package with
+     * several CVEs. Unlike /tickets this does not split the set into multiple tickets.
+     */
+    @PreAuthorize("hasAuthority('USER')")
+    @PostMapping("/team/{teamId}/ticket-group")
+    public ResponseEntity<CreateJiraTicketsResponseDto> createTicketForGroup(
+            @PathVariable Long teamId,
+            @Valid @RequestBody CreateJiraTicketsRequestDto request,
+            Principal principal) {
+        try {
+            CreateJiraTicketsResponseDto response = jiraApiService.createTicketForGroup(
+                    teamId, request.getFindingIds(), principal);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("[JIRA] Error creating grouped ticket for team {}: {}", teamId, e.getMessage());
+            return ResponseEntity.badRequest().body(
+                    new CreateJiraTicketsResponseDto(0, 0, "Error: " + e.getMessage()));
+        }
+    }
 }

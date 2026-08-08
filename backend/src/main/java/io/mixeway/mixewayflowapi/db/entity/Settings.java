@@ -80,6 +80,29 @@ public class Settings {
     @Setter
     private String geminiApiKey;
 
+    /**
+     * Remediation SLA in days per severity, counted from when a finding was first seen.
+     * A null value means no SLA is tracked for that severity.
+     */
+    @Column(name = "sla_critical_days")
+    private Integer slaCriticalDays = 14;
+
+    @Column(name = "sla_high_days")
+    private Integer slaHighDays = 30;
+
+    @Column(name = "sla_medium_days")
+    private Integer slaMediumDays;
+
+    @Column(name = "sla_low_days")
+    private Integer slaLowDays;
+
+    public void configSla(Integer criticalDays, Integer highDays, Integer mediumDays, Integer lowDays) {
+        this.slaCriticalDays = criticalDays;
+        this.slaHighDays = highDays;
+        this.slaMediumDays = mediumDays;
+        this.slaLowDays = lowDays;
+    }
+
     public void enableWiz(String clientId, String secret) {
         this.enableWiz = true;
         this.wizClientId = clientId;

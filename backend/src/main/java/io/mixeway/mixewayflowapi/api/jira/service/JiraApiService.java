@@ -192,6 +192,42 @@ public class JiraApiService {
         );
     }
 
+    /**
+     * Creates one ticket for a set of findings the caller already treats as a single unit of
+     * work (a grouped row in the UI), rather than re-grouping and producing several tickets.
+     */
+    @Transactional
+    public CreateJiraTicketsResponseDto createTicketForGroup(Long teamId, List<Long> findingIds, Principal principal) {
+        Team team = findTeamService.findById(teamId)
+                .orElseThrow(() -> new IllegalArgumentException("Team not found"));
+        permissionFactory.canUserAccessTeam(team, principal);
+
+        JiraConfiguration config = jiraConfigurationService.findByTeam(team)
+                .orElseThrow(() -> new IllegalStateException("No JIRA configuration found for this team"));
+
+        List<Finding> findings = findingIds.stream()
+                .map(id -> findFindingService.findById(id).orElse(null))
+                .filter(f -> f != null && f.getJiraTicketKey() == null)
+                .collect(Collectors.toList());
+
+        findings.forEach(f -> validateFindingBelongsToTeam(f, team));
+
+        if (findings.isEmpty()) {
+            return new CreateJiraTicketsResponseDto(0, 0, "All selected findings already have a JIRA ticket");
+        }
+
+        String ticketKey = jiraApiClientService.createTicketForFindingGroup(config, findings);
+        if (ticketKey == null) {
+            return new CreateJiraTicketsResponseDto(0, findings.size(), "Failed to create JIRA ticket");
+        }
+
+        return new CreateJiraTicketsResponseDto(
+                1,
+                findings.size(),
+                String.format("Created ticket %s covering %d findings", ticketKey, findings.size())
+        );
+    }
+
     private void validateFindingBelongsToTeam(Finding finding, Team team) {
         if (finding.getCodeRepo() != null) {
             List<CodeRepo> teamRepos = findCodeRepoService.findByTeam(team);

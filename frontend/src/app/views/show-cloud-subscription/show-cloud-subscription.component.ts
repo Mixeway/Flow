@@ -78,7 +78,6 @@ import {CloudVulnerabilityDetailsComponent} from "./cloud-vulnerability-details/
 import {
     TeamVulnerabilitiesTableComponent
 } from "../show-team/team-vulnerabilities-table/team-vulnerabilities-table.component";
-import {VulnerabilitySummaryComponent} from "../show-repo/vulnerability-summary/vulnerability-summary.component";
 import _default from "chart.js/dist/core/core.interaction";
 import dataset = _default.modes.dataset;
 
@@ -176,7 +175,6 @@ export interface CloudSubscriptionFindingStats {
         CloudVulnerabilityDetailsComponent,
         NgClass,
         TeamVulnerabilitiesTableComponent,
-        VulnerabilitySummaryComponent,
     ],
     templateUrl: './show-cloud-subscription.component.html',
     styleUrls: ['./show-cloud-subscription.component.scss'],

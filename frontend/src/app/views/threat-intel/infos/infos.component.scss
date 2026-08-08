@@ -1,297 +1,90 @@
 .statistics-dashboard {
-  height: 100%;
-
-  .stats-row {
-    height: 100%;
-  }
-
-  .stat-card {
-    height: 100%;
-    border-radius: var(--cui-border-radius);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    overflow: hidden;
-    position: relative;
+  .stat-tile {
     display: flex;
-    flex-direction: column;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    border: 1px solid rgba(0, 0, 0, 0.05);
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    height: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid var(--cui-border-color-translucent);
+    background-color: var(--cui-card-bg);
+    transition: box-shadow 0.15s ease;
 
     &:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
     }
+  }
 
-    .stat-icon {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+  .stat-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: 0.5rem;
+    background-color: var(--cui-tertiary-bg);
+    color: var(--cui-secondary-color);
+
+    svg {
+      width: 18px;
+      height: 18px;
     }
+  }
 
-    .stat-content {
-      padding: 1.5rem;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      z-index: 1;
-      position: relative;
-    }
+  // Colour is reserved for the tiles that represent risk.
+  .accent-danger .stat-icon {
+    background-color: rgba(var(--cui-danger-rgb), 0.1);
+    color: var(--cui-danger);
+  }
 
-    .stat-title {
-      font-size: 0.875rem;
+  .accent-warning .stat-icon {
+    background-color: rgba(253, 126, 20, 0.12);
+    color: #8a4b00;
+  }
+
+  .stat-body {
+    min-width: 0;
+
+    .stat-label {
+      font-size: 0.6875rem;
       font-weight: 600;
-      margin-bottom: 0.5rem;
-      opacity: 0.9;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--cui-secondary-color);
     }
 
     .stat-value {
-      font-size: 2rem;
+      font-size: 1.5rem;
       font-weight: 700;
-      line-height: 1.2;
-      margin-bottom: 0.5rem;
-    }
+      line-height: 1.3;
+      color: var(--cui-body-color);
 
-    .stat-change {
-      display: flex;
-      align-items: center;
-      font-size: 0.875rem;
-      font-weight: 500;
-
-      svg {
-        margin-right: 0.25rem;
-      }
-
-      &.positive {
-        color: var(--cui-success);
-      }
-
-      &.negative {
-        color: var(--cui-danger);
+      .stat-unit {
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: var(--cui-secondary-color);
+        margin-left: 0.1em;
       }
     }
 
-    // Background decoration
-    .bg-decoration {
-      position: absolute;
-      bottom: -15px;
-      right: -15px;
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
-      opacity: 0.1;
-    }
-
-    // Theme-aware card styling
-    &.primary {
-      background: linear-gradient(135deg, rgba(var(--cui-primary-rgb), 0.9), rgba(var(--cui-primary-rgb), 1));
-      color: white;
-
-      .stat-title {
-        color: rgba(255, 255, 255, 0.9);
-      }
-
-      .stat-icon {
-        background-color: rgba(255, 255, 255, 0.2);
-        svg {
-          color: white;
-        }
-      }
-
-      .bg-decoration {
-        background-color: rgba(255, 255, 255, 0.2);
-      }
-
-      .stat-change {
-        &.positive {
-          color: rgba(255, 255, 255, 0.9);
-        }
-      }
-    }
-
-    &.warning {
-      background: linear-gradient(135deg, rgba(var(--cui-warning-rgb), 0.9), rgba(var(--cui-warning-rgb), 1));
-      color: var(--cui-body-color-dark, white);
-
-      .stat-title {
-        color: rgba(var(--cui-body-color-rgb-dark, 255, 255, 255), 0.9);
-      }
-
-      .stat-icon {
-        background-color: rgba(255, 255, 255, 0.2);
-        svg {
-          color: var(--cui-body-color-dark, white);
-        }
-      }
-
-      .bg-decoration {
-        background-color: rgba(255, 255, 255, 0.2);
-      }
-
-      .stat-change {
-        &.positive {
-          color: rgba(var(--cui-body-color-rgb-dark, 255, 255, 255), 0.9);
-        }
-      }
-    }
-
-    &.success {
-      background: linear-gradient(135deg, rgba(var(--cui-success-rgb), 0.9), rgba(var(--cui-success-rgb), 1));
-      color: white;
-
-      .stat-title {
-        color: rgba(255, 255, 255, 0.9);
-      }
-
-      .stat-icon {
-        background-color: rgba(255, 255, 255, 0.2);
-        svg {
-          color: white;
-        }
-      }
-
-      .bg-decoration {
-        background-color: rgba(255, 255, 255, 0.2);
-      }
-
-      .stat-change {
-        &.positive, &.negative {
-          color: rgba(255, 255, 255, 0.9);
-        }
-      }
-    }
-
-    &.danger {
-      background: linear-gradient(135deg, rgba(var(--cui-danger-rgb), 0.9), rgba(var(--cui-danger-rgb), 1));
-      color: white;
-
-      .stat-title {
-        color: rgba(255, 255, 255, 0.9);
-      }
-
-      .stat-icon {
-        background-color: rgba(255, 255, 255, 0.2);
-        svg {
-          color: white;
-        }
-      }
-
-      .bg-decoration {
-        background-color: rgba(255, 255, 255, 0.2);
-      }
-
-      .stat-change {
-        &.positive, &.negative {
-          color: rgba(255, 255, 255, 0.9);
-        }
-      }
+    .stat-sub {
+      font-size: 0.75rem;
+      line-height: 1.35;
+      color: var(--cui-secondary-color);
     }
   }
 }
 
-// Add a theme toggle class for light theme variation
-:root.light-theme {
-  .statistics-dashboard {
-    .stat-card {
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-      border: 1px solid rgba(0, 0, 0, 0.08);
-
-      &:hover {
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-      }
-
-      // Light theme alternative - for better contrast
-      &.primary, &.warning, &.success, &.danger {
-        background: white;
-        color: var(--cui-body-color);
-        border-left: 4px solid;
-
-        .stat-title {
-          color: var(--cui-body-color);
-          opacity: 0.7;
-        }
-
-        .stat-value {
-          color: var(--cui-body-color);
-        }
-
-        .stat-icon svg {
-          color: white;
-        }
-      }
-
-      &.primary {
-        border-left-color: var(--cui-primary);
-
-        .stat-icon {
-          background-color: var(--cui-primary);
-        }
-
-        .bg-decoration {
-          background-color: rgba(var(--cui-primary-rgb), 0.1);
-        }
-      }
-
-      &.warning {
-        border-left-color: var(--cui-warning);
-
-        .stat-icon {
-          background-color: var(--cui-warning);
-        }
-
-        .bg-decoration {
-          background-color: rgba(var(--cui-warning-rgb), 0.1);
-        }
-      }
-
-      &.success {
-        border-left-color: var(--cui-success);
-
-        .stat-icon {
-          background-color: var(--cui-success);
-        }
-
-        .bg-decoration {
-          background-color: rgba(var(--cui-success-rgb), 0.1);
-        }
-      }
-
-      &.danger {
-        border-left-color: var(--cui-danger);
-
-        .stat-icon {
-          background-color: var(--cui-danger);
-        }
-
-        .bg-decoration {
-          background-color: rgba(var(--cui-danger-rgb), 0.1);
-        }
-      }
-    }
+:host-context([data-coreui-theme="dark"]) {
+  .statistics-dashboard .accent-warning .stat-icon {
+    background-color: rgba(253, 126, 20, 0.18);
+    color: #f0a955;
   }
 }
 
-// Responsive adjustments
 @media (max-width: 768px) {
-  .statistics-dashboard {
-    .stat-card {
-      .stat-content {
-        padding: 1rem;
-      }
-
-      .stat-value {
-        font-size: 1.5rem;
-      }
-
-      .stat-icon {
-        width: 40px;
-        height: 40px;
-      }
-    }
+  .statistics-dashboard .stat-body .stat-value {
+    font-size: 1.25rem;
   }
 }

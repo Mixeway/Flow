@@ -154,6 +154,24 @@ export class SecurityDashboardComponent implements OnInit {
     });
   }
 
+  /**
+   * A chart whose datasets are all zeros renders as bare 0-1 axes, which reads as
+   * broken rather than empty. Use these to show an explicit empty state instead.
+   */
+  hasChartValues(chartData: { datasets?: { data?: (number | null)[] }[] } | null): boolean {
+    if (!chartData?.datasets?.length) {
+      return false;
+    }
+    return chartData.datasets.some((dataset) =>
+      (dataset.data ?? []).some((value) => (value ?? 0) > 0)
+    );
+  }
+
+  /** Zero is not a risk signal, so it should not get a coloured pill. */
+  pillClass(value: number | null | undefined, severityClass: string): string {
+    return (value ?? 0) > 0 ? severityClass : 'pill-zero';
+  }
+
   private clearChartData(): void {
     this.vulnerabilityTrendChartData = null;
     this.severityDistributionChartData = null;

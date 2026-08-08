@@ -47,10 +47,15 @@
   }
 }
 
-// Dark theme specific adjustments
-:host-context(.c-dark-theme) {
-  .threat-description {
-    color: var(--cui-body-color);
+// ApexCharts writes its label colours as SVG presentation attributes, which cannot
+// reference CSS variables, so the gauge text/track are re-themed here instead.
+:host ::ng-deep {
+  .apexcharts-datalabel-value {
+    fill: var(--cui-body-color) !important;
+  }
+
+  .apexcharts-radialbar-track path {
+    stroke: var(--cui-tertiary-bg) !important;
   }
 }
 

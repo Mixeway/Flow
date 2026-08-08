@@ -42,4 +42,12 @@ public class AdminApiService {
     public void otherConfig(OtherConfigRequestDto otherConfigRequestDto) throws SettingsException {
         updateSettingsService.changeSettingsOther(otherConfigRequestDto);
     }
+
+    public void slaConfig(SlaConfigDto slaConfigDto) throws SettingsException {
+        updateSettingsService.changeSlaConfig(slaConfigDto);
+    }
+
+    public SlaConfigDto getSlaConfig() {
+        return findSettingsService.getSlaConfig();
+    }
 }

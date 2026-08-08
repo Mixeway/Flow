@@ -1,39 +1,27 @@
 import {INavData} from "@coreui/angular";
 
+/**
+ * Sidebar structure follows the grouping used by comparable security platforms:
+ * one overview entry, then the surfaces you work in (findings), then read-only
+ * insights, then administration, with documentation pinned to the bottom.
+ *
+ * Sections are composed per role so a heading is never left without items under it.
+ */
 export function getNavItems(): INavData[] {
   const userRole = localStorage.getItem('userRole');
 
-  const allNavItems: INavData[] = [
+  const overview: INavData[] = [
     {
       name: 'Dashboard',
       url: '/dashboard',
-      iconComponent: { name: 'cil-speedometer' },
-      badge: {
-        color: 'info',
-        text: 'NEW'
-      }
+      iconComponent: { name: 'cil-speedometer' }
     },
-    {
-      name: 'Threat Intelligence',
-      url: '/threat-intel',
-      iconComponent: { name: 'cil-eyedropper' },
-      badge: {
-        color: 'primary',
-        text: 'BETA'
-      }
-    },
-    {
-      name: 'Statistics',
-      url: '/stats',
-      iconComponent: { name: 'cil-bar-chart' },
-      badge: {
-        color: 'success',
-        text: 'NEW'
-      }
-    },
+  ];
+
+  const findings: INavData[] = [
     {
       title: true,
-      name: 'Details'
+      name: 'Findings'
     },
     {
       name: 'Vulnerabilities',
@@ -43,32 +31,50 @@ export function getNavItems(): INavData[] {
     {
       name: 'Components',
       url: '/details/components',
-      iconComponent: { name: 'cil-library' }
+      iconComponent: { name: 'cil-puzzle' }
     },
+  ];
+
+  const insights: INavData[] = [
     {
       title: true,
-      name: 'Links',
-      class: 'mt-auto'
+      name: 'Insights'
     },
     {
-      name: 'Docs',
-      url: 'https://mixeway.io',
-      iconComponent: { name: 'cil-description' },
-      attributes: { target: '_blank' }
+      name: 'Statistics',
+      url: '/stats',
+      iconComponent: { name: 'cil-chart-line' }
     },
+    {
+      name: 'Threat Intelligence',
+      url: '/threat-intel',
+      iconComponent: { name: 'cil-shield-alt' },
+      // Kept because it states maturity. Purely promotional badges were removed:
+      // a permanent "NEW" stops carrying information.
+      badge: {
+        color: 'secondary',
+        text: 'BETA'
+      }
+    },
+  ];
+
+  const administration: INavData[] = [
     {
       title: true,
-      name: 'Management'
+      name: 'Administration'
     },
     {
       name: 'Team Management',
       url: '/manage-teams',
-      iconComponent: { name: 'cil-address-book' }
+      iconComponent: { name: 'cil-people' }
     },
+  ];
+
+  const adminOnly: INavData[] = [
     {
       name: 'Users',
       url: '/admin/users',
-      iconComponent: { name: 'cil-people' }
+      iconComponent: { name: 'cil-user' }
     },
     {
       name: 'Settings',
@@ -77,18 +83,28 @@ export function getNavItems(): INavData[] {
     },
   ];
 
-  // Filter based on role
+  // Pinned to the bottom so utility links never sit among the work surfaces.
+  const docs: INavData[] = [
+    {
+      name: 'Docs',
+      url: 'https://mixeway.io',
+      iconComponent: { name: 'cil-description' },
+      class: 'mt-auto',
+      attributes: { target: '_blank' }
+    },
+  ];
+
   if (userRole === 'ADMIN') {
-    return allNavItems; // Admin sees everything
-  } else if (userRole === 'TEAM_MANAGER') {
-
-    return allNavItems.filter(item => item.name !== 'Users' && item.name !== 'Settings');
-  } else if (userRole === 'USER') {
-
-    return allNavItems.filter(item => ['Dashboard', 'Cloud', 'Threat Intelligence', 'Statistics', 'Vulnerabilities', 'Components', 'Docs'].includes(item.name ?? ''));
+    return [...overview, ...findings, ...insights, ...administration, ...adminOnly, ...docs];
+  }
+  if (userRole === 'TEAM_MANAGER') {
+    return [...overview, ...findings, ...insights, ...administration, ...docs];
+  }
+  if (userRole === 'USER') {
+    return [...overview, ...findings, ...insights, ...docs];
   }
 
-  return []; // Default empty array if no role matches or role is undefined
+  return [];
 }
 
 // Export the filtered navItems
