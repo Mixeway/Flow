@@ -1,5 +1,6 @@
 package io.mixeway.mixewayflowapi.integrations.scanner.sast.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
@@ -21,6 +22,8 @@ public class Item {
     private String filename;
     @JsonProperty("category_groups")
     private List<String> categoryGroups;
+    @JsonProperty("cwe_ids")
+    private List<String> cweIds;
     private CodeLocation source;
     private CodeLocation sink;
     @JsonProperty("parent_line_number")
@@ -30,6 +33,15 @@ public class Item {
     private String oldFingerprint;
     @JsonProperty("code_extract")
     private String codeExtract;
+
+    @JsonIgnore
+    private transient String aiVerdict;
+    @JsonIgnore
+    private transient Double aiConfidence;
+    @JsonIgnore
+    private transient String aiReasoning;
+    @JsonIgnore
+    private transient String aiRecommendation;
 }
 
 

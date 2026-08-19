@@ -87,6 +87,13 @@ public class CodeRepoApiService {
         }
     }
 
+    public void runLlmEvaluation(Long id, Principal principal) {
+        CodeRepo repo = findCodeRepoService.findById(id, principal);
+        if (repo != null) {
+            scanManagerService.runLlmEvaluation(repo, repo.getDefaultBranch());
+        }
+    }
+
     public List<String> getRemoteBranches(Long id, Principal principal) {
         CodeRepo repo = findCodeRepoService.findById(id, principal);
         if (repo == null) {

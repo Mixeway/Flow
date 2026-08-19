@@ -154,6 +154,10 @@ export class AdminSettingsComponent implements OnInit{
 
     /** Remediation SLA per severity in days; null means no SLA is tracked. */
     slaConfig: SlaConfig = { criticalDays: 14, highDays: 30, mediumDays: null, lowDays: null };
+    enableLlmEvaluation: boolean = false;
+    llmApiUrl: string = '';
+    llmApiKey2: string = '';
+    llmModel: string = '';
     repoTokenSearchTerm: string = '';
     repoTokenValue: string = '';
     repoTokenRows: AdminRepoTokenRow[] = [];
@@ -336,7 +340,12 @@ export class AdminSettingsComponent implements OnInit{
                 this.wizConfigForm.patchValue({secret: "************"});
                 this.isWizEnabled = this.settings.enableWiz;
 
-                this.geminiApiKey = this.settings.geminiApiKey;
+                this.geminiApiKey = this.settings.geminiApiKey || '';
+
+                this.enableLlmEvaluation = this.settings.enableLlmEvaluation || false;
+                this.llmApiUrl = this.settings.llmApiUrl || '';
+                this.llmApiKey2 = this.settings.llmApiKeyConfigured ? '************' : '';
+                this.llmModel = this.settings.llmModel || '';
 
             }
         });
@@ -610,7 +619,11 @@ export class AdminSettingsComponent implements OnInit{
 
     saveOtherConfigurationSettings() {
         this.settingsService.changeOtherConfig({
-            geminiApiKey: this.geminiApiKey
+            geminiApiKey: this.geminiApiKey,
+            enableLlmEvaluation: this.enableLlmEvaluation,
+            llmApiUrl: this.llmApiUrl,
+            llmApiKey: this.llmApiKey2,
+            llmModel: this.llmModel
         }).subscribe({
             next: () => {
                 this.toastStatus = "success";

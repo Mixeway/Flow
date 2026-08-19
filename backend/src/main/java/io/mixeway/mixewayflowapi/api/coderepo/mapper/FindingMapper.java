@@ -20,6 +20,10 @@ public class FindingMapper {
         dto.setLastSeen(finding.getUpdatedDate().toString());
         dto.setJiraTicketKey(finding.getJiraTicketKey());
         dto.setSuppressedUntil(finding.getSuppressedUntil() != null ? finding.getSuppressedUntil().toString() : null);
+        dto.setAiVerificationGrade(finding.getAiVerificationGrade().name());
+        dto.setAiVerificationConfidence(finding.getAiVerificationConfidence());
+        dto.setAiVerificationReasoning(finding.getAiVerificationReasoning());
+        dto.setAiVerificationRecommendation(finding.getAiVerificationRecommendation());
         return dto;
     }
 

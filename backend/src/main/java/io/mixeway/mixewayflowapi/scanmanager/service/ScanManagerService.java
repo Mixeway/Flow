@@ -550,9 +550,34 @@ public class ScanManagerService {
     }
 
     /**
-     * Modified fetchRepository method to handle the zero commit ID case by getting the latest commit from the branch.
-     * This is an excerpt from the ScanManagerService class focusing on the fixed method.
+     * Clones the repo and runs Bearer SAST scan with LLM-based false positive verification.
+     * Triggered on-demand by user via "Evaluate with LLM" button.
      */
+    public void runLlmEvaluation(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
+        executorService.submit(() -> {
+            String repoDir = "/tmp/" + codeRepo.getName();
+            String repoUrl = codeRepo.getRepourl();
+            String accessToken = codeRepo.getAccessToken();
+            CodeRepo.RepoType repoType = codeRepo.getType();
+
+            try {
+                log.info("[ScanManagerService] Starting LLM evaluation for [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
+                fetchRepository(null, repoUrl, accessToken, codeRepoBranch, repoDir, repoType);
+                sastService.runBearerScanWithLlmEvaluation(repoDir, codeRepo, codeRepoBranch);
+            } catch (Throwable t) {
+                Thread.interrupted(); // clear interrupt flag so log.error can write
+                log.error("[ScanManagerService] LLM evaluation failed for [{} / {}]: {}",
+                        codeRepo.getRepourl(), codeRepoBranch.getName(), t.getMessage(), t);
+            } finally {
+                try {
+                    cleanUp(repoDir);
+                } catch (IOException cleanupEx) {
+                    log.error("[ScanManagerService] Failed to clean up after LLM evaluation {}: {}", repoDir, cleanupEx.getMessage());
+                }
+            }
+        });
+    }
+
     private String fetchRepository(String commitId, String repoUrl, String accessToken,
                                    CodeRepoBranch codeRepoBranch, String repoDir,
                                    io.mixeway.mixewayflowapi.db.entity.CodeRepo.RepoType repoType)

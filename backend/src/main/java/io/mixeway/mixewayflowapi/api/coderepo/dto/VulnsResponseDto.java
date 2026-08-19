@@ -19,5 +19,13 @@ public class VulnsResponseDto {
     String jiraTicketKey;
     @JsonProperty("suppressed_until")
     String suppressedUntil;
+    @JsonProperty("ai_verification_grade")
+    String aiVerificationGrade;
+    @JsonProperty("ai_verification_confidence")
+    Double aiVerificationConfidence;
+    @JsonProperty("ai_verification_reasoning")
+    String aiVerificationReasoning;
+    @JsonProperty("ai_verification_recommendation")
+    String aiVerificationRecommendation;
 
 }

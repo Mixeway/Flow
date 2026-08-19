@@ -1,0 +1,4970 @@
+# Generated from Bearer bearer-rules main/rules metadata.
+# Keep family/profile values aligned with SAST verifier enums.
+cweFamilies:
+  '15': TRUST_BOUNDARY
+  '22': PATH_TRAVERSAL
+  '73': PATH_TRAVERSAL
+  '78': COMMAND_INJECTION
+  '79': XSS
+  '80': XSS
+  '88': COMMAND_INJECTION
+  '89': SQL_INJECTION
+  '90': SQL_INJECTION
+  '93': LOGGER_LEAK
+  '94': COMMAND_INJECTION
+  '95': COMMAND_INJECTION
+  '98': PATH_TRAVERSAL
+  '117': LOGGER_LEAK
+  '118': GENERAL
+  '134': GENERAL
+  '190': GENERAL
+  '200': EXCEPTION_LEAK
+  '201': EXCEPTION_LEAK
+  '208': TIMING_SIDE_CHANNEL
+  '209': EXCEPTION_LEAK
+  '210': EXCEPTION_LEAK
+  '242': GENERAL
+  '259': HARDCODED_SECRET
+  '269': ACCESS_CONTROL
+  '284': ACCESS_CONTROL
+  '295': WEAK_CRYPTO
+  '297': WEAK_CRYPTO
+  '306': ACCESS_CONTROL
+  '312': HARDCODED_SECRET
+  '313': HARDCODED_SECRET
+  '315': HARDCODED_SECRET
+  '319': CLEAR_TEXT_TRANSMISSION
+  '326': WEAK_CRYPTO
+  '327': WEAK_CRYPTO
+  '328': WEAK_HASH
+  '329': WEAK_CRYPTO
+  '330': INSUFFICIENT_RANDOM
+  '346': EXCEPTION_LEAK
+  '347': WEAK_CRYPTO
+  '352': CSRF
+  '353': WEAK_CRYPTO
+  '378': PERMISSIONS
+  '384': ACCESS_CONTROL
+  '400': GENERAL
+  '409': GENERAL
+  '470': COMMAND_INJECTION
+  '501': TRUST_BOUNDARY
+  '502': DESERIALIZATION
+  '521': GENERAL
+  '532': LOGGER_LEAK
+  '548': EXCEPTION_LEAK
+  '598': EXCEPTION_LEAK
+  '601': OPEN_REDIRECT
+  '611': XXE
+  '614': COOKIE_SECURITY
+  '625': REGEX_DOS
+  '643': SQL_INJECTION
+  '650': ACCESS_CONTROL
+  '693': COOKIE_SECURITY
+  '704': GENERAL
+  '706': PATH_TRAVERSAL
+  '732': PERMISSIONS
+  '780': WEAK_CRYPTO
+  '798': HARDCODED_SECRET
+  '913': PERMISSIONS
+  '917': COMMAND_INJECTION
+  '918': SSRF
+  '942': EXCEPTION_LEAK
+  '943': SQL_INJECTION
+  '1004': COOKIE_SECURITY
+  '1018': TRUST_BOUNDARY
+  '1021': ACCESS_CONTROL
+  '1287': REGEX_DOS
+  '1333': REGEX_DOS
+  '1395': VULNERABLE_DEPENDENCY
+rules:
+  go_gorilla_cookie_missing_http_only:
+    cwe:
+    - '1004'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_gorilla_insecure_cookie:
+    cwe:
+    - '614'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_gosec_blocklist_cgi:
+    cwe:
+    - '1395'
+    family: VULNERABLE_DEPENDENCY
+    promptProfile: MISCONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_blocklist_des:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_blocklist_md5:
+    cwe:
+    - '328'
+    family: WEAK_HASH
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  go_gosec_blocklist_rc4:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_blocklist_sha1:
+    cwe:
+    - '328'
+    family: WEAK_HASH
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  go_gosec_crypto_bad_tls_settings:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_crypto_insecure_ignore_host_key:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_crypto_weak_crypto:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_crypto_weak_key_strength:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_crypto_weak_random:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  go_gosec_crypto_weak_tls_version:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_file_permissions_file_perm:
+    cwe:
+    - '732'
+    family: PERMISSIONS
+    promptProfile: MISCONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_file_permissions_mkdir:
+    cwe:
+    - '732'
+    family: PERMISSIONS
+    promptProfile: MISCONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_filesystem_decompression_bomb:
+    cwe:
+    - '409'
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_filesystem_dirtraversal:
+    cwe:
+    - '22'
+    family: PATH_TRAVERSAL
+    promptProfile: PATH_TRAVERSAL
+    policyProfile: PATH_CANONICALIZATION
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_filesystem_filereadtaint:
+    cwe:
+    - '73'
+    family: PATH_TRAVERSAL
+    promptProfile: PATH_TRAVERSAL
+    policyProfile: PATH_CANONICALIZATION
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_filesystem_poor_write_permissions:
+    cwe:
+    - '732'
+    family: PERMISSIONS
+    promptProfile: MISCONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_filesystem_tempfile:
+    cwe:
+    - '378'
+    family: PERMISSIONS
+    promptProfile: MISCONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_filesystem_ziparchive:
+    cwe:
+    - '22'
+    family: PATH_TRAVERSAL
+    promptProfile: PATH_TRAVERSAL
+    policyProfile: PATH_CANONICALIZATION
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_http_http_serve:
+    cwe:
+    - '400'
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_http_http_slowloris:
+    cwe:
+    - '400'
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_injection_ssrf_injection:
+    cwe:
+    - '918'
+    family: SSRF
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_injection_subproc_injection:
+    cwe:
+    - '78'
+    family: COMMAND_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_injection_template_injection:
+    cwe:
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_leak_pprof_endpoint:
+    cwe:
+    - '200'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_gosec_memory_integer_overflow:
+    cwe:
+    - '190'
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_memory_math_big_rat:
+    cwe:
+    - '190'
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_memory_memory_aliasing:
+    cwe:
+    - '118'
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_network_bind_to_all_interfaces:
+    cwe:
+    - '200'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_gosec_secrets_secrets:
+    cwe:
+    - '798'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  go_gosec_sql_concat_sqli:
+    cwe:
+    - '89'
+    family: SQL_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_subproc_subproc:
+    cwe:
+    - '94'
+    family: COMMAND_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_gosec_unsafe_unsafe:
+    cwe:
+    - '242'
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_lang_cookie_missing_http_only:
+    cwe:
+    - '1004'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_lang_cross_site_scripting:
+    cwe:
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_lang_deserialization_of_user_input:
+    cwe:
+    - '502'
+    family: DESERIALIZATION
+    promptProfile: DESERIALIZATION
+    policyProfile: DESERIALIZATION_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_lang_hardcoded_mysql_database_password:
+    cwe:
+    - '259'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  go_lang_hardcoded_pg_database_password:
+    cwe:
+    - '259'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  go_lang_html_tag_injection:
+    cwe:
+    - '80'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_lang_information_leakage:
+    cwe:
+    - '209'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_lang_insecure_cookie:
+    cwe:
+    - '614'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_lang_insufficiently_random_values:
+    cwe:
+    - '330'
+    family: INSUFFICIENT_RANDOM
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  go_lang_log_output_neutralization:
+    cwe:
+    - '117'
+    family: LOGGER_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_lang_logger:
+    cwe:
+    - '532'
+    family: LOGGER_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_lang_logger_leak:
+    cwe:
+    - '532'
+    family: LOGGER_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_lang_missing_tls_minversion:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_lang_observable_timing:
+    cwe:
+    - '208'
+    family: TIMING_SIDE_CHANNEL
+    promptProfile: TIMING
+    policyProfile: TIMING_SIDE_CHANNEL
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_lang_open_redirect:
+    cwe:
+    - '601'
+    family: OPEN_REDIRECT
+    promptProfile: OPEN_REDIRECT
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_lang_permissive_regex_validation:
+    cwe:
+    - '625'
+    family: REGEX_DOS
+    promptProfile: CONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_lang_ssl_verification:
+    cwe:
+    - '295'
+    family: WEAK_CRYPTO
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_lang_weak_hash_md5:
+    cwe:
+    - '328'
+    family: WEAK_HASH
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  go_lang_weak_hash_sha1:
+    cwe:
+    - '328'
+    family: WEAK_HASH
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  go_lang_weak_password_encryption_md5:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  go_lang_weak_password_encryption_sha1:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  go_lang_xml_external_entity_vulnerability:
+    cwe:
+    - '611'
+    family: XXE
+    promptProfile: DESERIALIZATION
+    policyProfile: DESERIALIZATION_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_shared_lang_datatype:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_shared_lang_dynamic_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_shared_lang_dynamic_input_combined:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_shared_lang_dynamic_request_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_shared_lang_instance:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  go_third_parties_airbrake:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_third_parties_algolia:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_third_parties_bigquery:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_third_parties_bugsnag:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_third_parties_clickhouse:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_third_parties_datadog:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_third_parties_elasticsearch:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_third_parties_google_analytics:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_third_parties_google_dataflow:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_third_parties_honeybadger:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_third_parties_new_relic:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_third_parties_open_telemetry:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_third_parties_rollbar:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_third_parties_segment:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  go_third_parties_sentry:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_android_prevent_screenshot:
+    cwe:
+    - '200'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_android_world_readable_writable_mode:
+    cwe:
+    - '732'
+    family: PERMISSIONS
+    promptProfile: MISCONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_apache_commons_collection:
+    cwe:
+    - '1395'
+    family: VULNERABLE_DEPENDENCY
+    promptProfile: MISCONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_bad_hex_conversion:
+    cwe:
+    - '704'
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_blowfish_key_size:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_code_injection:
+    cwe:
+    - '94'
+    family: COMMAND_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_cookie_leak:
+    cwe:
+    - '315'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  java_lang_cookie_missing_http_only:
+    cwe:
+    - '1004'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_lang_cookie_missing_secure:
+    cwe:
+    - '614'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_lang_cookie_with_http_only_false:
+    cwe:
+    - '1004'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_lang_crlf_injection:
+    cwe:
+    - '93'
+    family: LOGGER_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_lang_custom_message_digest_class:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_dangerous_permissions:
+    cwe:
+    - '269'
+    family: ACCESS_CONTROL
+    promptProfile: CONFIGURATION
+    policyProfile: ACCESS_CONTROL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_deserialization_of_user_input:
+    cwe:
+    - '502'
+    family: DESERIALIZATION
+    promptProfile: DESERIALIZATION
+    policyProfile: DESERIALIZATION_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  java_lang_empty_database_password:
+    cwe:
+    - '306'
+    family: ACCESS_CONTROL
+    promptProfile: MISCONFIGURATION
+    policyProfile: ACCESS_CONTROL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  java_lang_eval_using_user_input:
+    cwe:
+    - '95'
+    family: COMMAND_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_exception:
+    cwe:
+    - '210'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_lang_expression_language_injection:
+    cwe:
+    - '917'
+    family: COMMAND_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_external_config_control:
+    cwe:
+    - '15'
+    family: TRUST_BOUNDARY
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_file_permission_others:
+    cwe:
+    - '732'
+    family: PERMISSIONS
+    promptProfile: MISCONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_file_upload_filename:
+    cwe:
+    - '73'
+    family: PATH_TRAVERSAL
+    promptProfile: PATH_TRAVERSAL
+    policyProfile: PATH_CANONICALIZATION
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_format_string_manipulation:
+    cwe:
+    - '134'
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_hardcoded_database_password:
+    cwe:
+    - '259'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  java_lang_hardcoded_secret:
+    cwe:
+    - '798'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  java_lang_http_parameter_pollution:
+    cwe:
+    - '88'
+    family: COMMAND_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_http_response_splitting:
+    cwe:
+    - '113'
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  java_lang_http_url_using_user_input:
+    cwe:
+    - '918'
+    family: SSRF
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_information_leakage:
+    cwe:
+    - '209'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_lang_insecure_allow_origin:
+    cwe:
+    - '346'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_lang_insecure_cookie:
+    cwe:
+    - '614'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_lang_insufficiently_random_values:
+    cwe:
+    - '330'
+    family: INSUFFICIENT_RANDOM
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_jwt_verification_bypass:
+    cwe:
+    - '347'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  java_lang_ldap_injection:
+    cwe:
+    - '90'
+    family: SQL_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_log_injection:
+    cwe:
+    - '117'
+    family: LOGGER_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_lang_logger:
+    cwe:
+    - '532'
+    family: LOGGER_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_lang_logger_leak:
+    cwe:
+    - '532'
+    family: LOGGER_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_lang_missing_database_authentication:
+    cwe:
+    - '306'
+    family: ACCESS_CONTROL
+    promptProfile: MISCONFIGURATION
+    policyProfile: ACCESS_CONTROL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  java_lang_missing_integrity_check:
+    cwe:
+    - '353'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_missing_smtp_ssl_host_check:
+    cwe:
+    - '297'
+    family: WEAK_CRYPTO
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_observable_timing:
+    cwe:
+    - '208'
+    family: TIMING_SIDE_CHANNEL
+    promptProfile: TIMING
+    policyProfile: TIMING_SIDE_CHANNEL
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_lang_open_redirect:
+    cwe:
+    - '601'
+    family: OPEN_REDIRECT
+    promptProfile: OPEN_REDIRECT
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_os_command_injection:
+    cwe:
+    - '78'
+    family: COMMAND_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_padding_oracle_encryption_vulnerability:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_path_traversal:
+    cwe:
+    - '73'
+    family: PATH_TRAVERSAL
+    promptProfile: PATH_TRAVERSAL
+    policyProfile: PATH_CANONICALIZATION
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_path_using_user_input:
+    cwe:
+    - '73'
+    family: PATH_TRAVERSAL
+    promptProfile: PATH_TRAVERSAL
+    policyProfile: PATH_CANONICALIZATION
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_permissive_allow_origin:
+    cwe:
+    - '942'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_lang_permissive_cookie_config:
+    cwe:
+    - '693'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_lang_reflection_using_user_input:
+    cwe:
+    - '470'
+    family: COMMAND_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_regex_using_user_input:
+    cwe:
+    - '1287'
+    family: REGEX_DOS
+    promptProfile: CONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_rsa_no_padding:
+    cwe:
+    - '780'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_socket_init:
+    cwe:
+    - '319'
+    family: CLEAR_TEXT_TRANSMISSION
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_sqli:
+    cwe:
+    - '89'
+    family: SQL_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_ssl_hostname_verifier:
+    cwe:
+    - '295'
+    family: WEAK_CRYPTO
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_ssl_verification:
+    cwe:
+    - '295'
+    family: WEAK_CRYPTO
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_standard_output:
+    cwe:
+    - '200'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_lang_trust_boundary_violation:
+    cwe:
+    - '501'
+    family: TRUST_BOUNDARY
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_weak_encryption_des:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_weak_encryption_ecb_mode:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_weak_hash_md5:
+    cwe:
+    - '328'
+    family: WEAK_HASH
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_weak_hash_sha1:
+    cwe:
+    - '328'
+    family: WEAK_HASH
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_weak_password_encryption_des:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  java_lang_weak_password_hash_md5:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  java_lang_weak_password_hash_sha1:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  java_lang_xml_external_entity_vulnerability:
+    cwe:
+    - '611'
+    family: XXE
+    promptProfile: DESERIALIZATION
+    policyProfile: DESERIALIZATION_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_xpath_injection:
+    cwe:
+    - '643'
+    family: SQL_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_lang_xss_response_writer:
+    cwe:
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_shared_lang_cipher_des_init:
+    cwe: []
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_shared_lang_datatype:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_shared_lang_dynamic_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_shared_lang_external_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_shared_lang_html_user_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_shared_lang_instance:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_shared_lang_logger_methods:
+    cwe: []
+    family: LOGGER_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_shared_lang_message_digest_any_init:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_shared_lang_message_digest_buffer:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_shared_lang_message_digest_md5_init:
+    cwe: []
+    family: WEAK_HASH
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_shared_lang_message_digest_sha1_init:
+    cwe: []
+    family: WEAK_HASH
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_shared_lang_servlet_request:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_shared_lang_string:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_shared_lang_user_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_spring_missing_session_fixation:
+    cwe:
+    - '384'
+    family: ACCESS_CONTROL
+    promptProfile: MISCONFIGURATION
+    policyProfile: ACCESS_CONTROL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_spring_model_reflected_xss:
+    cwe:
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_spring_sqli:
+    cwe:
+    - '89'
+    family: SQL_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  java_third_parties_airbrake_javabrake:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_third_parties_algolia:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_third_parties_aws_query_injection:
+    cwe:
+    - '943'
+    family: SQL_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  java_third_parties_bugsnag:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_third_parties_clickhouse:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_third_parties_datadog:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_third_parties_elasticsearch:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_third_parties_new_relic:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_third_parties_open_telemetry:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_third_parties_rollbar:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  java_third_parties_sentry:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_express_cookie_missing_http_only:
+    cwe:
+    - '1004'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_express_cross_site_scripting:
+    cwe:
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_express_default_cookie_config:
+    cwe:
+    - '693'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_express_default_session_config:
+    cwe:
+    - '693'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_express_exposed_dir_listing:
+    cwe:
+    - '548'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_express_external_file_upload:
+    cwe:
+    - '73'
+    family: PATH_TRAVERSAL
+    promptProfile: PATH_TRAVERSAL
+    policyProfile: PATH_CANONICALIZATION
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_express_external_resource:
+    cwe:
+    - '706'
+    family: PATH_TRAVERSAL
+    promptProfile: PATH_TRAVERSAL
+    policyProfile: PATH_CANONICALIZATION
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_express_hardcoded_secret:
+    cwe:
+    - '798'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  javascript_express_helmet_missing:
+    cwe:
+    - '693'
+    family: INSECURE_CONFIG
+    promptProfile: MISCONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_express_https_protocol_missing:
+    cwe:
+    - '319'
+    family: CLEAR_TEXT_TRANSMISSION
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: false
+  javascript_express_insecure_allow_origin:
+    cwe:
+    - '346'
+    family: ACCESS_CONTROL
+    promptProfile: MISCONFIGURATION
+    policyProfile: ACCESS_CONTROL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_express_insecure_cookie:
+    cwe:
+    - '614'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_express_jwt_not_revoked:
+    cwe:
+    - '693'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_express_nosql_injection:
+    cwe:
+    - '943'
+    family: SQL_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_express_open_redirect:
+    cwe:
+    - '601'
+    family: OPEN_REDIRECT
+    promptProfile: OPEN_REDIRECT
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_express_path_traversal:
+    cwe:
+    - '73'
+    family: PATH_TRAVERSAL
+    promptProfile: PATH_TRAVERSAL
+    policyProfile: PATH_CANONICALIZATION
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_express_reduce_fingerprint:
+    cwe:
+    - '693'
+    family: INSECURE_CONFIG
+    promptProfile: MISCONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_express_server_side_request_forgery:
+    cwe:
+    - '918'
+    family: SSRF
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_express_static_asset_with_session:
+    cwe:
+    - '352'
+    family: CSRF
+    promptProfile: MISCONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  javascript_express_ui_redress:
+    cwe:
+    - '1021'
+    family: ACCESS_CONTROL
+    promptProfile: MISCONFIGURATION
+    policyProfile: ACCESS_CONTROL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_express_unsafe_deserialization:
+    cwe:
+    - '502'
+    family: DESERIALIZATION
+    promptProfile: DESERIALIZATION
+    policyProfile: DESERIALIZATION_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_express_xml_external_entity_vulnerability:
+    cwe:
+    - '611'
+    family: XXE
+    promptProfile: DESERIALIZATION
+    policyProfile: DESERIALIZATION_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_hapi_open_redirect:
+    cwe:
+    - '601'
+    family: OPEN_REDIRECT
+    promptProfile: OPEN_REDIRECT
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_lang_dangerous_insert_html:
+    cwe:
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_lang_dynamic_os_command:
+    cwe:
+    - '78'
+    family: COMMAND_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_lang_dynamic_regex:
+    cwe:
+    - '1333'
+    family: REGEX_DOS
+    promptProfile: CONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_lang_eval_user_input:
+    cwe:
+    - '95'
+    family: COMMAND_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_lang_exception:
+    cwe:
+    - '210'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_lang_file_generation:
+    cwe:
+    - '313'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  javascript_lang_file_permissions:
+    cwe:
+    - '732'
+    family: PERMISSIONS
+    promptProfile: MISCONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_lang_format_string_using_user_input:
+    cwe:
+    - '134'
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_lang_handlebars_no_escape:
+    cwe:
+    - '80'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_lang_hardcoded_secret:
+    cwe:
+    - '798'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  javascript_lang_http_insecure:
+    cwe:
+    - '319'
+    family: CLEAR_TEXT_TRANSMISSION
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: false
+  javascript_lang_http_url_using_user_input:
+    cwe:
+    - '918'
+    family: SSRF
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_lang_import_using_user_input:
+    cwe:
+    - '470'
+    family: COMMAND_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_lang_insufficiently_random_values:
+    cwe:
+    - '330'
+    family: INSUFFICIENT_RANDOM
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_lang_jwt:
+    cwe:
+    - '312'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  javascript_lang_jwt_hardcoded_secret:
+    cwe:
+    - '798'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  javascript_lang_jwt_weak_encryption:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  javascript_lang_logger:
+    cwe:
+    - '532'
+    family: LOGGER_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_lang_logger_leak:
+    cwe:
+    - '532'
+    family: LOGGER_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_lang_manual_html_sanitization:
+    cwe:
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_lang_message_handler_origin:
+    cwe:
+    - '346'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_lang_non_literal_fs_filename:
+    cwe:
+    - '73'
+    family: PATH_TRAVERSAL
+    promptProfile: PATH_TRAVERSAL
+    policyProfile: PATH_CANONICALIZATION
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_lang_observable_timing:
+    cwe:
+    - '208'
+    family: TIMING_SIDE_CHANNEL
+    promptProfile: TIMING
+    policyProfile: TIMING_SIDE_CHANNEL
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_lang_open_redirect:
+    cwe:
+    - '601'
+    family: OPEN_REDIRECT
+    promptProfile: OPEN_REDIRECT
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_lang_os_command_injection:
+    cwe:
+    - '78'
+    family: COMMAND_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_lang_path_traversal:
+    cwe:
+    - '22'
+    family: PATH_TRAVERSAL
+    promptProfile: PATH_TRAVERSAL
+    policyProfile: PATH_CANONICALIZATION
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_lang_post_message_origin:
+    cwe:
+    - '346'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_lang_raw_html_using_user_input:
+    cwe:
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_lang_regex_using_user_input:
+    cwe:
+    - '1287'
+    family: REGEX_DOS
+    promptProfile: CONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_lang_session:
+    cwe:
+    - '312'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  javascript_lang_sql_injection:
+    cwe:
+    - '89'
+    family: SQL_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_lang_unsafe_deserialization:
+    cwe:
+    - '502'
+    family: DESERIALIZATION
+    promptProfile: DESERIALIZATION
+    policyProfile: DESERIALIZATION_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_lang_weak_encryption_des:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  javascript_lang_weak_encryption_rc4:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  javascript_lang_weak_hash_md5:
+    cwe:
+    - '328'
+    family: WEAK_HASH
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  javascript_lang_weak_hash_sha1:
+    cwe:
+    - '328'
+    family: WEAK_HASH
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  javascript_lang_weak_password_encryption_des:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  javascript_lang_weak_password_encryption_rc4:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  javascript_lang_weak_password_hash_argon2:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  javascript_lang_weak_password_hash_md5:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  javascript_lang_weak_password_hash_sha1:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  javascript_lang_websocket_insecure:
+    cwe:
+    - '319'
+    family: CLEAR_TEXT_TRANSMISSION
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: false
+  javascript_node_missing_tls_validation:
+    cwe:
+    - '295'
+    family: WEAK_CRYPTO
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_react_dangerously_set_inner_html:
+    cwe:
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_react_google_analytics:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_shared_aws_lambda_user_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_shared_common_datatype:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_shared_common_dynamic_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_shared_common_external_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_shared_common_html_user_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_shared_common_insecure_url:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_shared_common_user_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_shared_express_user_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_shared_import_library:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_shared_import_member:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_shared_lang_crypto_init:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_shared_third_parties_cryptojs_init:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_shared_third_parties_sanitize_html_sanitizer:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_third_parties_airbrake:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_third_parties_algolia:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_third_parties_bugsnag:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_third_parties_datadog:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_third_parties_datadog_browser:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_third_parties_dom_purify:
+    cwe:
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_third_parties_dynamodb_query_injection:
+    cwe:
+    - '943'
+    family: SQL_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_third_parties_elasticsearch:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_third_parties_google_analytics:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_third_parties_google_tag_manager:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_third_parties_honeybadger:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_third_parties_marked:
+    cwe:
+    - '1333'
+    family: REGEX_DOS
+    promptProfile: CONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  javascript_third_parties_new_relic:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_third_parties_open_telemetry:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_third_parties_openai:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_third_parties_passport_hardcoded_secret:
+    cwe:
+    - '798'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  javascript_third_parties_rollbar:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_third_parties_segment:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  javascript_third_parties_sentry:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_lang_cbc_predictable_iv:
+    cwe:
+    - '329'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_lang_cookie_missing_http_only:
+    cwe:
+    - '1004'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_lang_cookies:
+    cwe:
+    - '315'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  php_lang_deserialization_of_user_input:
+    cwe:
+    - '502'
+    family: DESERIALIZATION
+    promptProfile: DESERIALIZATION
+    policyProfile: DESERIALIZATION_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  php_lang_eval_using_user_input:
+    cwe:
+    - '95'
+    family: COMMAND_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_lang_exception:
+    cwe:
+    - '210'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_lang_exec_using_user_input:
+    cwe:
+    - '78'
+    family: COMMAND_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_lang_file_generation:
+    cwe:
+    - '313'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  php_lang_format_string_using_user_input:
+    cwe:
+    - '134'
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_lang_ftp_using_user_input:
+    cwe:
+    - '73'
+    family: PATH_TRAVERSAL
+    promptProfile: PATH_TRAVERSAL
+    policyProfile: PATH_CANONICALIZATION
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_lang_hardcoded_secret:
+    cwe:
+    - '798'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  php_lang_http_insecure:
+    cwe:
+    - '319'
+    family: CLEAR_TEXT_TRANSMISSION
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: false
+  php_lang_http_url_using_sensitive_data:
+    cwe:
+    - '598'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_lang_http_url_using_user_input:
+    cwe:
+    - '918'
+    family: SSRF
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_lang_information_leakage:
+    cwe:
+    - '209'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_lang_insecure_allow_origin:
+    cwe:
+    - '346'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_lang_insecure_cookie:
+    cwe:
+    - '614'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_lang_insecure_ftp:
+    cwe:
+    - '319'
+    family: CLEAR_TEXT_TRANSMISSION
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: false
+  php_lang_jwt:
+    cwe:
+    - '315'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  php_lang_logger:
+    cwe:
+    - '532'
+    family: LOGGER_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_lang_manual_html_sanitization:
+    cwe:
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_lang_open_redirect:
+    cwe:
+    - '601'
+    family: OPEN_REDIRECT
+    promptProfile: OPEN_REDIRECT
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_lang_path_using_user_input:
+    cwe:
+    - '73'
+    family: PATH_TRAVERSAL
+    promptProfile: PATH_TRAVERSAL
+    policyProfile: PATH_CANONICALIZATION
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_lang_permissive_allow_origin:
+    cwe:
+    - '942'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_lang_phpinfo:
+    cwe:
+    - '200'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_lang_raw_html_using_user_input:
+    cwe:
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_lang_raw_output_using_user_input:
+    cwe:
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_lang_reflection_using_user_input:
+    cwe:
+    - '98'
+    family: PATH_TRAVERSAL
+    promptProfile: PATH_TRAVERSAL
+    policyProfile: PATH_CANONICALIZATION
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_lang_regex_using_user_input:
+    cwe:
+    - '1287'
+    family: REGEX_DOS
+    promptProfile: CONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_lang_session_key_using_user_input:
+    cwe:
+    - '1018'
+    family: TRUST_BOUNDARY
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_lang_sql_injection:
+    cwe:
+    - '89'
+    family: SQL_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_lang_ssl_verification:
+    cwe:
+    - '295'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_lang_ui_redress:
+    cwe:
+    - '1021'
+    family: ACCESS_CONTROL
+    promptProfile: MISCONFIGURATION
+    policyProfile: ACCESS_CONTROL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_lang_weak_hash_adler32:
+    cwe:
+    - '328'
+    family: WEAK_HASH
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_lang_weak_hash_crc32:
+    cwe:
+    - '328'
+    family: WEAK_HASH
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_lang_weak_hash_md:
+    cwe:
+    - '328'
+    family: WEAK_HASH
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_lang_weak_hash_sha1:
+    cwe:
+    - '328'
+    family: WEAK_HASH
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_lang_weak_password_hash_md:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  php_lang_weak_password_hash_sha1:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  php_lang_websocket_insecure:
+    cwe:
+    - '319'
+    family: CLEAR_TEXT_TRANSMISSION
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: false
+  php_lang_xml_external_entity_vulnerability:
+    cwe:
+    - '611'
+    family: XXE
+    promptProfile: DESERIALIZATION
+    policyProfile: DESERIALIZATION_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_lang_xpath_injection:
+    cwe:
+    - '643'
+    family: SQL_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_shared_lang_datatype:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_shared_lang_dynamic_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_shared_lang_external_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_shared_lang_html_user_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_shared_lang_http_url:
+    cwe: []
+    family: CLEAR_TEXT_TRANSMISSION
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: false
+  php_shared_lang_insecure_url:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_shared_lang_instance:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_shared_lang_string_user_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_shared_lang_string_user_input_sanitizer:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_shared_lang_user_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_shared_lang_user_input_sanitizer:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_shared_symfony_user_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_symfony_cookie_missing_http_only:
+    cwe:
+    - '1004'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_symfony_cookies:
+    cwe:
+    - '315'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  php_symfony_csrf_protection_disabled:
+    cwe:
+    - '352'
+    family: CSRF
+    promptProfile: MISCONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_symfony_insecure_allow_origin:
+    cwe:
+    - '346'
+    family: ACCESS_CONTROL
+    promptProfile: MISCONFIGURATION
+    policyProfile: ACCESS_CONTROL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_symfony_insecure_cookie:
+    cwe:
+    - '614'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_symfony_insecure_smtp:
+    cwe:
+    - '319'
+    family: CLEAR_TEXT_TRANSMISSION
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: false
+  php_symfony_open_redirect:
+    cwe:
+    - '601'
+    family: OPEN_REDIRECT
+    promptProfile: OPEN_REDIRECT
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_symfony_permissive_allow_origin:
+    cwe:
+    - '942'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_symfony_permissive_regex_validation:
+    cwe:
+    - '625'
+    family: REGEX_DOS
+    promptProfile: CONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_symfony_session_key_using_user_input:
+    cwe:
+    - '1018'
+    family: TRUST_BOUNDARY
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_symfony_sql_injection:
+    cwe:
+    - '89'
+    family: SQL_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_symfony_ui_redress:
+    cwe:
+    - '1021'
+    family: ACCESS_CONTROL
+    promptProfile: MISCONFIGURATION
+    policyProfile: ACCESS_CONTROL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  php_third_parties_airbrake:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_third_parties_algolia:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_third_parties_bigquery:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_third_parties_bugsnag:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_third_parties_clickhouse:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_third_parties_datadog:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_third_parties_elasticsearch:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_third_parties_honeybadger:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_third_parties_logger:
+    cwe:
+    - '532'
+    family: LOGGER_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_third_parties_new_relic:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_third_parties_open_telemetry:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_third_parties_rollbar:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_third_parties_scout_apm:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_third_parties_segment:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  php_third_parties_sentry:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_django_cookie_missing_http_only:
+    cwe:
+    - '1004'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_django_cookie_missing_secure:
+    cwe:
+    - '614'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_django_cookies:
+    cwe:
+    - '315'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  python_django_crlf_injection:
+    cwe:
+    - '93'
+    family: LOGGER_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_django_csrf_protection_disabled:
+    cwe:
+    - '352'
+    family: CSRF
+    promptProfile: MISCONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  python_django_debug_mode_enabled:
+    cwe:
+    - '200'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_django_file_permissions:
+    cwe:
+    - '732'
+    family: PERMISSIONS
+    promptProfile: MISCONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_django_html_magic_method:
+    cwe:
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_django_insecure_allow_origin:
+    cwe:
+    - '346'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_django_insecure_cookie:
+    cwe:
+    - '614'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_django_insecure_cookie_settings:
+    cwe:
+    - '693'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_django_insecure_smtp:
+    cwe:
+    - '319'
+    family: CLEAR_TEXT_TRANSMISSION
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: false
+  python_django_jwt_weak_encryption:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  python_django_mark_safe:
+    cwe:
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_django_open_redirect:
+    cwe:
+    - '601'
+    family: OPEN_REDIRECT
+    promptProfile: OPEN_REDIRECT
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_django_path_traversal:
+    cwe:
+    - '22'
+    family: PATH_TRAVERSAL
+    promptProfile: PATH_TRAVERSAL
+    policyProfile: PATH_CANONICALIZATION
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_django_path_using_user_input:
+    cwe:
+    - '73'
+    family: PATH_TRAVERSAL
+    promptProfile: PATH_TRAVERSAL
+    policyProfile: PATH_CANONICALIZATION
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_django_permissive_allow_origin:
+    cwe:
+    - '942'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_django_response_using_user_input:
+    cwe:
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_django_sql_injection:
+    cwe:
+    - '89'
+    family: SQL_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_django_template_injection:
+    cwe:
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_django_weak_secret_key:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  python_lang_avoid_pickle:
+    cwe:
+    - '502'
+    family: DESERIALIZATION
+    promptProfile: DESERIALIZATION
+    policyProfile: DESERIALIZATION_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_bind_to_all_interfaces:
+    cwe:
+    - '200'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_lang_code_injection:
+    cwe:
+    - '94'
+    family: COMMAND_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_cookies:
+    cwe:
+    - '315'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  python_lang_deserialization_of_user_input:
+    cwe:
+    - '502'
+    family: DESERIALIZATION
+    promptProfile: DESERIALIZATION
+    policyProfile: DESERIALIZATION_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_eval_using_user_input:
+    cwe:
+    - '95'
+    family: COMMAND_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_exception:
+    cwe:
+    - '210'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_lang_file_permissions:
+    cwe:
+    - '732'
+    family: PERMISSIONS
+    promptProfile: MISCONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_http_response_splitting:
+    cwe:
+    - '113'
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  python_lang_http_url_using_user_input:
+    cwe:
+    - '918'
+    family: SSRF
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_insecure_allow_origin:
+    cwe:
+    - '346'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_lang_insecure_cookie:
+    cwe:
+    - '614'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_lang_insecure_ftp:
+    cwe:
+    - '319'
+    family: CLEAR_TEXT_TRANSMISSION
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: false
+  python_lang_insecure_http:
+    cwe:
+    - '319'
+    family: CLEAR_TEXT_TRANSMISSION
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: false
+  python_lang_insecure_smtp:
+    cwe:
+    - '319'
+    family: CLEAR_TEXT_TRANSMISSION
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: false
+  python_lang_insecure_websocket:
+    cwe:
+    - '319'
+    family: CLEAR_TEXT_TRANSMISSION
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: false
+  python_lang_jwt_verification_bypass:
+    cwe:
+    - '347'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  python_lang_jwt_weak_encryption:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  python_lang_logger:
+    cwe:
+    - '532'
+    family: LOGGER_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_lang_manual_html_sanitization:
+    cwe:
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_nosql_injection:
+    cwe:
+    - '943'
+    family: SQL_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_os_command_injection:
+    cwe:
+    - '78'
+    family: COMMAND_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_path_traversal:
+    cwe:
+    - '22'
+    family: PATH_TRAVERSAL
+    promptProfile: PATH_TRAVERSAL
+    policyProfile: PATH_CANONICALIZATION
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_path_using_user_input:
+    cwe:
+    - '73'
+    family: PATH_TRAVERSAL
+    promptProfile: PATH_TRAVERSAL
+    policyProfile: PATH_CANONICALIZATION
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_permissive_allow_origin:
+    cwe:
+    - '942'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_lang_raw_html_using_user_input:
+    cwe:
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_reflection_using_user_input:
+    cwe:
+    - '470'
+    family: COMMAND_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_regex_using_user_input:
+    cwe:
+    - '1287'
+    family: REGEX_DOS
+    promptProfile: CONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_sql_injection:
+    cwe:
+    - '89'
+    family: SQL_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_ssl_verification:
+    cwe:
+    - '295'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_weak_encryption_blowfish:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_weak_encryption_des:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_weak_encryption_ecb_mode:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_weak_encryption_rc4:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_weak_encryption_rsa:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_weak_hash_adler32:
+    cwe:
+    - '328'
+    family: WEAK_HASH
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_weak_hash_crc32:
+    cwe:
+    - '328'
+    family: WEAK_HASH
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_weak_hash_dss:
+    cwe:
+    - '328'
+    family: WEAK_HASH
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_weak_hash_md5:
+    cwe:
+    - '328'
+    family: WEAK_HASH
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  python_lang_weak_hash_sha1:
+    cwe:
+    - '328'
+    family: WEAK_HASH
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  python_lang_weak_password_encryption_md5:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  python_lang_weak_password_encryption_sha1:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  python_lang_weak_password_hash_adler32:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  python_lang_weak_password_hash_argon2:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  python_lang_weak_password_hash_crc32:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  python_lang_weak_password_hash_dss:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  python_lang_weak_random:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  python_lang_weak_tls_version:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_xml_external_entity_vulnerability:
+    cwe:
+    - '611'
+    family: XXE
+    promptProfile: DESERIALIZATION
+    policyProfile: DESERIALIZATION_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_lang_xpath_injection:
+    cwe:
+    - '643'
+    family: SQL_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_shared_aws_lambda_user_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_shared_common_external_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_shared_common_html_user_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_shared_common_http_location:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_shared_common_sql_user_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_shared_common_user_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_shared_django_html_sanitizer:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_shared_django_http_location:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_shared_django_http_response:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_shared_django_user_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_shared_lang_datatype:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_shared_lang_dynamic_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_shared_lang_http_location:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_shared_lang_import1:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_shared_lang_import2:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_shared_lang_import3:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_shared_lang_import4:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_shared_lang_insecure_url:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_shared_lang_instance:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_shared_lang_user_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_third_parties_airbrake:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_third_parties_algolia:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_third_parties_aws_query_injection:
+    cwe:
+    - '943'
+    family: SQL_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  python_third_parties_bigquery:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_third_parties_bugsnag:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_third_parties_clickhouse:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_third_parties_datadog:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_third_parties_elasticsearch:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_third_parties_google_dataflow:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_third_parties_honeybadger:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_third_parties_new_relic:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_third_parties_open_telemetry:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_third_parties_openai:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_third_parties_rollbar:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_third_parties_scout_apm:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  python_third_parties_sentry:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_lang_cookies:
+    cwe:
+    - '315'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_lang_deserialization_of_user_input:
+    cwe:
+    - '502'
+    family: DESERIALIZATION
+    promptProfile: DESERIALIZATION
+    policyProfile: DESERIALIZATION_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_lang_eval_linter:
+    cwe:
+    - '95'
+    family: COMMAND_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_lang_eval_using_user_input:
+    cwe:
+    - '95'
+    family: COMMAND_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_lang_exception:
+    cwe:
+    - '210'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_lang_exec_using_user_input:
+    cwe:
+    - '78'
+    family: COMMAND_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_lang_file_generation:
+    cwe:
+    - '313'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_lang_format_string_using_user_input:
+    cwe:
+    - '134'
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_lang_ftp_using_user_input:
+    cwe:
+    - '73'
+    family: PATH_TRAVERSAL
+    promptProfile: PATH_TRAVERSAL
+    policyProfile: PATH_CANONICALIZATION
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_lang_hardcoded_secret:
+    cwe:
+    - '798'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_lang_http_get_params:
+    cwe:
+    - '598'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_lang_http_insecure:
+    cwe:
+    - '319'
+    family: CLEAR_TEXT_TRANSMISSION
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: false
+  ruby_lang_http_url_using_user_input:
+    cwe:
+    - '918'
+    family: SSRF
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_lang_insecure_ftp:
+    cwe:
+    - '319'
+    family: CLEAR_TEXT_TRANSMISSION
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_lang_jwt:
+    cwe:
+    - '315'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_lang_logger:
+    cwe:
+    - '532'
+    family: LOGGER_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_lang_manual_html_sanitization:
+    cwe:
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_lang_path_using_user_input:
+    cwe:
+    - '73'
+    family: PATH_TRAVERSAL
+    promptProfile: PATH_TRAVERSAL
+    policyProfile: PATH_CANONICALIZATION
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_lang_raw_html_using_user_input:
+    cwe:
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_lang_reflection_using_user_input:
+    cwe:
+    - '94'
+    family: COMMAND_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_lang_regex_using_user_input:
+    cwe:
+    - '1287'
+    family: REGEX_DOS
+    promptProfile: CONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_lang_sql_injection:
+    cwe:
+    - '89'
+    family: SQL_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_lang_ssl_verification:
+    cwe:
+    - '295'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_lang_weak_encryption_blowfish:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_lang_weak_encryption_dsa:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_lang_weak_encryption_rc4:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_lang_weak_encryption_rsa:
+    cwe:
+    - '327'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_lang_weak_hash_dss:
+    cwe:
+    - '328'
+    family: WEAK_HASH
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_lang_weak_hash_md:
+    cwe:
+    - '328'
+    family: WEAK_HASH
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_lang_weak_hash_sha:
+    cwe:
+    - '328'
+    family: WEAK_HASH
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_lang_weak_password_encryption_blowfish:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_lang_weak_password_encryption_dsa:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_lang_weak_password_encryption_rc4:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_lang_weak_password_encryption_rsa:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_lang_weak_password_hash_dss:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_lang_weak_password_hash_md:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_lang_weak_password_hash_sha:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_lang_websocket_insecure:
+    cwe:
+    - '319'
+    family: CLEAR_TEXT_TRANSMISSION
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: false
+  ruby_lang_xml_external_entity_vulnerability:
+    cwe:
+    - '611'
+    family: XXE
+    promptProfile: DESERIALIZATION
+    policyProfile: DESERIALIZATION_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_rails_default_encryption:
+    cwe:
+    - '312'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_rails_detailed_exceptions:
+    cwe:
+    - '209'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_rails_http_verb_confusion:
+    cwe:
+    - '650'
+    family: ACCESS_CONTROL
+    promptProfile: MISCONFIGURATION
+    policyProfile: ACCESS_CONTROL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_rails_insecure_communication:
+    cwe:
+    - '319'
+    family: CLEAR_TEXT_TRANSMISSION
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: false
+  ruby_rails_insecure_disabling_of_callback:
+    cwe:
+    - '284'
+    family: ACCESS_CONTROL
+    promptProfile: CONFIGURATION
+    policyProfile: ACCESS_CONTROL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_rails_insecure_http_password:
+    cwe:
+    - '259'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_rails_insecure_smtp:
+    cwe:
+    - '319'
+    family: CLEAR_TEXT_TRANSMISSION
+    promptProfile: MISCONFIGURATION
+    policyProfile: TRANSPORT_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: false
+  ruby_rails_logger:
+    cwe:
+    - '532'
+    family: LOGGER_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_rails_open_redirect:
+    cwe:
+    - '601'
+    family: OPEN_REDIRECT
+    promptProfile: OPEN_REDIRECT
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_rails_password_length:
+    cwe:
+    - '521'
+    family: INSECURE_CONFIG
+    promptProfile: MISCONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_rails_permissive_parameters:
+    cwe:
+    - '913'
+    family: PERMISSIONS
+    promptProfile: MISCONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_rails_permissive_regex_validation:
+    cwe:
+    - '625'
+    family: REGEX_DOS
+    promptProfile: CONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_rails_render_using_user_input:
+    cwe:
+    - '79'
+    family: XSS
+    promptProfile: XSS
+    policyProfile: XSS_CONTEXTUAL_ESCAPING
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_rails_session:
+    cwe:
+    - '315'
+    family: HARDCODED_SECRET
+    promptProfile: SECRET_EXPOSURE
+    policyProfile: SECRET_HANDLING
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_rails_session_key_using_user_input:
+    cwe:
+    - '1018'
+    family: TRUST_BOUNDARY
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_rails_session_with_httponly_disabled:
+    cwe:
+    - '1004'
+    family: COOKIE_SECURITY
+    promptProfile: COOKIE_SECURITY
+    policyProfile: COOKIE_SECURITY
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_rails_sql_injection:
+    cwe:
+    - '89'
+    family: SQL_INJECTION
+    promptProfile: INJECTION
+    policyProfile: STRICT_SOURCE_TO_SINK
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_rails_unsafe_cookie_serialization_strategy:
+    cwe:
+    - '502'
+    family: DESERIALIZATION
+    promptProfile: DESERIALIZATION
+    policyProfile: DESERIALIZATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: true
+  ruby_rails_unsafe_mass_assignment:
+    cwe:
+    - '913'
+    family: PERMISSIONS
+    promptProfile: MISCONFIGURATION
+    policyProfile: CONFIGURATION_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_rails_weak_custom_key:
+    cwe:
+    - '326'
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_shared_aws_lambda_user_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_shared_common_datatype:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_shared_common_dynamic_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_shared_common_external_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_shared_common_html_user_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_shared_common_insecure_url:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_shared_common_user_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_shared_lang_blowfish_init:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_shared_lang_openssl_digest_dsa_init:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_shared_lang_openssl_digest_dss_init:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_shared_lang_openssl_digest_md_init:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_shared_lang_openssl_digest_rsa_init:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_shared_lang_openssl_digest_sha_init:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_shared_lang_rc4_init:
+    cwe: []
+    family: WEAK_CRYPTO
+    promptProfile: WEAK_CRYPTO
+    policyProfile: WEAK_CRYPTO_STRICT
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_shared_rails_html_sanitizer:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: false
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_shared_rails_user_input:
+    cwe: []
+    family: GENERAL
+    promptProfile: GENERAL
+    policyProfile: GENERAL_REVIEW
+    requiresTaint: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
+  ruby_third_parties_airbrake:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_third_parties_algolia:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_third_parties_appsignal:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_third_parties_bigquery:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_third_parties_bugsnag:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_third_parties_clickhouse:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_third_parties_datadog:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_third_parties_elasticsearch:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_third_parties_google_analytics:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_third_parties_google_dataflow:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_third_parties_honeybadger:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_third_parties_new_relic:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_third_parties_open_telemetry:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_third_parties_rollbar:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_third_parties_scout_apm:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_third_parties_segment:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
+  ruby_third_parties_sentry:
+    cwe:
+    - '201'
+    family: EXCEPTION_LEAK
+    promptProfile: LOGGING_LEAK
+    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    requiresTaint: false
+    requiresExecutionContext: true
+    requiresDataSensitivity: true
