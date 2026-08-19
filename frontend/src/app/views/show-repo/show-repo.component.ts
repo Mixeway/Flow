@@ -1097,6 +1097,22 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         });
     }
 
+    evaluateWithLlm() {
+        this.repoService.runLlmEvaluation(+this.repoId).subscribe({
+            next: () => {
+                this.toastStatus = 'success';
+                this.toastMessage = 'AI verification requested. SAST scan + AI analysis will run in the background.';
+                this.toggleToast();
+                this.loadRepoInfo();
+            },
+            error: () => {
+                this.toastStatus = 'danger';
+                this.toastMessage = 'Failed to start AI verification';
+                this.toggleToast();
+            }
+        });
+    }
+
     runScanForBranch(branchName: string) {
         this.repoService.runScanForBranch(+this.repoId, branchName).subscribe({
             next: () => {

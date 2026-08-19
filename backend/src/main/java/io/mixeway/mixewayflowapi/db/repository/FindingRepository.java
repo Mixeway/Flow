@@ -90,6 +90,27 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
     List<Finding> findByCodeRepoAndVulnerability(CodeRepo codeRepo, Vulnerability vulnerability);
     boolean existsByCodeRepoBranch(CodeRepoBranch codeRepoBranch);
 
+    @Modifying
+    @Transactional
+    @Query("UPDATE Finding f SET " +
+           "f.aiVerificationGrade = :grade, " +
+           "f.aiVerificationConfidence = :confidence, " +
+           "f.aiVerificationReasoning = :reasoning, " +
+           "f.aiVerificationRecommendation = :recommendation " +
+           "WHERE f.source = :source " +
+           "AND f.codeRepoBranch = :branch " +
+           "AND f.location = :location " +
+           "AND f.status <> :removedStatus")
+    int updateAiVerificationForSastFinding(
+            @Param("branch") CodeRepoBranch branch,
+            @Param("location") String location,
+            @Param("source") Finding.Source source,
+            @Param("removedStatus") Finding.Status removedStatus,
+            @Param("grade") Finding.AiVerificationGrade grade,
+            @Param("confidence") Double confidence,
+            @Param("reasoning") String reasoning,
+            @Param("recommendation") String recommendation);
+
     @Query("SELECT f FROM Finding f WHERE f.codeRepo = :codeRepo AND f.vulnerability.name = :vulnerabilityName AND f.codeRepoBranch = :codeRepoBranch AND f.location = :location")
     List<Finding> findByCodeRepoAndVulnerabilityNameAndBranchAndLocation(
             @Param("codeRepo") CodeRepo codeRepo,

@@ -32,6 +32,10 @@ public final class Finding {
         WONT_FIX, FALSE_POSITIVE, ACCEPTED
     }
 
+    public enum AiVerificationGrade {
+        TRUE_POSITIVE, FALSE_POSITIVE, UNCERTAIN, NOT_VERIFIED
+    }
+
     public enum Source {
         IAC, SECRETS, SAST, SCA, CLOUD_SCANNER, DAST, GITLAB_SCANNER, CLOUD_ISSUE
     }
@@ -92,6 +96,19 @@ public final class Finding {
     @Column(nullable = false)
     @ToString.Include
     private final Source source;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ai_verification_grade", length = 20)
+    private AiVerificationGrade aiVerificationGrade = AiVerificationGrade.NOT_VERIFIED;
+
+    @Column(name = "ai_verification_confidence")
+    private Double aiVerificationConfidence;
+
+    @Column(name = "ai_verification_reasoning", columnDefinition = "TEXT")
+    private String aiVerificationReasoning;
+
+    @Column(name = "ai_verification_recommendation", columnDefinition = "TEXT")
+    private String aiVerificationRecommendation;
 
     @CreationTimestamp
     @Column(name = "inserted_date", nullable = false, updatable = false)
@@ -181,6 +198,23 @@ public final class Finding {
 
     public void setJiraTicketKey(String jiraTicketKey) {
         this.jiraTicketKey = jiraTicketKey;
+    }
+
+    public void setAiVerification(AiVerificationGrade grade, Double confidence, String reasoning, String recommendation) {
+        this.aiVerificationGrade = grade;
+        this.aiVerificationConfidence = confidence;
+        this.aiVerificationReasoning = reasoning;
+        this.aiVerificationRecommendation = recommendation;
+    }
+
+    public void copyAiVerificationFrom(Finding finding) {
+        if (finding.getAiVerificationGrade() == null || finding.getAiVerificationGrade() == AiVerificationGrade.NOT_VERIFIED) {
+            return;
+        }
+        this.aiVerificationGrade = finding.getAiVerificationGrade();
+        this.aiVerificationConfidence = finding.getAiVerificationConfidence();
+        this.aiVerificationReasoning = finding.getAiVerificationReasoning();
+        this.aiVerificationRecommendation = finding.getAiVerificationRecommendation();
     }
 
 }

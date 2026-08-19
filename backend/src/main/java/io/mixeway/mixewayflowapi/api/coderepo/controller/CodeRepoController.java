@@ -144,6 +144,18 @@ public class CodeRepoController {
     }
 
     @PreAuthorize("hasAuthority('USER')")
+    @PostMapping(value= "/api/v1/coderepo/{id}/evaluate-llm")
+    public ResponseEntity<StatusDTO> runLlmEvaluation(@PathVariable("id") Long id, Principal principal){
+        try {
+            codeRepoApiService.runLlmEvaluation(id, principal);
+            return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.OK);
+        } catch (Exception e){
+            log.error("[CodeRepo] Error running LLM evaluation for {}", id);
+            return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('USER')")
     @GetMapping(value= "/api/v1/coderepo/{id}/git-branches")
     public ResponseEntity<List<String>> getGitBranches(@PathVariable("id") Long id, Principal principal){
         try {

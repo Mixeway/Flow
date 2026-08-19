@@ -69,6 +69,7 @@ public class CreateFindingService {
                 } else if (existingFinding.getStatus() != Finding.Status.SUPRESSED) {
                     existingFinding.updateStatus(Finding.Status.EXISTING, existingFinding.getSuppressedReason());
                 }
+                existingFinding.copyAiVerificationFrom(newFinding);
                 existingFinding.noteFindingDetected();  // Ensure updatedDate is always updated
                 findingRepository.saveAndFlush(existingFinding);
                 existingFindingsMap.remove(key);
@@ -125,6 +126,27 @@ public class CreateFindingService {
             log.info("[Finding Service] Saved {} findings. Source: {}", newFindings.size(), source.toString());
         }
 
+    }
+
+    /**
+     * Immediately persists AI verification fields for a single SAST finding identified by its
+     * branch + location. Called after each item is verified so that restarts don't discard
+     * already-completed verdicts.
+     */
+    @Transactional
+    public void saveAiVerificationForSastItem(String location, CodeRepoBranch codeRepoBranch,
+            Finding.AiVerificationGrade grade, Double confidence, String reasoning, String recommendation) {
+        if (grade == null || grade == Finding.AiVerificationGrade.NOT_VERIFIED) {
+            return;
+        }
+        int updated = findingRepository.updateAiVerificationForSastFinding(
+                codeRepoBranch, location,
+                Finding.Source.SAST, Finding.Status.REMOVED,
+                grade, confidence, reasoning, recommendation);
+        if (updated > 0) {
+            log.debug("[Finding Service] Intermediate AI save: {} finding(s) at {} grade={} confidence={}",
+                    updated, location, grade, confidence);
+        }
     }
 
     private String findingKey(Finding finding) {
@@ -290,9 +312,8 @@ public class CreateFindingService {
             if (!mergedFindingsMap.containsKey(key)) {
                 mergedFindingsMap.put(key, finding);
             } else {
-                // Merge logic: Assuming merging means combining data, adjust as necessary
                 Finding existingFinding = mergedFindingsMap.get(key);
-                // Adjust merging logic here if needed
+                existingFinding.copyAiVerificationFrom(finding);
             }
         }
 
@@ -395,7 +416,7 @@ public class CreateFindingService {
     private List<Finding> mapItemsToFindings(List<Item> items, CodeRepoBranch codeRepoBranch, CodeRepo codeRepo, Finding.Severity severity) {
         return items.stream().map(item -> {
             Vulnerability vulnerability = getOrCreateVulnerabilityService.getOrCreate(item.getTitle(), item.getDescription(), null, item.getDocumentationUrl(), null, null, null, null);
-            return new Finding(
+            Finding finding = new Finding(
                     vulnerability,
                     null,
                     codeRepoBranch,
@@ -406,6 +427,18 @@ public class CreateFindingService {
                     severity,
                     Finding.Source.SAST
             );
+
+            if (item.getAiVerdict() != null) {
+                Finding.AiVerificationGrade grade = switch (item.getAiVerdict()) {
+                    case "TRUE_POSITIVE" -> Finding.AiVerificationGrade.TRUE_POSITIVE;
+                    case "FALSE_POSITIVE" -> Finding.AiVerificationGrade.FALSE_POSITIVE;
+                    case "UNCERTAIN" -> Finding.AiVerificationGrade.UNCERTAIN;
+                    default -> Finding.AiVerificationGrade.NOT_VERIFIED;
+                };
+                finding.setAiVerification(grade, item.getAiConfidence(), item.getAiReasoning(), item.getAiRecommendation());
+            }
+
+            return finding;
         }).collect(Collectors.toList());
     }
 }

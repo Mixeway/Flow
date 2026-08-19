@@ -151,6 +151,10 @@ export class AdminSettingsComponent implements OnInit{
 
     // For Other Configuration Tab
     geminiApiKey: string = 'API Key';
+    enableLlmEvaluation: boolean = false;
+    llmApiUrl: string = '';
+    llmApiKey2: string = '';
+    llmModel: string = '';
     repoTokenSearchTerm: string = '';
     repoTokenValue: string = '';
     repoTokenRows: AdminRepoTokenRow[] = [];
@@ -333,7 +337,12 @@ export class AdminSettingsComponent implements OnInit{
                 this.wizConfigForm.patchValue({secret: "************"});
                 this.isWizEnabled = this.settings.enableWiz;
 
-                this.geminiApiKey = this.settings.geminiApiKey;
+                this.geminiApiKey = this.settings.geminiApiKey || '';
+
+                this.enableLlmEvaluation = this.settings.enableLlmEvaluation || false;
+                this.llmApiUrl = this.settings.llmApiUrl || '';
+                this.llmApiKey2 = this.settings.llmApiKeyConfigured ? '************' : '';
+                this.llmModel = this.settings.llmModel || '';
 
             }
         });
@@ -561,7 +570,11 @@ export class AdminSettingsComponent implements OnInit{
 
     saveOtherConfigurationSettings() {
         this.settingsService.changeOtherConfig({
-            geminiApiKey: this.geminiApiKey
+            geminiApiKey: this.geminiApiKey,
+            enableLlmEvaluation: this.enableLlmEvaluation,
+            llmApiUrl: this.llmApiUrl,
+            llmApiKey: this.llmApiKey2,
+            llmModel: this.llmModel
         }).subscribe({
             next: () => {
                 this.toastStatus = "success";

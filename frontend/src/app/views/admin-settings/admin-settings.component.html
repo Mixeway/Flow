@@ -484,6 +484,42 @@
                                     {{ repoTokenSaving ? 'Updating token...' : 'Update token for selected repositories' }}
                                 </button>
                             </div>
+                            <!-- LLM Evaluation Configuration -->
+                            <div class="config-section p-4 mb-4 rounded shadow-sm">
+                                <h4 class="mb-3 section-title">LLM Evaluation (SAST False Positive Reduction)</h4>
+                                <c-form-check [switch]="true" class="mb-3">
+                                    <input cFormCheckInput id="llmEnabled" type="checkbox"
+                                           [(ngModel)]="enableLlmEvaluation" />
+                                    <label cFormCheckLabel for="llmEnabled" class="ms-2">Enable LLM Evaluation</label>
+                                </c-form-check>
+
+                                <div *ngIf="enableLlmEvaluation" class="p-3 border rounded config-input-section">
+                                    <div class="mb-3">
+                                        <label cLabel for="llmApiUrl">API URL</label>
+                                        <input cFormControl id="llmApiUrl" type="url"
+                                               [(ngModel)]="llmApiUrl"
+                                               placeholder="https://api.featherless.ai/v1/chat/completions" />
+                                        <small class="text-muted">
+                                            Full URL to OpenAI-compatible chat completions endpoint
+                                        </small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label cLabel for="llmApiKeyField">API Key</label>
+                                        <input cFormControl id="llmApiKeyField" type="password"
+                                               [(ngModel)]="llmApiKey2"
+                                               placeholder="Enter LLM API key" />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label cLabel for="llmModel">Model name</label>
+                                        <input cFormControl id="llmModel" type="text"
+                                               [(ngModel)]="llmModel"
+                                               placeholder="e.g. meta-llama/Meta-Llama-3.1-8B-Instruct" />
+                                        <small class="text-muted">
+                                            Model ID as expected by your API provider
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
                             <!-- Other Configuration -->
                             <div class="config-section p-4 rounded shadow-sm">
                                 <h4 class="mb-3 section-title">Other Settings</h4>

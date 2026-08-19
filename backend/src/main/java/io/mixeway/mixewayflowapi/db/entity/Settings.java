@@ -80,6 +80,37 @@ public class Settings {
     @Setter
     private String geminiApiKey;
 
+    @Column(name = "enable_llm_evaluation", nullable = false)
+    private boolean enableLlmEvaluation = false;
+
+    @Column(name = "llm_api_url", length = 500)
+    private String llmApiUrl;
+
+    @Column(name = "llm_api_key", length = 500)
+    @JsonIgnore
+    private String llmApiKey;
+
+    @Column(name = "llm_model", length = 200)
+    private String llmModel;
+
+    public void enableLlm(String apiUrl, String apiKey, String model) {
+        this.enableLlmEvaluation = true;
+        this.llmApiUrl = apiUrl;
+        this.llmApiKey = apiKey;
+        this.llmModel = model;
+    }
+
+    public void disableLlm() {
+        this.enableLlmEvaluation = false;
+        this.llmApiUrl = null;
+        this.llmApiKey = null;
+        this.llmModel = null;
+    }
+
+    public boolean isLlmApiKeyConfigured() {
+        return this.llmApiKey != null && !this.llmApiKey.trim().isEmpty();
+    }
+
     public void enableWiz(String clientId, String secret) {
         this.enableWiz = true;
         this.wizClientId = clientId;

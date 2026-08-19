@@ -1,3 +1,7 @@
 export interface OtherConfigRequestDTO {
-    geminiApiKey: String;
+    geminiApiKey: string;
+    enableLlmEvaluation: boolean;
+    llmApiUrl: string;
+    llmApiKey: string;
+    llmModel: string;
 }

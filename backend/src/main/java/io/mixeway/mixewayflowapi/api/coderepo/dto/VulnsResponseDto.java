@@ -17,5 +17,13 @@ public class VulnsResponseDto {
     String urgency;
     @JsonProperty("jira_ticket_key")
     String jiraTicketKey;
+    @JsonProperty("ai_verification_grade")
+    String aiVerificationGrade;
+    @JsonProperty("ai_verification_confidence")
+    Double aiVerificationConfidence;
+    @JsonProperty("ai_verification_reasoning")
+    String aiVerificationReasoning;
+    @JsonProperty("ai_verification_recommendation")
+    String aiVerificationRecommendation;
 
 }

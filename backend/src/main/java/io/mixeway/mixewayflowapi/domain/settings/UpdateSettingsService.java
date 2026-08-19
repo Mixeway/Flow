@@ -83,14 +83,45 @@ public class UpdateSettingsService {
         }
     }
 
+    @Transactional
     public void changeSettingsOther(OtherConfigRequestDto otherConfigRequestDto) throws SettingsException {
         Settings settings = findSettingsService.get();
         if(otherConfigRequestDto.getGeminiApiKey() != null){
             settings.setGeminiApiKey(otherConfigRequestDto.getGeminiApiKey());
-            settingsRepository.save(settings);
-        } else {
-            log.error("Gemini API Key cannot be null");
-            throw new SettingsException("Gemini API Key cannot be null");
         }
+
+        if (otherConfigRequestDto.isEnableLlmEvaluation()) {
+            String llmApiKey = resolveLlmApiKey(settings, otherConfigRequestDto.getLlmApiKey());
+            if (!hasText(otherConfigRequestDto.getLlmApiUrl()) || !hasText(llmApiKey) || !hasText(otherConfigRequestDto.getLlmModel())) {
+                log.warn("[Settings] Error enabling LLM Evaluation - API URL, API key and model are required");
+                throw new SettingsException("API URL, API key and model are required when enabling LLM Evaluation");
+            }
+            settings.enableLlm(
+                    otherConfigRequestDto.getLlmApiUrl(),
+                    llmApiKey,
+                    otherConfigRequestDto.getLlmModel()
+            );
+            log.info("[Settings] LLM Evaluation enabled with URL: {}", otherConfigRequestDto.getLlmApiUrl());
+        } else {
+            settings.disableLlm();
+            log.info("[Settings] LLM Evaluation disabled");
+        }
+
+        settingsRepository.save(settings);
+    }
+
+    private String resolveLlmApiKey(Settings settings, String requestedApiKey) {
+        if (hasText(requestedApiKey) && !isMaskedSecret(requestedApiKey)) {
+            return requestedApiKey;
+        }
+        return settings.getLlmApiKey();
+    }
+
+    private boolean isMaskedSecret(String value) {
+        return "************".equals(value);
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 }

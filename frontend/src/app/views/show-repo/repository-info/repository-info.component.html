@@ -59,6 +59,13 @@
                                     Upload SBOM (SCA only)
                                 </button>
                             </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <button class="dropdown-item" (click)="evaluateWithLlm()">
+                                    <svg cIcon name="cil-lightbulb" class="me-1"></svg>
+                                    Verify with AI
+                                </button>
+                            </li>
                         </ul>
                     </div>
                     <button *ngIf="userRole === 'ADMIN' || userRole === 'TEAM_MANAGER'"

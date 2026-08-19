@@ -10,6 +10,7 @@ import io.mixeway.mixewayflowapi.domain.component.GetOrCreateComponentService;
 import io.mixeway.mixewayflowapi.domain.finding.CreateFindingService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.BearerScanDataflow;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.BearerScanSecurity;
+import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.Item;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -40,6 +42,7 @@ public class SASTService {
 
     private final CreateFindingService createFindingService;
     private final CreateAppDataTypeService createAppDataTypeService;
+    private final SastFindingVerificationService sastFindingVerificationService;
 
     /** Max number of stderr lines kept for diagnostics when bearer fails. */
     private static final int MAX_ERROR_LINES = 50;
@@ -120,7 +123,6 @@ public class SASTService {
                     ? null
                     : objectMapper.readValue(dataflowReportFile, BearerScanDataflow.class);
 
-            // Save findings and update status
             createFindingService.saveFindings(createFindingService.mapBearerScanToFindings(bearerScanSecurity, codeRepo, codeRepoBranch), codeRepoBranch, codeRepo, Finding.Source.SAST, null);
 
             if (bearerScanDataflow != null && bearerScanDataflow.getDataTypes() != null) {
@@ -135,6 +137,100 @@ public class SASTService {
         }
 
         log.info("[BearerScanService] Bearer scan completed for repository: {} branch: {}. Reports saved at: {}, {}", codeRepo.getName(), codeRepoBranch.getName(), securityReportFile.getAbsolutePath(), dataflowReportFile.getAbsolutePath());
+    }
+
+    /**
+     * Runs Bearer SAST scan with LLM-based false positive verification.
+     * Triggered on-demand by user via "Evaluate with LLM" button.
+     */
+    public void runBearerScanWithLlmEvaluation(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) throws IOException, InterruptedException, ScanException {
+        log.info("[BearerScanService] Starting Bearer scan with LLM evaluation for repository: {} branch: {}", codeRepo.getName(), codeRepoBranch.getName());
+        File securityReportFile = new File(repoDir, "bearer_scan_security.json");
+        File dataflowReportFile = new File(repoDir, "bearer_scan_dataflow.json");
+
+        ProcessBuilder securityPb;
+        ProcessBuilder dataflowPb;
+
+        if (bearerRulesDir == null || bearerRulesDir.isEmpty()) {
+            securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--skip-path=.git,vendor", "--report=security", "--format=json", "--output=bearer_scan_security.json");
+            dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--skip-path=.git,vendor", "--report=dataflow", "--format=json", "--output=bearer_scan_dataflow.json");
+        } else {
+            securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir="+ bearerRulesDir, "--skip-path=.git,vendor", "--report=security", "--format=json", "--output=bearer_scan_security.json");
+            dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir="+ bearerRulesDir, "--skip-path=.git,vendor", "--report=dataflow", "--format=json", "--output=bearer_scan_dataflow.json");
+        }
+        securityPb.directory(new File(repoDir));
+        dataflowPb.directory(new File(repoDir));
+
+        ProcessResult securityResult = runProcess(securityPb);
+        ProcessResult dataflowResult = runProcess(dataflowPb);
+
+        if (isBearerError(securityResult.exitCode)) {
+            log.warn("[BearerScanService] Bearer (security report) exited with error code {} for [{} / {}]",
+                    securityResult.exitCode, codeRepo.getRepourl(), codeRepoBranch.getName());
+        }
+
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        if (isEmptyReport(securityReportFile) || !looksLikeJson(securityReportFile)) {
+            log.info("[BearerScanService] No SAST findings to evaluate for [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
+            return;
+        }
+
+        BearerScanSecurity bearerScanSecurity;
+        BearerScanDataflow bearerScanDataflow;
+        try {
+            bearerScanSecurity = objectMapper.readValue(securityReportFile, BearerScanSecurity.class);
+            bearerScanDataflow = (isEmptyReport(dataflowReportFile) || !looksLikeJson(dataflowReportFile))
+                    ? null
+                    : objectMapper.readValue(dataflowReportFile, BearerScanDataflow.class);
+        } catch (JsonProcessingException e) {
+            log.warn("[BearerScanService] Failed to parse Bearer report for LLM evaluation [{} / {}]: {}",
+                    codeRepo.getRepourl(), codeRepoBranch.getName(), e.getMessage());
+            return;
+        }
+
+        Consumer<Item> saveCallback = item -> {
+                    if (item.getAiVerdict() == null) return;
+                    Finding.AiVerificationGrade grade = switch (item.getAiVerdict()) {
+                        case "TRUE_POSITIVE"  -> Finding.AiVerificationGrade.TRUE_POSITIVE;
+                        case "FALSE_POSITIVE" -> Finding.AiVerificationGrade.FALSE_POSITIVE;
+                        case "UNCERTAIN"      -> Finding.AiVerificationGrade.UNCERTAIN;
+                        default               -> Finding.AiVerificationGrade.NOT_VERIFIED;
+                    };
+                    createFindingService.saveAiVerificationForSastItem(
+                            item.getFilename() + ":" + item.getLineNumber(),
+                            codeRepoBranch,
+                            grade,
+                            item.getAiConfidence(),
+                            item.getAiReasoning(),
+                            item.getAiRecommendation());
+                };
+
+        try {
+            sastFindingVerificationService.verifyFindings(bearerScanSecurity, bearerScanDataflow, repoDir, saveCallback);
+        } catch (Throwable t) {
+            log.error("[BearerScanService] LLM verification failed, persisting verdicts collected so far for [{} / {}]: {}",
+                    codeRepo.getRepourl(), codeRepoBranch.getName(), t.getMessage(), t);
+        }
+
+        // Clear interrupt flag that may have been set by rateLimitPause inside verifyFindings.
+        // If the flag is left set, HikariCP will refuse to acquire a connection and saveFindings will fail silently.
+        boolean wasInterrupted = Thread.interrupted();
+        if (wasInterrupted) {
+            log.warn("[BearerScanService] Thread interrupt flag was set after LLM verification for [{} / {}]; cleared before saveFindings",
+                    codeRepo.getRepourl(), codeRepoBranch.getName());
+        }
+
+        log.info("[BearerScanService] Persisting findings to database for [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
+        createFindingService.saveFindings(
+                createFindingService.mapBearerScanToFindings(bearerScanSecurity, codeRepo, codeRepoBranch),
+                codeRepoBranch, codeRepo, Finding.Source.SAST, null);
+
+        if (bearerScanDataflow != null && bearerScanDataflow.getDataTypes() != null) {
+            createAppDataTypeService.getDataTypesForCodeRepo(codeRepo, bearerScanDataflow);
+        }
+
+        log.info("[BearerScanService] LLM evaluation completed for [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
     }
 
     /**

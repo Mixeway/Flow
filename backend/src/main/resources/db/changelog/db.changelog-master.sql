@@ -818,3 +818,21 @@ ALTER TABLE jira_configuration ADD COLUMN subtask_enabled BOOLEAN NOT NULL DEFAU
 --changeset siewer:coderepo-branch-remote-flag
 ALTER TABLE coderepo_branch
     ADD COLUMN IF NOT EXISTS exists_on_remote BOOLEAN NOT NULL DEFAULT TRUE;
+
+--changeset siewer:add-llm-evaluation-settings
+ALTER TABLE settings ADD COLUMN enable_llm_evaluation BOOLEAN DEFAULT FALSE NOT NULL;
+ALTER TABLE settings ADD COLUMN llm_api_url VARCHAR(500);
+ALTER TABLE settings ADD COLUMN llm_api_key VARCHAR(500);
+ALTER TABLE settings ADD COLUMN llm_model VARCHAR(200);
+
+--changeset siewer:add-ai-verification-to-finding
+ALTER TABLE finding ADD COLUMN ai_verification_grade VARCHAR(20) DEFAULT 'NOT_VERIFIED' NOT NULL;
+ALTER TABLE finding ADD COLUMN ai_verification_confidence DOUBLE PRECISION;
+ALTER TABLE finding ADD COLUMN ai_verification_reasoning TEXT;
+
+--changeset majaberej:add-ai-verification-recommendation-to-finding
+ALTER TABLE finding ADD COLUMN IF NOT EXISTS ai_verification_recommendation TEXT;
+
+--changeset majaberej:rename-ai-verification-grades
+UPDATE finding SET ai_verification_grade = 'TRUE_POSITIVE' WHERE ai_verification_grade = 'CONFIRMED_TP';
+UPDATE finding SET ai_verification_grade = 'FALSE_POSITIVE' WHERE ai_verification_grade = 'LIKELY_FP';
