@@ -97,8 +97,16 @@ public class SASTService {
 
         // An empty report file is the expected output when bearer finds no issues for a
         // supported language; treat it as "no findings" instead of a parsing failure.
+        // We still need to call saveFindings with an empty list so existing findings are marked as REMOVED.
+        // BUT only if the scan was successful (exit code 0) - otherwise we might incorrectly mark findings as removed.
         if (isEmptyReport(securityReportFile)) {
             log.info("[BearerScanService] Empty Bearer security report (no findings) - [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
+            if (securityResult.exitCode() == 0) {
+                createFindingService.saveFindings(new ArrayList<>(), codeRepoBranch, codeRepo, Finding.Source.SAST, null);
+            } else {
+                log.warn("[BearerScanService] Skipping findings update due to Bearer error (exit code: {}) - [{} / {}]",
+                        securityResult.exitCode(), codeRepo.getRepourl(), codeRepoBranch.getName());
+            }
             log.info("[BearerScanService] Bearer scan completed for repository: {} branch: {}. Reports saved at: {}, {}", codeRepo.getName(), codeRepoBranch.getName(), securityReportFile.getAbsolutePath(), dataflowReportFile.getAbsolutePath());
             return;
         }
