@@ -2043,12 +2043,12 @@ rules:
   javascript_lang_post_message_origin:
     cwe:
     - '346'
-    family: EXCEPTION_LEAK
-    promptProfile: LOGGING_LEAK
-    policyProfile: LOGGING_CONTENT_AND_AUDIENCE
+    family: ACCESS_CONTROL
+    promptProfile: CONFIGURATION
+    policyProfile: ACCESS_CONTROL_REVIEW
     requiresTaint: false
-    requiresExecutionContext: true
-    requiresDataSensitivity: true
+    requiresExecutionContext: false
+    requiresDataSensitivity: false
   javascript_lang_raw_html_using_user_input:
     cwe:
     - '79'

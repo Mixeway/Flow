@@ -33,6 +33,7 @@ public class CodeContextExtractor {
     private static final int MAX_DEFINITION_LINES_TAINT = 30;
     private static final int MAX_TAINT_HOPS = 5;
     private static final int MAX_TRACKED_IDENTIFIERS = 12;
+    private static final int MAX_CALLEE_BODIES = 3;
     private static final int MAX_CALLER_SITES = 3;
     private static final int CALLER_WINDOW_LINES = 9;
     private static final int MAX_REPO_CALLER_SITES = 12;
@@ -267,6 +268,28 @@ public class CodeContextExtractor {
             "(?:const|let|var)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*=");
     private static final Pattern FUNC_NAME_BEFORE_PAREN = Pattern.compile(
             "([A-Za-z_][A-Za-z0-9_]*)\\s*\\(");
+    private static final Pattern CALLEE_CALL = Pattern.compile(
+            "\\b([A-Za-z_][A-Za-z0-9_]*)\\s*\\(");
+    private static final Pattern EVENT_CALLEE = Pattern.compile(
+            "\\b([A-Za-z_][A-Za-z0-9_]*)\\s*\\(\\s*event(?:\\s*[,).]|\\.origin|\\.data)",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern POST_MESSAGE_LISTENER = Pattern.compile(
+            "addEventListener\\s*\\(\\s*['\"]message['\"]"
+                    + "|\\.onmessage\\b"
+                    + "|\\.on\\s*\\(\\s*['\"]message['\"]",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern XSS_SANITIZER_CALLEE_NAME = Pattern.compile(
+            "(?i)(sanitiz|purify|bleach|escape|encodeforhtml|encode_html|html_escape|jsoup)");
+    private static final Pattern ORIGIN_CALLEE_NAME = Pattern.compile(
+            "(?i)(origin|trusted|allowlist|allowed|parse\\w*event)");
+    private static final Set<String> CALLEE_SKIP = Set.of(
+            "addeventlistener", "removeeventlistener", "settimeout", "setinterval",
+            "queryselector", "queryselectorall", "getelementbyid", "createelement",
+            "console", "math", "json", "object", "promise", "array", "string", "number",
+            "boolean", "parseint", "parsefloat", "require", "include", "echo", "print",
+            "fetch", "then", "catch", "map", "filter", "foreach", "push", "pop",
+            "usestate", "useeffect", "usecallback", "usememo", "useref", "if", "for",
+            "while", "switch", "return", "super", "this", "window", "document", "void");
 
     /**
      * Tokens that are language keywords, common receivers, HTML tag/attribute names, or literals —
@@ -374,6 +397,8 @@ public class CodeContextExtractor {
         int localContextLines = isJavaScriptLike(language) ? LOCAL_SNIPPET_LINES_JS_TS : LOCAL_SNIPPET_LINES;
         String localSnippet = contextAround(lines, Math.max(0, item.getLineNumber() - 1), localContextLines);
         String definitionContext = extractDefinitionContext(lines, item, sinkAnalysis);
+        definitionContext = appendRelevantCalleeBodies(
+                lines, item, language, functionBody, localSnippet, definitionContext);
         String callerContext = extractCallerContext(lines, item, language);
         String frameworkContext = extractFrameworkContext(filename, lines, item, functionBody, localSnippet);
         String templateContext = extractTemplateContext(repoDir, filename, lines, item, functionBody);
@@ -690,6 +715,132 @@ public class CodeContextExtractor {
             return "";
         }
         return sb.toString().trim();
+    }
+
+    /**
+     * XSS sanitizer wrappers and postMessage origin helpers often live in a sibling function.
+     * Definition tracing only collects assignment lines, so pull those callee bodies into context
+     * for the LLM — this does not decide the verdict.
+     */
+    private String appendRelevantCalleeBodies(List<String> lines, Item item, String language,
+                                             String functionBody, String localSnippet,
+                                             String definitionContext) {
+        String flagged = item == null ? "" : Optional.ofNullable(item.getCodeExtract()).orElse("");
+        String haystack = flagged + "\n" + Optional.ofNullable(functionBody).orElse("")
+                + "\n" + Optional.ofNullable(localSnippet).orElse("")
+                + "\n" + Optional.ofNullable(definitionContext).orElse("");
+        boolean postMessage = POST_MESSAGE_LISTENER.matcher(haystack).find();
+        boolean xss = looksLikeXssSink(flagged.toLowerCase(Locale.ROOT));
+        if (!postMessage && !xss) {
+            return definitionContext == null ? "" : definitionContext;
+        }
+
+        LinkedHashSet<String> callees = new LinkedHashSet<>();
+        if (postMessage) {
+            var eventCallee = EVENT_CALLEE.matcher(haystack);
+            while (eventCallee.find()) {
+                addCalleeName(callees, eventCallee.group(1));
+            }
+            collectNamedCallees(haystack, callees, ORIGIN_CALLEE_NAME);
+        }
+        if (xss) {
+            collectNamedCallees(haystack, callees, XSS_SANITIZER_CALLEE_NAME);
+        }
+        if (callees.isEmpty()) {
+            return definitionContext == null ? "" : definitionContext;
+        }
+
+        int targetIdx = item.getLineNumber() <= 0 ? 0
+                : Math.min(Math.max(0, item.getLineNumber() - 1), lines.size() - 1);
+        int enclosingStart = findFunctionStart(lines, targetIdx, language);
+        String enclosingName = enclosingStart >= 0 ? extractFunctionName(lines.get(enclosingStart)) : null;
+
+        StringBuilder sb = new StringBuilder(definitionContext == null ? "" : definitionContext);
+        if (!sb.isEmpty() && sb.charAt(sb.length() - 1) != '\n') {
+            sb.append('\n');
+        }
+        int added = 0;
+        Set<String> seen = new LinkedHashSet<>();
+        Deque<String> queue = new ArrayDeque<>(callees);
+        while (!queue.isEmpty() && added < MAX_CALLEE_BODIES) {
+            String callee = queue.removeFirst();
+            if (enclosingName != null && enclosingName.equals(callee)) {
+                continue;
+            }
+            if (!seen.add(callee.toLowerCase(Locale.ROOT))) {
+                continue;
+            }
+            int defLine = findSymbolDefinitionLine(lines, callee);
+            if (defLine < 0) {
+                continue;
+            }
+            String body = extractFunction(lines, defLine + 1, language);
+            if (body == null || body.isBlank()) {
+                continue;
+            }
+            sb.append("callee| ").append(callee).append('\n').append(body).append('\n');
+            added++;
+            Set<String> nested = new LinkedHashSet<>();
+            if (postMessage) {
+                collectNamedCallees(body, nested, ORIGIN_CALLEE_NAME);
+            }
+            if (xss) {
+                collectNamedCallees(body, nested, XSS_SANITIZER_CALLEE_NAME);
+            }
+            for (String extra : nested) {
+                if (!seen.contains(extra.toLowerCase(Locale.ROOT))) {
+                    queue.addLast(extra);
+                }
+            }
+        }
+        return sb.toString().trim();
+    }
+
+    private void collectNamedCallees(String haystack, Set<String> into, Pattern nameHint) {
+        if (haystack == null || haystack.isBlank()) {
+            return;
+        }
+        var call = CALLEE_CALL.matcher(haystack);
+        while (call.find()) {
+            String name = call.group(1);
+            if (nameHint.matcher(name).find()) {
+                addCalleeName(into, name);
+            }
+        }
+    }
+
+    private void addCalleeName(Set<String> into, String name) {
+        if (name == null || name.length() < 2) {
+            return;
+        }
+        if (CALLEE_SKIP.contains(name.toLowerCase(Locale.ROOT))) {
+            return;
+        }
+        if (IGNORED_IDENTIFIERS.contains(name.toLowerCase(Locale.ROOT))) {
+            return;
+        }
+        into.add(name);
+    }
+
+    private int findSymbolDefinitionLine(List<String> lines, String name) {
+        if (name == null || name.isBlank() || lines == null || lines.isEmpty()) {
+            return -1;
+        }
+        String q = Pattern.quote(name);
+        Pattern[] defs = new Pattern[]{
+                Pattern.compile("(?:async\\s+)?(?:export\\s+)?(?:function|def)\\s+" + q + "\\b"),
+                Pattern.compile("(?:const|let|var)\\s+" + q + "\\s*="),
+                Pattern.compile("\\b" + q + "\\s*=\\s*(?:async\\s*)?(?:function|\\()"),
+                Pattern.compile("^\\s*" + q + "\\s*\\([^;{]*\\)\\s*\\{?")
+        };
+        for (Pattern def : defs) {
+            for (int i = 0; i < lines.size(); i++) {
+                if (def.matcher(lines.get(i)).find()) {
+                    return i;
+                }
+            }
+        }
+        return -1;
     }
 
     /**

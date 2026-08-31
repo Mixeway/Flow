@@ -242,7 +242,11 @@ public class SastFindingVerificationService {
             "Exception for Node/JavaScript CWE-319 / javascript_lang_http_insecure: http.createServer is the normal " +
             "Node listener (TLS usually at a reverse proxy). FALSE_POSITIVE unless shown code sends secrets over a " +
             "cleartext client request or serves sensitive production traffic in plaintext with no TLS termination. " +
-            "scripts/, localhost, and local OpenAPI/dev servers are FALSE_POSITIVE. Do not apply Java Socket guidance.";
+            "scripts/, localhost, and local OpenAPI/dev servers are FALSE_POSITIVE. Do not apply Java Socket guidance. " +
+            "Exception for CWE-732/276/378 file permissions: a mode other than 0600 is not automatically insecure. " +
+            "Follow the CWE-732 checklist: decode owner/group/other rwx; 0644 is not world-writable; the attacker is a " +
+            "local OS UID that can reach the inode. Public material, default 0755 executables, and unreachable paths " +
+            "(0700 parents / temp dirs) are FALSE_POSITIVE. TRUE_POSITIVE needs group/other WRITE, or group/other READ of a secret.";
 
     private static final String MISCONFIGURATION_VALIDATOR_SYSTEM_PROMPT =
             "You are an independent security peer reviewer for SAST misconfiguration and insecure API usage findings. " +
@@ -253,7 +257,8 @@ public class SastFindingVerificationService {
             "concrete existing-code evidence of a safe configuration, TLS/SSL enforcement, secure wrapper, or another " +
             "rule-specific neutralizer. If the unsafe API/configuration is shown and no neutralizer is proven, keep or " +
             "return TRUE_POSITIVE. Exception for Node/JavaScript CWE-319: http.createServer alone is FALSE_POSITIVE; " +
-            "Java Socket rules do not apply. Proposed remediation code is not applied code and must never be cited as evidence.";
+            "Java Socket rules do not apply. Exception for CWE-732/276/378: follow the CWE-732 checklist — 0644 is not " +
+            "world-writable; public files and unreachable paths are FALSE_POSITIVE. Proposed remediation code is not applied code and must never be cited as evidence.";
 
     private static final Pattern PERMISSIVE_SSL_EVIDENCE_PATTERN = Pattern.compile(
             "\\b(?:trustAllCerts|trustAll|TrustAll|ALLOW_ALL_HOSTNAME_VERIFIER|NoopHostnameVerifier|"
@@ -449,6 +454,12 @@ public class SastFindingVerificationService {
                 ? codeContextExtractor.extractWithDataflow(repoDir, item, dataflow)
                 : codeContextExtractor.extractLocal(repoDir, item);
         FindingEvidence structuredEvidence = sastEvidenceService.buildEvidence(item, context);
+        if ((item.getCweIds() == null || item.getCweIds().isEmpty())
+                && structuredEvidence.metadata() != null
+                && structuredEvidence.metadata().cweIds() != null
+                && !structuredEvidence.metadata().cweIds().isEmpty()) {
+            item.setCweIds(List.copyOf(structuredEvidence.metadata().cweIds()));
+        }
 
         StringBuilder userPrompt = new StringBuilder();
         userPrompt.append("Analyze this finding and determine if it is a TRUE positive, FALSE positive, or UNCERTAIN.\n\n");
@@ -1091,7 +1102,8 @@ public class SastFindingVerificationService {
                     + "test/dev/demo/mock/example. "
                     + "Return TRUE_POSITIVE when the unsafe API/configuration is shown and existing code does not prove "
                     + "a real safety neutralizer (safe wrapper, TLS/SSL enforcement, framework guarantee, or rule-specific "
-                    + "neutralizer). Return only valid JSON.";
+                    + "neutralizer). Exception for CWE-732/276/378: follow the CWE-732 checklist — a mode other than 0600 "
+                    + "is not automatically TRUE_POSITIVE. Return only valid JSON.";
         } else if (uncertainResolution) {
             stageTwoInstruction = "Stage 2 now: return final JSON with `action` as \"final\". "
                     + "Add required fields: execution_context, input_source, reasoning (3-6 sentences, "
@@ -1122,7 +1134,11 @@ public class SastFindingVerificationService {
                     + "string concatenation/interpolation into SQL (any language idiom) without "
                     + "parameterization/allowlist MUST be TRUE_POSITIVE — do not keep UNCERTAIN for unknown origin. "
                     + "For CWE-208 timing: TRUE_POSITIVE only for security-sensitive "
-                    + "secret/credential comparisons; non-security UI/hash/routing compares are FALSE_POSITIVE. "
+                    + "secret/credential comparisons in the flagged extract; typeof/empty/"
+                    + "public identifiers and non-security UI/hash/routing compares are FALSE_POSITIVE. "
+                    + "Username/email login oracles (user-exists timing) are TRUE_POSITIVE; uniqueness checks are FALSE_POSITIVE. "
+                    + "Do not keep TRUE_POSITIVE when reasoning says the compare is not a secret comparison, "
+                    + "unless reasoning also describes user enumeration. "
                     + "CLI tool / developer context: if execution_context is cli_developer_tool, CLI arguments, "
                     + "developer prompts (inquirer/prompts answers), tsconfig/package.json options, and process.cwd() "
                     + "are developer-controlled → FALSE_POSITIVE. Do NOT keep UNCERTAIN because 'a developer might "
@@ -1439,7 +1455,11 @@ public class SastFindingVerificationService {
         sb.append("- FALSE_POSITIVE requires positive safety evidence appropriate to the CWE. ");
         sb.append("If a key fact (source/sink/neutralizer/secret vs non-secret) is genuinely missing, return UNCERTAIN. ");
         sb.append("Do not use UNCERTAIN merely because repository-wide callers were not fully enumerated when local evidence suffices.\n");
-        sb.append("- For CWE-208: non-security comparisons are FALSE_POSITIVE; secret comparisons without constant-time are TRUE_POSITIVE.\n");
+        sb.append("- For CWE-208: non-security comparisons (typeof/empty/public id/UI) are FALSE_POSITIVE. "
+                + "Do not mark TRUE_POSITIVE from identifier names. Username/email login oracles that enumerate "
+                + "accounts by timing are TRUE_POSITIVE (fix: dummy hash + same response, not timingSafeEqual on username). "
+                + "Secret comparisons without constant-time are TRUE_POSITIVE only when the flagged extract is that secret compare. "
+                + "If reasoning says it is not a secret compare and does not describe enumeration, verdict is FALSE_POSITIVE.\n");
         sb.append("- For SQL injection: non-hardcoded/untrusted input + clear string concatenation/interpolation ");
         sb.append("into SQL without parameterization/allowlist => TRUE_POSITIVE high confidence. ");
         sb.append("Trusted/literal/constant/known-safe operands + string-built SQL (risky scheme) => TRUE_POSITIVE ");
@@ -1469,7 +1489,12 @@ public class SastFindingVerificationService {
         sb.append("- Requires taint: ").append(metadata.requiresTaint()).append('\n');
         sb.append("- Requires execution context: ").append(metadata.requiresExecutionContext()).append('\n');
         sb.append("- Requires data sensitivity: ").append(metadata.requiresDataSensitivity()).append("\n\n");
-        if (isMisconfigurationProfile(metadata)) {
+        if (isMisconfigurationProfile(metadata) && metadata.family() == VulnerabilityFamily.PERMISSIONS) {
+            sb.append("CWE-732 review: decode Unix mode bits and check path reachability. A mode other than 0600 is ");
+            sb.append("not automatically TRUE_POSITIVE. 0644 is owner-write only, not world-writable. Follow the ");
+            sb.append("CWE-732 checklist: local OS UID that can reach the inode + group/other WRITE, or group/other ");
+            sb.append("READ of a secret. Public material, 0755 executables, and 0700 parents/temp dirs are FALSE_POSITIVE.\n\n");
+        } else if (isMisconfigurationProfile(metadata)) {
             sb.append("MISCONFIGURATION review rule: this is not a classic source-to-sink taint finding. ");
             sb.append("Do not downgrade solely because attacker-controlled input is unclear. ");
             sb.append("Do not accept FALSE_POSITIVE based on test/dev/demo/mock/example naming, localhost, or path hints. ");
@@ -3181,6 +3206,45 @@ public class SastFindingVerificationService {
                     && (lower.contains("httponly") || lower.contains("secure") || lower.contains("samesite")));
     }
 
+    /**
+     * CWE-732/276/378: model cited decoded Unix bits, path unreachability, or public-by-design content.
+     * Lets a well-grounded FALSE_POSITIVE survive the generic MISCONFIGURATION "must be TP" override.
+     */
+    private boolean citesPermissionModeNeutralizer(String evidence) {
+        if (evidence == null || evidence.isBlank()) {
+            return false;
+        }
+        String lower = evidence.toLowerCase(Locale.ROOT);
+        boolean decodedOwnerWriteOnly = lower.contains("not world-writable")
+                || lower.contains("not world writable")
+                || lower.contains("owner-write")
+                || lower.contains("owner write only")
+                || lower.contains("owner-only write")
+                || lower.contains("rw-r--r--")
+                || lower.contains("rwxr-xr-x")
+                || lower.contains("0o644")
+                || lower.contains("0644")
+                || lower.contains("0o755")
+                || lower.contains("0755");
+        boolean pathUnreachable = lower.contains("cannot reach")
+                || lower.contains("unreachable")
+                || lower.contains("path reachability")
+                || lower.contains("mkdirtemp")
+                || lower.contains("0700 parent")
+                || lower.contains("parent directory");
+        boolean publicMaterial = lower.contains("public-by-design")
+                || lower.contains("public by design")
+                || (lower.contains("public key") && (lower.contains("0644") || lower.contains("0o644")))
+                || lower.contains("ssh-keygen")
+                || lower.contains("git hook")
+                || lower.contains("source generator")
+                || lower.contains("generated source");
+        boolean umaskRestrictsWorldWrite = (lower.contains("umask") || lower.contains("applyumask"))
+                && (lower.contains("0o666") || lower.contains("0666") || lower.contains("not world-writable")
+                || lower.contains("not world writable"));
+        return decodedOwnerWriteOnly || pathUnreachable || publicMaterial || umaskRestrictsWorldWrite;
+    }
+
     private boolean hasPermissiveSslEvidence(Item item, CodeContextExtractor.CodeContext context) {
         if (!isSslHostnameVerifierFinding(item) && !isPermissiveSslTitle(item)) {
             return false;
@@ -3761,7 +3825,25 @@ public class SastFindingVerificationService {
                 || combined.contains("framework guarantee")
                 || combined.contains("enforces tls")
                 || combined.contains("tls is enforced")
+                || combined.contains("go crypto/tls default")
+                || combined.contains("crypto/tls default")
+                || combined.contains("minversion 0")
+                || combined.contains("minversion unset")
+                || combined.contains("minversion is 0")
+                || combined.contains("minversion: 0")
+                || combined.contains("tls 1.2")
+                || combined.contains("tls 1.2+")
+                || combined.contains("default is tls 1.2")
+                || combined.contains("tls version map")
+                || combined.contains("operator tls")
+                || combined.contains("not hardcoded minversion")
+                || combined.contains("not an active downgrade")
+                || combined.contains("lookup map is not active")
+                || combined.contains("pprof not on public servemux")
+                || combined.contains("host allow-list on http client")
+                || combined.contains("secure bound to https/session config")
                 || combined.contains("uses httpsurlconnection with default")
+                || citesPermissionModeNeutralizer(combined)
                 || citesCookieFlagNeutralizer(combined);
     }
 
@@ -3915,60 +3997,49 @@ public class SastFindingVerificationService {
             return true;
         }
 
-        // CWE-208 timing side-channel: non-security compares → FP; secret compares without constant-time → TP
+        // CWE-208: deterministic FP only (typeof/empty/username/constant-time, or reasoning
+        // that already denies a secret compare). Never force TRUE_POSITIVE from identifier names.
         if (isTimingSideChannelFinding(item, metadata)) {
             String comparisonKind = evidence != null && evidence.attributes() != null
                     ? evidence.attributes().getOrDefault("comparison_kind", "unknown")
                     : "unknown";
             boolean constantTime = evidence != null && evidence.attributes() != null
                     && "true".equalsIgnoreCase(evidence.attributes().get("constant_time_api"));
-            if ("non_security".equals(comparisonKind)
+            boolean forceFalsePositive = "non_security".equals(comparisonKind)
+                    || constantTime
+                    || TimingEvidenceBuilder.reasoningDeniesSecretCompare(item.getAiReasoning());
+            if (forceFalsePositive
                     && (!"FALSE_POSITIVE".equals(item.getAiVerdict())
                     || item.getAiConfidence() == null
                     || item.getAiConfidence() < 0.85d)) {
                 String previousVerdict = item.getAiVerdict();
                 double previousConfidence = item.getAiConfidence() == null ? 0.0d : item.getAiConfidence();
+                String reason = constantTime
+                        ? "Constant-time comparison API is present. Deterministic FALSE_POSITIVE."
+                        : TimingEvidenceBuilder.reasoningDeniesSecretCompare(item.getAiReasoning())
+                        && !"non_security".equals(comparisonKind)
+                        ? "Model reasoning states the flagged compare is not a CWE-208 secret comparison. "
+                                + "Do not keep TRUE_POSITIVE. Deterministic FALSE_POSITIVE."
+                        : "CWE-208 requires a security-sensitive secret/credential comparison. The shown comparison is "
+                                + "non-security (presence/typeof/username/UI/tokenizer). Deterministic FALSE_POSITIVE.";
                 item.setAiVerdict("FALSE_POSITIVE");
                 item.setAiConfidence(Math.max(previousConfidence, 0.85d));
                 item.setAiRecommendation(null);
-                item.setAiReasoning(appendNormalizationReason(item.getAiReasoning(),
-                        "CWE-208 requires a security-sensitive secret/credential comparison. The shown comparison is "
-                                + "non-security (UI route/tokenizer discriminator/feature flag/scheduling/presence/typeof). "
-                                + "Deterministic FALSE_POSITIVE."));
+                item.setAiReasoning(appendNormalizationReason(item.getAiReasoning(), reason));
                 log.warn("[SastVerification] Deterministic context normalized {} from {} ({}) to FALSE_POSITIVE ({}) "
-                                + "because non-security timing comparison",
+                                + "because non-secret or neutralized timing comparison",
                         itemRef, previousVerdict,
                         String.format(Locale.ROOT, "%.2f", previousConfidence),
                         String.format(Locale.ROOT, "%.2f", item.getAiConfidence()));
                 return true;
             }
-            if ("security_sensitive".equals(comparisonKind) && !constantTime) {
-                boolean needsVerdict = !"TRUE_POSITIVE".equals(item.getAiVerdict())
-                        || item.getAiConfidence() == null
-                        || item.getAiConfidence() < 0.85d;
-                boolean needsRemediation = needsVerdict
-                        || looksLikeWrongLanguageTimingRemediation(item);
-                if (needsVerdict || needsRemediation) {
-                    String previousVerdict = item.getAiVerdict();
-                    double previousConfidence = item.getAiConfidence() == null ? 0.0d : item.getAiConfidence();
-                    item.setAiVerdict("TRUE_POSITIVE");
-                    item.setAiConfidence(Math.max(previousConfidence, 0.85d));
-                    item.setAiRecommendation(formatRecommendation(
-                            timingRecommendation(item),
-                            timingRemediationCode(item)));
-                    if (needsVerdict) {
-                        item.setAiReasoning(appendNormalizationReason(item.getAiReasoning(),
-                                "CWE-208: security-sensitive comparison without constant-time protection. "
-                                        + "Deterministic TRUE_POSITIVE."));
-                    }
-                    log.warn("[SastVerification] Deterministic context normalized {} from {} ({}) to TRUE_POSITIVE ({}) "
-                                    + "because security-sensitive timing comparison"
-                                    + (needsRemediation && !needsVerdict ? " (remediation language fix)" : ""),
-                            itemRef, previousVerdict,
-                            String.format(Locale.ROOT, "%.2f", previousConfidence),
-                            String.format(Locale.ROOT, "%.2f", item.getAiConfidence()));
-                    return true;
-                }
+            if ("TRUE_POSITIVE".equals(item.getAiVerdict())
+                    && looksLikeWrongLanguageTimingRemediation(item)) {
+                item.setAiRecommendation(formatRecommendation(
+                        timingRecommendation(item),
+                        timingRemediationCode(item)));
+                log.warn("[SastVerification] Replaced wrong-language timing remediation for {}", itemRef);
+                return true;
             }
         }
 
@@ -4297,7 +4368,7 @@ public class SastFindingVerificationService {
                 || lower.contains("objectinputfilter") || lower.contains("json.loads")
                 || lower.contains("type allowlist") || lower.contains("class allowlist")
                 || lower.contains("integrity") || lower.contains("hmac")
-                || lower.contains("signature verif") || lower.contains("signed payload");
+                || lower.contains("signature verif")                 || lower.contains("signed payload");
     }
 
     private boolean isTimingSideChannelFinding(Item item, SastRuleMetadata metadata) {
@@ -4379,7 +4450,24 @@ public class SastFindingVerificationService {
 
     private boolean hasNonSecurityWeakHashEvidence(Item item, CodeContextExtractor.CodeContext context,
                                                    FindingEvidence evidence) {
-        if (hasWeakHashPasswordEvidence(item, "", item.getAiReasoning())) {
+        return hasNonSecurityWeakHashEvidence(item, context, evidence, "");
+    }
+
+    private boolean hasNonSecurityWeakHashEvidence(Item item, CodeContextExtractor.CodeContext context,
+                                                   FindingEvidence evidence, String extraReviewText) {
+        String combined = Optional.ofNullable(item).map(Item::getCodeExtract).orElse("");
+        if (context != null) {
+            combined = combined + "\n" + Optional.ofNullable(context.functionBody()).orElse("")
+                    + "\n" + Optional.ofNullable(context.localSnippet()).orElse("");
+        }
+        String review = combined + "\n" + Optional.ofNullable(item).map(Item::getAiReasoning).orElse("")
+                + "\n" + Optional.ofNullable(extraReviewText).orElse("");
+        if (CryptoEvidenceBuilder.looksLikeNonPasswordWeakHashPurpose(review)
+                || CryptoEvidenceBuilder.looksLikeImportOnlyWeakHash(
+                        Optional.ofNullable(item).map(Item::getCodeExtract).orElse(""))) {
+            return true;
+        }
+        if (hasWeakHashPasswordEvidence(item, extraReviewText, item.getAiReasoning())) {
             return false;
         }
         if (evidence != null && evidence.attributes() != null) {
@@ -4387,11 +4475,6 @@ public class SastFindingVerificationService {
             if ("non_security".equals(purpose) || "possibly_non_security".equals(purpose)) {
                 return true;
             }
-        }
-        String combined = Optional.ofNullable(item).map(Item::getCodeExtract).orElse("");
-        if (context != null) {
-            combined = combined + "\n" + Optional.ofNullable(context.functionBody()).orElse("")
-                    + "\n" + Optional.ofNullable(context.localSnippet()).orElse("");
         }
         String lower = combined.toLowerCase(Locale.ROOT);
         boolean nonSecurityPurpose = lower.contains("cache")
@@ -4401,7 +4484,7 @@ public class SastFindingVerificationService {
                 || lower.contains("dedup")
                 || looksLikeProtocolHmac(lower)
                 || lower.contains("digest(") && (lower.contains("query") || lower.contains("document"));
-        return nonSecurityPurpose && !PASSWORD_HASH_PURPOSE_PATTERN.matcher(combined).find();
+        return nonSecurityPurpose;
     }
 
     static boolean looksLikeProtocolHmac(String text) {
@@ -5351,15 +5434,21 @@ public class SastFindingVerificationService {
     }
 
     private boolean hasWeakHashPasswordEvidence(Item item, String falsePositiveEvidence, String reasoning) {
-        String combined = Optional.ofNullable(item.getId()).orElse("")
-                + " " + Optional.ofNullable(item.getTitle()).orElse("")
-                + " " + Optional.ofNullable(item.getDescription()).orElse("")
-                + " " + Optional.ofNullable(item.getCodeExtract()).orElse("")
-                + " " + Optional.ofNullable(falsePositiveEvidence).orElse("")
-                + " " + Optional.ofNullable(reasoning).orElse("");
-        return isWeakHashFinding(item, combined)
-                && PASSWORD_HASH_PURPOSE_PATTERN.matcher(combined).find()
-                && !combined.toLowerCase(Locale.ROOT).contains("hmac");
+        String code = Optional.ofNullable(item.getCodeExtract()).orElse("");
+        String title = Optional.ofNullable(item.getTitle()).orElse("");
+        String review = Optional.ofNullable(falsePositiveEvidence).orElse("")
+                + " " + Optional.ofNullable(reasoning).orElse("")
+                + " " + code;
+        if (!isWeakHashFinding(item, code + " " + title)) {
+            return false;
+        }
+        if (CryptoEvidenceBuilder.looksLikeNonPasswordWeakHashPurpose(review)
+                || CryptoEvidenceBuilder.looksLikeImportOnlyWeakHash(code)) {
+            return false;
+        }
+        // Match password purpose on the call site only — not path, title, or "not used for password" prose.
+        return PASSWORD_HASH_PURPOSE_PATTERN.matcher(code).find()
+                && !code.toLowerCase(Locale.ROOT).contains("hmac");
     }
 
     private boolean isWeakHashFinding(Item item, String combinedEvidence) {
@@ -5584,7 +5673,13 @@ public class SastFindingVerificationService {
                 || combined.contains("create text node")
                 || combined.contains("format_html")
                 || combined.contains("flatatt")
-                || combined.contains("h(");
+                || combined.contains("h(")
+                || combined.contains("render api with sanitized field")
+                || combined.contains("visible sanitizer call")
+                || combined.contains("csp blocks inline scripts")
+                || combined.contains("static application content")
+                || combined.contains("html tagged template")
+                || combined.contains("htmlraw");
     }
 
     private ValidatorVerdict normalizeValidatorFalsePositive(Item item, CodeContextExtractor.CodeContext context,
@@ -5625,7 +5720,7 @@ public class SastFindingVerificationService {
         }
         // Weak hash for cache/fingerprint/checksum is valid FP without sanitizer evidence.
         if (isWeakHashFinding(item, Optional.ofNullable(item.getCodeExtract()).orElse(""))
-                && hasNonSecurityWeakHashEvidence(item, context, null)) {
+                && hasNonSecurityWeakHashEvidence(item, context, null, explanation)) {
             return new ValidatorVerdict(verdict, Math.max(confidence, 0.85d), explanation);
         }
         // HMAC-SHA1/MD5 required by a protocol (OAuth 1.0) is valid FP without sanitizer evidence.
@@ -5716,7 +5811,9 @@ public class SastFindingVerificationService {
                 || containsTrustedSourceEvidence(explanationLower)
                 || containsTextOnlySinkEvidence(combined)
                 || hasKnexParameterizedIdentifierBinding(Optional.ofNullable(item.getCodeExtract()).orElse(""))
-                || looksLikeProtocolHmac(combined);
+                || looksLikeProtocolHmac(combined)
+                || CryptoEvidenceBuilder.looksLikeNonPasswordWeakHashPurpose(explanationLower)
+                || CryptoEvidenceBuilder.looksLikeImportOnlyWeakHash(codeLower);
     }
 
     private boolean isRegexDosFinding(Item item, SastRuleMetadata metadata) {
@@ -6009,6 +6106,10 @@ public class SastFindingVerificationService {
                 || combined.contains("trusted source")
                 || combined.contains("trusted origin")
                 || combined.contains("trusted path")
+                || combined.contains("same-origin html")
+                || combined.contains("same origin html")
+                || combined.contains("host allow-list")
+                || combined.contains("event.source window")
                 || combined.contains("internal_call")
                 || combined.contains("cache key")
                 || combined.contains("etag")

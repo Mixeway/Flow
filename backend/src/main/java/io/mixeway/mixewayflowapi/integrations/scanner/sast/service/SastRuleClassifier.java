@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -17,11 +18,15 @@ public class SastRuleClassifier {
         String ruleId = item == null ? "" : item.getId();
         List<String> cweIds = item == null || item.getCweIds() == null ? List.of() : List.copyOf(item.getCweIds());
 
-        return ruleRegistry.findByRuleId(ruleId)
+        SastRuleMetadata metadata = ruleRegistry.findByRuleId(ruleId)
                 .map(definition -> fromRegistry(ruleId, cweIds, definition))
                 .orElseGet(() -> ruleRegistry.findFamilyByCwe(cweIds)
                         .map(family -> fromFamily(ruleId, cweIds, family))
                         .orElseGet(() -> fromHeuristics(item, ruleId, cweIds)));
+        if (looksLikePostMessageOriginFinding(item) && metadata.family() != VulnerabilityFamily.ACCESS_CONTROL) {
+            return fromFamily(ruleId, ensureCwe(cweIds, "346"), VulnerabilityFamily.ACCESS_CONTROL);
+        }
+        return metadata;
     }
 
     private SastRuleMetadata fromRegistry(String ruleId, List<String> cweIds,
@@ -40,7 +45,8 @@ public class SastRuleClassifier {
     }
 
     private SastRuleMetadata fromFamily(String ruleId, List<String> cweIds, VulnerabilityFamily family) {
-        return new SastRuleMetadata(ruleId, cweIds, family, promptFor(family), policyFor(family),
+        List<String> resolvedCwe = (cweIds == null || cweIds.isEmpty()) ? defaultCwes(family) : cweIds;
+        return new SastRuleMetadata(ruleId, resolvedCwe, family, promptFor(family), policyFor(family),
                 requiresTaint(family), requiresExecutionContext(family), requiresDataSensitivity(family));
     }
 
@@ -94,6 +100,10 @@ public class SastRuleClassifier {
             family = VulnerabilityFamily.EXCEPTION_LEAK;
         } else if (combined.contains("redirect")) {
             family = VulnerabilityFamily.OPEN_REDIRECT;
+        } else if (combined.contains("post_message") || combined.contains("postmessage")
+                || combined.contains("post message") || combined.contains("missing origin")
+                || (combined.contains("event.origin") && combined.contains("message"))) {
+            family = VulnerabilityFamily.ACCESS_CONTROL;
         } else if (combined.contains("trust boundary") || combined.contains("setattribute")
                 || combined.contains("session key") || combined.contains("external config")) {
             family = VulnerabilityFamily.TRUST_BOUNDARY;
@@ -148,7 +158,7 @@ public class SastRuleClassifier {
         return switch (family) {
             case WEAK_CRYPTO, WEAK_HASH, INSUFFICIENT_RANDOM, LOGGER_LEAK, EXCEPTION_LEAK, AUTH_ENUMERATION,
                  TIMING_SIDE_CHANNEL, HARDCODED_SECRET, COOKIE_SECURITY, CSRF, INSECURE_CONFIG,
-                 CLEAR_TEXT_TRANSMISSION, PERMISSIONS, VULNERABLE_DEPENDENCY -> false;
+                 CLEAR_TEXT_TRANSMISSION, PERMISSIONS, VULNERABLE_DEPENDENCY, ACCESS_CONTROL -> false;
             default -> true;
         };
     }
@@ -168,6 +178,73 @@ public class SastRuleClassifier {
             case LOGGER_LEAK, EXCEPTION_LEAK, AUTH_ENUMERATION, TIMING_SIDE_CHANNEL,
                  HARDCODED_SECRET -> true;
             default -> false;
+        };
+    }
+
+    /**
+     * Bearer {@code javascript_lang_post_message_origin} is CWE-346 (origin validation), not an
+     * exception/log leak. Detect by rule id, title, or the listener itself — not by the word
+     * "origin" alone (CORS allow-origin rules stay on their registry family).
+     */
+    static boolean looksLikePostMessageOriginFinding(Item item) {
+        if (item == null) {
+            return false;
+        }
+        String combined = (Optional.ofNullable(item.getId()).orElse("")
+                + " " + Optional.ofNullable(item.getTitle()).orElse("")
+                + " " + Optional.ofNullable(item.getDescription()).orElse("")).toLowerCase(Locale.ROOT);
+        if (combined.contains("insecure_allow_origin") || combined.contains("access-control-allow-origin")
+                || combined.contains("cors")) {
+            return false;
+        }
+        if (combined.contains("post_message") || combined.contains("postmessage")
+                || combined.contains("post message") || combined.contains("missing origin check")) {
+            return true;
+        }
+        String extract = Optional.ofNullable(item.getCodeExtract()).orElse("").toLowerCase(Locale.ROOT);
+        return (extract.contains("addeventlistener") && extract.contains("message"))
+                || extract.contains("onmessage")
+                || (extract.contains("event.origin") && extract.contains("message"));
+    }
+
+    private static List<String> ensureCwe(List<String> cweIds, String fallback) {
+        if (cweIds != null && !cweIds.isEmpty()) {
+            return cweIds;
+        }
+        return List.of(fallback);
+    }
+
+    static List<String> defaultCwes(VulnerabilityFamily family) {
+        if (family == null) {
+            return List.of();
+        }
+        return switch (family) {
+            case SQL_INJECTION -> List.of("89");
+            case COMMAND_INJECTION -> List.of("78");
+            case PATH_TRAVERSAL -> List.of("22");
+            case XSS -> List.of("79");
+            case SSRF -> List.of("918");
+            case OPEN_REDIRECT -> List.of("601");
+            case TRUST_BOUNDARY -> List.of("501");
+            case WEAK_CRYPTO -> List.of("327");
+            case WEAK_HASH -> List.of("328");
+            case LOGGER_LEAK -> List.of("117");
+            case EXCEPTION_LEAK -> List.of("200");
+            case TIMING_SIDE_CHANNEL -> List.of("208");
+            case AUTH_ENUMERATION -> List.of("204");
+            case INSUFFICIENT_RANDOM -> List.of("330");
+            case HARDCODED_SECRET -> List.of("259");
+            case COOKIE_SECURITY -> List.of("1004");
+            case CSRF -> List.of("352");
+            case DESERIALIZATION -> List.of("502");
+            case XXE -> List.of("611");
+            case ACCESS_CONTROL -> List.of("346");
+            case INSECURE_CONFIG -> List.of("693");
+            case CLEAR_TEXT_TRANSMISSION -> List.of("319");
+            case PERMISSIONS -> List.of("732");
+            case REGEX_DOS -> List.of("1333");
+            case VULNERABLE_DEPENDENCY -> List.of("1395");
+            case GENERAL -> List.of();
         };
     }
 }

@@ -192,6 +192,9 @@ public class CryptoEvidenceBuilder implements SastEvidenceBuilder {
 
         // Weak-hash purpose before generic "token" vocabulary (Bearer titles often say "token").
         if (metadata != null && metadata.family() == VulnerabilityFamily.WEAK_HASH) {
+            if (looksLikeNonPasswordWeakHashPurpose(source) || looksLikeImportOnlyWeakHash(source)) {
+                return "possibly_non_security";
+            }
             if (lower.contains("checksum") || lower.contains("cache") || lower.contains("etag")
                     || lower.contains("fingerprint") || lower.contains("dedup")) {
                 return "possibly_non_security";
@@ -202,6 +205,9 @@ public class CryptoEvidenceBuilder implements SastEvidenceBuilder {
             }
         }
 
+        if (looksLikeNonPasswordWeakHashPurpose(source)) {
+            return "possibly_non_security";
+        }
         if (lower.contains("password") || lower.contains("credential") || lower.contains("token")
                 || lower.contains("signature") || lower.contains("encrypt") || lower.contains("decrypt")
                 || lower.contains("salt") || lower.contains("nonce") || lower.contains("session")) {
@@ -212,6 +218,94 @@ public class CryptoEvidenceBuilder implements SastEvidenceBuilder {
             return "possibly_non_security";
         }
         return "unknown";
+    }
+
+    /**
+     * MD5/SHA-1 as a wire-protocol identifier or non-security checksum — not password storage.
+     * Also true when the reviewer explicitly denied password hashing.
+     */
+    static boolean looksLikeNonPasswordWeakHashPurpose(String text) {
+        if (text == null || text.isBlank()) {
+            return false;
+        }
+        String lower = text.toLowerCase(Locale.ROOT);
+        if (lower.contains("not used for password")
+                || lower.contains("not password hashing")
+                || lower.contains("not password storage")
+                || lower.contains("not for password")
+                || lower.contains("not used for passwords")
+                || lower.contains("third-party protocol")
+                || lower.contains("non-security checksum")
+                || lower.contains("non-security hash")
+                || lower.contains("non security checksum")
+                || lower.contains("non-security fingerprint")) {
+            return true;
+        }
+        return lower.contains("have i been pwned")
+                || lower.contains("haveibeenpwned")
+                || lower.contains("pwnedpasswords")
+                || lower.contains("pwned password")
+                || lower.contains("api.pwnedpasswords")
+                || lower.contains("checkpassword")
+                || lower.contains("k-anonymity")
+                || lower.contains("hibp")
+                || lower.contains("git object")
+                || lower.contains("hash-object")
+                || lower.contains("sha1pattern")
+                || lower.contains("subresource integrity")
+                || lower.contains("npm sri")
+                || lower.contains("npm integrity")
+                || lower.contains("integrity string")
+                || lower.contains("integrity verification")
+                || lower.contains("sidecar .md5")
+                || lower.contains("sidecar .sha1")
+                || lower.contains("rubygems")
+                || (lower.contains("alpine") && (lower.contains("apk") || lower.contains("q1") || lower.contains("package")))
+                || lower.contains("mixlib")
+                || lower.contains("x-ops-sign")
+                || lower.contains("x-actions-results-md5")
+                || lower.contains("github actions")
+                || lower.contains("artifact chunk")
+                || lower.contains("txnid")
+                || lower.contains("txn id")
+                || lower.contains("multihasher")
+                || lower.contains("multi hasher")
+                || lower.contains("hashfilepathforwebui")
+                || lower.contains("commit-status context")
+                || lower.contains("commit status context")
+                || lower.contains("cache key")
+                || lower.contains("cache")
+                || lower.contains("fingerprint")
+                || lower.contains("dedup")
+                || lower.contains("avatar")
+                || lower.contains("etag");
+    }
+
+    /**
+     * Scanner flagged {@code import "crypto/md5"} / {@code crypto/sha1} with no hash call site.
+     */
+    static boolean looksLikeImportOnlyWeakHash(String code) {
+        if (code == null || code.isBlank()) {
+            return false;
+        }
+        String lower = code.toLowerCase(Locale.ROOT);
+        boolean importLine = lower.contains("crypto/md5")
+                || lower.contains("crypto/sha1")
+                || lower.contains("from hashlib import md5")
+                || lower.contains("from hashlib import sha1")
+                || lower.contains("import hashlib");
+        if (!importLine) {
+            return false;
+        }
+        boolean callSite = lower.contains(".sum(")
+                || lower.contains(".new(")
+                || lower.contains("hexdigest")
+                || lower.contains("messagedigest")
+                || lower.contains("createhash")
+                || lower.contains("digest(")
+                || lower.contains("hash.write")
+                || lower.contains("io.copy");
+        return !callSite;
     }
 
     /**

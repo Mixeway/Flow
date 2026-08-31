@@ -259,4 +259,17 @@ public class FindFindingService {
     public List<Finding> findByCodeRepoAndCodeRepoBranchAndStatusIn(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, Collection<Finding.Status> statuses) {
         return findingRepository.findByCodeRepoAndCodeRepoBranchAndStatusIn(codeRepo, codeRepoBranch, statuses);
     }
+
+    /**
+     * Active (NEW/EXISTING) SAST findings for a branch, with vulnerability eagerly loaded
+     * so LLM evaluation can reconstruct Bearer items after the transaction ends.
+     */
+    @Transactional(readOnly = true)
+    public List<Finding> findActiveSastFindings(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
+        return findingRepository.findBySourceAndCodeRepoAndCodeRepoBranchAndStatusIn(
+                Finding.Source.SAST,
+                codeRepo,
+                codeRepoBranch,
+                List.of(Finding.Status.NEW, Finding.Status.EXISTING));
+    }
 }
