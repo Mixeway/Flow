@@ -7,19 +7,50 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
  * Evidence builder for CWE-208 observable timing / side-channel findings.
- * Distinguishes security-sensitive secret comparisons from non-security equality checks.
+ * Distinguishes obvious non-secret comparisons (typeof/empty/UI) from possible
+ * secret compares. Username/email are left to the model: a login early-return
+ * is user enumeration (TRUE_POSITIVE); an admin uniqueness check is not.
  */
 @Component
 @Order(25)
 public class TimingEvidenceBuilder implements SastEvidenceBuilder {
 
+    /**
+     * Hint-only: names that often appear in real secret compares. Used to label
+     * {@code security_sensitive}, never to force TRUE_POSITIVE.
+     */
     private static final Pattern SECRET_TERMS = Pattern.compile(
             "\\b(password|passwd|pwd|secret|token|api[_-]?key|credential|hmac|signature|hash|digest|"
-                    + "session[_-]?id|auth|bearer|private[_-]?key|otp|pin)\\b",
+                    + "session[_-]?id|auth|bearer|private[_-]?key|otp|pin)\\b"
+                    + "|(?<=[a-z])(token|secret|password|hash|digest|auth|bearer|signature|credential)\\b",
+            Pattern.CASE_INSENSITIVE);
+
+    /** Real credential words — if present, do not treat username/email as the whole story. */
+    private static final Pattern CREDENTIAL_COMPARE_TERMS = Pattern.compile(
+            "\\b(password|passwd|pwd|hmac|otp|secret|private[_-]?key)\\b",
+            Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Public protocol / CDN identifiers — not login oracles.
+     * Username/email/login stay out: an auth early-return on those fields enumerates accounts.
+     */
+    private static final Pattern NON_SECRET_IDENTITY = Pattern.compile(
+            "\\b(public[_-]?id|oauth[_-]?token)\\b",
+            Pattern.CASE_INSENSITIVE);
+
+    /**
+     * {@code user == null} / {@code username == null} on an auth path can be an enumeration
+     * oracle. Do not auto-FP those; leave them to the model. {@code password == null} stays
+     * a presence check (handled via CREDENTIAL_COMPARE_TERMS).
+     */
+    private static final Pattern USER_RECORD_PRESENCE = Pattern.compile(
+            "\\b(users?|account|user[_-]?name|username|email)\\b[^\\n;]{0,80}(?:==|===|!=|!==)\\s*(?:null|undefined)"
+                    + "|(?:==|===|!=|!==)\\s*(?:null|undefined)[^\\n;]{0,80}\\b(users?|account|user[_-]?name|username|email)\\b",
             Pattern.CASE_INSENSITIVE);
 
     private static final Pattern CONSTANT_TIME = Pattern.compile(
@@ -73,6 +104,31 @@ public class TimingEvidenceBuilder implements SastEvidenceBuilder {
     private static final Pattern STRING_LITERALS = Pattern.compile(
             "\"([^\"\\\\]|\\\\.)*\"|'([^'\\\\]|\\\\.)*'");
 
+    private static final Pattern BLOCK_COMMENT = Pattern.compile("/\\*.*?\\*/", Pattern.DOTALL);
+    private static final Pattern LINE_COMMENT = Pattern.compile("(?m)//.*?$");
+
+    /**
+     * Model said the compare is not a CWE-208 secret compare. Used to stop TRUE_POSITIVE
+     * when reasoning and verdict disagree.
+     */
+    private static final Pattern REASONING_DENIES_SECRET_COMPARE = Pattern.compile(
+            "(?i)(?:\\bnot\\b|\\bn'?t\\b|\\bdoes not\\b|\\bis not\\b|\\bare not\\b)\\s+"
+                    + "(?:a\\s+|an\\s+|considered\\s+)?"
+                    + "(?:security[- ]sensitive|secret|credential|cwe-208)"
+                    + "|\\bnon-security\\b"
+                    + "|\\bstructural validation\\b"
+                    + "|\\btype(?:of)? check\\b"
+                    + "|\\bpresence check\\b"
+                    + "|\\bpublic identifier\\b"
+                    + "|\\bdoes not fall under\\b.{0,40}cwe-208"
+                    + "|\\bnot\\b.{0,40}\\bsecret comparison\\b"
+                    + "|\\bdoes not involve\\b.{0,40}(?:secret|credential)");
+
+    /** Login/forgot-password oracle — do not coerce those reasonings to FALSE_POSITIVE. */
+    private static final Pattern ENUMERATION_CLAIM = Pattern.compile(
+            "(?i)\\benumerat|\\buser exists\\b|\\baccount exists\\b|\\boracle\\b"
+                    + "|\\bforgot.?password\\b|\\bvalid user\\b|\\bunknown user\\b");
+
     private static final Pattern COMPARISON = Pattern.compile(
             "\\.(equals|equalsIgnoreCase|compareTo)\\s*\\(|==|===|!=|!==",
             Pattern.CASE_INSENSITIVE);
@@ -84,25 +140,38 @@ public class TimingEvidenceBuilder implements SastEvidenceBuilder {
 
     @Override
     public FindingEvidence build(Item item, CodeContextExtractor.CodeContext context, SastRuleMetadata metadata) {
-        // Classify from code only — Bearer title/description often contain "secret"/"token"
-        // boilerplate and would falsely mark every CWE-208 finding as security_sensitive.
-        String codeText = codeText(item, context);
-        String comparisonKind = detectComparisonKind(codeText);
-        boolean hasConstantTime = CONSTANT_TIME.matcher(codeText).find();
-        boolean hasComparison = COMPARISON.matcher(codeText).find();
+        // Classify the flagged extract only — Bearer title/description and the rest of the
+        // function often contain "secret"/"token"/"signature" boilerplate.
+        String extract = flaggedExtract(item, context);
+        String comparisonKind = detectComparisonKind(extract);
+        String surrounding = surroundingText(item, context);
+        boolean hasConstantTime = CONSTANT_TIME.matcher(extract).find()
+                || CONSTANT_TIME.matcher(surrounding).find();
+        boolean hasComparison = COMPARISON.matcher(stripComments(extract)).find();
 
         List<String> notes = new ArrayList<>();
         notes.add("CWE-208 is a timing side-channel issue, not information disclosure.");
-        notes.add("TRUE_POSITIVE requires a time-variable comparison of secret/credential values observable by an attacker.");
-        notes.add("UI routing, feature flags, Math.random jitter, scheduling, and non-secret equality checks are FALSE_POSITIVE.");
+        notes.add("TRUE_POSITIVE only when the flagged extract compares secret/credential values "
+                + "and an attacker can observe the timing. Judge the extract; identifier names "
+                + "(token/hash/password/username) in comments or nearby lines are not proof.");
+        notes.add("typeof/empty/presence, UI routing, tokenizer discriminators, oauth_token, and public_id "
+                + "are FALSE_POSITIVE. Username/email: TRUE_POSITIVE when the extract is a login/forgot-password "
+                + "oracle (early return if user missing, different timing than bad password); FALSE_POSITIVE for "
+                + "admin uniqueness or display-name checks. Enumeration fix is dummy password hash + identical "
+                + "response, not timingSafeEqual(username).");
         if ("non_security".equals(comparisonKind)) {
-            notes.add("Detected non-security comparison (UI route/tokenizer discriminator/feature flag/scheduling/boolean/presence/typeof). Prefer FALSE_POSITIVE.");
-        } else if ("security_sensitive".equals(comparisonKind) && !hasConstantTime) {
-            notes.add("Security-sensitive comparison without constant-time API evidence. Prefer TRUE_POSITIVE when attacker can observe timing.");
+            notes.add("Detected non-security comparison (presence/typeof/UI/tokenizer/public id). "
+                    + "FALSE_POSITIVE.");
         } else if ("security_sensitive".equals(comparisonKind) && hasConstantTime) {
-            notes.add("Constant-time comparison API detected. Prefer FALSE_POSITIVE.");
+            notes.add("Constant-time comparison API detected. FALSE_POSITIVE.");
+        } else if ("security_sensitive".equals(comparisonKind)) {
+            notes.add("Flagged extract mentions a credential-like identifier. This is a hint only — "
+                    + "decide TRUE_POSITIVE vs FALSE_POSITIVE from whether the comparison is a secret "
+                    + "value check observable by an attacker, not from the identifier name.");
         } else {
-            notes.add("Compared value sensitivity is unclear from local evidence; use UNCERTAIN only if secret vs non-secret cannot be determined.");
+            notes.add("Compared value sensitivity is unclear from the extract. For username/email, "
+                    + "TRUE_POSITIVE if this is a login/forgot-password oracle; FALSE_POSITIVE if it is "
+                    + "uniqueness or display-name logic. Use UNCERTAIN only if that cannot be determined.");
         }
 
         String key = consistencyKey(metadata, item, comparisonKind);
@@ -110,7 +179,7 @@ public class TimingEvidenceBuilder implements SastEvidenceBuilder {
                 true,
                 metadata,
                 detectExecutionContext(item, context),
-                "Timing side-channel finding classified by compared-value sensitivity and constant-time protection.",
+                "Timing side-channel finding classified from the flagged extract; the model decides TRUE_POSITIVE.",
                 FindingEvidence.attributes(
                         "comparison_kind", comparisonKind,
                         "has_comparison", Boolean.toString(hasComparison),
@@ -124,35 +193,80 @@ public class TimingEvidenceBuilder implements SastEvidenceBuilder {
         if (codeText == null || codeText.isBlank()) {
             return "unknown";
         }
+        String extract = stripComments(codeText);
         // Boolean config checks win even if a nearby identifier contains "token"/"secret".
-        if (BOOLEAN_LITERAL_COMPARE.matcher(codeText).find()) {
+        if (BOOLEAN_LITERAL_COMPARE.matcher(extract).find()) {
             return "non_security";
         }
         // typeof / length / null / empty checks alone are not secret equality comparisons.
-        String withoutPresence = PRESENCE_OR_TYPE_CHECK.matcher(codeText).replaceAll(" ");
-        boolean presenceOrType = !withoutPresence.equals(codeText);
+        String withoutPresence = PRESENCE_OR_TYPE_CHECK.matcher(extract).replaceAll(" ");
+        boolean presenceOrType = !withoutPresence.equals(extract);
         boolean remainingComparison = COMPARISON.matcher(withoutPresence).find();
         if (presenceOrType && !remainingComparison) {
+            if (USER_RECORD_PRESENCE.matcher(extract).find()
+                    && !CREDENTIAL_COMPARE_TERMS.matcher(extract).find()) {
+                return "unknown";
+            }
             return "non_security";
         }
-        // Ignore secret vocabulary that appears only inside quotes (type == "hash").
-        String withoutQuotes = STRING_LITERALS.matcher(codeText).replaceAll("\"\"");
+        // UI / tokenizer / location.hash win over the word "hash" or "token" in the same extract.
+        if (NON_SECURITY_COMPARE.matcher(extract).find()) {
+            return "non_security";
+        }
+        String withoutQuotes = STRING_LITERALS.matcher(extract).replaceAll("\"\"");
+        if (NON_SECRET_IDENTITY.matcher(withoutQuotes).find()
+                && !CREDENTIAL_COMPARE_TERMS.matcher(withoutQuotes).find()) {
+            return "non_security";
+        }
         boolean secretOutsideQuotes = SECRET_TERMS.matcher(withoutQuotes).find();
-        boolean literalDiscriminator = STRING_LITERAL_DISCRIMINATOR.matcher(codeText).find();
+        boolean literalDiscriminator = STRING_LITERAL_DISCRIMINATOR.matcher(extract).find();
         if (literalDiscriminator && !secretOutsideQuotes) {
-            return "non_security";
-        }
-        boolean nonSecurity = NON_SECURITY_COMPARE.matcher(codeText).find();
-        if (nonSecurity && !secretOutsideQuotes) {
             return "non_security";
         }
         if (secretOutsideQuotes) {
             return "security_sensitive";
         }
-        if (nonSecurity) {
-            return "non_security";
-        }
         return "unknown";
+    }
+
+    /**
+     * True when the model already explained that the flagged compare is not a CWE-208
+     * secret comparison. Verdict must not stay TRUE_POSITIVE in that case.
+     */
+    static boolean reasoningDeniesSecretCompare(String reasoning) {
+        if (reasoning == null || reasoning.isBlank()) {
+            return false;
+        }
+        if (ENUMERATION_CLAIM.matcher(reasoning).find()) {
+            return false;
+        }
+        return REASONING_DENIES_SECRET_COMPARE.matcher(reasoning).find();
+    }
+
+    static String stripComments(String code) {
+        if (code == null || code.isBlank()) {
+            return "";
+        }
+        String withoutBlock = BLOCK_COMMENT.matcher(code).replaceAll(" ");
+        return LINE_COMMENT.matcher(withoutBlock).replaceAll(" ");
+    }
+
+    private String flaggedExtract(Item item, CodeContextExtractor.CodeContext context) {
+        String extract = item == null ? "" : Optional.ofNullable(item.getCodeExtract()).orElse("");
+        if (!extract.isBlank()) {
+            return extract;
+        }
+        if (context == null) {
+            return "";
+        }
+        return Optional.ofNullable(context.localSnippet()).orElse("");
+    }
+
+    private String surroundingText(Item item, CodeContextExtractor.CodeContext context) {
+        return String.join("\n",
+                item == null || item.getCodeExtract() == null ? "" : item.getCodeExtract(),
+                context == null || context.functionBody() == null ? "" : context.functionBody(),
+                context == null || context.localSnippet() == null ? "" : context.localSnippet());
     }
 
     private ExecutionContext detectExecutionContext(Item item, CodeContextExtractor.CodeContext context) {
@@ -178,12 +292,5 @@ public class TimingEvidenceBuilder implements SastEvidenceBuilder {
                 .orElse(java.util.Optional.ofNullable(item.getFullFilename()).orElse(""));
         String rule = metadata.ruleId() == null ? metadata.family().name() : metadata.ruleId();
         return String.join("|", rule, file, "timing", comparisonKind);
-    }
-
-    private String codeText(Item item, CodeContextExtractor.CodeContext context) {
-        return String.join("\n",
-                item == null || item.getCodeExtract() == null ? "" : item.getCodeExtract(),
-                context == null || context.functionBody() == null ? "" : context.functionBody(),
-                context == null || context.localSnippet() == null ? "" : context.localSnippet());
     }
 }

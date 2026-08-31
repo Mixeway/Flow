@@ -550,7 +550,7 @@ public class ScanManagerService {
     }
 
     /**
-     * Clones the repo and runs Bearer SAST scan with LLM-based false positive verification.
+     * Clones the repo and runs LLM-based false positive verification on existing SAST findings.
      * Triggered on-demand by user via "Evaluate with LLM" button.
      */
     public void runLlmEvaluation(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {

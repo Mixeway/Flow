@@ -8,11 +8,13 @@ import io.mixeway.mixewayflowapi.domain.appdatatype.CreateAppDataTypeService;
 import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.component.GetOrCreateComponentService;
 import io.mixeway.mixewayflowapi.domain.finding.CreateFindingService;
+import io.mixeway.mixewayflowapi.domain.finding.FindFindingService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.BearerScanDataflow;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.BearerScanSecurity;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.Item;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
+import io.mixeway.mixewayflowapi.db.entity.Vulnerability;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,9 +45,11 @@ public class SASTService {
     private final CreateFindingService createFindingService;
     private final CreateAppDataTypeService createAppDataTypeService;
     private final SastFindingVerificationService sastFindingVerificationService;
+    private final FindFindingService findFindingService;
 
     /** Max number of stderr lines kept for diagnostics when bearer fails. */
     private static final int MAX_ERROR_LINES = 50;
+    private static final String CODE_EXTRACT_PREFIX = "Code where problem is found: ";
 
     @Value("${bearer.queries.dir}")
     private String bearerRulesDir;
@@ -71,17 +75,19 @@ public class SASTService {
 
         // Check if bearerRulesDir is null or empty, and adjust the ProcessBuilder commands accordingly
         if (bearerRulesDir == null || bearerRulesDir.isEmpty()) {
-            securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--skip-path=.git,vendor", "--report=security", "--format=json", "--output=bearer_scan_security.json");
-            dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--skip-path=.git,vendor", "--report=dataflow", "--format=json", "--output=bearer_scan_dataflow.json");
+            securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--skip-path=.git,vendor", "--report=security", "--format=json", "--output=bearer_scan_security.json", "--disable-default-rules");
+            dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--skip-path=.git,vendor", "--report=dataflow", "--format=json", "--output=bearer_scan_dataflow.json", "--disable-default-rules");
         } else {
-            securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir="+ bearerRulesDir, "--skip-path=.git,vendor", "--report=security", "--format=json", "--output=bearer_scan_security.json");
-            dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir="+ bearerRulesDir, "--skip-path=.git,vendor", "--report=dataflow", "--format=json", "--output=bearer_scan_dataflow.json");
+            securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir="+ bearerRulesDir, "--skip-path=.git,vendor", "--report=security", "--format=json", "--output=bearer_scan_security.json", "--disable-default-rules");
+            dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir="+ bearerRulesDir, "--skip-path=.git,vendor", "--report=dataflow", "--format=json", "--output=bearer_scan_dataflow.json", "--disable-default-rules");
         }
         securityPb.directory(new File(repoDir));
         dataflowPb.directory(new File(repoDir));
 
         ProcessResult securityResult = runProcess(securityPb);
         ProcessResult dataflowResult = runProcess(dataflowPb);
+        recoverReportFromStdout(securityReportFile, securityResult);
+        recoverReportFromStdout(dataflowReportFile, dataflowResult);
 
         // Bearer exit codes: 0 = success/no findings, 1 = success WITH findings (normal),
         // anything else indicates an actual scan error.
@@ -140,11 +146,30 @@ public class SASTService {
     }
 
     /**
-     * Runs Bearer SAST scan with LLM-based false positive verification.
+     * Runs LLM-based false positive verification for SAST findings.
      * Triggered on-demand by user via "Evaluate with LLM" button.
+     * Uses existing SAST findings from the database (from a prior scan) so evaluation
+     * does not depend on a fresh Bearer re-scan, which can return empty on large JS/TS repos.
      */
     public void runBearerScanWithLlmEvaluation(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) throws IOException, InterruptedException, ScanException {
         log.info("[BearerScanService] Starting Bearer scan with LLM evaluation for repository: {} branch: {}", codeRepo.getName(), codeRepoBranch.getName());
+
+        List<Finding> existing = findFindingService.findActiveSastFindings(codeRepo, codeRepoBranch).stream()
+                .filter(finding -> finding.getSeverity() == Finding.Severity.CRITICAL
+                        || finding.getSeverity() == Finding.Severity.HIGH
+                        || finding.getSeverity() == Finding.Severity.MEDIUM)
+                .toList();
+
+        if (!existing.isEmpty()) {
+            log.info("[BearerScanService] Evaluating {} existing SAST findings from database for [{} / {}] (skipping Bearer re-scan)",
+                    existing.size(), codeRepo.getRepourl(), codeRepoBranch.getName());
+            evaluateFindingsWithLlm(toBearerScanSecurity(existing), null, repoDir, codeRepo, codeRepoBranch, false);
+            return;
+        }
+
+        log.info("[BearerScanService] No existing SAST findings in database, running Bearer scan for [{} / {}]",
+                codeRepo.getRepourl(), codeRepoBranch.getName());
+
         File securityReportFile = new File(repoDir, "bearer_scan_security.json");
         File dataflowReportFile = new File(repoDir, "bearer_scan_dataflow.json");
 
@@ -152,27 +177,30 @@ public class SASTService {
         ProcessBuilder dataflowPb;
 
         if (bearerRulesDir == null || bearerRulesDir.isEmpty()) {
-            securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--skip-path=.git,vendor", "--report=security", "--format=json", "--output=bearer_scan_security.json");
-            dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--skip-path=.git,vendor", "--report=dataflow", "--format=json", "--output=bearer_scan_dataflow.json");
+            securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--skip-path=.git,vendor", "--report=security", "--format=json", "--output=bearer_scan_security.json", "--disable-default-rules");
+            dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--skip-path=.git,vendor", "--report=dataflow", "--format=json", "--output=bearer_scan_dataflow.json", "--disable-default-rules");
         } else {
-            securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir="+ bearerRulesDir, "--skip-path=.git,vendor", "--report=security", "--format=json", "--output=bearer_scan_security.json");
-            dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir="+ bearerRulesDir, "--skip-path=.git,vendor", "--report=dataflow", "--format=json", "--output=bearer_scan_dataflow.json");
+            securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir="+ bearerRulesDir, "--skip-path=.git,vendor", "--report=security", "--format=json", "--output=bearer_scan_security.json", "--disable-default-rules");
+            dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir="+ bearerRulesDir, "--skip-path=.git,vendor", "--report=dataflow", "--format=json", "--output=bearer_scan_dataflow.json", "--disable-default-rules");
         }
         securityPb.directory(new File(repoDir));
         dataflowPb.directory(new File(repoDir));
 
         ProcessResult securityResult = runProcess(securityPb);
         ProcessResult dataflowResult = runProcess(dataflowPb);
+        recoverReportFromStdout(securityReportFile, securityResult);
+        recoverReportFromStdout(dataflowReportFile, dataflowResult);
 
         if (isBearerError(securityResult.exitCode)) {
-            log.warn("[BearerScanService] Bearer (security report) exited with error code {} for [{} / {}]",
-                    securityResult.exitCode, codeRepo.getRepourl(), codeRepoBranch.getName());
+            log.warn("[BearerScanService] Bearer (security report) exited with error code {} for [{} / {}]. Stderr:{}{}",
+                    securityResult.exitCode, codeRepo.getRepourl(), codeRepoBranch.getName(), System.lineSeparator(), securityResult.stderr());
         }
 
         ObjectMapper objectMapper = new ObjectMapper();
 
         if (isEmptyReport(securityReportFile) || !looksLikeJson(securityReportFile)) {
-            log.info("[BearerScanService] No SAST findings to evaluate for [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
+            log.info("[BearerScanService] No SAST findings to evaluate for [{} / {}]. Bearer exit: {}, report preview: {}",
+                    codeRepo.getRepourl(), codeRepoBranch.getName(), securityResult.exitCode, previewFile(securityReportFile));
             return;
         }
 
@@ -189,22 +217,27 @@ public class SASTService {
             return;
         }
 
+        evaluateFindingsWithLlm(bearerScanSecurity, bearerScanDataflow, repoDir, codeRepo, codeRepoBranch, true);
+    }
+
+    private void evaluateFindingsWithLlm(BearerScanSecurity bearerScanSecurity, BearerScanDataflow bearerScanDataflow,
+            String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, boolean persistFindings) {
         Consumer<Item> saveCallback = item -> {
-                    if (item.getAiVerdict() == null) return;
-                    Finding.AiVerificationGrade grade = switch (item.getAiVerdict()) {
-                        case "TRUE_POSITIVE"  -> Finding.AiVerificationGrade.TRUE_POSITIVE;
-                        case "FALSE_POSITIVE" -> Finding.AiVerificationGrade.FALSE_POSITIVE;
-                        case "UNCERTAIN"      -> Finding.AiVerificationGrade.UNCERTAIN;
-                        default               -> Finding.AiVerificationGrade.NOT_VERIFIED;
-                    };
-                    createFindingService.saveAiVerificationForSastItem(
-                            item.getFilename() + ":" + item.getLineNumber(),
-                            codeRepoBranch,
-                            grade,
-                            item.getAiConfidence(),
-                            item.getAiReasoning(),
-                            item.getAiRecommendation());
-                };
+            if (item.getAiVerdict() == null) return;
+            Finding.AiVerificationGrade grade = switch (item.getAiVerdict()) {
+                case "TRUE_POSITIVE"  -> Finding.AiVerificationGrade.TRUE_POSITIVE;
+                case "FALSE_POSITIVE" -> Finding.AiVerificationGrade.FALSE_POSITIVE;
+                case "UNCERTAIN"      -> Finding.AiVerificationGrade.UNCERTAIN;
+                default               -> Finding.AiVerificationGrade.NOT_VERIFIED;
+            };
+            createFindingService.saveAiVerificationForSastItem(
+                    item.getFilename() + ":" + item.getLineNumber(),
+                    codeRepoBranch,
+                    grade,
+                    item.getAiConfidence(),
+                    item.getAiReasoning(),
+                    item.getAiRecommendation());
+        };
 
         try {
             sastFindingVerificationService.verifyFindings(bearerScanSecurity, bearerScanDataflow, repoDir, saveCallback);
@@ -221,16 +254,111 @@ public class SASTService {
                     codeRepo.getRepourl(), codeRepoBranch.getName());
         }
 
-        log.info("[BearerScanService] Persisting findings to database for [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
-        createFindingService.saveFindings(
-                createFindingService.mapBearerScanToFindings(bearerScanSecurity, codeRepo, codeRepoBranch),
-                codeRepoBranch, codeRepo, Finding.Source.SAST, null);
+        if (persistFindings) {
+            log.info("[BearerScanService] Persisting findings to database for [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
+            createFindingService.saveFindings(
+                    createFindingService.mapBearerScanToFindings(bearerScanSecurity, codeRepo, codeRepoBranch),
+                    codeRepoBranch, codeRepo, Finding.Source.SAST, null);
 
-        if (bearerScanDataflow != null && bearerScanDataflow.getDataTypes() != null) {
-            createAppDataTypeService.getDataTypesForCodeRepo(codeRepo, bearerScanDataflow);
+            if (bearerScanDataflow != null && bearerScanDataflow.getDataTypes() != null) {
+                createAppDataTypeService.getDataTypesForCodeRepo(codeRepo, bearerScanDataflow);
+            }
         }
 
         log.info("[BearerScanService] LLM evaluation completed for [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
+    }
+
+    /**
+     * Rebuilds a Bearer security report DTO from persisted SAST findings so LLM verification
+     * can run without a fresh Bearer scan.
+     */
+    private BearerScanSecurity toBearerScanSecurity(List<Finding> findings) {
+        BearerScanSecurity scan = new BearerScanSecurity();
+        scan.setCritical(new ArrayList<>());
+        scan.setHigh(new ArrayList<>());
+        scan.setMedium(new ArrayList<>());
+        scan.setLow(new ArrayList<>());
+        for (Finding finding : findings) {
+            Item item = toItem(finding);
+            switch (finding.getSeverity()) {
+                case CRITICAL -> scan.getCritical().add(item);
+                case HIGH -> scan.getHigh().add(item);
+                case MEDIUM -> scan.getMedium().add(item);
+                case LOW -> scan.getLow().add(item);
+                default -> { }
+            }
+        }
+        return scan;
+    }
+
+    private Item toItem(Finding finding) {
+        Item item = new Item();
+        Vulnerability vulnerability = finding.getVulnerability();
+        if (vulnerability != null) {
+            item.setTitle(vulnerability.getName());
+            item.setDescription(vulnerability.getDescription());
+            // SAST findings persist Bearer documentation_url in recommendation; ref is unused.
+            String docs = firstNonBlank(vulnerability.getRef(), vulnerability.getRecommendation());
+            item.setDocumentationUrl(docs);
+            item.setId(ruleIdFromRef(docs));
+        }
+        String location = finding.getLocation();
+        if (location != null) {
+            int colon = location.lastIndexOf(':');
+            if (colon > 0) {
+                item.setFilename(location.substring(0, colon));
+                try {
+                    item.setLineNumber(Integer.parseInt(location.substring(colon + 1)));
+                } catch (NumberFormatException ignored) {
+                    item.setFilename(location);
+                }
+            } else {
+                item.setFilename(location);
+            }
+        }
+        String explanation = finding.getExplanation();
+        if (explanation != null && explanation.startsWith(CODE_EXTRACT_PREFIX)) {
+            item.setCodeExtract(explanation.substring(CODE_EXTRACT_PREFIX.length()));
+        } else if (explanation != null && !explanation.isBlank()) {
+            item.setCodeExtract(explanation);
+        }
+        return item;
+    }
+
+    static String ruleIdFromRef(String ref) {
+        if (ref == null || ref.isBlank()) {
+            return null;
+        }
+        int idx = ref.lastIndexOf("/rules/");
+        if (idx < 0) {
+            return null;
+        }
+        String id = ref.substring(idx + "/rules/".length());
+        int end = id.length();
+        int slash = id.indexOf('/');
+        int query = id.indexOf('?');
+        int hash = id.indexOf('#');
+        if (slash >= 0) {
+            end = Math.min(end, slash);
+        }
+        if (query >= 0) {
+            end = Math.min(end, query);
+        }
+        if (hash >= 0) {
+            end = Math.min(end, hash);
+        }
+        id = id.substring(0, end).trim();
+        return id.isEmpty() ? null : id;
+    }
+
+    private static String firstNonBlank(String a, String b) {
+        if (a != null && !a.isBlank()) {
+            return a;
+        }
+        if (b != null && !b.isBlank()) {
+            return b;
+        }
+        return null;
     }
 
     /**
@@ -248,18 +376,22 @@ public class SASTService {
 
         // Keep the last stderr lines so the real cause is visible if bearer fails.
         List<String> errorLines = Collections.synchronizedList(new ArrayList<>());
+        StringBuilder stdout = new StringBuilder();
         Integer exitCode = null;
 
         ExecutorService executor = Executors.newFixedThreadPool(2);
 
         try {
-            // Stream gobbler for process output
+            // Stream gobbler for process output — kept so --output can be recovered if Bearer writes JSON to stdout.
             executor.submit(() -> {
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                     while (!Thread.currentThread().isInterrupted()) {
                         String line = reader.readLine();
                         if (line == null) break;
-                        // Optionally process the output
+                        if (stdout.length() > 0) {
+                            stdout.append('\n');
+                        }
+                        stdout.append(line);
                     }
                 } catch (IOException e) {
                     log.error("Error reading process output", e);
@@ -291,13 +423,63 @@ public class SASTService {
                 exitCode = process.exitValue();
             }
         } finally {
-            executor.shutdownNow(); // Shutdown the executor to stop stream gobblers
+            executor.shutdown();
+            try {
+                if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
             if (process.isAlive()) {
                 process.destroyForcibly();
             }
         }
 
-        return new ProcessResult(exitCode == null ? -1 : exitCode, new ArrayList<>(errorLines));
+        return new ProcessResult(exitCode == null ? -1 : exitCode, new ArrayList<>(errorLines), stdout.toString());
+    }
+
+    /**
+     * Some Bearer versions write the JSON report to stdout even when {@code --output} is set.
+     * If the output file is empty or not JSON, persist a JSON document recovered from stdout.
+     */
+    private void recoverReportFromStdout(File reportFile, ProcessResult result) {
+        if (!isEmptyReport(reportFile) && looksLikeJson(reportFile)) {
+            return;
+        }
+        String json = extractJsonDocument(result.stdout());
+        if (json == null) {
+            return;
+        }
+        try {
+            Files.writeString(reportFile.toPath(), json, StandardCharsets.UTF_8);
+            log.info("[BearerScanService] Recovered Bearer JSON report from stdout into {}", reportFile.getName());
+        } catch (IOException e) {
+            log.warn("[BearerScanService] Failed to persist recovered Bearer stdout report: {}", e.getMessage());
+        }
+    }
+
+    private String extractJsonDocument(String stdout) {
+        if (stdout == null) {
+            return null;
+        }
+        String trimmed = stdout.trim();
+        int objectStart = trimmed.indexOf('{');
+        int arrayStart = trimmed.indexOf('[');
+        int start = -1;
+        if (objectStart >= 0 && arrayStart >= 0) {
+            start = Math.min(objectStart, arrayStart);
+        } else if (objectStart >= 0) {
+            start = objectStart;
+        } else if (arrayStart >= 0) {
+            start = arrayStart;
+        }
+        if (start < 0) {
+            return null;
+        }
+        String candidate = trimmed.substring(start).trim();
+        return (candidate.startsWith("{") || candidate.startsWith("[")) ? candidate : null;
     }
 
     /**
@@ -358,8 +540,8 @@ public class SASTService {
         }
     }
 
-    /** Holds the outcome of a subprocess: exit code and captured stderr lines. */
-    private record ProcessResult(int exitCode, List<String> errorLines) {
+    /** Holds the outcome of a subprocess: exit code, captured stderr lines, and stdout. */
+    private record ProcessResult(int exitCode, List<String> errorLines, String stdout) {
         String stderr() {
             return String.join(System.lineSeparator(), errorLines);
         }

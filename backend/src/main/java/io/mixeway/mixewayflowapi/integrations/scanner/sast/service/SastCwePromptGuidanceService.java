@@ -2,8 +2,10 @@ package io.mixeway.mixewayflowapi.integrations.scanner.sast.service;
 
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @Service
@@ -13,27 +15,55 @@ public class SastCwePromptGuidanceService {
     private static final Map<VulnerabilityFamily, List<String>> FAMILY_GUIDANCE = buildFamilyGuidance();
 
     public String buildGuidance(SastRuleMetadata metadata) {
-        if (metadata == null || metadata.cweIds() == null || metadata.cweIds().isEmpty()) {
+        if (metadata == null) {
             return "";
         }
-
+        List<String> cwes = metadata.cweIds() == null ? List.of() : metadata.cweIds();
         StringBuilder sb = new StringBuilder();
-        sb.append("## CWE-specific review guidance\n");
-        sb.append("Apply the checklist for every CWE attached to this finding before deciding the verdict.\n");
-        sb.append("Remediation (all CWEs): when TRUE_POSITIVE, remediation_code must rewrite the flagged code extract ");
-        sb.append("and nearby local context — same identifiers, call site, and sink. Do not invent a standalone textbook ");
-        sb.append("example with placeholder names (expected/actual/userInput) unless those exact names appear in the finding.\n");
-        for (String cwe : metadata.cweIds()) {
-            String normalized = normalizeCwe(cwe);
-            List<String> checks = CWE_GUIDANCE.getOrDefault(normalized,
-                    FAMILY_GUIDANCE.getOrDefault(metadata.family(), FAMILY_GUIDANCE.get(VulnerabilityFamily.GENERAL)));
-            sb.append("CWE-").append(normalized).append(" checklist:\n");
-            for (String check : checks) {
-                sb.append("- ").append(check).append('\n');
+        if (cwes.isEmpty()) {
+            List<String> familyChecks = FAMILY_GUIDANCE.getOrDefault(metadata.family(),
+                    FAMILY_GUIDANCE.get(VulnerabilityFamily.GENERAL));
+            if (familyChecks != null && !familyChecks.isEmpty()) {
+                sb.append(renderGuidance(metadata.family() == null ? "family" : metadata.family().name(), familyChecks));
             }
+        } else {
+            sb.append(guidanceHeader());
+            for (String cwe : cwes) {
+                String normalized = normalizeCwe(cwe);
+                List<String> checks = CWE_GUIDANCE.getOrDefault(normalized,
+                        FAMILY_GUIDANCE.getOrDefault(metadata.family(), FAMILY_GUIDANCE.get(VulnerabilityFamily.GENERAL)));
+                sb.append("CWE-").append(normalized).append(" checklist:\n");
+                appendChecks(sb, checks);
+            }
+            sb.append('\n');
         }
+        appendGoLanguageGuidance(sb, metadata);
+        return sb.toString();
+    }
+
+    private static String guidanceHeader() {
+        return "## CWE-specific review guidance\n"
+                + "Apply the checklist for every CWE attached to this finding before deciding the verdict.\n"
+                + "Remediation (all CWEs): when TRUE_POSITIVE, remediation_code must rewrite the flagged code extract "
+                + "and nearby local context — same identifiers, call site, and sink. Do not invent a standalone textbook "
+                + "example with placeholder names (expected/actual/userInput) unless those exact names appear in the finding.\n";
+    }
+
+    private static String renderGuidance(String label, List<String> checks) {
+        StringBuilder sb = new StringBuilder(guidanceHeader());
+        sb.append(label).append(" checklist:\n");
+        appendChecks(sb, checks);
         sb.append('\n');
         return sb.toString();
+    }
+
+    private static void appendChecks(StringBuilder sb, List<String> checks) {
+        if (checks == null) {
+            return;
+        }
+        for (String check : checks) {
+            sb.append("- ").append(check).append('\n');
+        }
     }
 
     private String normalizeCwe(String cwe) {
@@ -97,6 +127,14 @@ public class SastCwePromptGuidanceService {
                 "Identify the command string/argument list and whether user-controlled data reaches shell interpretation.",
                 "Prefer TRUE_POSITIVE when untrusted input reaches shell execution without argument separation or allowlist validation.",
                 "A fixed executable with shell=false and a structured argument list is not shell injection; assess only option/argument injection if an attacker can inject dangerous flags.",
+                "Go: exec.Command(name, args...) / exec.CommandContext never invoke a shell. A literal/constant executable "
+                        + "plus extra argv (including os.Args[1:]) is not command injection. TRUE_POSITIVE only if untrusted "
+                        + "web/API data reaches the executable name, a shell wrapper (bash -c / sh -c / cmd.exe), or "
+                        + "dangerous flags of a privileged binary.",
+                "Developer tool / CLI context (same threat model as CWE-22): tools/ under //go:build ignore, "
+                        + "cmd/ generators, linters, golangci-lint wrappers, and `go run` helpers are NOT attack surfaces. "
+                        + "os.Args, flag.*, cobra/urfave args are developer-controlled → FALSE_POSITIVE. Do NOT mark "
+                        + "UNCERTAIN because 'a developer might pass malicious flags'.",
                 "settings.NAME (e.g. PRE_CONSUME_SCRIPT) is only a config indirection — search where that setting is assigned before trusting it.",
                 "FALSE_POSITIVE when the setting value is proven operator-only (env/hardcoded deploy config) or argv is allowlisted/fixed; TRUE_POSITIVE when users/admins can set the command via UI/API/DB.",
                 "UNCERTAIN when settings.X reaches subprocess but the setting's value origin is not found — do not invent trust from the settings. prefix alone."));
@@ -104,12 +142,61 @@ public class SastCwePromptGuidanceService {
                 "Identify source, HTML/JS/URL/attribute/header sink context, and escaping applied for that exact context.",
                 "TRUE_POSITIVE requires attacker-controlled content reaching an executable/browser-interpreted sink or an HTTP header/response-line sink without context-appropriate neutralization.",
                 "AJAX/fetch responses, backend JSON fields, message events, URL fragments, uploaded filenames, and database rich text are not automatically trusted.",
+                "innerHTML/insertAdjacentHTML/jQuery.html() classification with deterministic rules:",
+                "FALSE_POSITIVE when STRONG evidence of safety (cite the specific evidence):",
+                "  • Visible sanitizer in code: DOMPurify.sanitize(), bleach.clean(), html/template auto-escape, "
+                        + "Rails sanitize(), htmlspecialchars(). Cite 'visible sanitizer call'.",
+                "  • Render/markup API with sanitized field: endpoint path contains /render, /markdown, /format, "
+                        + "/template, /markup AND response field indicates sanitization (.sanitizedHtml, .renderedMarkdown, "
+                        + ".safeContent). Cite 'render API with sanitized field'.",
+                "  • Static content proven: from config file, build-time data, hardcoded strings. "
+                        + "Cite 'static application content'.",
+                "  • CSP protection: script-src restrictions prevent inline execution. Cite 'CSP blocks inline scripts'.",
+                "TRUE_POSITIVE when STRONG evidence of risk:",
+                "  • External domain: fetch('https://other-domain.com').",
+                "  • Client-side concatenation: innerHTML = '<div>' + data + '</div>'.",
+                "  • Known UGC endpoints WITHOUT sanitization evidence: /comment, /post, /message, /review, /profile "
+                        + "with generic fields (.text, .body, .message, .html, .content) and no visible sanitizer/CSP.",
+                "  • Explicit 'unsanitized', 'raw', 'untrusted' in variable/field names.",
+                "UNCERTAIN when ambiguous:",
+                "  • Same-origin endpoint (relative URL, /api/...) BUT not clearly render API or UGC endpoint, "
+                        + "AND generic field name (.html, .content), AND no visible sanitizer or CSP. "
+                        + "Example: fetch('/api/data').then(d => el.innerHTML = d.html).",
+                "  • Render API BUT generic field: /api/render with field .html (not .sanitizedHtml).",
+                "  • Dynamic URL with unknown source: fetch(getURL()) where getURL() is not visible.",
+                "Guidance: If doubt about sanitization exists, prefer UNCERTAIN over FALSE_POSITIVE. "
+                        + "If typical dangerous pattern (UGC + generic field), prefer TRUE_POSITIVE over UNCERTAIN. "
+                        + "Do not assume same-origin means sanitized - require proof.",
+                "html tagged templates / htmlRaw for static literals are FALSE_POSITIVE. Cite 'html tagged template'.",
+                "TRUE_POSITIVE when a raw user string (topic name, comment, query param, unsanitized JSON field) "
+                        + "reaches innerHTML / jQuery replaceWith/html without server or client sanitizer.",
                 "Regex capture groups (Matcher.group / group(1)), URL decoding, and path '..' stripping are NOT XSS or header-injection neutralizers; they can still return attacker payloads such as <script>…</script> or CR/LF.",
                 "Do not confuse a different sanitized variable with the variable actually written to the sink/header.",
                 "i18n/translate/get_translation/format/render helpers are NOT XSS neutralizers by themselves — follow their payload argument, not only the helper name.",
                 "Self-DOM / same-node round-trip (read el.innerHTML/outerHTML → transform → write the same property) is usually FALSE_POSITIVE unless evidence shows that node was previously filled with attacker-controlled HTML (URL/postMessage/user edit).",
                 "Do not mark UNCERTAIN only because a wrapper helper is unfamiliar when the payload origin is visible in the same line (e.g. document.body.innerHTML passed through translate).",
-                "FALSE_POSITIVE requires framework auto-escaping, a text-only sink such as textContent/createTextNode, CR/LF stripping for header sinks, sanitizer proven complete for the exact sink context, or a proven same-node DOM round-trip of non-attacker content."));
+                "JSON HTTP responses are not XSS sinks: res.json / NextResponse.json / Response.json, or res.send/res.end/write after Content-Type application/json (or application/problem+json), do not execute as HTML in a browser. Assess CWE-113 separately only if CR/LF reach a header name/value. res.send(string) without a JSON content type (Express often defaults to text/html) remains an XSS candidate; text/html + send/template/innerHTML remains TRUE_POSITIVE.",
+                "Follow the sanitizer callee body — a helper named sanitize*/clean*/escape* is never enough. "
+                        + "High-confidence FALSE_POSITIVE only when the SAME sink variable is processed by a library "
+                        + "with a tight default/safelist for HTML (DOMPurify.sanitize with no ADD_TAGS/ADD_ATTR, "
+                        + "sanitize-html/bleach.clean/JSoup Safelist.basic or tighter, OWASP Encoder.forHtml) and "
+                        + "that output is what reaches the sink.",
+                "Custom/self-made sanitizers and library calls with relaxed options are not automatic FALSE_POSITIVE. "
+                        + "Follow the options object. Relaxed signals: allowedAttributes false/all, allowVulnerableTags, "
+                        + "parseStyleAttributes false, extra tags such as style/link/meta/iframe/svg, ADD_TAGS/ADD_ATTR, "
+                        + "Safelist.relaxed plus addAttributes, bleach extra tags. For innerHTML, <script> via innerHTML "
+                        + "does not execute — judge leftover on*, javascript:/data: on href/src/srcset/action, and "
+                        + "unsanitized CSS in style tags or style attributes. If those are not closed, TRUE_POSITIVE "
+                        + "or UNCERTAIN (never confidence >=0.85 FALSE_POSITIVE). If the callee body is not in context, "
+                        + "UNCERTAIN — do not invent completeness from the helper name.",
+                "A manual tag/script blocklist is NOT a sanitizer: querySelector('script').remove(), stripping <style>, regex </script>, or textContent taken AFTER innerHTML was assigned. XSS occurs at the innerHTML write; keep TRUE_POSITIVE for that pattern.",
+                "Go html/template auto-escapes string/fmt values. template.HTML / template.JS / template.URL mark trusted content — "
+                        + "TRUE_POSITIVE only if that exact value is attacker-controlled and skips the app's sanitizer. "
+                        + "htmlutil.HTMLFormat/HTMLPrintf escape arguments; a literal format string typed template.HTML is FALSE_POSITIVE. "
+                        + "Markup pipelines (markdown/org/chroma) that post-process with bluemonday/NeedPostProcess are FALSE_POSITIVE "
+                        + "at the renderer sink. Code-search/blame/diff highlighting via chroma is escaped source, not raw HTML. "
+                        + "i18n locale strings (Crowdin/ini) cast to template.HTML are not user input.",
+                "FALSE_POSITIVE requires framework auto-escaping, a text-only sink such as textContent/createTextNode, a JSON (not HTML) HTTP response, CR/LF stripping for header sinks, a tight library sanitizer/safelist proven on the exact sink variable, a proven same-node DOM round-trip of non-attacker content, render API with sanitized field, visible sanitizer call, or CSP protection."));
         guidance.put("89", List.of(
                 "Identify the exact SQL value, source, type, and query construction sink.",
                 "TRUE_POSITIVE is mandatory when the SQL value is not a hardcoded/literal/constant origin AND the shown code clearly concatenates or interpolates that string into dynamic SQL without parameterization or a complete allowlist.",
@@ -121,7 +208,12 @@ public class SastCwePromptGuidanceService {
                 "Prefer UNCERTAIN over FALSE_POSITIVE only when both (a) origin is unproven AND (b) the query is not clearly built by concatenating/interpolating a non-literal string. Do not assume config loaders (getSqlString/getQuery/etc.) are trusted without tracing where their values come from.",
                 "DDL/identifier concatenation (CREATE INDEX/TABLE, quoted table/column names built with +/append) is still SQL injection when field/tableName/nativeName/json values are non-literal. Double-quoting identifiers is NOT a neutralizer; require allowlist validation.",
                 "origin-tag all-callsites-pass-literal-arg applies only when the sink SQL argument itself is the call-site literal. If the method builds SQL locally from this.field / getters / JSON / resource names, call-site ctor literals do NOT justify FALSE_POSITIVE.",
-                "RISKY SCHEME (SQL only): proven application-safe / known-trusted source (literals/constants/literal call sites/internal_call/config) + SQL still built by string concatenation/interpolation => TRUE_POSITIVE with confidence 0.50-0.60 (~0.55), NOT FALSE_POSITIVE and NOT UNCERTAIN merely because current origin is trusted or unclear. Rationale: the helper may later be reused with user input. Raise above 0.60 only with a current untrusted source; pure literal SQL with no concat / numeric / parameterized => FALSE_POSITIVE.",
+                "RISKY SCHEME (SQL only): proven application-safe / known-trusted source (literals/constants/literal call sites/internal_call/config) + SQL *text* still built by string concatenation/interpolation => TRUE_POSITIVE with confidence 0.50-0.60 (~0.55). "
+                        + "RISKY SCHEME does NOT apply when the query text is a literal/constant and remaining arguments are bound parameters "
+                        + "(Go database/sql or xorm/gorm Exec(query, args...), Java PreparedStatement, ?/$1 placeholders). "
+                        + "A wrapper that does args := []any{sql}; args = append(args, ids...); engine.Exec(args...) with a literal sql "
+                        + "is parameterization → FALSE_POSITIVE, not RISKY SCHEME. "
+                        + "Raise above 0.60 only with a current untrusted source; pure literal SQL with no concat / numeric / parameterized => FALSE_POSITIVE.",
                 "When TRUE_POSITIVE, remediation_code must rewrite the flagged SQL construction site (same variables/sink). Never invent an unrelated query (e.g. SELECT username/password). Bind VALUES; allowlist/validate identifiers or SQL fragments that placeholders cannot bind."));
         guidance.put("90", guidance.get("89"));
         guidance.put("113", List.of(
@@ -143,16 +235,30 @@ public class SastCwePromptGuidanceService {
                 "Server logs, telemetry, files, HTTP responses, and user-visible exception details can be untrusted audiences depending on access.",
                 "ValidationError / ValueError / GraphQL enum or form-field messages that expose only generic validation text, "
                         + "currency codes, enum values, or field names — without password/token/api_key/secret/PII — are FALSE_POSITIVE.",
-                "api_key, password, phone, email, token, or credential values in exception messages are TRUE_POSITIVE when "
-                        + "reachable by clients/logs; keep UNCERTAIN only when both sensitivity and audience remain unproven.",
-                "Do not mark TRUE_POSITIVE for local-only diagnostic output without concrete sensitive content or an external exposure path."));
+                "HTTP exceptions returned to the same client (ForbiddenException / UnauthorizedException / BadRequestException / "
+                        + "HttpException / ResponseStatusException and equivalents) that interpolate fields from the same request "
+                        + "(command/dto/req/body) or from a record already scoped to the authenticated principal — including "
+                        + "email/phone — are same-user validation feedback → FALSE_POSITIVE, not third-party disclosure.",
+                "api_key, password, token, secret, cookie, or Authorization values in exception messages remain TRUE_POSITIVE. "
+                        + "Email/phone in server logs or telemetry (logger.info/error, CWE-532) remain TRUE_POSITIVE. "
+                        + "Data belonging to a different user (lookup by attacker-controlled id without authorization) remains TRUE_POSITIVE.",
+                "Keep UNCERTAIN only when both sensitivity and audience remain unproven, or when it is unclear whether the "
+                        + "echoed record is the caller's own.",
+                "Do not mark TRUE_POSITIVE for local-only diagnostic output without concrete sensitive content or an external exposure path.",
+                "Go pprof: import \"net/http/pprof\" only registers http.DefaultServeMux. FALSE_POSITIVE when the public "
+                        + "server uses chi/echo/gin/custom mux and pprof is served on localhost (or gated by a flag). "
+                        + "TRUE_POSITIVE when ListenAndServe(addr, nil) / DefaultServeMux is the public handler. "
+                        + "Cite 'pprof not on public ServeMux' in false_positive_evidence."));
         guidance.put("208", List.of(
                 "CWE-208 is about observable timing discrepancies in security-sensitive comparisons (timing side-channel), NOT about information disclosure.",
-                "TRUE_POSITIVE requires a time-variable comparison of secret/credential values (e.g. password, token, hash comparison) where an attacker can measure the response time difference to infer the value.",
-                "typeof / .length > 0 / null/empty / isEmpty presence checks are NOT secret comparisons → FALSE_POSITIVE (even if the variable is named token/secret).",
+                "Judge the flagged extract. Identifier names (token/hash/password/username) in comments or nearby lines are not proof of a secret compare.",
+                "TRUE_POSITIVE only when the flagged comparison is a secret/credential value (password, HMAC, session secret) that an attacker can time, OR a login/forgot-password oracle that enumerates accounts by returning faster when the user does not exist than when the password is wrong.",
+                "typeof / .length > 0 / null/empty / isEmpty presence checks are NOT secret comparisons → FALSE_POSITIVE (even if the variable is named token/secret/password).",
+                "Username/email: TRUE_POSITIVE when the extract is an authentication oracle (early return / different error if user missing). FALSE_POSITIVE for admin uniqueness, profile update, or display-name compares. Remediation for enumeration is dummy password hashing and identical responses — not crypto.timingSafeEqual(username, stored).",
+                "oauth_token (OAuth1 public identifier), Cloudinary/upload public_id, file/schema/package.json hashes, and UI/tab token resync are NOT CWE-208 secrets → FALSE_POSITIVE.",
                 "Parser/tokenizer/lexer discriminators such as type == \"hash\", type == \"word\", kind === 'token' are NOT CWE-208 → FALSE_POSITIVE (the quoted word is a token class name, not a secret hash/digest).",
                 "Math.random() / scheduling jitter / cleanup triggers / load balancing / rate sampling are NOT CWE-208; these are non-security uses → FALSE_POSITIVE.",
-                "When TRUE_POSITIVE, remediation_code must rewrite the flagged comparison site with the language-appropriate constant-time API (JS: crypto.timingSafeEqual, Java: MessageDigest.isEqual, Python: hmac.compare_digest), keeping the same compared expressions — never paste a Java API into JavaScript or invent unrelated expected/actual placeholders.",
+                "When TRUE_POSITIVE for a secret compare, remediation_code must rewrite the flagged comparison with the language-appropriate constant-time API (JS: crypto.timingSafeEqual, Java: MessageDigest.isEqual, Python: hmac.compare_digest), keeping the same compared expressions. When TRUE_POSITIVE for username/email enumeration, do not use those APIs on the identifier — hash a dummy password and return the same error in both branches.",
                 "FALSE_POSITIVE requires proof the comparison is not security-sensitive, uses constant-time comparison, or the timing difference is not observable/exploitable."));
         guidance.put("209", guidance.get("200"));
         guidance.put("259", List.of(
@@ -176,11 +282,27 @@ public class SastCwePromptGuidanceService {
                 "Identify algorithm/mode/padding and whether it is used for real security-sensitive encryption.",
                 "ECB and unsafe/unauthenticated CBC in production cryptographic code should be treated as TRUE_POSITIVE unless strong counter-evidence exists.",
                 "CBC needs a unique unpredictable IV and authentication/MAC; static IVs or unauthenticated CBC should not be downgraded.",
-                "Do not downgrade weak cryptography because source taint is unknown; the primitive choice itself is the issue."));
+                "Do not downgrade weak cryptography because source taint is unknown; the primitive choice itself is the issue.",
+                "Go tls.Config: MinVersion 0 / unset uses the crypto/tls default (TLS 1.2+ on supported Go). "
+                        + "Missing MinVersion is FALSE_POSITIVE — cite 'Go crypto/tls default MinVersion' or state that "
+                        + "the default is TLS 1.2+. Do not require a magic phrase when MinVersion is unset/0.",
+                "A name→TLS-version lookup map that includes tls.VersionTLS10/TLS11 (or 'tlsv1.0') is operator "
+                        + "configuration, not an active downgrade. FALSE_POSITIVE unless MinVersion is hardcoded to 1.0/1.1. "
+                        + "Cite 'TLS version map is not active downgrade'.",
+                "TRUE_POSITIVE for an explicit MinVersion: tls.VersionTLS10/TLS11 assignment, or InsecureSkipVerify: true with no config gate."));
         guidance.put("328", List.of(
                 "Determine whether MD5/SHA-1 is used for a security-sensitive purpose or a non-security checksum/cache key.",
-                "TRUE_POSITIVE for password hashing, token/signature security, or tamper-resistant integrity.",
+                "TRUE_POSITIVE for password hashing, token/signature security, or tamper-resistant integrity where THIS application chose the weak digest (not a wire protocol).",
                 "HMAC-SHA1/HMAC-MD5 is not equivalent to a plain hash; do not flag HMAC solely because the underlying digest is SHA-1/MD5.",
+                "Import-only findings (import \"crypto/md5\", import \"crypto/sha1\", from hashlib import md5) are NOT vulnerabilities. Judge the call site purpose; if the scan flagged only the import, FALSE_POSITIVE.",
+                "FALSE_POSITIVE for third-party protocol identifiers and non-security fingerprints. Cite 'third-party protocol' or 'non-security checksum' in false_positive_evidence:",
+                "  • Git object IDs / git hash-object / sha1Pattern — SHA-1 is Git's native object format (SHA-256 is optional).",
+                "  • Have I Been Pwned / api.pwnedpasswords.com k-anonymity — the API requires SHA-1 prefixes. CheckPassword/pwn in the name is NOT password storage.",
+                "  • npm SRI sha1-/sha512- comparing a tarball to the publisher-declared integrity string.",
+                "  • Maven/RubyGems sidecar .md5/.sha1 checksum files; Alpine APK Q1+base64(SHA-1) and apk index signatures; Chef Mixlib X-Ops-Sign v1.0–1.2 (v1.3 is SHA-256).",
+                "  • GitHub Actions artifact-name MD5 URL segments and x-actions-results-md5; Matrix txnId = hash(payload) for idempotency.",
+                "  • Cache keys, UI element ids, commit-status context hashes, MultiHasher computing md5+sha1+sha256+sha512 for registries.",
+                "Do not treat the word password/pass/login in a path, comment, or 'not used for password hashing' sentence as proof of password hashing.",
                 "FALSE_POSITIVE can be correct for ETags, cache keys, deduplication, CSPRNG-derived formatting, or third-party protocol identifiers."));
         guidance.put("330", List.of(
                 "Identify whether randomness is used for security: tokens, keys, salts, session ids, nonces, or crypto.",
@@ -217,8 +339,16 @@ public class SastCwePromptGuidanceService {
         guidance.put("918", List.of(
                 "Identify URL/host source, outbound request sink, and network boundary.",
                 "TRUE_POSITIVE requires user-controlled target reaching server-side HTTP/network request without allowlist validation.",
+                "Do not stop at http.NewRequest / client.Get. The security boundary is the Client/Transport that performs Do(): "
+                        + "DialContext, hostmatcher, ALLOWED_HOST_LIST, private-IP deny, no-redirect policy. "
+                        + "A user-configurable webhook URL with those controls on the HTTP client is not 'no validation'.",
+                "A helper that only builds *http.Request / HttpRequest (NewRequest, newRequest) is not the SSRF sink. "
+                        + "Follow the caller that Do()/send()s it — a shared webhook/HTTP client, Transport, or host allow-list. "
+                        + "If that client is allow-listed, FALSE_POSITIVE at the builder too. "
+                        + "Cite 'host allow-list on HTTP client'.",
                 "Validation must account for redirects, DNS rebinding, localhost/private IP ranges, alternate schemes, and URL parser confusion.",
-                "FALSE_POSITIVE requires strict scheme/host/IP allowlist and protection against DNS/private IP bypasses."));
+                "FALSE_POSITIVE requires strict scheme/host/IP allowlist and protection against DNS/private IP bypasses. "
+                        + "Cite 'host allow-list on HTTP client' in false_positive_evidence when that Transport/dialer is shown."));
         guidance.put("1004", List.of(
                 "Cookie flag findings are misconfiguration/API-usage findings, not taint findings.",
                 "TRUE_POSITIVE is mandatory when HttpOnly is missing or false on a cookie set in non-test code. Do not require proving the cookie is sensitive.",
@@ -228,11 +358,15 @@ public class SastCwePromptGuidanceService {
                         + "a framework guarantee that sets HttpOnly, or a test-only path."));
         guidance.put("614", List.of(
                 "Cookie flag findings are misconfiguration/API-usage findings, not taint findings.",
-                "TRUE_POSITIVE is mandatory when Secure is missing or false on a cookie set in non-test code. Do not require proving the cookie is sensitive.",
+                "TRUE_POSITIVE is mandatory when Secure is omitted or hardcoded false on a cookie set in non-test code. Do not require proving the cookie is sensitive.",
                 "Do NOT mark UNCERTAIN because cookie sensitivity is unclear — missing Secure is enough.",
-                "FALSE_POSITIVE only when existing code proves Secure is enabled in the language/framework idiom "
+                "Secure bound to TLS/HTTPS session config (Go http.Cookie{Secure: setting.SessionConfig.Secure}, "
+                        + "Django SESSION_COOKIE_SECURE, Express cookie.secure from config) is not 'missing' — "
+                        + "self-hosted apps that also speak HTTP must not force Secure: true. "
+                        + "FALSE_POSITIVE; cite 'framework guarantee' and 'Secure bound to HTTPS/session config'.",
+                "FALSE_POSITIVE when existing code proves Secure is enabled in the language/framework idiom "
                         + "(e.g. setSecure(true), secure: true, Secure: true, secure=True, SESSION_COOKIE_SECURE), "
-                        + "an HTTPS-only framework guarantee, or a test-only path."));
+                        + "an HTTPS-only framework guarantee, config-driven Secure for dual HTTP/HTTPS, or a test-only path."));
         guidance.put("1333", List.of(
                 "Identify whether user-controlled input can influence the regex PATTERN (not only the haystack) "
                         + "or whether a fixed catastrophic regex matches attacker-controlled text.",
@@ -325,7 +459,8 @@ public class SastCwePromptGuidanceService {
                 "Identify IV/nonce generation and whether it is unique and unpredictable where required.",
                 "TRUE_POSITIVE requires reused, static, predictable, or attacker-controlled IV/nonce in security-sensitive crypto.",
                 "FALSE_POSITIVE requires correct random/unique IV handling for the selected mode."));
-        guidance.put("346", accessControlGuidance());
+        guidance.put("346", originValidationGuidance());
+        guidance.put("940", originValidationGuidance());
         guidance.put("347", List.of(
                 "Identify what integrity/authenticity check is missing or bypassed "
                         + "(JWT signature, MAC, certificate, or other authenticity check).",
@@ -350,6 +485,7 @@ public class SastCwePromptGuidanceService {
                         + "Do not invent a hardcoded secret; use the project's existing JWT secret/config symbol "
                         + "when visible, otherwise write a clear placeholder and say where the key must come from."));
         guidance.put("353", guidance.get("347"));
+        guidance.put("276", permissionGuidance());
         guidance.put("378", permissionGuidance());
         guidance.put("384", List.of(
                 "Identify session id creation/rotation and authentication transition.",
@@ -432,6 +568,28 @@ public class SastCwePromptGuidanceService {
                 "FALSE_POSITIVE requires framework-enforced authorization or an explicit guard on the relevant path.");
     }
 
+    private static List<String> originValidationGuidance() {
+        return List.of(
+                "Identify the protected operation/resource and the origin/authorization check guarding it.",
+                "TRUE_POSITIVE requires reachable access or a side-effect without the required origin, privilege, or identity check.",
+                "FALSE_POSITIVE requires framework-enforced authorization or an explicit guard on the relevant path.",
+                "postMessage / addEventListener('message') / onmessage: missing event.origin in the listener itself is not "
+                        + "TRUE_POSITIVE if a callee that receives event / event.data / event.origin rejects untrusted origins "
+                        + "(https scheme + host allowlist such as === 'https://…', endsWith('.example.com'), "
+                        + "new URL(event.origin).hostname) BEFORE any state, DOM, or network side-effect. Follow parse* / "
+                        + "isTrusted*Origin / isAllowedOrigin helpers in the same file.",
+                "event.source === iframe.contentWindow (or === expectedWindow) proves the sender is that frame — "
+                        + "FALSE_POSITIVE even without event.origin. Cite 'event.source window check'.",
+                "postMessage(..., '*') with a non-secret payload (resize, scroll, theme, navigation hint) is hardening, "
+                        + "not TRUE_POSITIVE. TRUE_POSITIVE only if secrets/tokens/PII are posted to *.",
+                "Keep TRUE_POSITIVE when an untrusted message can reach a side-effect; origin === '*' / missing scheme / "
+                        + "checking only event.data.type / checking origin AFTER innerHTML, eval, or further postMessage does not count "
+                        + "unless the payload is proven non-secret and event.source is bound to the expected window.",
+                "Prefer UNCERTAIN when the listener is shown but the callee body that would check origin is not in context.",
+                "CORS / Access-Control-Allow-Origin: wildcard or reflected origin with credentials remains TRUE_POSITIVE; "
+                        + "a strict allowlist or non-credentialed public data may be FALSE_POSITIVE.");
+    }
+
     private static List<String> missingAuthenticationGuidance() {
         return List.of(
                 "This is a missing-authentication / unauthenticated sensitive operation finding, not classic source-to-sink taint.",
@@ -451,9 +609,49 @@ public class SastCwePromptGuidanceService {
 
     private static List<String> permissionGuidance() {
         return List.of(
-                "Identify file/resource permissions and who can read or write them.",
-                "TRUE_POSITIVE requires overly broad permissions on sensitive or executable resources.",
-                "FALSE_POSITIVE requires non-sensitive resources, safe umask/framework defaults, or test-only scope.");
+                "This is a local OS discretionary-access finding (chmod/WriteFile/OpenFile/mkdir mode), not web/API taint. "
+                        + "The attacker is another Unix UID that can REACH the inode — not a logged-in application user "
+                        + "and not 'any user of the product'. If no such local principal exists (single-user/container UID, "
+                        + "or others cannot traverse the path), the mode on the leaf file is not exploitable → FALSE_POSITIVE.",
+                "Decode the mode bits before judging. Never treat 'mode is not 0600' or a scanner G302-style rule "
+                        + "(any WriteFile/chmod > 0600) as proof of a vulnerability. "
+                        + "0644/0o644 = rw-r--r-- (owner r/w, group/others read). It is NOT world-writable. "
+                        + "0755/0o755 = rwxr-xr-x (owner r/w/x, group/others r/x). It is NOT world-writable. "
+                        + "World/group WRITE requires bits 0002 / 0020 (0666, 0664, 0777, 0775). "
+                        + "World/group READ is 0004 / 0040. Execute is 0001 / 0010 / 0100.",
+                "Path reachability (mandatory): opening a file requires search (x) on every parent directory. "
+                        + "A 0644/0755 leaf behind 0700 parents, os.MkdirTemp / MkdirTemp (0700), or an application data dir "
+                        + "that others cannot enter is unreachable → FALSE_POSITIVE even if the leaf is world-readable. "
+                        + "Cite parent-dir mode when shown (MkdirAll/MkdirTemp/Chmod on the directory).",
+                "Classify the file contents, not the API name: "
+                        + "(A) secret — private keys, credentials, tokens, TLS material, password files; "
+                        + "(B) public-by-design — *.pub / authorized-key material / known_hosts / README / LICENSE / "
+                        + "static assets / source / templates; "
+                        + "(C) executable — scripts, git hooks, binaries, +x programs meant to be run by the owner; "
+                        + "(D) directory. Judge (A)–(D) with the bits, not with 'least privilege' slogans.",
+                "TRUE_POSITIVE only when a reachable local UID gets a dangerous right: "
+                        + "(1) group/other WRITE on a file the owner later trusts or executes (config, hooks, authorized_keys, "
+                        + "binaries, secrets); or (2) group/other READ of class (A) secrets; or (3) 0777/0666 on a reachable path. "
+                        + "Other-execute of a non-setuid script runs as the executor, not the owner — that is not hijacking "
+                        + "the owner's process and is not TP by itself.",
+                "FALSE_POSITIVE: owner-write-only modes (no 0020/0002) on class (B) public material (0644 on *.pub is the "
+                        + "OpenSSH/ssh-keygen default — do not recommend 0600 for public keys and do not claim 0644 lets "
+                        + "others modify the file); 0755 on class (C) executables/hooks the owner must run; 0755/0711 on "
+                        + "directories; 0644 on README/LICENSE/gitignore/static files; unreachable leaves (0700 parents / "
+                        + "temp dirs); Windows code where POSIX bits are ignored. Do not 'fix' these to 0600/0700.",
+                "UNCERTAIN only if the numeric mode is not in the extract AND searches do not recover it, AND the content "
+                        + "class is unknown. Do not mark UNCERTAIN merely because parent-dir mode was not scanned when the "
+                        + "leaf is clearly class (B) or the bits have no group/other write.",
+                "Remediation_code must keep the same path/call and change only bits that are actually dangerous "
+                        + "(strip group/other write; restrict read on secrets). Do not rewrite 0644→0600 for public files "
+                        + "or 0755→0700 for ordinary executables without a demonstrated reachable local attacker.",
+                "When FALSE_POSITIVE, false_positive_evidence MUST contain 'not world-writable' and either 'rw-r--r--' "
+                        + "(0644/0o644) or 'rwxr-xr-x' (0755/0o755), plus content class (public-by-design / git hook / "
+                        + "source generator). Without those phrases a MISCONFIGURATION validator may override the verdict.",
+                "0o666/0666 is group+other write before umask. unix.Umask / ApplyUmask (typically 0022 → 0644) or a 0700 "
+                        + "temp dir (MkdirTemp) makes the leaf not world-writable in practice. Cite 'umask' and "
+                        + "'not world-writable' → FALSE_POSITIVE hygiene. Bare 0666 on a reachable shared path without "
+                        + "umask remains TRUE_POSITIVE.");
     }
 
     private static List<String> resourceExhaustionGuidance() {
@@ -484,7 +682,7 @@ public class SastCwePromptGuidanceService {
         guidance.put(VulnerabilityFamily.SSRF, CWE_GUIDANCE.get("918"));
         guidance.put(VulnerabilityFamily.TRUST_BOUNDARY, CWE_GUIDANCE.get("501"));
         guidance.put(VulnerabilityFamily.REGEX_DOS, CWE_GUIDANCE.get("1333"));
-        guidance.put(VulnerabilityFamily.ACCESS_CONTROL, accessControlGuidance());
+        guidance.put(VulnerabilityFamily.ACCESS_CONTROL, originValidationGuidance());
         guidance.put(VulnerabilityFamily.CLEAR_TEXT_TRANSMISSION, CWE_GUIDANCE.get("319"));
         guidance.put(VulnerabilityFamily.PERMISSIONS, permissionGuidance());
         guidance.put(VulnerabilityFamily.INSECURE_CONFIG, CWE_GUIDANCE.get("693"));
@@ -495,5 +693,152 @@ public class SastCwePromptGuidanceService {
                 "When TRUE_POSITIVE, remediation_code must rewrite the flagged code extract (same variables/sink), not a generic unrelated example.",
                 "FALSE_POSITIVE requires positive safety evidence; if key facts remain missing, use UNCERTAIN."));
         return guidance;
+    }
+
+    private void appendGoLanguageGuidance(StringBuilder sb, SastRuleMetadata metadata) {
+        if (!isGoRule(metadata)) {
+            return;
+        }
+        sb.append("## Go language review guidance\n");
+        sb.append("Bearer/gosec Go rules match idiomatic APIs. Apply this in addition to the CWE checklist. "
+                + "When FALSE_POSITIVE, copy the required citation phrase into false_positive_evidence so the "
+                + "MISCONFIGURATION/weak-hash validator cannot override you.\n");
+        appendChecks(sb, goChecksFor(metadata));
+        sb.append('\n');
+    }
+
+    private static boolean isGoRule(SastRuleMetadata metadata) {
+        if (metadata == null || metadata.ruleId() == null) {
+            return false;
+        }
+        String id = metadata.ruleId().toLowerCase(Locale.ROOT);
+        return id.startsWith("go_") || id.startsWith("go.") || id.contains("gosec");
+    }
+
+    private static List<String> goChecksFor(SastRuleMetadata metadata) {
+        VulnerabilityFamily family = metadata.family();
+        String ruleId = metadata.ruleId() == null ? "" : metadata.ruleId().toLowerCase(Locale.ROOT);
+        List<String> checks = new ArrayList<>();
+        if (family == VulnerabilityFamily.COMMAND_INJECTION) {
+            checks.addAll(goCommandChecks());
+        } else if (family == VulnerabilityFamily.SQL_INJECTION) {
+            checks.addAll(goSqlChecks());
+        } else if (family == VulnerabilityFamily.XSS) {
+            checks.addAll(goXssChecks());
+        } else if (family == VulnerabilityFamily.WEAK_HASH) {
+            checks.addAll(goWeakHashChecks());
+        } else if (family == VulnerabilityFamily.WEAK_CRYPTO || family == VulnerabilityFamily.INSECURE_CONFIG) {
+            checks.addAll(goTlsChecks());
+            if (ruleId.contains("hash") || ruleId.contains("md5") || ruleId.contains("sha1")) {
+                checks.addAll(goWeakHashChecks());
+            }
+        } else if (family == VulnerabilityFamily.PERMISSIONS) {
+            checks.addAll(goPermissionChecks());
+        } else if (family == VulnerabilityFamily.SSRF) {
+            checks.addAll(goSsrfChecks());
+        } else if (family == VulnerabilityFamily.COOKIE_SECURITY) {
+            checks.addAll(goCookieChecks());
+        } else if (family == VulnerabilityFamily.EXCEPTION_LEAK || family == VulnerabilityFamily.LOGGER_LEAK
+                || ruleId.contains("pprof")) {
+            checks.addAll(goPprofChecks());
+        } else {
+            checks.addAll(goCommonNoiseChecks());
+        }
+        return checks;
+    }
+
+    private static List<String> goCommandChecks() {
+        return List.of(
+                "exec.Command / CommandContext takes (name, args...): no shell, no string splitting. A literal binary "
+                        + "plus os.Args[1:] is extra flags, not injection.",
+                "tools/, build/, //go:build ignore, golangci-lint, go generate helpers → cli_developer_tool FALSE_POSITIVE. "
+                        + "Cite 'developer tool CLI argv'.",
+                "TRUE_POSITIVE only if HTTP/API/user content becomes the executable name or `sh -c` / `bash -c` script.");
+    }
+
+    private static List<String> goSqlChecks() {
+        return List.of(
+                "database/sql, xorm, gorm: Engine.Exec(query, args...) with a string-literal query and `?`/`$1` is "
+                        + "parameterization. Wrappers that do args := []any{sql}; append(ids); Exec(args...) are FALSE_POSITIVE.",
+                "RISKY SCHEME does not apply to bound parameters. int64 ids / strconv.Atoi cannot inject SQL.",
+                "TRUE_POSITIVE: fmt.Sprintf / string concat into the query text itself. Cite 'parameterized Exec with literal SQL' "
+                        + "when FP.");
+    }
+
+    private static List<String> goXssChecks() {
+        return List.of(
+                "html/template escapes strings. template.HTML is a trust marker — FP if the format string is a literal and "
+                        + "args go through htmlutil.HTMLFormat/HTMLPrintf (those escape non-HTML args).",
+                "Markup (markdown/org/chroma) after bluemonday / NeedPostProcess is FP at the renderer. Do not treat "
+                        + "template.HTML(highlightedLines) as XSS when chroma produced the HTML.",
+                "Locale/i18n strings and allowlisted emoji/provider icons are not user HTML. Cite 'html/template auto-escape' "
+                        + "or 'markup sanitizer post-process' when FP.");
+    }
+
+    private static List<String> goWeakHashChecks() {
+        return List.of(
+                "Import of crypto/md5 or crypto/sha1 is never a vulnerability by itself → FALSE_POSITIVE. Judge Sum/New call sites.",
+                "Protocol SHA-1/MD5 that Go forges must speak: Git object IDs, HIBP range API, npm SRI, Maven/RubyGems sidecars, "
+                        + "Alpine APK Q1 checksums, Chef Mixlib 1.0–1.2, Actions artifact MD5 names, Matrix txnId. "
+                        + "Cite 'third-party protocol'.",
+                "Non-security: HashFilePathForWebUI, commit-status context hash, cache keys, MultiHasher (md5+sha1+sha256+sha512). "
+                        + "Cite 'non-security checksum'.",
+                "CheckPassword / pwn / password in a path does NOT mean password storage. HIBP must stay FALSE_POSITIVE.",
+                "TRUE_POSITIVE: password storage, or app-chosen SHA-1/MD5 MAC-less integrity of untrusted third-party bytes "
+                        + "where a stronger digest is not dictated by a protocol.");
+    }
+
+    private static List<String> goTlsChecks() {
+        return List.of(
+                "tls.Config{} / MinVersion: 0 means the crypto/tls default (TLS 1.2+). Missing MinVersion → FALSE_POSITIVE. "
+                        + "Cite 'Go crypto/tls default MinVersion' or 'TLS 1.2+'. Applies to SMTP/LDAP/Redis/HTTP clients alike.",
+                "A map of name→tls.VersionTLS10/11 for operator config is not an active downgrade. TP only if MinVersion is "
+                        + "hardcoded to TLS 1.0/1.1. Cite 'TLS version map is not active downgrade'.",
+                "InsecureSkipVerify from setting.*.SkipTLSVerify is operator-gated self-hosted config, not a default bypass. "
+                        + "Hardcoded true with no gate remains TRUE_POSITIVE.");
+    }
+
+    private static List<String> goPermissionChecks() {
+        return List.of(
+                "os.WriteFile/OpenFile/Chmod third argument is Unix mode. gosec G302 (any mode > 0600) is not proof of a bug.",
+                "0o644 on README/LICENSE/gitignore/generated source/*.pub is public-by-design. 0o755 on git hooks and hook.d "
+                        + "dirs is required execute. unix.Umask/ApplyUmask restricts bits — not a permissive assignment.",
+                "0o666 + ApplyUmask/umask (0022 → 0644) or MkdirTemp (0700) is FALSE_POSITIVE hygiene. Cite 'umask' and "
+                        + "'not world-writable'.",
+                "//go:build ignore, build/, tools/, one-shot modelmigration copies are not a runtime attack surface for 0644.",
+                "When FP, false_positive_evidence MUST include 'not world-writable' and 'rw-r--r--' or 'rwxr-xr-x'.");
+    }
+
+    private static List<String> goSsrfChecks() {
+        return List.of(
+                "http.NewRequest(w.URL) is not the boundary. Find the *http.Client that Do()s the request: Transport, "
+                        + "DialContext, hostmatcher.NewHTTPTransport, ALLOWED_HOST_LIST, private-IP deny.",
+                "A helper that only builds the request (newMatrixRequest, newRequest) inherits the caller's client. "
+                        + "If Deliver() uses webhookHTTPClient + hostmatcher, the builder is FALSE_POSITIVE too.",
+                "Webhook/migration URLs are user-configurable by design. If the client allow-list is shown, this is not "
+                        + "'unsanitized SSRF'. Cite 'host allow-list on HTTP client'.",
+                "TRUE_POSITIVE only if that client has no host/IP allow-list and the URL is user/admin controllable.");
+    }
+
+    private static List<String> goCookieChecks() {
+        return List.of(
+                "http.Cookie{Secure: setting.SessionConfig.Secure} is the dual HTTP/HTTPS idiom. Secure is not missing.",
+                "FALSE_POSITIVE; cite 'framework guarantee' and 'Secure bound to HTTPS/session config'.",
+                "TRUE_POSITIVE when the Secure field is omitted or set to a false literal.");
+    }
+
+    private static List<String> goPprofChecks() {
+        return List.of(
+                "Named import of net/http/pprof registers DefaultServeMux only. Chi/echo/gin/custom mux for the public "
+                        + "listener plus localhost:6060 behind EnablePprof is FALSE_POSITIVE.",
+                "Cite 'pprof not on public ServeMux'. TRUE_POSITIVE if http.ListenAndServe(addr, nil) is public.");
+    }
+
+    private static List<String> goCommonNoiseChecks() {
+        return List.of(
+                "Common Go scanner noise: exec.Command is not a shell; tls.Config MinVersion 0 is TLS 1.2+; "
+                        + "0o644/0o755 are not world-writable; crypto/sha1 imports follow Git/package protocols; "
+                        + "pprof on DefaultServeMux is unused if the public server has its own mux.",
+                "Prefer FALSE_POSITIVE with an explicit citation phrase over UNCERTAIN for these idioms.");
     }
 }

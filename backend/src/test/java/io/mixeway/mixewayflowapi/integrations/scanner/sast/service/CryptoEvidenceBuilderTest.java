@@ -119,6 +119,60 @@ class CryptoEvidenceBuilderTest {
         assertEquals("possibly_non_security", evidence.attributes().get("security_purpose_hint"));
     }
 
+    @Test
+    void hibpSha1IsNotPasswordStorage() {
+        Item item = new Item();
+        item.setTitle("Usage of weak hashing library (SHA-1)");
+        item.setDescription("Do not use SHA-1 for password hashing.");
+        item.setCodeExtract("""
+                func CheckPassword(password string) bool {
+                    sum := sha1.Sum([]byte(password))
+                    _, _ = http.Get("https://api.pwnedpasswords.com/range/" + hex.EncodeToString(sum[:3]))
+                    return true
+                }
+                """);
+        item.setFilename("modules/auth/hibp.go");
+
+        FindingEvidence evidence = builder.build(item, null, hashMetadata());
+
+        assertEquals("possibly_non_security", evidence.attributes().get("security_purpose_hint"));
+        assertTrue(CryptoEvidenceBuilder.looksLikeNonPasswordWeakHashPurpose(
+                item.getCodeExtract() + "\n" + item.getFilename()));
+    }
+
+    @Test
+    void reviewerDenialOverridesPasswordVocabulary() {
+        assertTrue(CryptoEvidenceBuilder.looksLikeNonPasswordWeakHashPurpose(
+                "FALSE_POSITIVE: SHA-1 is a Git object id, not used for password hashing"));
+        assertTrue(CryptoEvidenceBuilder.looksLikeNonPasswordWeakHashPurpose(
+                "third-party protocol checksum for npm SRI"));
+    }
+
+    @Test
+    void importOnlyCryptoSha1IsNonSecurity() {
+        Item item = new Item();
+        item.setCodeExtract("import \"crypto/sha1\"\n");
+        item.setFilename("modules/git/sha1.go");
+
+        FindingEvidence evidence = builder.build(item, null, hashMetadata());
+
+        assertTrue(CryptoEvidenceBuilder.looksLikeImportOnlyWeakHash(item.getCodeExtract()));
+        assertEquals("possibly_non_security", evidence.attributes().get("security_purpose_hint"));
+    }
+
+    @Test
+    void md5OfPasswordVariableRemainsSecuritySensitive() {
+        Item item = new Item();
+        item.setCodeExtract("digest := md5.Sum([]byte(user.Password))\nstore(digest)");
+        item.setFilename("auth/password_store.go");
+
+        FindingEvidence evidence = builder.build(item, null, hashMetadata());
+
+        org.junit.jupiter.api.Assertions.assertFalse(
+                CryptoEvidenceBuilder.looksLikeNonPasswordWeakHashPurpose(item.getCodeExtract()));
+        assertEquals("security_sensitive", evidence.attributes().get("security_purpose_hint"));
+    }
+
     private static SastRuleMetadata hashMetadata() {
         return new SastRuleMetadata(
                 "python_lang_weak_hash",
