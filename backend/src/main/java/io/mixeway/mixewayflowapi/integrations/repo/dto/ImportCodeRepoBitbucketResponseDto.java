@@ -58,4 +58,8 @@ public class ImportCodeRepoBitbucketResponseDto {
     public int getId() {
         return uuid != null ? Math.abs(uuid.hashCode()) : 0;
     }
+
+    public boolean isArchived() {
+        return false; // Bitbucket doesn't have archived flag in API
+    }
 }

@@ -2,8 +2,12 @@ package io.mixeway.mixewayflowapi.integrations.repo.service;
 
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
+import io.mixeway.mixewayflowapi.db.repository.AppDataTypeRepository;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoBranchRepository;
+import io.mixeway.mixewayflowapi.db.repository.CodeRepoFindingStatsRepository;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
+import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
+import io.mixeway.mixewayflowapi.db.repository.ScanInfoRepository;
 import io.mixeway.mixewayflowapi.domain.coderepobranch.GetOrCreateCodeRepoBranchService;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.BitbucketApiClientService;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GitHubApiClientService;
@@ -14,7 +18,9 @@ import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -26,6 +32,10 @@ import java.util.stream.Collectors;
 public class RepositoryMetadataSyncService {
     private final CodeRepoRepository codeRepoRepository;
     private final CodeRepoBranchRepository codeRepoBranchRepository;
+    private final FindingRepository findingRepository;
+    private final ScanInfoRepository scanInfoRepository;
+    private final CodeRepoFindingStatsRepository codeRepoFindingStatsRepository;
+    private final AppDataTypeRepository appDataTypeRepository;
     private final GetOrCreateCodeRepoBranchService getOrCreateCodeRepoBranchService;
     private final GitService gitService;
     private final GitLabApiClientService gitLabApiClientService;
@@ -41,12 +51,19 @@ public class RepositoryMetadataSyncService {
     private void syncRepositoryMetadata(CodeRepo codeRepo) {
         try {
             CodeRepo currentCodeRepo = codeRepo;
-            RepoMetadata metadata = fetchRepositoryMetadata(codeRepo);
-            if (metadata == null || !hasText(metadata.name()) || !hasText(metadata.webUrl()) || !hasText(metadata.defaultBranch())) {
-                return;
-            }
+        RepoMetadata metadata = fetchRepositoryMetadata(codeRepo);
+        if (metadata == null || !hasText(metadata.name()) || !hasText(metadata.webUrl()) || !hasText(metadata.defaultBranch())) {
+            return;
+        }
 
-            String normalizedName = metadata.name().replace(" ", "");
+        if (metadata.archived()) {
+            log.info("Repository repoId={} remoteId={} name={} is archived. Deleting from database.",
+                    codeRepo.getId(), codeRepo.getRemoteId(), codeRepo.getName());
+            deleteArchivedRepository(codeRepo);
+            return;
+        }
+
+        String normalizedName = metadata.name().replace(" ", "");
             CodeRepoBranch defaultBranch = getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(metadata.defaultBranch(), codeRepo);
             boolean nameChanged = !Objects.equals(codeRepo.getName(), normalizedName);
             boolean urlChanged = !Objects.equals(codeRepo.getRepourl(), metadata.webUrl());
@@ -87,6 +104,34 @@ public class RepositoryMetadataSyncService {
         return value != null && !value.trim().isEmpty();
     }
 
+    @Transactional
+    private void deleteArchivedRepository(CodeRepo repo) {
+        log.info("[RepositoryMetadataSync] Starting deletion of archived repository id={} name={}", repo.getId(), repo.getName());
+        
+        // Clear components relationship
+        if (repo.getComponents() != null && !repo.getComponents().isEmpty()) {
+            repo.setComponents(Collections.emptyList());
+            codeRepoRepository.save(repo);
+        }
+        
+        // Delete all findings and related data
+        findingRepository.deleteByCodeRepo(repo);
+        scanInfoRepository.deleteByCodeRepo(repo);
+        codeRepoFindingStatsRepository.deleteByCodeRepo(repo);
+        appDataTypeRepository.deleteAllByCodeRepo(repo);
+        
+        // Delete branches explicitly (including default branch reference)
+        List<CodeRepoBranch> branches = codeRepoBranchRepository.findByCodeRepo(repo);
+        if (!branches.isEmpty()) {
+            log.debug("[RepositoryMetadataSync] Deleting {} branches for repository id={}", branches.size(), repo.getId());
+            codeRepoBranchRepository.deleteAll(branches);
+        }
+        
+        // Finally, delete the repository itself
+        codeRepoRepository.delete(repo);
+        log.info("[RepositoryMetadataSync] Successfully deleted archived repository id={} name={}", repo.getId(), repo.getName());
+    }
+
     private RepoMetadata fetchRepositoryMetadata(CodeRepo codeRepo) throws Exception {
         String gitHostUrl = codeRepo.getGitHostUrl();
         ImportCodeRepoResponseDto dto;
@@ -97,31 +142,34 @@ public class RepositoryMetadataSyncService {
             if (githubDto == null) {
                 return null;
             }
-            dto = new ImportCodeRepoResponseDto();
-            dto.setId(githubDto.getId());
-            dto.setPathWithNamespace(githubDto.getPathWithNamespace());
-            dto.setWebUrl(githubDto.getWebUrl());
-            dto.setDefaultBranch(githubDto.getDefaultBranch());
+        dto = new ImportCodeRepoResponseDto();
+        dto.setId(githubDto.getId());
+        dto.setPathWithNamespace(githubDto.getPathWithNamespace());
+        dto.setWebUrl(githubDto.getWebUrl());
+        dto.setDefaultBranch(githubDto.getDefaultBranch());
+        dto.setArchived(githubDto.isArchived());
         } else if (codeRepo.getType().equals(CodeRepo.RepoType.GITEA)) {
             var giteaDto = giteaApiClientService.getProjectInfo(codeRepo.getName(), gitHostUrl, codeRepo.getAccessToken()).block();
             if (giteaDto == null) {
                 return null;
             }
-            dto = new ImportCodeRepoResponseDto();
-            dto.setId(giteaDto.getId());
-            dto.setPathWithNamespace(giteaDto.getPathWithNamespace());
-            dto.setWebUrl(giteaDto.getWebUrl());
-            dto.setDefaultBranch(giteaDto.getDefaultBranch());
+        dto = new ImportCodeRepoResponseDto();
+        dto.setId(giteaDto.getId());
+        dto.setPathWithNamespace(giteaDto.getPathWithNamespace());
+        dto.setWebUrl(giteaDto.getWebUrl());
+        dto.setDefaultBranch(giteaDto.getDefaultBranch());
+        dto.setArchived(giteaDto.isArchived());
         } else if (codeRepo.getType().equals(CodeRepo.RepoType.BITBUCKET)) {
             var bitbucketDto = bitbucketApiClientService.getProjectInfo(codeRepo.getName(), gitHostUrl, codeRepo.getAccessToken()).block();
             if (bitbucketDto == null) {
                 return null;
             }
-            dto = new ImportCodeRepoResponseDto();
-            dto.setId(bitbucketDto.getId());
-            dto.setPathWithNamespace(bitbucketDto.getPathWithNamespace());
-            dto.setWebUrl(bitbucketDto.getWebUrl());
-            dto.setDefaultBranch(bitbucketDto.getDefaultBranch());
+        dto = new ImportCodeRepoResponseDto();
+        dto.setId(bitbucketDto.getId());
+        dto.setPathWithNamespace(bitbucketDto.getPathWithNamespace());
+        dto.setWebUrl(bitbucketDto.getWebUrl());
+        dto.setDefaultBranch(bitbucketDto.getDefaultBranch());
+        dto.setArchived(bitbucketDto.isArchived());
         } else {
             return null;
         }
@@ -129,7 +177,7 @@ public class RepositoryMetadataSyncService {
         if (dto == null) {
             return null;
         }
-        return new RepoMetadata(dto.getId(), dto.getPathWithNamespace(), dto.getWebUrl(), dto.getDefaultBranch());
+        return new RepoMetadata(dto.getId(), dto.getPathWithNamespace(), dto.getWebUrl(), dto.getDefaultBranch(), dto.isArchived());
     }
 
     private BranchSyncResult syncRepositoryBranches(CodeRepo codeRepo, String defaultBranchName, String preferredRepoUrl) throws Exception {
@@ -202,7 +250,7 @@ public class RepositoryMetadataSyncService {
         return new BranchSyncResult(branchesAdded, branchesMarkedExisting, branchesMarkedMissing);
     }
 
-    private record RepoMetadata(int remoteId, String name, String webUrl, String defaultBranch) {}
+    private record RepoMetadata(int remoteId, String name, String webUrl, String defaultBranch, boolean archived) {}
     private record BranchSyncResult(int branchesAdded, int branchesMarkedExisting, int branchesMarkedMissing) {
         private boolean hasChanges() {
             return branchesAdded > 0 || branchesMarkedExisting > 0 || branchesMarkedMissing > 0;

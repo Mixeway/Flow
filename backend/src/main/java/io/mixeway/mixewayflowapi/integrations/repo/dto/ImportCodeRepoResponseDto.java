@@ -15,4 +15,5 @@ public class ImportCodeRepoResponseDto {
     private String webUrl;
     @JsonProperty("path_with_namespace")
     private String pathWithNamespace;
+    private boolean archived;
 }
