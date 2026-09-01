@@ -15,5 +15,6 @@ public class ImportCodeRepoGiteaResponseDto {
     private String webUrl;
     @JsonProperty("full_name")
     private String pathWithNamespace;
+    private boolean archived;
 }
 
