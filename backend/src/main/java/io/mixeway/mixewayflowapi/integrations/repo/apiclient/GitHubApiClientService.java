@@ -81,9 +81,9 @@ public class GitHubApiClientService {
                 .uri(apiUrl)
                 .header("Authorization",  "token " + accessToken)
                 .retrieve()
-                .onStatus(status -> !status.is2xxSuccessful(), response -> Mono.error(new RuntimeException("Failed to fetch project info")))
-                .bodyToMono(ImportCodeRepoGitHubResponseDto.class)
-                .doOnError(throwable -> System.err.println("Error fetching project info: " + throwable.getMessage()));
+                .onStatus(status -> !status.is2xxSuccessful(),
+                        response -> RepoApiErrorHandler.failedToFetch("GitHub", "project info", apiUrl, response))
+                .bodyToMono(ImportCodeRepoGitHubResponseDto.class);
     }
 
     public Mono<HashMap<String, Integer>> getProjectLanguages(String name, String repoUrl, String accessToken) {
@@ -93,10 +93,10 @@ public class GitHubApiClientService {
                 .uri(apiUrl)
                 .header("Authorization", "token " + accessToken)
                 .retrieve()
-                .onStatus(status -> !status.is2xxSuccessful(), response -> Mono.error(new RuntimeException("Failed to fetch project info")))
+                .onStatus(status -> !status.is2xxSuccessful(),
+                        response -> RepoApiErrorHandler.failedToFetch("GitHub", "project languages", apiUrl, response))
                 .bodyToMono(new ParameterizedTypeReference<HashMap<String, Double>>() {})
-                .map(this::calculateLanguagePercentages)
-                .doOnError(throwable -> System.err.println("Error fetching project info: " + throwable.getMessage()));
+                .map(this::calculateLanguagePercentages);
     }
 
     /**

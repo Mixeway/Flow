@@ -2,12 +2,9 @@ package io.mixeway.mixewayflowapi.integrations.repo.service;
 
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
-import io.mixeway.mixewayflowapi.db.repository.AppDataTypeRepository;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoBranchRepository;
-import io.mixeway.mixewayflowapi.db.repository.CodeRepoFindingStatsRepository;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
-import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
-import io.mixeway.mixewayflowapi.db.repository.ScanInfoRepository;
+import io.mixeway.mixewayflowapi.domain.coderepo.DeleteCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.coderepobranch.GetOrCreateCodeRepoBranchService;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.BitbucketApiClientService;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GitHubApiClientService;
@@ -18,9 +15,7 @@ import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -32,10 +27,6 @@ import java.util.stream.Collectors;
 public class RepositoryMetadataSyncService {
     private final CodeRepoRepository codeRepoRepository;
     private final CodeRepoBranchRepository codeRepoBranchRepository;
-    private final FindingRepository findingRepository;
-    private final ScanInfoRepository scanInfoRepository;
-    private final CodeRepoFindingStatsRepository codeRepoFindingStatsRepository;
-    private final AppDataTypeRepository appDataTypeRepository;
     private final GetOrCreateCodeRepoBranchService getOrCreateCodeRepoBranchService;
     private final GitService gitService;
     private final GitLabApiClientService gitLabApiClientService;
@@ -43,6 +34,7 @@ public class RepositoryMetadataSyncService {
     private final GiteaApiClientService giteaApiClientService;
     private final BitbucketApiClientService bitbucketApiClientService;
     private final ScanManagerService scanManagerService;
+    private final DeleteCodeRepoService deleteCodeRepoService;
 
     public void syncAllRepositoriesMetadata() {
         codeRepoRepository.findAll().forEach(this::syncRepositoryMetadata);
@@ -59,7 +51,7 @@ public class RepositoryMetadataSyncService {
         if (metadata.archived()) {
             log.info("Repository repoId={} remoteId={} name={} is archived. Deleting from database.",
                     codeRepo.getId(), codeRepo.getRemoteId(), codeRepo.getName());
-            deleteArchivedRepository(codeRepo);
+            deleteCodeRepoService.deleteRepoById(codeRepo.getId());
             return;
         }
 
@@ -96,40 +88,13 @@ public class RepositoryMetadataSyncService {
                 scanManagerService.scanRepository(currentCodeRepo, currentCodeRepo.getDefaultBranch(), null, null);
             }
         } catch (Exception e) {
-            log.warn("Failed to sync metadata for repo {} (id={}): {}", codeRepo.getName(), codeRepo.getId(), e.getMessage());
+            log.warn("Failed to sync metadata for repo {} (id={}, remoteId={}): {}",
+                    codeRepo.getName(), codeRepo.getId(), codeRepo.getRemoteId(), e.getMessage());
         }
     }
 
     private boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
-    }
-
-    @Transactional
-    private void deleteArchivedRepository(CodeRepo repo) {
-        log.info("[RepositoryMetadataSync] Starting deletion of archived repository id={} name={}", repo.getId(), repo.getName());
-        
-        // Clear components relationship
-        if (repo.getComponents() != null && !repo.getComponents().isEmpty()) {
-            repo.setComponents(Collections.emptyList());
-            codeRepoRepository.save(repo);
-        }
-        
-        // Delete all findings and related data
-        findingRepository.deleteByCodeRepo(repo);
-        scanInfoRepository.deleteByCodeRepo(repo);
-        codeRepoFindingStatsRepository.deleteByCodeRepo(repo);
-        appDataTypeRepository.deleteAllByCodeRepo(repo);
-        
-        // Delete branches explicitly (including default branch reference)
-        List<CodeRepoBranch> branches = codeRepoBranchRepository.findByCodeRepo(repo);
-        if (!branches.isEmpty()) {
-            log.debug("[RepositoryMetadataSync] Deleting {} branches for repository id={}", branches.size(), repo.getId());
-            codeRepoBranchRepository.deleteAll(branches);
-        }
-        
-        // Finally, delete the repository itself
-        codeRepoRepository.delete(repo);
-        log.info("[RepositoryMetadataSync] Successfully deleted archived repository id={} name={}", repo.getId(), repo.getName());
     }
 
     private RepoMetadata fetchRepositoryMetadata(CodeRepo codeRepo) throws Exception {

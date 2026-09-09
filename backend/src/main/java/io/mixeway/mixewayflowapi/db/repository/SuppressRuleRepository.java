@@ -4,6 +4,7 @@ import io.mixeway.mixewayflowapi.api.threatintel.dto.SuppressRuleResponseDTO;
 import io.mixeway.mixewayflowapi.db.entity.SuppressRule;
 import io.mixeway.mixewayflowapi.db.entity.Team;
 import io.mixeway.mixewayflowapi.db.entity.Vulnerability;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
@@ -117,4 +118,8 @@ public interface SuppressRuleRepository extends CrudRepository<SuppressRule, Lon
     List<SuppressRule> findApplicableSuppressRules(@Param("findingId") Long findingId);
 
     List<SuppressRule> findByActiveTrueAndExpirationDateLessThanEqual(LocalDate date);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM SuppressRule sr WHERE sr.codeRepo.id = :repoId")
+    void deleteByCodeRepoId(@Param("repoId") Long repoId);
 }
