@@ -101,9 +101,9 @@ public class GiteaApiClientService {
                 .uri(apiUrl)
                 .header("Authorization", "token " + accessToken)
                 .retrieve()
-                .onStatus(status -> !status.is2xxSuccessful(), response -> Mono.error(new RuntimeException("Failed to fetch repository info")))
-                .bodyToMono(ImportCodeRepoGiteaResponseDto.class)
-                .doOnError(throwable -> System.err.println("Error fetching repository info: " + throwable.getMessage()));
+                .onStatus(status -> !status.is2xxSuccessful(),
+                        response -> RepoApiErrorHandler.failedToFetch("Gitea", "repository info", apiUrl, response))
+                .bodyToMono(ImportCodeRepoGiteaResponseDto.class);
     }
 
     public Mono<HashMap<String, Integer>> getProjectLanguages(String ownerRepoPath, String repoUrl, String accessToken) {
@@ -127,10 +127,10 @@ public class GiteaApiClientService {
                 .uri(apiUrl)
                 .header("Authorization", "token " + accessToken)
                 .retrieve()
-                .onStatus(status -> !status.is2xxSuccessful(), response -> Mono.error(new RuntimeException("Failed to fetch repository languages")))
+                .onStatus(status -> !status.is2xxSuccessful(),
+                        response -> RepoApiErrorHandler.failedToFetch("Gitea", "repository languages", apiUrl, response))
                 .bodyToMono(new ParameterizedTypeReference<HashMap<String, Double>>() {})
-                .map(this::convertToIntegerMap)
-                .doOnError(throwable -> System.err.println("Error fetching repository languages: " + throwable.getMessage()));
+                .map(this::convertToIntegerMap);
     }
 
     private HashMap<String, Integer> convertToIntegerMap(HashMap<String, Double> doubleMap) {

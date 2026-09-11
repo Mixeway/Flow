@@ -381,10 +381,9 @@ public class BitbucketApiClientService {
                 .uri(apiUrl)
                 .header("Authorization", "Bearer " + accessToken)
                 .retrieve()
-                .onStatus(status -> !status.is2xxSuccessful(), response ->
-                        Mono.error(new RuntimeException("Failed to fetch Bitbucket repository info")))
-                .bodyToMono(ImportCodeRepoBitbucketResponseDto.class)
-                .doOnError(throwable -> log.error("Error fetching Bitbucket Cloud repository info: {}", throwable.getMessage()));
+                .onStatus(status -> !status.is2xxSuccessful(),
+                        response -> RepoApiErrorHandler.failedToFetch("Bitbucket", "repository info", apiUrl, response))
+                .bodyToMono(ImportCodeRepoBitbucketResponseDto.class);
     }
 
     private Mono<ImportCodeRepoBitbucketResponseDto> getServerProjectInfo(String baseUrl, String projectKey, String slug, String accessToken) {
@@ -396,10 +395,9 @@ public class BitbucketApiClientService {
                 .uri(projectInfoUrl)
                 .header("Authorization", "Bearer " + accessToken)
                 .retrieve()
-                .onStatus(status -> !status.is2xxSuccessful(), response ->
-                        Mono.error(new RuntimeException("Failed to fetch Bitbucket Server repository info from " + projectInfoUrl)))
-                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
-                .doOnError(e -> log.error("Error fetching Bitbucket Server repo info: {}", e.getMessage()));
+                .onStatus(status -> !status.is2xxSuccessful(),
+                        response -> RepoApiErrorHandler.failedToFetch("Bitbucket", "repository info", projectInfoUrl, response))
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {});
 
         Mono<String> defaultBranchMono = webClient.get()
                 .uri(defaultBranchUrl)

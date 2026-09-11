@@ -82,9 +82,9 @@ public class GitLabApiClientService {
                 .uri(apiUrl)
                 .header("PRIVATE-TOKEN",  accessToken)
                 .retrieve()
-                .onStatus(status -> !status.is2xxSuccessful(), response -> Mono.error(new RuntimeException("Failed to fetch project info")))
-                .bodyToMono(ImportCodeRepoResponseDto.class)
-                .doOnError(throwable -> System.err.println("Error fetching project info: " + throwable.getMessage()));
+                .onStatus(status -> !status.is2xxSuccessful(),
+                        response -> RepoApiErrorHandler.failedToFetch("GitLab", "project info", apiUrl, response))
+                .bodyToMono(ImportCodeRepoResponseDto.class);
     }
 
     public Mono<HashMap<String, Integer>> getProjectLanguages(int id, String repoUrl, String accessToken) {
@@ -94,10 +94,10 @@ public class GitLabApiClientService {
                 .uri(apiUrl)
                 .header("PRIVATE-TOKEN",  accessToken)
                 .retrieve()
-                .onStatus(status -> !status.is2xxSuccessful(), response -> Mono.error(new RuntimeException("Failed to fetch project info")))
+                .onStatus(status -> !status.is2xxSuccessful(),
+                        response -> RepoApiErrorHandler.failedToFetch("GitLab", "project languages", apiUrl, response))
                 .bodyToMono(new ParameterizedTypeReference<HashMap<String, Double>>() {})
-                .map(this::convertToIntegerMap)
-                .doOnError(throwable -> System.err.println("Error fetching project info: " + throwable.getMessage()));
+                .map(this::convertToIntegerMap);
     }
 
     private HashMap<String, Integer> convertToIntegerMap(HashMap<String, Double> doubleMap) {

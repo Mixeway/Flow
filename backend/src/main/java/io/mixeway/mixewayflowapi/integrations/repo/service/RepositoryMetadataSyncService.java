@@ -6,8 +6,7 @@ import io.mixeway.mixewayflowapi.db.repository.AppDataTypeRepository;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoBranchRepository;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoFindingStatsRepository;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
-import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
-import io.mixeway.mixewayflowapi.db.repository.ScanInfoRepository;
+import io.mixeway.mixewayflowapi.domain.coderepo.DeleteCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.coderepobranch.GetOrCreateCodeRepoBranchService;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.BitbucketApiClientService;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.GitHubApiClientService;
@@ -43,6 +42,7 @@ public class RepositoryMetadataSyncService {
     private final GiteaApiClientService giteaApiClientService;
     private final BitbucketApiClientService bitbucketApiClientService;
     private final ScanManagerService scanManagerService;
+    private final DeleteCodeRepoService deleteCodeRepoService;
 
     public void syncAllRepositoriesMetadata() {
         codeRepoRepository.findAll().forEach(this::syncRepositoryMetadata);
@@ -59,7 +59,7 @@ public class RepositoryMetadataSyncService {
         if (metadata.archived()) {
             log.info("Repository repoId={} remoteId={} name={} is archived. Deleting from database.",
                     codeRepo.getId(), codeRepo.getRemoteId(), codeRepo.getName());
-            deleteArchivedRepository(codeRepo);
+            deleteCodeRepoService.deleteRepoById(codeRepo.getId());
             return;
         }
 
@@ -96,7 +96,8 @@ public class RepositoryMetadataSyncService {
                 scanManagerService.scanRepository(currentCodeRepo, currentCodeRepo.getDefaultBranch(), null, null);
             }
         } catch (Exception e) {
-            log.warn("Failed to sync metadata for repo {} (id={}): {}", codeRepo.getName(), codeRepo.getId(), e.getMessage());
+            log.warn("Failed to sync metadata for repo {} (id={}, remoteId={}): {}",
+                    codeRepo.getName(), codeRepo.getId(), codeRepo.getRemoteId(), e.getMessage());
         }
     }
 

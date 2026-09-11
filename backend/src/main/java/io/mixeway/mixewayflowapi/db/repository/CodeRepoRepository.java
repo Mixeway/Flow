@@ -83,6 +83,22 @@ public interface CodeRepoRepository extends CrudRepository<CodeRepo, Long> {
                                   @Param("repoUrl") String repoUrl,
                                   @Param("defaultBranch") io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch defaultBranch);
 
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "DELETE FROM coderepo_component WHERE coderepo_id = :repoId", nativeQuery = true)
+    void deleteComponentLinksByRepoId(@Param("repoId") Long repoId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "DELETE FROM coderepo_languages WHERE coderepo_id = :repoId", nativeQuery = true)
+    void deleteLanguagesByRepoId(@Param("repoId") Long repoId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "UPDATE coderepo SET default_branch_id = NULL WHERE id = :repoId", nativeQuery = true)
+    void clearDefaultBranchByRepoId(@Param("repoId") Long repoId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "DELETE FROM coderepo WHERE id = :repoId", nativeQuery = true)
+    void deleteRepoRowById(@Param("repoId") Long repoId);
+
     @Query("SELECT count(c) FROM CodeRepo c WHERE c.repourl LIKE CONCAT(:gitHostUrl, '%')")
     long countByRepoUrlStartingWith(@Param("gitHostUrl") String gitHostUrl);
 
