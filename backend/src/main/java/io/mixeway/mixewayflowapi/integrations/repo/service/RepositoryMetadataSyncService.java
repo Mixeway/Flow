@@ -6,6 +6,8 @@ import io.mixeway.mixewayflowapi.db.repository.AppDataTypeRepository;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoBranchRepository;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoFindingStatsRepository;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
+import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
+import io.mixeway.mixewayflowapi.db.repository.ScanInfoRepository;
 import io.mixeway.mixewayflowapi.domain.coderepo.DeleteCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.coderepobranch.GetOrCreateCodeRepoBranchService;
 import io.mixeway.mixewayflowapi.integrations.repo.apiclient.BitbucketApiClientService;
