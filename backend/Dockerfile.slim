@@ -24,6 +24,19 @@ RUN ARCH=$(uname -m) && \
 ENV JAVA_HOME=/usr/local/jdk-22
 ENV PATH="$JAVA_HOME/bin:$PATH"
 
+COPY certs.crt /etc/pki/ca-trust/source/anchors/opl-root-ca.crt
+COPY settings.xml /root/.m2/settings.xml
+RUN update-ca-trust && \
+    csplit -s -z -f /tmp/opl-ca- /etc/pki/ca-trust/source/anchors/opl-root-ca.crt '/-----BEGIN CERTIFICATE-----/' '{*}' && \
+    for cert in /tmp/opl-ca-*; do \
+        keytool -importcert -noprompt -trustcacerts \
+            -alias "opl-ca-$(basename "$cert")" \
+            -file "$cert" \
+            -keystore "$JAVA_HOME/lib/security/cacerts" \
+            -storepass changeit; \
+    done && \
+    rm -f /tmp/opl-ca-*
+
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
