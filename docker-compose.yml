@@ -33,7 +33,7 @@ services:
       start_period: 60s
 
   flowdb:
-    image: postgres:latest
+    image: postgres:17
     container_name: flowdb
     ports:
       - "5432:5432"

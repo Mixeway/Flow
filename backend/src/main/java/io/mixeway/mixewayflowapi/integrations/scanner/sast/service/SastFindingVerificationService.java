@@ -154,6 +154,26 @@ public class SastFindingVerificationService {
      */
     private static final double SQL_RISKY_TRUSTED_CONCAT_CONFIDENCE = 0.55d;
 
+    /**
+     * CMS HTML in an XSS sink without a proven sanitizer is stored XSS
+     * with mid confidence: editors are not a proven allowlist, and sanitization is unproven.
+     */
+    private static final double CMS_UNSANITIZED_HTML_CONFIDENCE = 0.55d;
+
+    /** Named public CMS products only — not generic "cms" and not internal content APIs. */
+    private static final Pattern CMS_HTML_SOURCE_PATTERN = Pattern.compile(
+            "\\b(?:contentful|strapi|wordpress|drupal|joomla|wagtail|sitecore|storyblok|prismic|"
+                    + "contentstack|hygraph|graphcms|kontent|kentico|payload\\s*cms|ghost\\s+cms|"
+                    + "adobe\\s+aem|experience\\s+manager|umbraco|typo3|magnolia|directus|"
+                    + "craft\\s*cms|webflow|buttercms)\\b"
+                    + "|sanity\\.io|\\bsanity\\s+cms\\b",
+            Pattern.CASE_INSENSITIVE);
+
+    private static final Pattern CLASSIC_UGC_HTML_SOURCE_PATTERN = Pattern.compile(
+            "/(?:comment|post|message|review|profile)s?\\b"
+                    + "|\\b(?:user[- ]generated|ugc|attacker-controlled (?:request|input|html))\\b",
+            Pattern.CASE_INSENSITIVE);
+
     /** Cross-language SQL execution / query APIs used in structural SQLi evidence. */
     private static final String SQL_EXEC_API_REGEX =
             "(?:executeQuery|executeUpdate|createQuery|createNativeQuery|prepareStatement|prepareCall|"
@@ -199,17 +219,9 @@ public class SastFindingVerificationService {
             "whether counter-evidence or neutralization was overlooked, and whether any proposed remediation is safe. " +
             "Apply the supplied CWE-specific guidance and structured evidence; do not invent additional facts. " +
             "If exploitability, source, sink, execution context, or neutralization remains unproven, prefer UNCERTAIN over " +
-            "FALSE_POSITIVE. Exception for CWE-94/95 setattr / code generation: judge the attribute NAME slot, not VALUE " +
-            "origin. A literal, constant, or internal NAME (self.field / cls._meta.x / contribute_to_class field id) " +
-            "with no eval/exec/compile/script-engine sink is FALSE_POSITIVE even if VALUE comes from HTTP, GraphQL, or a " +
-            "database. Attacker-controlled NAME (mass assignment) is TRUE_POSITIVE. Do not keep UNCERTAIN and do not " +
-            "require a sanitizer because VALUE origin is unclear. Exception for SQL injection: proven trusted/literal/" +
-            "constant/internal source plus SQL built by string concatenation/interpolation is a RISKY SCHEME — keep " +
-            "TRUE_POSITIVE with confidence 0.50-0.60 (~0.55); do not downgrade to UNCERTAIN or FALSE_POSITIVE merely " +
-            "because the current source is trusted or call-site origin is not attacker-controlled. " +
-            "Exception: knex identifier placeholders (??) with a bindings array are parameterization → FALSE_POSITIVE, " +
-            "not a RISKY SCHEME. Do not treat reviewer guesses that a value 'likely came from HTTP' as taint. " +
-            "Proposed remediation code is not applied code and must never be cited as evidence that the current finding is already fixed.";
+            "FALSE_POSITIVE. Do not treat reviewer guesses that a value 'likely came from HTTP' as taint. " +
+            "Proposed remediation code is not applied code and must never be cited as evidence that the current finding is already fixed. " +
+            SastDeveloperFacingReasoning.PROMPT_RULE;
 
     private static final String SYSTEM_PROMPT =
             "You are an expert security code reviewer specializing in SAST false positive detection. " +
@@ -217,16 +229,9 @@ public class SastFindingVerificationService {
             "and tool results. Do not infer attacker control, trusted sources, sanitization, execution context, or reachability " +
             "from names or paths alone. Mark TRUE_POSITIVE only when exploitability is supported by shown evidence; " +
             "mark FALSE_POSITIVE only when positive safety evidence is shown; otherwise use UNCERTAIN. " +
-            "Exception for CWE-94/95 setattr / code generation: the safety evidence is the attribute NAME slot, not a " +
-            "sanitizer and not VALUE origin. Literal/constant/internal NAME + no eval/exec/compile sink is FALSE_POSITIVE " +
-            "even if VALUE is HTTP/GraphQL/DB. Do not use UNCERTAIN because VALUE origin is unclear. " +
-            "Exception for Node/JavaScript CWE-319: http.createServer is not an unsafe API by itself — FALSE_POSITIVE " +
-            "unless shown code transmits secrets on a cleartext client channel. Developer scripts and localhost listeners " +
-            "are FALSE_POSITIVE. Java new Socket() rules do not apply to Node HTTP servers. " +
-            "Exception for SQL: knex identifier placeholders (??) with bindings are parameterization → FALSE_POSITIVE. " +
             "Do not treat reviewer prose ('likely HTTP') as taint; require a request/query/body assignment in code. " +
-            "Exception for CWE-328: HMAC-SHA1/HMAC-MD5 required by a third-party protocol (OAuth 1.0) is FALSE_POSITIVE. " +
-            "For true positives, provide actionable remediation only when the available context is sufficient.";
+            "For true positives, provide actionable remediation only when the available context is sufficient. " +
+            SastDeveloperFacingReasoning.PROMPT_RULE;
 
     private static final String MISCONFIGURATION_SYSTEM_PROMPT =
             "You are an expert security reviewer for SAST misconfiguration and insecure API usage findings. " +
@@ -239,14 +244,7 @@ public class SastFindingVerificationService {
             "config-file origin, or path hints. Mark FALSE_POSITIVE only when existing code proves a real safety " +
             "neutralizer (safe configuration, TLS/SSL enforcement, secure wrapper, or equivalent). " +
             "If the unsafe API/configuration is shown and no such neutralizer is proven, return TRUE_POSITIVE. " +
-            "Exception for Node/JavaScript CWE-319 / javascript_lang_http_insecure: http.createServer is the normal " +
-            "Node listener (TLS usually at a reverse proxy). FALSE_POSITIVE unless shown code sends secrets over a " +
-            "cleartext client request or serves sensitive production traffic in plaintext with no TLS termination. " +
-            "scripts/, localhost, and local OpenAPI/dev servers are FALSE_POSITIVE. Do not apply Java Socket guidance. " +
-            "Exception for CWE-732/276/378 file permissions: a mode other than 0600 is not automatically insecure. " +
-            "Follow the CWE-732 checklist: decode owner/group/other rwx; 0644 is not world-writable; the attacker is a " +
-            "local OS UID that can reach the inode. Public material, default 0755 executables, and unreachable paths " +
-            "(0700 parents / temp dirs) are FALSE_POSITIVE. TRUE_POSITIVE needs group/other WRITE, or group/other READ of a secret.";
+            SastDeveloperFacingReasoning.PROMPT_RULE;
 
     private static final String MISCONFIGURATION_VALIDATOR_SYSTEM_PROMPT =
             "You are an independent security peer reviewer for SAST misconfiguration and insecure API usage findings. " +
@@ -256,9 +254,8 @@ public class SastFindingVerificationService {
             "test/dev/demo/mock/example naming, localhost, config origin, or path hints. Override to FALSE_POSITIVE only with " +
             "concrete existing-code evidence of a safe configuration, TLS/SSL enforcement, secure wrapper, or another " +
             "rule-specific neutralizer. If the unsafe API/configuration is shown and no neutralizer is proven, keep or " +
-            "return TRUE_POSITIVE. Exception for Node/JavaScript CWE-319: http.createServer alone is FALSE_POSITIVE; " +
-            "Java Socket rules do not apply. Exception for CWE-732/276/378: follow the CWE-732 checklist — 0644 is not " +
-            "world-writable; public files and unreachable paths are FALSE_POSITIVE. Proposed remediation code is not applied code and must never be cited as evidence.";
+            "return TRUE_POSITIVE. Proposed remediation code is not applied code and must never be cited as evidence. " +
+            SastDeveloperFacingReasoning.PROMPT_RULE;
 
     private static final Pattern PERMISSIVE_SSL_EVIDENCE_PATTERN = Pattern.compile(
             "\\b(?:trustAllCerts|trustAll|TrustAll|ALLOW_ALL_HOSTNAME_VERIFIER|NoopHostnameVerifier|"
@@ -425,12 +422,144 @@ public class SastFindingVerificationService {
 
     private record ReactOutcome(VerificationResult result, List<Map<String, Object>> messages) {}
 
-    private String systemPromptFor(SastRuleMetadata metadata) {
-        return isMisconfigurationProfile(metadata) ? MISCONFIGURATION_SYSTEM_PROMPT : SYSTEM_PROMPT;
+    private String systemPromptFor(SastRuleMetadata metadata, Item item) {
+        StringBuilder sb = new StringBuilder(
+                isMisconfigurationProfile(metadata) ? MISCONFIGURATION_SYSTEM_PROMPT : SYSTEM_PROMPT);
+        appendCweSystemOverlay(sb, metadata, item);
+        return sb.toString();
     }
 
-    private String validatorSystemPromptFor(SastRuleMetadata metadata) {
-        return isMisconfigurationProfile(metadata) ? MISCONFIGURATION_VALIDATOR_SYSTEM_PROMPT : VALIDATOR_SYSTEM_PROMPT;
+    private String validatorSystemPromptFor(SastRuleMetadata metadata, Item item) {
+        StringBuilder sb = new StringBuilder(
+                isMisconfigurationProfile(metadata)
+                        ? MISCONFIGURATION_VALIDATOR_SYSTEM_PROMPT
+                        : VALIDATOR_SYSTEM_PROMPT);
+        appendCweSystemOverlay(sb, metadata, item);
+        return sb.toString();
+    }
+
+    /**
+     * CWE-specific overrides that used to sit in every system prompt. Same text as before,
+     * appended only when this finding's CWE/family matches.
+     */
+    void appendCweSystemOverlay(StringBuilder sb, SastRuleMetadata metadata, Item item) {
+        if (isCodeInjectionPrompt(metadata, item)) {
+            sb.append(" Exception for CWE-94/95 setattr / code generation: judge the attribute NAME slot, not VALUE ")
+                    .append("origin. A literal, constant, or internal NAME (self.field / cls._meta.x / contribute_to_class field id) ")
+                    .append("with no eval/exec/compile/script-engine sink is FALSE_POSITIVE even if VALUE comes from HTTP, GraphQL, or a ")
+                    .append("database. Attacker-controlled NAME (mass assignment) is TRUE_POSITIVE. Do not keep UNCERTAIN and do not ")
+                    .append("require a sanitizer because VALUE origin is unclear.");
+        }
+        if (isSqlPrompt(metadata, item)) {
+            sb.append(" Exception for SQL injection: proven trusted/literal/constant/internal source plus SQL built by ")
+                    .append("string concatenation/interpolation is a RISKY SCHEME — keep TRUE_POSITIVE with confidence 0.50-0.60 (~0.55); ")
+                    .append("do not downgrade to UNCERTAIN or FALSE_POSITIVE merely because the current source is trusted or call-site ")
+                    .append("origin is not attacker-controlled. Exception: knex identifier placeholders (??) with a bindings array are ")
+                    .append("parameterization → FALSE_POSITIVE, not a RISKY SCHEME.");
+        }
+        if (isXssPrompt(metadata, item)) {
+            sb.append(" Exception for CWE-79 CMS HTML: CMS / content-API / content-component rich text reaching innerHTML / ")
+                    .append("dangerouslySetInnerHTML / v-html without a proven sanitizer is TRUE_POSITIVE with confidence 0.50-0.65 ")
+                    .append("(~0.55). Do not mark UNCERTAIN or FALSE_POSITIVE because editors are operators or CMS origin is not classic UGC.");
+        }
+        if (isJavascriptCleartextPrompt(metadata, item)) {
+            sb.append(" Exception for Node/JavaScript CWE-319: http.createServer is not an unsafe API by itself — FALSE_POSITIVE ")
+                    .append("unless shown code transmits secrets on a cleartext client channel. Developer scripts and localhost listeners ")
+                    .append("are FALSE_POSITIVE. Java new Socket() rules do not apply to Node HTTP servers.");
+        }
+        if (hasCwe(metadata, item, "328")) {
+            sb.append(" Exception for CWE-328: HMAC-SHA1/HMAC-MD5 required by a third-party protocol (OAuth 1.0) is FALSE_POSITIVE.");
+        }
+        if (hasCwe(metadata, item, "732", "276", "378")) {
+            sb.append(" Exception for CWE-732/276/378 file permissions: a mode other than 0600 is not automatically insecure. ")
+                    .append("Follow the CWE-732 checklist: decode owner/group/other rwx; 0644 is not world-writable; the attacker is a ")
+                    .append("local OS UID that can reach the inode. Public material, default 0755 executables, and unreachable paths ")
+                    .append("(0700 parents / temp dirs) are FALSE_POSITIVE. TRUE_POSITIVE needs group/other WRITE, or group/other READ of a secret.");
+        }
+    }
+
+    boolean hasCwe(SastRuleMetadata metadata, Item item, String... ids) {
+        Set<String> wanted = new HashSet<>();
+        for (String id : ids) {
+            wanted.add(normalizeCweId(id));
+        }
+        if (containsAnyCwe(metadata != null ? metadata.cweIds() : null, wanted)) {
+            return true;
+        }
+        if (containsAnyCwe(item != null ? item.getCweIds() : null, wanted)) {
+            return true;
+        }
+        return familyImpliesCwe(metadata, wanted);
+    }
+
+    private static String normalizeCweId(String cwe) {
+        if (cwe == null || cwe.isBlank()) {
+            return "";
+        }
+        return cwe.toUpperCase(Locale.ROOT).replace("CWE-", "").trim();
+    }
+
+    private static boolean containsAnyCwe(List<String> cwes, Set<String> wanted) {
+        if (cwes == null || wanted.isEmpty()) {
+            return false;
+        }
+        for (String cwe : cwes) {
+            if (wanted.contains(normalizeCweId(cwe))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean familyImpliesCwe(SastRuleMetadata metadata, Set<String> wanted) {
+        if (metadata == null || metadata.family() == null) {
+            return false;
+        }
+        return switch (metadata.family()) {
+            case XSS -> wanted.contains("79") || wanted.contains("80");
+            case SQL_INJECTION -> wanted.contains("89") || wanted.contains("90")
+                    || wanted.contains("643") || wanted.contains("943");
+            case COMMAND_INJECTION -> wanted.contains("78") || wanted.contains("88") || wanted.contains("917");
+            case PATH_TRAVERSAL -> wanted.contains("22") || wanted.contains("73") || wanted.contains("98");
+            case TIMING_SIDE_CHANNEL -> wanted.contains("208");
+            case DESERIALIZATION -> wanted.contains("502");
+            case PERMISSIONS -> wanted.contains("732") || wanted.contains("276") || wanted.contains("378");
+            case WEAK_HASH -> wanted.contains("328");
+            case CLEAR_TEXT_TRANSMISSION -> wanted.contains("319");
+            default -> false;
+        };
+    }
+
+    boolean isCodeInjectionPrompt(SastRuleMetadata metadata, Item item) {
+        return hasCwe(metadata, item, "94", "95") || CodeInjectionSinkEvidence.isCodeInjectionFinding(item);
+    }
+
+    boolean isSqlPrompt(SastRuleMetadata metadata, Item item) {
+        return hasCwe(metadata, item, "89", "90", "643", "943") || isSqlInjectionFinding(item);
+    }
+
+    boolean isXssPrompt(SastRuleMetadata metadata, Item item) {
+        return hasCwe(metadata, item, "79", "80");
+    }
+
+    boolean isJavascriptCleartextPrompt(SastRuleMetadata metadata, Item item) {
+        return hasCwe(metadata, item, "319") && isJavascriptFinding(metadata, item);
+    }
+
+    boolean isJwtPrompt(SastRuleMetadata metadata, Item item) {
+        return isJwtVerificationBypassFinding(item, metadata);
+    }
+
+    private static boolean isJavascriptFinding(SastRuleMetadata metadata, Item item) {
+        String ruleId = metadata != null && metadata.ruleId() != null
+                ? metadata.ruleId().toLowerCase(Locale.ROOT) : "";
+        if (ruleId.contains("javascript") || ruleId.contains("typescript")
+                || ruleId.startsWith("js_") || ruleId.contains("_js_")) {
+            return true;
+        }
+        String file = Optional.ofNullable(item != null ? item.getFilename() : null).orElse("").toLowerCase(Locale.ROOT);
+        return file.endsWith(".js") || file.endsWith(".ts") || file.endsWith(".jsx")
+                || file.endsWith(".tsx") || file.endsWith(".mjs") || file.endsWith(".cjs");
     }
 
     private boolean isMisconfigurationProfile(SastRuleMetadata metadata) {
@@ -467,7 +596,7 @@ public class SastFindingVerificationService {
         userPrompt.append(buildDescriptionSection(item));
         userPrompt.append(buildLocalTriageSection(item));
         userPrompt.append(structuredEvidence.toPromptSection());
-        userPrompt.append(sastCwePromptGuidanceService.buildGuidance(structuredEvidence.metadata()));
+        userPrompt.append(sastCwePromptGuidanceService.buildGuidance(structuredEvidence.metadata(), context.language()));
         userPrompt.append(buildCodeInjectionNameSlotSection(item));
         userPrompt.append(buildCodeContextSection(context));
 
@@ -479,7 +608,8 @@ public class SastFindingVerificationService {
             userPrompt.append(buildReactSuggestionsSection(context));
         }
 
-        userPrompt.append(buildInstructionsSection(useDataflow && !context.relatedFiles().isEmpty(), context.category(), item));
+        userPrompt.append(buildInstructionsSection(useDataflow && !context.relatedFiles().isEmpty(),
+                context.category(), item, structuredEvidence.metadata()));
 
         String itemRef = formatItemRef(item);
         SastRuleMetadata metadata = structuredEvidence.metadata();
@@ -517,6 +647,15 @@ public class SastFindingVerificationService {
             } catch (Throwable t) {
                 log.error("[SastVerification] Consistency recording threw for {}: {}", itemRef, t.getMessage(), t);
             }
+            String publicReasoning = SastDeveloperFacingReasoning.sanitize(item.getAiReasoning());
+            item.setAiReasoning(publicReasoning);
+            if (item.getFingerprint() != null) {
+                CachedVerdict cached = fingerprintCache.get(item.getFingerprint());
+                if (cached != null) {
+                    fingerprintCache.put(item.getFingerprint(),
+                            new CachedVerdict(cached.verdict(), cached.confidence(), publicReasoning, cached.recommendation()));
+                }
+            }
         }
 
         return result;
@@ -534,7 +673,7 @@ public class SastFindingVerificationService {
                                                CodeContextExtractor.EvidenceCategory category,
                                                SastRuleMetadata metadata) {
         List<Map<String, Object>> messages = new ArrayList<>();
-        messages.add(Map.of("role", "system", "content", systemPromptFor(metadata)));
+        messages.add(Map.of("role", "system", "content", systemPromptFor(metadata, item)));
         messages.add(Map.of("role", "user", "content", userPrompt));
 
         long startedAt = System.currentTimeMillis();
@@ -1093,60 +1232,75 @@ public class SastFindingVerificationService {
 
         String stageTwoInstruction;
         if (isMisconfigurationProfile(metadata)) {
-            stageTwoInstruction = "Stage 2 now: return final JSON with `action` as \"final\". "
-                    + "Add required fields: execution_context, input_source, reasoning (3-6 sentences), "
-                    + "recommendation, remediation_code, false_positive_evidence. "
-                    + "This is a MISCONFIGURATION/API-usage finding, not a classic source-to-sink taint finding. "
-                    + "Do NOT change to FALSE_POSITIVE or UNCERTAIN merely because host/user/input origin is config_file, "
-                    + "internal_call, environment_variable, local, library, or unknown, or because names/paths suggest "
-                    + "test/dev/demo/mock/example. "
-                    + "Return TRUE_POSITIVE when the unsafe API/configuration is shown and existing code does not prove "
-                    + "a real safety neutralizer (safe wrapper, TLS/SSL enforcement, framework guarantee, or rule-specific "
-                    + "neutralizer). Exception for CWE-732/276/378: follow the CWE-732 checklist — a mode other than 0600 "
-                    + "is not automatically TRUE_POSITIVE. Return only valid JSON.";
+            StringBuilder s2 = new StringBuilder();
+            s2.append("Stage 2 now: return final JSON with `action` as \"final\". ")
+                    .append("Add required fields: execution_context, input_source, reasoning (3-6 sentences), ")
+                    .append("recommendation, remediation_code, false_positive_evidence. ")
+                    .append("This is a MISCONFIGURATION/API-usage finding, not a classic source-to-sink taint finding. ")
+                    .append("Do NOT change to FALSE_POSITIVE or UNCERTAIN merely because host/user/input origin is config_file, ")
+                    .append("internal_call, environment_variable, local, library, or unknown, or because names/paths suggest ")
+                    .append("test/dev/demo/mock/example. ")
+                    .append("Return TRUE_POSITIVE when the unsafe API/configuration is shown and existing code does not prove ")
+                    .append("a real safety neutralizer (safe wrapper, TLS/SSL enforcement, framework guarantee, or rule-specific ")
+                    .append("neutralizer). ");
+            if (hasCwe(metadata, item, "732", "276", "378")) {
+                s2.append("Exception for CWE-732/276/378: follow the CWE-732 checklist — a mode other than 0600 ")
+                        .append("is not automatically TRUE_POSITIVE. ");
+            }
+            s2.append("Return only valid JSON.");
+            stageTwoInstruction = s2.toString();
         } else if (uncertainResolution) {
-            stageTwoInstruction = "Stage 2 now: return final JSON with `action` as \"final\". "
-                    + "Add required fields: execution_context, input_source, reasoning (3-6 sentences, "
-                    + "source -> transformations -> sink), recommendation, remediation_code, false_positive_evidence. "
-                    + "IMPORTANT: now that you have classified execution_context and input_source, "
-                    + "RE-EVALUATE your verdict. "
-                    + (CodeInjectionSinkEvidence.isCodeInjectionFinding(item)
-                    ? "For CWE-94/95 setattr / code generation: input_source and verdict depend on the ATTRIBUTE NAME "
-                    + "slot, not the assigned VALUE. Literal/constant/internal NAME + no eval/exec/compile sink "
-                    + "=> FALSE_POSITIVE even if VALUE is http_request/database. Mass-assignment NAME or a real "
-                    + "eval/exec/compile sink => TRUE_POSITIVE. Do NOT keep UNCERTAIN and do NOT change to "
-                    + "TRUE_POSITIVE merely because VALUE origin is HTTP/GraphQL/DB/unknown. "
-                    : "")
-                    + "For classic source-to-sink injection CWEs (not setattr wiring): if input_source resolves "
-                    + "to an untrusted origin (http_request, database, file_untrusted, gui_input, url_fragment) "
-                    + "AND the sink is exploitable AND no complete neutralizer is proven, you MUST change verdict "
-                    + "to TRUE_POSITIVE — do not keep UNCERTAIN merely because the full monorepo call graph was not scanned. "
-                    + "If input_source resolves to a trusted origin (internal_call, config_file, environment_variable) "
-                    + "or a complete neutralizer is proven (parameterization with proven-safe SQL text, literal SQL, sanitizer), "
-                    + "change verdict to FALSE_POSITIVE — EXCEPT for SQL injection: trusted/literal/constant/"
-                    + "internal_call/config source + SQL still built by string concatenation/interpolation is a "
-                    + "RISKY SCHEME => TRUE_POSITIVE with confidence 0.50-0.60 (~0.55), NOT FALSE_POSITIVE and NOT "
-                    + "UNCERTAIN merely because the current source is trusted. For CWE-502 deserialization: "
-                    + "env/config trusts the PATH only. "
-                    + "Decide on FILE CONTENT control — attacker-influenced bytes => file_untrusted + TRUE_POSITIVE; "
-                    + "proven app/operator-only static artifact => FALSE_POSITIVE; writer trust unknown => keep UNCERTAIN. "
-                    + "For SQL injection: unknown input_source + clear non-literal "
-                    + "string concatenation/interpolation into SQL (any language idiom) without "
-                    + "parameterization/allowlist MUST be TRUE_POSITIVE — do not keep UNCERTAIN for unknown origin. "
-                    + "For CWE-208 timing: TRUE_POSITIVE only for security-sensitive "
-                    + "secret/credential comparisons in the flagged extract; typeof/empty/"
-                    + "public identifiers and non-security UI/hash/routing compares are FALSE_POSITIVE. "
-                    + "Username/email login oracles (user-exists timing) are TRUE_POSITIVE; uniqueness checks are FALSE_POSITIVE. "
-                    + "Do not keep TRUE_POSITIVE when reasoning says the compare is not a secret comparison, "
-                    + "unless reasoning also describes user enumeration. "
-                    + "CLI tool / developer context: if execution_context is cli_developer_tool, CLI arguments, "
-                    + "developer prompts (inquirer/prompts answers), tsconfig/package.json options, and process.cwd() "
-                    + "are developer-controlled → FALSE_POSITIVE. Do NOT keep UNCERTAIN because 'a developer might "
-                    + "accept malicious input' — developer tools are not web attack surfaces. Test context: if the "
-                    + "file is *.test.* / *.spec.* / __tests__/, hardcoded paths are test fixtures → FALSE_POSITIVE. "
-                    + "Only keep UNCERTAIN if a key fact is genuinely unknown after investigation AND local evidence "
-                    + "does not already mandate a verdict. Adjust confidence accordingly. "
-                    + "Return only valid JSON.";
+            StringBuilder s2 = new StringBuilder();
+            s2.append("Stage 2 now: return final JSON with `action` as \"final\". ")
+                    .append("Add required fields: execution_context, input_source, reasoning (3-6 sentences, ")
+                    .append("source -> transformations -> sink), recommendation, remediation_code, false_positive_evidence. ")
+                    .append("IMPORTANT: now that you have classified execution_context and input_source, ")
+                    .append("RE-EVALUATE your verdict. ");
+            if (isCodeInjectionPrompt(metadata, item)) {
+                s2.append("For CWE-94/95 setattr / code generation: input_source and verdict depend on the ATTRIBUTE NAME ")
+                        .append("slot, not the assigned VALUE. Literal/constant/internal NAME + no eval/exec/compile sink ")
+                        .append("=> FALSE_POSITIVE even if VALUE is http_request/database. Mass-assignment NAME or a real ")
+                        .append("eval/exec/compile sink => TRUE_POSITIVE. Do NOT keep UNCERTAIN and do NOT change to ")
+                        .append("TRUE_POSITIVE merely because VALUE origin is HTTP/GraphQL/DB/unknown. ");
+            } else {
+                s2.append("For classic source-to-sink injection CWEs: if input_source resolves ")
+                        .append("to an untrusted origin (http_request, database, file_untrusted, gui_input, url_fragment) ")
+                        .append("AND the sink is exploitable AND no complete neutralizer is proven, you MUST change verdict ")
+                        .append("to TRUE_POSITIVE — do not keep UNCERTAIN merely because the full monorepo call graph was not scanned. ")
+                        .append("If input_source resolves to a trusted origin (internal_call, config_file, environment_variable) ")
+                        .append("or a complete neutralizer is proven (parameterization with proven-safe SQL text, literal SQL, sanitizer), ")
+                        .append("change verdict to FALSE_POSITIVE. ");
+                if (isSqlPrompt(metadata, item)) {
+                    s2.append("EXCEPT for SQL injection: trusted/literal/constant/")
+                            .append("internal_call/config source + SQL still built by string concatenation/interpolation is a ")
+                            .append("RISKY SCHEME => TRUE_POSITIVE with confidence 0.50-0.60 (~0.55), NOT FALSE_POSITIVE and NOT ")
+                            .append("UNCERTAIN merely because the current source is trusted. ")
+                            .append("Unknown input_source + clear non-literal string concatenation/interpolation into SQL ")
+                            .append("without parameterization/allowlist MUST be TRUE_POSITIVE — do not keep UNCERTAIN for unknown origin. ");
+                }
+            }
+            if (hasCwe(metadata, item, "502")) {
+                s2.append("For CWE-502 deserialization: env/config trusts the PATH only. ")
+                        .append("Decide on FILE CONTENT control — attacker-influenced bytes => file_untrusted + TRUE_POSITIVE; ")
+                        .append("proven app/operator-only static artifact => FALSE_POSITIVE; writer trust unknown => keep UNCERTAIN. ");
+            }
+            if (hasCwe(metadata, item, "208")) {
+                s2.append("For CWE-208 timing: TRUE_POSITIVE only for security-sensitive ")
+                        .append("secret/credential comparisons in the flagged extract; typeof/empty/")
+                        .append("public identifiers and non-security UI/hash/routing compares are FALSE_POSITIVE. ")
+                        .append("Username/email login oracles (user-exists timing) are TRUE_POSITIVE; uniqueness checks are FALSE_POSITIVE. ")
+                        .append("Do not keep TRUE_POSITIVE when reasoning says the compare is not a secret comparison, ")
+                        .append("unless reasoning also describes user enumeration. ");
+            }
+            s2.append("CLI tool / developer context: if execution_context is cli_developer_tool, CLI arguments, ")
+                    .append("developer prompts (inquirer/prompts answers), tsconfig/package.json options, and process.cwd() ")
+                    .append("are developer-controlled → FALSE_POSITIVE. Do NOT keep UNCERTAIN because 'a developer might ")
+                    .append("accept malicious input' — developer tools are not web attack surfaces. Test context: if the ")
+                    .append("file is *.test.* / *.spec.* / __tests__/, hardcoded paths are test fixtures → FALSE_POSITIVE. ")
+                    .append("Only keep UNCERTAIN if a key fact is genuinely unknown after investigation AND local evidence ")
+                    .append("does not already mandate a verdict. Adjust confidence accordingly. ")
+                    .append("Return only valid JSON.");
+            stageTwoInstruction = s2.toString();
         } else {
             stageTwoInstruction = "Stage 2 now: return final JSON with the SAME verdict and confidence "
                     + "(verdict=" + stageOneVerdict.verdict() + ", confidence="
@@ -1266,7 +1420,7 @@ public class SastFindingVerificationService {
                                   CodeContextExtractor.CodeContext context, SastRuleMetadata metadata) {
         String validatorPrompt = buildValidatorPrompt(reactMessages, item, context, metadata);
         List<Map<String, Object>> validatorMessages = new ArrayList<>();
-        validatorMessages.add(Map.of("role", "system", "content", validatorSystemPromptFor(metadata)));
+        validatorMessages.add(Map.of("role", "system", "content", validatorSystemPromptFor(metadata, item)));
         validatorMessages.add(Map.of("role", "user", "content", validatorPrompt));
 
         LlmApiClient.LlmResponse response = llmApiClient.chatCompletion(validatorMessages, true);
@@ -1289,7 +1443,7 @@ public class SastFindingVerificationService {
         sb.append("- Flagged code: `").append(item.getCodeExtract()).append("`\n");
         sb.append("- Evidence category: ").append(formatEvidenceCategory(context.category())).append("\n\n");
         sb.append(buildMetadataReviewSection(metadata));
-        sb.append(sastCwePromptGuidanceService.buildGuidance(metadata));
+        sb.append(sastCwePromptGuidanceService.buildGuidance(metadata, context.language()));
 
         // Section 2: Code context (same snippets the analyzer saw)
         sb.append(buildCodeContextSection(context));
@@ -1352,6 +1506,15 @@ public class SastFindingVerificationService {
             sb.append("(use ~0.55). Do NOT mark FALSE_POSITIVE or UNCERTAIN — trusted/unclear current origin does ");
             sb.append("not make string-built SQL safe; the pattern can be reused later with user input. ");
             sb.append("Do NOT raise confidence above 0.60 without proving a current untrusted source.\n\n");
+        } else if (looksLikeUnsanitizedCmsHtml(item, cmsContextText(context), item.getAiReasoning())
+                && !looksLikeClassicUgcHtmlSource(item, cmsContextText(context), item.getAiReasoning())) {
+            sb.append("## HARD EVIDENCE CONSTRAINT\n");
+            sb.append("CMS / content-API / content-component HTML reaches an HTML sink (innerHTML / ");
+            sb.append("dangerouslySetInnerHTML / v-html) without a proven sanitizer.\n");
+            sb.append("Verdict MUST be TRUE_POSITIVE with confidence in [0.50, 0.65] (use ~0.55). ");
+            sb.append("Cite 'unsanitized CMS HTML'. Do NOT mark UNCERTAIN or FALSE_POSITIVE because CMS editors ");
+            sb.append("are operators or the source is not classic UGC. Raise above 0.65 only with a current ");
+            sb.append("UGC/external path.\n\n");
         } else if (originTagPresent && !localUnneutralizedSql) {
             sb.append("## HARD EVIDENCE CONSTRAINT\n");
             sb.append("The code context extractor found that **all discovered call sites of the vulnerable function ");
@@ -1429,8 +1592,9 @@ public class SastFindingVerificationService {
         sb.append("  \"original_verdict_correct\": true/false,\n");
         sb.append("  \"verdict\": \"TRUE_POSITIVE\" | \"FALSE_POSITIVE\" | \"UNCERTAIN\",\n");
         sb.append("  \"confidence\": 0.0-1.0,\n");
-        sb.append("  \"explanation\": \"3-6 sentences: cite specific code/tool evidence. ");
-        sb.append("If you disagree, explain exactly which evidence or assumption is wrong.\",\n");
+        sb.append("  \"explanation\": \"3-6 sentences: cite specific code/tool evidence for a developer. ");
+        sb.append("If you disagree, explain exactly which evidence or assumption is wrong. ");
+        sb.append("Do not mention evidence categories, confidence bands, prompt profiles, or internal enum labels.\",\n");
         sb.append("  \"remediation_valid\": true | false | null,\n");
         sb.append("  \"corrected_remediation_code\": \"corrected code if remediation was invalid, or null\"\n");
         sb.append("}\n");
@@ -1445,33 +1609,50 @@ public class SastFindingVerificationService {
         sb.append("corrected_remediation_code when the proposal is a generic unrelated example ");
         sb.append("(e.g. SELECT username/password, MessageDigest.isEqual(expected, actual) with invented names, ");
         sb.append("or a different-language API) or ignores the flagged sink/variables. ");
-        sb.append("For JWT verification bypass, mark remediation_valid=false when the proposal only removes ");
-        sb.append("verify_signature=False / options bypass without the language-idiomatic verifying API ");
-        sb.append("(key/secret + algorithms + explicit verify-on: Python verify_signature=True, Ruby 3rd-arg true, ");
-        sb.append("JS jwt.verify, Java parseClaimsJws, C# RequireSignedTokens=true, etc.). ");
+        if (isJwtPrompt(metadata, item)) {
+            sb.append("For JWT verification bypass, mark remediation_valid=false when the proposal only removes ");
+            sb.append("verify_signature=False / options bypass without the language-idiomatic verifying API ");
+            sb.append("(key/secret + algorithms + explicit verify-on: Python verify_signature=True, Ruby 3rd-arg true, ");
+            sb.append("JS jwt.verify, Java parseClaimsJws, C# RequireSignedTokens=true, etc.). ");
+        }
         sb.append("Corrected remediation must rewrite the flagged extract. ");
         sb.append("NEVER treat proposed remediation code as already-applied code or as false-positive evidence.\n");
         sb.append("- Apply the structured evidence and CWE-specific guidance included above; do not duplicate or ignore it.\n");
         sb.append("- FALSE_POSITIVE requires positive safety evidence appropriate to the CWE. ");
         sb.append("If a key fact (source/sink/neutralizer/secret vs non-secret) is genuinely missing, return UNCERTAIN. ");
         sb.append("Do not use UNCERTAIN merely because repository-wide callers were not fully enumerated when local evidence suffices.\n");
-        sb.append("- For CWE-208: non-security comparisons (typeof/empty/public id/UI) are FALSE_POSITIVE. "
-                + "Do not mark TRUE_POSITIVE from identifier names. Username/email login oracles that enumerate "
-                + "accounts by timing are TRUE_POSITIVE (fix: dummy hash + same response, not timingSafeEqual on username). "
-                + "Secret comparisons without constant-time are TRUE_POSITIVE only when the flagged extract is that secret compare. "
-                + "If reasoning says it is not a secret compare and does not describe enumeration, verdict is FALSE_POSITIVE.\n");
-        sb.append("- For SQL injection: non-hardcoded/untrusted input + clear string concatenation/interpolation ");
-        sb.append("into SQL without parameterization/allowlist => TRUE_POSITIVE high confidence. ");
-        sb.append("Trusted/literal/constant/known-safe operands + string-built SQL (risky scheme) => TRUE_POSITIVE ");
-        sb.append("with confidence 0.50-0.60 (not FALSE_POSITIVE, not UNCERTAIN for unclear origin). ");
-        sb.append("Pure literal SQL with no concat, or numeric-only, or parameterized/allowlisted => FALSE_POSITIVE.\n");
-        sb.append("- For HTTP header/response-splitting/XSS header sinks: regex groups, URL decode, and '..' path ");
-        sb.append("filters are not neutralizers.\n");
-        sb.append("- For CWE-94/95 setattr: fixed/internal NAME + no exec sink => FALSE_POSITIVE; ");
-        sb.append("attacker-controlled NAME (mass assignment) or eval/exec/compile => TRUE_POSITIVE. ");
-        sb.append("Do not use UNCERTAIN because the assigned VALUE origin is unclear.\n");
-        sb.append("- For missing authentication: trace credential values; do not infer auth from argument count alone.\n");
-        sb.append("- Do not treat config/query loaders (getSqlString/getQuery/etc.) as trusted without tracing their SQL origin.\n");
+        if (hasCwe(metadata, item, "208")) {
+            sb.append("- For CWE-208: non-security comparisons (typeof/empty/public id/UI) are FALSE_POSITIVE. "
+                    + "Do not mark TRUE_POSITIVE from identifier names. Username/email login oracles that enumerate "
+                    + "accounts by timing are TRUE_POSITIVE (fix: dummy hash + same response, not timingSafeEqual on username). "
+                    + "Secret comparisons without constant-time are TRUE_POSITIVE only when the flagged extract is that secret compare. "
+                    + "If reasoning says it is not a secret compare and does not describe enumeration, verdict is FALSE_POSITIVE.\n");
+        }
+        if (isSqlPrompt(metadata, item)) {
+            sb.append("- For SQL injection: non-hardcoded/untrusted input + clear string concatenation/interpolation ");
+            sb.append("into SQL without parameterization/allowlist => TRUE_POSITIVE high confidence. ");
+            sb.append("Trusted/literal/constant/known-safe operands + string-built SQL (risky scheme) => TRUE_POSITIVE ");
+            sb.append("with confidence 0.50-0.60 (not FALSE_POSITIVE, not UNCERTAIN for unclear origin). ");
+            sb.append("Pure literal SQL with no concat, or numeric-only, or parameterized/allowlisted => FALSE_POSITIVE.\n");
+            sb.append("- Do not treat config/query loaders (getSqlString/getQuery/etc.) as trusted without tracing their SQL origin.\n");
+        }
+        if (isXssPrompt(metadata, item)) {
+            sb.append("- For CWE-79: CMS / content-API HTML to innerHTML / dangerouslySetInnerHTML / v-html without a ");
+            sb.append("proven sanitizer => TRUE_POSITIVE with confidence 0.50-0.65 (~0.55), not UNCERTAIN. ");
+            sb.append("Editor/operator origin is not an allowlist. Raise above 0.65 only with current UGC/external taint.\n");
+        }
+        if (isHttpHeaderInjectionFinding(item, metadata)) {
+            sb.append("- For HTTP header/response-splitting/XSS header sinks: regex groups, URL decode, and '..' path ");
+            sb.append("filters are not neutralizers.\n");
+        }
+        if (isCodeInjectionPrompt(metadata, item)) {
+            sb.append("- For CWE-94/95 setattr: fixed/internal NAME + no exec sink => FALSE_POSITIVE; ");
+            sb.append("attacker-controlled NAME (mass assignment) or eval/exec/compile => TRUE_POSITIVE. ");
+            sb.append("Do not use UNCERTAIN because the assigned VALUE origin is unclear.\n");
+        }
+        if (isMissingDatabaseAuthenticationFinding(item, metadata)) {
+            sb.append("- For missing authentication: trace credential values; do not infer auth from argument count alone.\n");
+        }
         sb.append("- Return ONLY valid JSON, no markdown fences, no prose.\n");
 
         return sb.toString();
@@ -1623,9 +1804,21 @@ public class SastFindingVerificationService {
                     validatorVerdict = "TRUE_POSITIVE";
                     validatorConfidence = SQL_RISKY_TRUSTED_CONCAT_CONFIDENCE;
                     explanation = appendNormalizationReason(explanation,
-                            "RISKY SCHEME: SQL is concatenated/interpolated from proven application-safe "
-                                    + "literals/constants. Mark TRUE_POSITIVE with mid confidence (~0.55), not "
-                                    + "FALSE_POSITIVE/UNCERTAIN — the helper can later be reused with user input.");
+                            "SQL is concatenated or interpolated from application-safe literals or constants. "
+                                    + "The query is still injectable if those values change, so this remains a true positive.");
+                }
+            } else if (looksLikeUnsanitizedCmsHtml(item, cmsContextText(context), explanation)
+                    && !looksLikeClassicUgcHtmlSource(item, cmsContextText(context), explanation)) {
+                if (!"TRUE_POSITIVE".equals(validatorVerdict)
+                        || validatorConfidence < 0.50d || validatorConfidence > 0.65d) {
+                    log.warn("[SastVerification] Validator marked {} for {} on unsanitized CMS/content-API HTML; "
+                                    + "coherence guard normalizing to TRUE_POSITIVE @ {}",
+                            validatorVerdict, itemRef, CMS_UNSANITIZED_HTML_CONFIDENCE);
+                    validatorVerdict = "TRUE_POSITIVE";
+                    validatorConfidence = CMS_UNSANITIZED_HTML_CONFIDENCE;
+                    explanation = appendNormalizationReason(explanation,
+                            "CMS or content-API rich text reaches an HTML sink without a proven sanitizer, "
+                                    + "so this remains exploitable.");
                 }
             } else if (allCallsitesLiteralGuard && !unneutralizedSqlForLiteralGuard
                     && !"FALSE_POSITIVE".equals(validatorVerdict)) {
@@ -1635,10 +1828,8 @@ public class SastFindingVerificationService {
                 validatorVerdict = "FALSE_POSITIVE";
                 validatorConfidence = Math.max(validatorConfidence, 0.88d);
                 explanation = appendNormalizationReason(explanation,
-                        "All discovered call sites pass string literals or named constants "
-                                + "(origin-tag: all-callsites-pass-literal-arg=true). "
-                                + "No attacker-controlled call site was found; the validator cannot override "
-                                + "this structural finding without citing a concrete counter-example.");
+                        "All discovered call sites pass string literals or named constants. "
+                                + "No attacker-controlled call site was found.");
             }
             if (!riskyTrustedSqlForGuard && !preserveRiskyTrustedSql
                     && !"TRUE_POSITIVE".equals(validatorVerdict)
@@ -2158,14 +2349,15 @@ public class SastFindingVerificationService {
 
     private String buildInstructionsSection(boolean includeDataflow,
                                              CodeContextExtractor.EvidenceCategory category,
-                                             Item item) {
+                                             Item item,
+                                             SastRuleMetadata metadata) {
         StringBuilder sb = new StringBuilder();
         sb.append("## Instructions\n");
         sb.append("Work through the following steps in order. Your JSON response must reflect this reasoning.\n\n");
 
         sb.append("### Repository investigation (you can look beyond the snippets above)\n");
 
-        boolean codeInjection = CodeInjectionSinkEvidence.isCodeInjectionFinding(item);
+        boolean codeInjection = isCodeInjectionPrompt(metadata, item);
         if (codeInjection) {
             sb.append("This is CWE-94/95 code generation/injection. Investigate the ATTRIBUTE NAME slot of ");
             sb.append("setattr / __set__ / contribute_to_class / Object.defineProperty (is it a literal, ");
@@ -2184,9 +2376,13 @@ public class SastFindingVerificationService {
         } else if (category == CodeContextExtractor.EvidenceCategory.PROVEN_SOURCE_DOM) {
             sb.append("Evidence category is PROVEN_SOURCE_DOM: the flagged value originates from DOM content ");
             sb.append("(e.g. querySelector, textContent, dataset, Stimulus target). ");
-            sb.append("Classify input_source as `dom_content`. For logger_leak in web_client, ");
-            sb.append("client-side console logging of DOM content is visible only in the user's ");
-            sb.append("own browser dev tools, not stored server-side — prefer FALSE_POSITIVE.\n\n");
+            sb.append("Classify input_source as `dom_content`. ");
+            if (metadata != null && metadata.family() == VulnerabilityFamily.LOGGER_LEAK) {
+                sb.append("For logger_leak in web_client, ");
+                sb.append("client-side console logging of DOM content is visible only in the user's ");
+                sb.append("own browser dev tools, not stored server-side — prefer FALSE_POSITIVE. ");
+            }
+            sb.append("\n\n");
         } else if (category == CodeContextExtractor.EvidenceCategory.NEUTRALIZED) {
             sb.append("Evidence category is NEUTRALIZED: a sanitizer/neutralizer was detected near the sink. ");
             sb.append("Verify that the protection is complete for this vulnerability class and covers ALL ");
@@ -2291,30 +2487,45 @@ public class SastFindingVerificationService {
         }
         sb.append("- Mark TRUE_POSITIVE only when the shown code proves the issue is exploitable for this CWE.\n");
         sb.append("- Mark FALSE_POSITIVE only when the shown code proves a complete neutralizer, safe source, framework guarantee, or non-exploitable context appropriate to this CWE.\n");
-        sb.append("- For source-to-sink injection (SQL/command/XSS/SSTI — not setattr wiring): untrusted input_source + exploitable sink + no neutralizer => TRUE_POSITIVE. "
-                + "Do not use UNCERTAIN just because some callers outside the shown snippets were not enumerated.\n");
-        sb.append("- For CWE-94/95 setattr / code generation: judge the attribute NAME, not the VALUE origin. "
-                + "SAFE (FALSE_POSITIVE): setattr(obj, 'literal', v), setattr(obj, self.field, v), __set__ writing "
-                + "fixed fields — even if v is HTTP/DB. UNSAFE (TRUE_POSITIVE): setattr(obj, request/data[key], v) "
-                + "or for key in data: setattr(obj, key, v), or a real eval/exec/compile sink. "
-                + "Do not use UNCERTAIN because VALUE origin is unclear.\n");
-        sb.append("- For SQL injection: if the value is not hardcoded/literal/constant AND the shown code clearly "
-                + "concatenates/interpolates that string into SQL (any language idiom: +, ., f-string, template "
-                + "literal, sprintf, etc.) without parameterization or a complete allowlist, "
-                + "verdict MUST be TRUE_POSITIVE.\n");
-        sb.append("- For CWE-502 deserialization: path-from-env/config is usually fine for the PATH. Decide on "
-                + "FILE CONTENT control after tracing writers (pickle.dump/save). Attacker-influenced bytes => "
-                + "TRUE_POSITIVE; proven app/operator-only static artifact => FALSE_POSITIVE; unresolved writer "
-                + "trust => UNCERTAIN (do not invent either side).\n");
-        sb.append("- For HTTP header/response-splitting sinks: regex capture groups, URL decoding, and path '..' "
-                + "filters are NOT neutralizers.\n");
-        sb.append("- For missing authentication (e.g. DB connect): trace whether an auth channel exists and whether "
-                + "password/token values are null/empty. Do not infer authentication from argument count alone; "
-                + "if values are unknown, prefer UNCERTAIN over FALSE_POSITIVE.\n");
-        sb.append("- For misconfiguration/timing/crypto: local primitive + data character is enough; full call-graph is not required.\n");
+        if (!codeInjection && !isMisconfigurationProfile(metadata)) {
+            sb.append("- For source-to-sink injection: untrusted input_source + exploitable sink + no neutralizer => TRUE_POSITIVE. "
+                    + "Do not use UNCERTAIN just because some callers outside the shown snippets were not enumerated.\n");
+        }
+        if (codeInjection) {
+            sb.append("- For CWE-94/95 setattr / code generation: judge the attribute NAME, not the VALUE origin. "
+                    + "SAFE (FALSE_POSITIVE): setattr(obj, 'literal', v), setattr(obj, self.field, v), __set__ writing "
+                    + "fixed fields — even if v is HTTP/DB. UNSAFE (TRUE_POSITIVE): setattr(obj, request/data[key], v) "
+                    + "or for key in data: setattr(obj, key, v), or a real eval/exec/compile sink. "
+                    + "Do not use UNCERTAIN because VALUE origin is unclear.\n");
+        }
+        if (isSqlPrompt(metadata, item)) {
+            sb.append("- For SQL injection: if the value is not hardcoded/literal/constant AND the shown code clearly "
+                    + "concatenates/interpolates that string into SQL (any language idiom: +, ., f-string, template "
+                    + "literal, sprintf, etc.) without parameterization or a complete allowlist, "
+                    + "verdict MUST be TRUE_POSITIVE.\n");
+        }
+        if (hasCwe(metadata, item, "502")) {
+            sb.append("- For CWE-502 deserialization: path-from-env/config is usually fine for the PATH. Decide on "
+                    + "FILE CONTENT control after tracing writers (pickle.dump/save). Attacker-influenced bytes => "
+                    + "TRUE_POSITIVE; proven app/operator-only static artifact => FALSE_POSITIVE; unresolved writer "
+                    + "trust => UNCERTAIN (do not invent either side).\n");
+        }
+        if (isHttpHeaderInjectionFinding(item, metadata)) {
+            sb.append("- For HTTP header/response-splitting sinks: regex capture groups, URL decoding, and path '..' "
+                    + "filters are NOT neutralizers.\n");
+        }
+        if (isMissingDatabaseAuthenticationFinding(item, metadata)) {
+            sb.append("- For missing authentication (e.g. DB connect): trace whether an auth channel exists and whether "
+                    + "password/token values are null/empty. Do not infer authentication from argument count alone; "
+                    + "if values are unknown, prefer UNCERTAIN over FALSE_POSITIVE.\n");
+        }
+        if (isMisconfigurationProfile(metadata) || hasCwe(metadata, item, "208", "327", "328", "330")) {
+            sb.append("- For misconfiguration/timing/crypto: local primitive + data character is enough; full call-graph is not required.\n");
+        }
         sb.append("- Use UNCERTAIN only when a key fact is missing or contradictory (e.g. unknown whether a compared value is a secret), "
                 + "not when repository-wide search was incomplete.\n");
         sb.append("- Reasoning must cite concrete identifiers/functions and describe source -> transformations/calls -> sink when taint is required.\n");
+        sb.append("- ").append(SastDeveloperFacingReasoning.PROMPT_RULE).append('\n');
         sb.append("- For configuration-style findings where taint is not required, reason about the configured primitive/flag/secret/audience and why it is safe or unsafe.\n");
         if (includeDataflow) {
             sb.append("- Check if related files show sanitization, allowlisting, framework defaults, or wrappers that affect exploitability.\n");
@@ -2345,18 +2556,22 @@ public class SastFindingVerificationService {
         sb.append("unless those exact names/queries appear in the finding.\n");
         sb.append("- Language must match the finding file (JS→crypto.timingSafeEqual, Java→MessageDigest.isEqual, ");
         sb.append("Python→hmac.compare_digest, etc.).\n");
-        sb.append("- For concatenated SQL / identifiers / DDL fragments: placeholders often cannot bind those parts — ");
-        sb.append("recommend allowlisting/validation at the shown construction site (same variables and sink).\n");
-        sb.append("- For JWT verification bypass (verify_signature=False / unsigned decode): remediation_code must ");
-        sb.append("use the language-idiomatic verifying API with project key/secret, algorithms allowlist, ");
-        sb.append("and verification explicitly enabled ");
-        sb.append("(Python: options={\"verify_signature\": True}; Ruby: JWT.decode(..., true, ...); ");
-        sb.append("JS/TS: jwt.verify; Java: parseClaimsJws; C#: RequireSignedTokens=true; ");
-        sb.append("PHP: JWT::decode+Key; Go: jwt.Parse + token.Valid). ");
-        sb.append("Bare jwt.decode(token) / only deleting verify_signature=False is INVALID. ");
-        sb.append("Do not invent a hardcoded secret; reuse the project's JWT secret/config symbol when visible, ");
-        sb.append("otherwise use a named placeholder and state where the key must come from. ");
-        sb.append("If the helper is claim-peek-only and a verified decode already gates auth, prefer FALSE_POSITIVE.\n");
+        if (isSqlPrompt(metadata, item)) {
+            sb.append("- For concatenated SQL / identifiers / DDL fragments: placeholders often cannot bind those parts — ");
+            sb.append("recommend allowlisting/validation at the shown construction site (same variables and sink).\n");
+        }
+        if (isJwtPrompt(metadata, item)) {
+            sb.append("- For JWT verification bypass (verify_signature=False / unsigned decode): remediation_code must ");
+            sb.append("use the language-idiomatic verifying API with project key/secret, algorithms allowlist, ");
+            sb.append("and verification explicitly enabled ");
+            sb.append("(Python: options={\"verify_signature\": True}; Ruby: JWT.decode(..., true, ...); ");
+            sb.append("JS/TS: jwt.verify; Java: parseClaimsJws; C#: RequireSignedTokens=true; ");
+            sb.append("PHP: JWT::decode+Key; Go: jwt.Parse + token.Valid). ");
+            sb.append("Bare jwt.decode(token) / only deleting verify_signature=False is INVALID. ");
+            sb.append("Do not invent a hardcoded secret; reuse the project's JWT secret/config symbol when visible, ");
+            sb.append("otherwise use a named placeholder and state where the key must come from. ");
+            sb.append("If the helper is claim-peek-only and a verified decode already gates auth, prefer FALSE_POSITIVE.\n");
+        }
         sb.append("- If a `Scanner-suggested remediation` section is provided above, treat it as a reference only: ");
         sb.append("produce your OWN remediation_code adapted to the actual code shown (correct variable names, call site, imports, and framework idioms), not a verbatim copy of the scanner text.\n");
         sb.append("- The scanner guidance is often generic; if it is inaccurate, incomplete, or wrong for this context, improve or replace it and base your fix on the real code and data flow shown.\n");
@@ -2380,7 +2595,7 @@ public class SastFindingVerificationService {
         sb.append("\"action\": \"final\", ");
         sb.append("\"verdict\": \"TRUE_POSITIVE|FALSE_POSITIVE|UNCERTAIN\", ");
         sb.append("\"confidence\": 0.0-1.0, ");
-        sb.append("\"reasoning\": \"3-6 sentences describing source -> transformations/call chain -> sink with concrete code evidence\"");
+        sb.append("\"reasoning\": \"3-6 sentences describing source -> transformations/call chain -> sink with concrete code evidence. Developer-facing: no evidence categories, confidence bands, prompt profiles, or internal enum labels\"");
         sb.append("}\n\n");
         sb.append("C) Stage 2 details (only when requested after Stage 1):\n");
         sb.append("{");
@@ -2389,7 +2604,7 @@ public class SastFindingVerificationService {
         sb.append("\"input_source\": \"http_request|database|file_untrusted|multipart_parser_temp_path|gui_input|dom_content|url_fragment|cli_argument_developer|internal_call|config_file|environment_variable|unknown\", ");
         sb.append("\"verdict\": \"TRUE_POSITIVE|FALSE_POSITIVE|UNCERTAIN\", ");
         sb.append("\"confidence\": 0.0-1.0, ");
-        sb.append("\"reasoning\": \"3-6 sentences describing source -> transformations/call chain -> sink with concrete code evidence\", ");
+        sb.append("\"reasoning\": \"3-6 sentences describing source -> transformations/call chain -> sink with concrete code evidence. Developer-facing: no evidence categories, confidence bands, prompt profiles, or internal enum labels\", ");
         sb.append("\"recommendation\": \"required for TRUE_POSITIVE, empty string otherwise\", ");
         sb.append("\"remediation_code\": \"required for TRUE_POSITIVE, empty string otherwise\", ");
         sb.append("\"false_positive_evidence\": \"for FALSE_POSITIVE: short verbatim citation of the existing sanitizer/escaping/text-only sink/allowlist/framework guarantee/trusted source/local-only non-sensitive exposure/same-origin or relative-only redirect construction, empty otherwise\"");
@@ -2466,8 +2681,7 @@ public class SastFindingVerificationService {
             recommendation = "";
             remediationCode = "";
             reasoning = appendNormalizationReason(reasoning,
-                    "Execution context is " + executionContext + " with input_source " + inputSource
-                    + "; untrusted external input is not proven.");
+                    "This code runs in a trusted developer/test context and untrusted external input is not proven.");
             normalized = true;
         }
 
@@ -2601,8 +2815,8 @@ public class SastFindingVerificationService {
                 recommendation = sqlInjectionRecommendation(item);
                 remediationCode = sqlInjectionRemediationCode(item);
                 reasoning = appendNormalizationReason(reasoning,
-                        "RISKY SCHEME: SQL is concatenated/interpolated from proven application-safe "
-                                + "literals/constants. TRUE_POSITIVE with mid confidence (~0.55), not FALSE_POSITIVE.");
+                        "SQL is concatenated or interpolated from application-safe literals or constants. "
+                                + "The query is still injectable if those values change, so this remains a true positive.");
                 normalized = true;
             }
         } else if (!"TRUE_POSITIVE".equals(verdict)
@@ -2680,9 +2894,7 @@ public class SastFindingVerificationService {
                         + "(parameterization, allowlist, or CWE-appropriate sanitizer).";
             }
             reasoning = appendNormalizationReason(reasoning,
-                    "input_source=" + inputSource + " is untrusted and no complete neutralizer was proven. "
-                            + "For source-to-sink injection CWEs this is TRUE_POSITIVE; do not keep UNCERTAIN "
-                            + "merely because repository-wide callers were not fully enumerated.");
+                    "The value comes from untrusted input and no complete protection was proven, so this remains exploitable.");
             normalized = true;
         }
 
@@ -2699,7 +2911,7 @@ public class SastFindingVerificationService {
             recommendation = sqlInjectionRecommendation(item);
             remediationCode = sqlInjectionRemediationCode(item);
             reasoning = appendNormalizationReason(reasoning,
-                    "Unknown input_source does not justify UNCERTAIN when the shown code clearly concatenates "
+                    "Unknown origin does not justify uncertainty when the shown code clearly concatenates "
                             + "or interpolates a non-literal string into dynamic SQL without parameterization or a "
                             + "complete allowlist. This is TRUE_POSITIVE.");
             normalized = true;
@@ -2727,7 +2939,7 @@ public class SastFindingVerificationService {
             }
             reasoning = appendNormalizationReason(reasoning,
                     "Attacker-influenced bytes reach an unsafe deserialization API without allowlist/safe_load/"
-                            + "integrity proof. input_source=file_untrusted; verdict is TRUE_POSITIVE.");
+                            + "integrity proof. The file contents are attacker-influenced, so this remains exploitable.");
             normalized = true;
         }
 
@@ -2820,6 +3032,25 @@ public class SastFindingVerificationService {
                             + "FALSE_POSITIVE requires explicit escaping, sanitization, or text-only insertion proof "
                             + "before content reaches innerHTML/insertAdjacentHTML.");
             normalized = true;
+        }
+
+        if (looksLikeUnsanitizedCmsHtml(item, falsePositiveEvidence, reasoning)
+                && !looksLikeClassicUgcHtmlSource(item, falsePositiveEvidence, reasoning)) {
+            if (!"TRUE_POSITIVE".equals(verdict) || confidence < 0.50d || confidence > 0.65d) {
+                log.warn("[SastVerification] LLM marked {} for {} on unsanitized CMS/content-API HTML; "
+                                + "normalizing to TRUE_POSITIVE @ {}",
+                        verdict, item.getTitle(), CMS_UNSANITIZED_HTML_CONFIDENCE);
+                verdict = "TRUE_POSITIVE";
+                confidence = CMS_UNSANITIZED_HTML_CONFIDENCE;
+                falsePositiveEvidence = "";
+                if (recommendation == null || recommendation.isBlank()) {
+                    recommendation = unsanitizedCmsHtmlRecommendation();
+                }
+                reasoning = appendNormalizationReason(reasoning,
+                        "CMS or content-API rich text reaches an HTML sink without a proven sanitizer, "
+                                + "so this remains exploitable. Editor or operator origin is not an allowlist.");
+                normalized = true;
+            }
         }
 
         // Library execution-sink guard: if the model marked FALSE_POSITIVE for a known execution-sink
@@ -4124,10 +4355,8 @@ public class SastFindingVerificationService {
                         sqlInjectionRecommendation(item),
                         sqlInjectionRemediationCode(item)));
                 item.setAiReasoning(appendNormalizationReason(item.getAiReasoning(),
-                        "RISKY SCHEME: SQL is concatenated/interpolated from proven application-safe "
-                                + "literals/constants (no current attacker-controlled source). "
-                                + "TRUE_POSITIVE with mid confidence (~0.55), not FALSE_POSITIVE — "
-                                + "the pattern can later be reused with user input."));
+                        "SQL is concatenated or interpolated from application-safe literals or constants. "
+                                + "The query is still injectable if those values change, so this remains a true positive."));
                 log.warn("[SastVerification] Deterministic context normalized {} from {} ({}) to TRUE_POSITIVE ({}) "
                                 + "because trusted-source SQL string concatenation is a risky scheme",
                         itemRef,
@@ -5633,6 +5862,68 @@ public class SastFindingVerificationService {
                 || combined.contains("v-html");
     }
 
+    private String cmsContextText(CodeContextExtractor.CodeContext context) {
+        if (context == null) {
+            return "";
+        }
+        return Optional.ofNullable(context.callerContext()).orElse("")
+                + " " + Optional.ofNullable(context.crossFileCallerContext()).orElse("")
+                + " " + Optional.ofNullable(context.definitionContext()).orElse("");
+    }
+
+    private boolean looksLikeUnsanitizedCmsHtml(Item item, String falsePositiveEvidence, String reasoning) {
+        if (!isHtmlInjectionSink(item)) {
+            return false;
+        }
+        if (containsProvenHtmlSanitizerEvidence(falsePositiveEvidence, reasoning, item)) {
+            return false;
+        }
+        String combined = cmsEvidenceText(item, falsePositiveEvidence, reasoning);
+        return CMS_HTML_SOURCE_PATTERN.matcher(combined).find();
+    }
+
+    private boolean looksLikeClassicUgcHtmlSource(Item item, String falsePositiveEvidence, String reasoning) {
+        String combined = cmsEvidenceText(item, falsePositiveEvidence, reasoning);
+        return CLASSIC_UGC_HTML_SOURCE_PATTERN.matcher(combined).find();
+    }
+
+    private String cmsEvidenceText(Item item, String falsePositiveEvidence, String reasoning) {
+        return Optional.ofNullable(item == null ? null : item.getCodeExtract()).orElse("")
+                + " " + Optional.ofNullable(item == null ? null : item.getDescription()).orElse("")
+                + " " + Optional.ofNullable(item == null ? null : item.getTitle()).orElse("")
+                + " " + Optional.ofNullable(item == null ? null : item.getFullFilename()).orElse("")
+                + " " + Optional.ofNullable(item == null ? null : item.getFilename()).orElse("")
+                + " " + Optional.ofNullable(falsePositiveEvidence).orElse("")
+                + " " + Optional.ofNullable(reasoning).orElse("");
+    }
+
+    private boolean containsProvenHtmlSanitizerEvidence(String falsePositiveEvidence, String reasoning, Item item) {
+        String combined = (Optional.ofNullable(falsePositiveEvidence).orElse("")
+                + " " + Optional.ofNullable(reasoning).orElse("")
+                + " " + Optional.ofNullable(item == null ? null : item.getCodeExtract()).orElse(""))
+                .toLowerCase(Locale.ROOT);
+        return combined.contains("dompurify")
+                || combined.contains("bleach.clean")
+                || combined.contains("htmlspecialchars")
+                || combined.contains("owasp encoder")
+                || combined.contains("encoder.forhtml")
+                || combined.contains("jsoup")
+                || combined.contains("bluemonday")
+                || combined.contains("createtextnode")
+                || combined.contains("create text node")
+                || combined.contains("render api with sanitized field")
+                || combined.contains("visible sanitizer call")
+                || combined.contains("csp blocks inline scripts")
+                || combined.contains("html tagged template")
+                || combined.contains("htmlraw");
+    }
+
+    private String unsanitizedCmsHtmlRecommendation() {
+        return "Sanitize CMS/rich-text HTML with a tight library sanitizer (e.g. DOMPurify.sanitize without "
+                + "ADD_TAGS/ADD_ATTR) before innerHTML / dangerouslySetInnerHTML / v-html. "
+                + "Do not treat CMS editor origin as an allowlist.";
+    }
+
     private boolean reliesOnTrustedServerResponseReasoning(String falsePositiveEvidence, String reasoning) {
         String combined = (Optional.ofNullable(falsePositiveEvidence).orElse("")
                 + " " + Optional.ofNullable(reasoning).orElse("")).toLowerCase(Locale.ROOT);
@@ -5685,6 +5976,16 @@ public class SastFindingVerificationService {
     private ValidatorVerdict normalizeValidatorFalsePositive(Item item, CodeContextExtractor.CodeContext context,
                                                              SastRuleMetadata metadata, String verdict, double confidence,
                                                              String explanation, String itemRef) {
+        if (looksLikeUnsanitizedCmsHtml(item, cmsContextText(context), explanation)
+                && !looksLikeClassicUgcHtmlSource(item, cmsContextText(context), explanation)
+                && (!"TRUE_POSITIVE".equals(verdict) || confidence < 0.50d || confidence > 0.65d)) {
+            log.warn("[SastVerification] Validator marked {} for {} on unsanitized CMS/content-API HTML; "
+                    + "normalizing to TRUE_POSITIVE @ {}", verdict, itemRef, CMS_UNSANITIZED_HTML_CONFIDENCE);
+            return new ValidatorVerdict("TRUE_POSITIVE", CMS_UNSANITIZED_HTML_CONFIDENCE,
+                    appendNormalizationReason(explanation,
+                            "Unsanitized CMS HTML: CMS / content-API rich text reaching an HTML sink without a proven "
+                                    + "sanitizer is TRUE_POSITIVE with mid confidence (~0.55)."));
+        }
         if (!"FALSE_POSITIVE".equals(verdict)) {
             return new ValidatorVerdict(verdict, confidence, explanation);
         }

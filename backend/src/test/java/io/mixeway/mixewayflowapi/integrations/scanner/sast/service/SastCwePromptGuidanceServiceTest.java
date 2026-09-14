@@ -185,10 +185,34 @@ class SastCwePromptGuidanceServiceTest {
 
         String guidance = service.buildGuidance(metadata);
 
-        assertTrue(guidance.contains("same-origin HTML"), guidance);
-        assertTrue(guidance.contains("server-rendered markup"), guidance);
+        assertTrue(guidance.contains("same-origin"), guidance);
+        assertTrue(guidance.contains("unsanitized CMS HTML"), guidance);
+        assertTrue(guidance.contains("TRUE_POSITIVE with confidence 0.50-0.65"), guidance);
         assertTrue(guidance.contains("html tagged template"), guidance);
+        assertTrue(guidance.contains("DOMPurify"), guidance);
+        assertTrue(guidance.contains("JavaScript language review"), guidance);
         org.junit.jupiter.api.Assertions.assertFalse(guidance.contains("Go language review"), guidance);
+        org.junit.jupiter.api.Assertions.assertFalse(guidance.contains("html/template"), guidance);
+        org.junit.jupiter.api.Assertions.assertFalse(guidance.contains("bluemonday"), guidance);
+    }
+
+    @Test
+    void xssChecklistTreatsUnsanitizedCmsHtmlAsTruePositive() {
+        SastRuleMetadata metadata = new SastRuleMetadata(
+                "javascript_lang_xss_innerhtml",
+                List.of("79"),
+                VulnerabilityFamily.XSS,
+                PromptProfile.XSS,
+                PolicyProfile.XSS_CONTEXTUAL_ESCAPING,
+                true,
+                false,
+                false);
+
+        String guidance = service.buildGuidance(metadata);
+
+        assertTrue(guidance.contains("CMS / content-API HTML"), guidance);
+        assertTrue(guidance.contains("Do NOT mark UNCERTAIN because 'CMS editors are trusted'"), guidance);
+        assertTrue(guidance.contains("Do NOT use UNCERTAIN for CMS/content-API HTML"), guidance);
     }
 
     @Test
@@ -262,5 +286,88 @@ class SastCwePromptGuidanceServiceTest {
 
         assertTrue(guidance.contains("0o666") || guidance.contains("0666"), guidance);
         assertTrue(guidance.contains("umask"), guidance);
+    }
+
+    @Test
+    void javaPathTraversalDoesNotReceiveExpressOrDjangoApis() {
+        SastRuleMetadata metadata = new SastRuleMetadata(
+                "java_lang_path_traversal",
+                List.of("22"),
+                VulnerabilityFamily.PATH_TRAVERSAL,
+                PromptProfile.INJECTION,
+                PolicyProfile.STRICT_SOURCE_TO_SINK,
+                true,
+                false,
+                false);
+
+        String guidance = service.buildGuidance(metadata);
+
+        assertTrue(guidance.contains("Java language review"), guidance);
+        assertTrue(guidance.contains("Paths/Files"), guidance);
+        assertTrue(guidance.contains("originalFilename"), guidance);
+        org.junit.jupiter.api.Assertions.assertFalse(guidance.contains("Express/Koa"), guidance);
+        org.junit.jupiter.api.Assertions.assertFalse(guidance.contains("formidable"), guidance);
+        org.junit.jupiter.api.Assertions.assertFalse(guidance.contains("request.FILES"), guidance);
+        org.junit.jupiter.api.Assertions.assertFalse(guidance.contains("Go language review"), guidance);
+    }
+
+    @Test
+    void pythonCodeInjectionKeepsSetattrNameSlotExamples() {
+        SastRuleMetadata metadata = new SastRuleMetadata(
+                "python_lang_code_injection",
+                List.of("94"),
+                VulnerabilityFamily.GENERAL,
+                PromptProfile.GENERAL,
+                PolicyProfile.GENERAL_REVIEW,
+                true,
+                false,
+                false);
+
+        String guidance = service.buildGuidance(metadata);
+
+        assertTrue(guidance.contains("Python language review"), guidance);
+        assertTrue(guidance.contains("setattr"), guidance);
+        assertTrue(guidance.contains("contribute_to_class"), guidance);
+        org.junit.jupiter.api.Assertions.assertFalse(guidance.contains("innerHTML"), guidance);
+        org.junit.jupiter.api.Assertions.assertFalse(guidance.contains("SSLSocketFactory"), guidance);
+    }
+
+    @Test
+    void languageHintOverridesRuleIdPrefix() {
+        SastRuleMetadata metadata = new SastRuleMetadata(
+                "javascript_lang_xss_innerhtml",
+                List.of("79"),
+                VulnerabilityFamily.XSS,
+                PromptProfile.XSS,
+                PolicyProfile.XSS_CONTEXTUAL_ESCAPING,
+                true,
+                false,
+                false);
+
+        String guidance = service.buildGuidance(metadata, "java");
+
+        assertTrue(guidance.contains("Java language review"), guidance);
+        assertTrue(guidance.contains("JSoup") || guidance.contains("Thymeleaf"), guidance);
+        org.junit.jupiter.api.Assertions.assertFalse(guidance.contains("JavaScript language review"), guidance);
+        org.junit.jupiter.api.Assertions.assertFalse(guidance.contains("dangerouslySetInnerHTML"), guidance);
+    }
+
+    @Test
+    void xssFamilyWithoutRuleIdDefaultsToJavascriptPack() {
+        SastRuleMetadata metadata = new SastRuleMetadata(
+                null,
+                List.of(),
+                VulnerabilityFamily.XSS,
+                PromptProfile.XSS,
+                PolicyProfile.XSS_CONTEXTUAL_ESCAPING,
+                true,
+                false,
+                false);
+
+        String guidance = service.buildGuidance(metadata);
+
+        assertTrue(guidance.contains("JavaScript language review"), guidance);
+        assertTrue(guidance.contains("DOMPurify"), guidance);
+        org.junit.jupiter.api.Assertions.assertFalse(guidance.contains("Go language review"), guidance);
     }
 }
