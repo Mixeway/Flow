@@ -26,6 +26,9 @@ class ControlSoundnessGateTest {
         assertTrue(decision.isPresent());
         assertEquals("TRUE_POSITIVE", decision.get().verdict());
         assertTrue(decision.get().explanation().contains("UNSOUND"));
+        assertFalse(decision.get().explanation().contains("QUOTE_BLACKLIST"));
+        assertFalse(decision.get().explanation().contains("DENYLIST_AS_ALLOWLIST"));
+        assertFalse(decision.get().explanation().contains("MIXED_FRAGMENT"));
     }
 
     @Test

@@ -191,9 +191,6 @@ public final class ControlSoundnessGate {
                 sb.append("; ");
             }
             sb.append(name).append(" is ").append(result.verdict());
-            if (result.bypassClasses() != null && !result.bypassClasses().isEmpty()) {
-                sb.append(" (").append(String.join(", ", result.bypassClasses())).append(')');
-            }
         }
         sb.append(" and ").append(tail).append('.');
         return sb.toString();

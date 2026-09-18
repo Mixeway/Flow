@@ -30,8 +30,6 @@ public class LlmApiClient {
     private static final int TIMEOUT_SECONDS = 240;
     private static final Duration RETRY_WINDOW = Duration.ofMinutes(5);
     private static final Duration NON_200_RETRY_INTERVAL = Duration.ofSeconds(5);
-    private static final int REQUEST_LOG_LIMIT = 1200;
-    private static final int RESPONSE_LOG_LIMIT = 4000;
     private static final AtomicLong CALL_SEQ = new AtomicLong();
 
     private final FindSettingsService findSettingsService;
@@ -108,9 +106,8 @@ public class LlmApiClient {
 
         long callId = CALL_SEQ.incrementAndGet();
         int promptChars = totalPromptChars(messages);
-        log.info("[LlmApiClient] req#{} POST {} model={} messages={} prompt_chars={} max_tokens={} timeout_s={} last_msg={}",
-                callId, url, model, messages.size(), promptChars, maxTokens, TIMEOUT_SECONDS,
-                lastMessagePreview(messages));
+        log.info("[LlmApiClient] req#{} POST {} model={} messages={} prompt_chars={} max_tokens={}",
+                callId, url, model, messages.size(), promptChars, maxTokens);
 
         long deadline = System.currentTimeMillis() + RETRY_WINDOW.toMillis();
         int attempt = 0;
@@ -148,11 +145,10 @@ public class LlmApiClient {
                 String content = contentNode == null || contentNode.isNull() || contentNode.isMissingNode()
                         ? ""
                         : contentNode.asText("");
-                log.info("[LlmApiClient] req#{} attempt={} elapsedMs={} raw_len={} finish_reason={} usage={} message_keys={} content_node={} content_len={} content_blank={} reasoning_len={} body={}",
+                log.info("[LlmApiClient] req#{} attempt={} elapsedMs={} raw_len={} finish_reason={} usage={} content_len={} content_blank={} reasoning_len={}",
                         callId, attempt, elapsedMs, responseJson.length(), finishReason(root), usageSummary(root),
-                        messageKeys(message), contentNodeType(contentNode), content.length(), content.isBlank(),
-                        extraFieldLen(message, "reasoning_content", "reasoning"),
-                        truncate(responseJson, RESPONSE_LOG_LIMIT));
+                        content.length(), content.isBlank(),
+                        extraFieldLen(message, "reasoning_content", "reasoning"));
 
                 if (choices.isArray() && !choices.isEmpty()) {
                     int promptTokens = root.path("usage").path("prompt_tokens").asInt(0);
@@ -175,21 +171,19 @@ public class LlmApiClient {
             } catch (WebClientResponseException e) {
                 long elapsedMs = System.currentTimeMillis() - startedAt;
                 int status = e.getStatusCode().value();
-                String body = e.getResponseBodyAsString();
-                log.warn("[LlmApiClient] req#{} attempt={} elapsedMs={} HTTP {} body={}",
-                        callId, attempt, elapsedMs, status, truncate(body, RESPONSE_LOG_LIMIT));
+                log.warn("[LlmApiClient] req#{} attempt={} elapsedMs={} HTTP {}",
+                        callId, attempt, elapsedMs, status);
 
                 if (!shouldRetryStatus(status)) {
-                    log.warn("[LlmApiClient] Non-retryable HTTP {} from LLM API: {}", status, truncate(body, 500));
+                    log.warn("[LlmApiClient] Non-retryable HTTP {} from LLM API", status);
                     return LlmResponse.empty();
                 }
 
                 if (System.currentTimeMillis() > deadline) {
-                    log.warn("[LlmApiClient] LLM API returned HTTP {} after retries: {}", status, truncate(body, 500));
+                    log.warn("[LlmApiClient] LLM API returned HTTP {} after retries", status);
                     return LlmResponse.empty();
                 }
-                log.warn("[LlmApiClient] LLM API returned HTTP {} (attempt {}), retrying: {}",
-                        status, attempt, truncate(body, 500));
+                log.warn("[LlmApiClient] LLM API returned HTTP {} (attempt {}), retrying", status, attempt);
                 sleepBeforeRetry();
             } catch (Exception e) {
                 long elapsedMs = System.currentTimeMillis() - startedAt;
@@ -211,13 +205,6 @@ public class LlmApiClient {
         return configured;
     }
 
-    private String truncate(String value, int maxLength) {
-        if (value == null || value.length() <= maxLength) {
-            return value;
-        }
-        return value.substring(0, maxLength) + "...";
-    }
-
     private int totalPromptChars(List<Map<String, Object>> messages) {
         int total = 0;
         if (messages == null) {
@@ -230,17 +217,6 @@ public class LlmApiClient {
             }
         }
         return total;
-    }
-
-    private String lastMessagePreview(List<Map<String, Object>> messages) {
-        if (messages == null || messages.isEmpty()) {
-            return "none";
-        }
-        Map<String, Object> last = messages.get(messages.size() - 1);
-        Object role = last == null ? "" : last.get("role");
-        Object content = last == null ? "" : last.get("content");
-        String text = content == null ? "" : content.toString().replaceAll("\\s+", " ").trim();
-        return role + "(" + text.length() + " chars): " + truncate(text, REQUEST_LOG_LIMIT);
     }
 
     private static String finishReason(JsonNode root) {
@@ -266,15 +242,6 @@ public class LlmApiClient {
         return "{prompt_tokens=" + usage.path("prompt_tokens").asInt(0)
                 + ", completion_tokens=" + usage.path("completion_tokens").asInt(0)
                 + ", total_tokens=" + usage.path("total_tokens").asInt(0) + "}";
-    }
-
-    private static String messageKeys(JsonNode message) {
-        if (message == null || !message.isObject()) {
-            return "[]";
-        }
-        List<String> keys = new ArrayList<>();
-        message.fieldNames().forEachRemaining(keys::add);
-        return keys.toString();
     }
 
     private static String contentNodeType(JsonNode content) {

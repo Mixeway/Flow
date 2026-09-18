@@ -47,15 +47,9 @@ public record ControlAuditReport(
             sb.append("- ").append(name)
                     .append(": ").append(result.classification())
                     .append(" / ").append(result.verdict());
-            if (result.bypassClasses() != null && !result.bypassClasses().isEmpty()) {
-                sb.append(" bypass=").append(result.bypassClasses());
-            }
             sb.append('\n');
             if (result.reasoning() != null && !result.reasoning().isBlank()) {
                 sb.append("  ").append(result.reasoning().trim()).append('\n');
-            }
-            if (result.residualPayloadSketch() != null && !result.residualPayloadSketch().isBlank()) {
-                sb.append("  Residual class: ").append(result.residualPayloadSketch().trim()).append('\n');
             }
         }
         sb.append("Policy: SOUND + on the sink variable + applies to this CWE may support FALSE_POSITIVE. ");

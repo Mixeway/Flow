@@ -94,7 +94,6 @@ public class SastFindingVerificationService {
             "ruby_rails_insecure_http_password"
     );
 
-    private static final int RAW_RESPONSE_LOG_LIMIT = 2000;
     private static final int MAX_TOOL_ROUNDS = 4;
     private static final int MAX_TOOL_CALLS_PER_FINDING = 6;
     private static final int MAX_TOOL_CALLS_PATH_TRAVERSAL = 10;
@@ -902,8 +901,6 @@ public class SastFindingVerificationService {
             } else {
                 log.warn("[SastVerification] ReAct verification completed but response was not usable for {} after {} ms",
                         itemRef, elapsedMs);
-                log.warn("[SastVerification] Raw unusable LLM response for {}: {}",
-                        itemRef, truncateForLog(response.content(), RAW_RESPONSE_LOG_LIMIT));
             }
             return new ReactOutcome(result, messages);
         }
