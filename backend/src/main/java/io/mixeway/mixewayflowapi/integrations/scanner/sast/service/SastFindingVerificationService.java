@@ -33,6 +33,7 @@ public class SastFindingVerificationService {
     private final SastEvidenceService sastEvidenceService;
     private final SastConsistencyService sastConsistencyService;
     private final SastCwePromptGuidanceService sastCwePromptGuidanceService;
+    private final CustomControlSoundnessService customControlSoundnessService;
     private final ObjectMapper objectMapper = JsonMapper.builder()
             .enable(JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER)
             .build();
@@ -617,14 +618,45 @@ public class SastFindingVerificationService {
                 context.category(), metadata);
         VerificationResult result = outcome.result();
 
+        ControlAuditReport controlAudit = ControlAuditReport.skipped();
+        if (result.verified() && customControlSoundnessService != null) {
+            try {
+                controlAudit = customControlSoundnessService.evaluate(
+                        item, repoDir, context, metadata, outcome.messages(), itemRef, this::rateLimitPause);
+                if (controlAudit.llmRequests() > 0) {
+                    result = new VerificationResult(result.verified(), result.failureReason(), result.normalized(),
+                            result.llmRequests() + controlAudit.llmRequests(), result.jsonRepairAttempts(),
+                            result.jsonRepairSuccesses(), result.duplicateActionsSkipped(),
+                            result.queryExpansionsUsed(), result.validationOverrides(),
+                            result.remediationCorrections());
+                }
+                if (applyControlSoundnessGate(item, controlAudit, itemRef)) {
+                    result = new VerificationResult(result.verified(), result.failureReason(), true,
+                            result.llmRequests(), result.jsonRepairAttempts(), result.jsonRepairSuccesses(),
+                            result.duplicateActionsSkipped(), result.queryExpansionsUsed(),
+                            result.validationOverrides(), result.remediationCorrections());
+                }
+            } catch (Throwable t) {
+                log.error("[SastVerification] Custom control soundness threw for {}, keeping analyzer verdict {}: {}",
+                        itemRef, item.getAiVerdict(), t.getMessage(), t);
+            }
+        }
+
         // Verdict validation: independent peer review (adds 1 LLM request)
         if (result.verified()) {
             rateLimitPause();
-            int[] validationMetrics = validateVerdict(outcome.messages(), item, itemRef, context, metadata);
+            int[] validationMetrics = validateVerdict(outcome.messages(), item, itemRef, context, metadata,
+                    controlAudit);
             result = new VerificationResult(result.verified(), result.failureReason(), result.normalized(),
                     result.llmRequests() + 1, result.jsonRepairAttempts(), result.jsonRepairSuccesses(),
                     result.duplicateActionsSkipped(), result.queryExpansionsUsed(),
                     validationMetrics[0], validationMetrics[1]);
+            if (applyControlSoundnessGate(item, controlAudit, itemRef) && !result.normalized()) {
+                result = new VerificationResult(result.verified(), result.failureReason(), true,
+                        result.llmRequests(), result.jsonRepairAttempts(), result.jsonRepairSuccesses(),
+                        result.duplicateActionsSkipped(), result.queryExpansionsUsed(),
+                        result.validationOverrides(), result.remediationCorrections());
+            }
         }
         if (result.verified()) {
             try {
@@ -1417,8 +1449,9 @@ public class SastFindingVerificationService {
      * @return a two-element int array: [validationOverrides, remediationCorrections]
      */
     private int[] validateVerdict(List<Map<String, Object>> reactMessages, Item item, String itemRef,
-                                  CodeContextExtractor.CodeContext context, SastRuleMetadata metadata) {
-        String validatorPrompt = buildValidatorPrompt(reactMessages, item, context, metadata);
+                                  CodeContextExtractor.CodeContext context, SastRuleMetadata metadata,
+                                  ControlAuditReport controlAudit) {
+        String validatorPrompt = buildValidatorPrompt(reactMessages, item, context, metadata, controlAudit);
         List<Map<String, Object>> validatorMessages = new ArrayList<>();
         validatorMessages.add(Map.of("role", "system", "content", validatorSystemPromptFor(metadata, item)));
         validatorMessages.add(Map.of("role", "user", "content", validatorPrompt));
@@ -1433,7 +1466,8 @@ public class SastFindingVerificationService {
     }
 
     private String buildValidatorPrompt(List<Map<String, Object>> reactMessages, Item item,
-                                        CodeContextExtractor.CodeContext context, SastRuleMetadata metadata) {
+                                        CodeContextExtractor.CodeContext context, SastRuleMetadata metadata,
+                                        ControlAuditReport controlAudit) {
         StringBuilder sb = new StringBuilder();
 
         // Section 1: Finding details
@@ -1468,6 +1502,9 @@ public class SastFindingVerificationService {
         if (toolCallCount == 0) {
             sb.append("No tool calls were performed.\n\n");
         }
+        if (controlAudit != null) {
+            sb.append(controlAudit.toPromptSection());
+        }
 
         // Section 4: The verdict to review
         sb.append("## Verdict to review\n");
@@ -1487,6 +1524,19 @@ public class SastFindingVerificationService {
         }
 
         // Section 5: Hard evidence constraints (must override validator freedom if present)
+        if (controlAudit != null && controlAudit.results() != null && !controlAudit.results().isEmpty()) {
+            boolean anySound = controlAudit.results().stream().anyMatch(ControlSoundness::soundForThisFinding);
+            boolean anyBlock = controlAudit.results().stream().anyMatch(ControlSoundness::blocksFalsePositive);
+            if (anyBlock && !anySound) {
+                sb.append("## HARD EVIDENCE CONSTRAINT\n");
+                sb.append("The custom-control soundness audit inspected helper bodies on this taint path. ");
+                sb.append("Those helpers are not a complete neutralizer for this CWE. ");
+                sb.append("You MUST NOT return FALSE_POSITIVE because they exist or because of their names. ");
+                sb.append("UNSOUND / INCOMPLETE / MISAPPLIED / WRONG_CWE => TRUE_POSITIVE. ");
+                sb.append("BODY_UNAVAILABLE => UNCERTAIN, never high-confidence FALSE_POSITIVE. ");
+                sb.append("AUDIT_INCONCLUSIVE is not a constraint — keep the analyzer verdict.\n\n");
+            }
+        }
         String callerCtxForValidator = context != null && context.callerContext() != null
                 ? context.callerContext() : "";
         String crossFileCtx = context != null && context.crossFileCallerContext() != null
@@ -1602,7 +1652,12 @@ public class SastFindingVerificationService {
         sb.append("Rules:\n");
         sb.append("- Do NOT rubber-stamp. Genuinely evaluate each piece of evidence.\n");
         sb.append("- If evidence is fabricated or misinterpreted, override the verdict.\n");
-        sb.append("- If a neutralizer/sanitizer was overlooked, change to FALSE_POSITIVE.\n");
+        sb.append("- If a complete CWE-specific neutralizer was overlooked (parameterization, closed allowlist, ");
+        sb.append("context-correct encoder, framework-native safe API) AND its body is shown, change to FALSE_POSITIVE. ");
+        sb.append("Do NOT change to FALSE_POSITIVE because a helper is named validate/sanitize/clean/escape/isValid. ");
+        sb.append("If the custom control soundness audit marked a cited helper UNSOUND/INCOMPLETE/MISAPPLIED/WRONG_CWE, ");
+        sb.append("you MUST keep or return TRUE_POSITIVE. BODY_UNAVAILABLE => UNCERTAIN. ");
+        sb.append("AUDIT_INCONCLUSIVE must not by itself change the analyzer verdict.\n");
         sb.append("- If an untrusted source was missed, change to TRUE_POSITIVE.\n");
         sb.append("- If remediation_code exists in the proposed remediation, verify whether the proposed fix is correct ");
         sb.append("for THIS finding's code (same sink/variables/SQL shape). Mark remediation_valid=false and provide ");
@@ -2026,6 +2081,38 @@ public class SastFindingVerificationService {
                 + "enough code context to generate a precise remediation.";
     }
 
+    private boolean applyControlSoundnessGate(Item item, ControlAuditReport report, String itemRef) {
+        ControlSoundnessGate.Decision decision = ControlSoundnessGate.decide(
+                report, item.getAiVerdict(), item.getAiReasoning()).orElse(null);
+        if (decision == null) {
+            return false;
+        }
+        String previousVerdict = item.getAiVerdict();
+        double previousConfidence = item.getAiConfidence() == null ? 0.0d : item.getAiConfidence();
+        item.setAiVerdict(decision.verdict());
+        if ("TRUE_POSITIVE".equals(decision.verdict())) {
+            item.setAiConfidence(Math.max(previousConfidence, decision.minConfidence()));
+            if (item.getAiRecommendation() == null || item.getAiRecommendation().isBlank()) {
+                item.setAiRecommendation("Replace the incomplete custom check with a complete CWE-specific control "
+                        + "(parameterization, closed allowlist, or a context-correct encoder). "
+                        + "Do not rely on character/tag blocklists.");
+            }
+        } else if ("UNCERTAIN".equals(decision.verdict())) {
+            item.setAiConfidence(decision.minConfidence());
+            item.setAiRecommendation(null);
+        }
+        item.setAiReasoning(appendNormalizationReason(item.getAiReasoning(), decision.explanation()));
+        if (item.getFingerprint() != null) {
+            fingerprintCache.put(item.getFingerprint(),
+                    new CachedVerdict(item.getAiVerdict(), item.getAiConfidence(),
+                            item.getAiReasoning(), item.getAiRecommendation()));
+        }
+        log.warn("[SastVerification] Control soundness gate changed {} from {} ({}) to {} ({})",
+                itemRef, previousVerdict, String.format(Locale.ROOT, "%.2f", previousConfidence),
+                item.getAiVerdict(), String.format(Locale.ROOT, "%.2f", item.getAiConfidence()));
+        return true;
+    }
+
     private JsonNode tryParseJson(String content) {
         try {
             return objectMapper.readTree(extractJson(content));
@@ -2290,7 +2377,7 @@ public class SastFindingVerificationService {
             case PROVEN_SOURCE_DOM ->
                 "PROVEN_SOURCE_DOM — value originates from DOM content (querySelector, textContent, dataset, Stimulus target); classify input_source as dom_content";
             case NEUTRALIZED ->
-                "NEUTRALIZED — a sanitizer/neutralizer was detected near the sink; verify it is complete for this vulnerability class";
+                "NEUTRALIZED — a candidate sanitizer/neutralizer was detected near the sink; this is NOT proof of safety. Inspect the callee body for this CWE before FALSE_POSITIVE";
             case AMBIGUOUS ->
                 "AMBIGUOUS — source is partially visible but origin is unclear; check definitions and callers above";
             case DEAD_END ->
@@ -2365,9 +2452,10 @@ public class SastFindingVerificationService {
             sb.append("tracing the assigned VALUE origin. Also search the enclosing method for eval/exec/compile.\n\n");
         } else if (category == CodeContextExtractor.EvidenceCategory.PROVEN_SOURCE_UNTRUSTED) {
             sb.append("Evidence category is PROVEN_SOURCE_UNTRUSTED: an untrusted HTTP/form/file source is ");
-            sb.append("already visible in the code above. Your primary task is to verify whether a complete ");
-            sb.append("neutralizer/sanitizer exists between that source and the sink. Use search_repo/read_file ");
-            sb.append("to check for guards, validators, or escape functions that may not be visible in the snippets.\n\n");
+            sb.append("already visible in the code above. Check whether a complete CWE-specific neutralizer sits ");
+            sb.append("between that source and the sink. A helper that inspects or rewrites the value is a candidate ");
+            sb.append("control, not automatic FALSE_POSITIVE - read its body. Do not treat the words validate/sanitize/");
+            sb.append("clean/escape/isValid as proof of safety.\n\n");
         } else if (category == CodeContextExtractor.EvidenceCategory.PROVEN_SOURCE_TRUSTED) {
             sb.append("Evidence category is PROVEN_SOURCE_TRUSTED: the value appears to come from a constant, ");
             sb.append("setting, or operator-controlled source. Verify this before marking FALSE_POSITIVE — ");
@@ -2384,9 +2472,10 @@ public class SastFindingVerificationService {
             }
             sb.append("\n\n");
         } else if (category == CodeContextExtractor.EvidenceCategory.NEUTRALIZED) {
-            sb.append("Evidence category is NEUTRALIZED: a sanitizer/neutralizer was detected near the sink. ");
-            sb.append("Verify that the protection is complete for this vulnerability class and covers ALL ");
-            sb.append("attacker-controlled paths, not just one branch.\n\n");
+            sb.append("Evidence category is NEUTRALIZED: a candidate sanitizer/neutralizer was detected near the sink. ");
+            sb.append("This heuristic is not a verdict. Read the callee body and judge completeness for THIS CWE ");
+            sb.append("on the SAME sink variable. Character/tag blocklists and name-only helpers are TRUE_POSITIVE ");
+            sb.append("or UNCERTAIN, not FALSE_POSITIVE.\n\n");
         } else if (category == CodeContextExtractor.EvidenceCategory.DEAD_END) {
             sb.append("Evidence category is DEAD_END: the flagged value comes from a function parameter and ");
             sb.append("no local evidence of its origin was found. The Pre-suggested investigation actions ");
@@ -2486,7 +2575,11 @@ public class SastFindingVerificationService {
             sb.append("Do not use UNCERTAIN because VALUE origin is unclear. A sanitizer is not required.\n");
         }
         sb.append("- Mark TRUE_POSITIVE only when the shown code proves the issue is exploitable for this CWE.\n");
-        sb.append("- Mark FALSE_POSITIVE only when the shown code proves a complete neutralizer, safe source, framework guarantee, or non-exploitable context appropriate to this CWE.\n");
+        sb.append("- Mark FALSE_POSITIVE only when the shown code proves a complete CWE-specific neutralizer ");
+        sb.append("(parameterization, closed allowlist, context-correct encoder, framework-native safe API), ");
+        sb.append("a safe source, a framework guarantee, or a non-exploitable context. ");
+        sb.append("A custom helper is NEVER FALSE_POSITIVE evidence by name or by the mere fact that it runs ");
+        sb.append("before the sink. If you cannot see a complete body, do not mark FALSE_POSITIVE for that helper.\n");
         if (!codeInjection && !isMisconfigurationProfile(metadata)) {
             sb.append("- For source-to-sink injection: untrusted input_source + exploitable sink + no neutralizer => TRUE_POSITIVE. "
                     + "Do not use UNCERTAIN just because some callers outside the shown snippets were not enumerated.\n");
@@ -5344,7 +5437,8 @@ public class SastFindingVerificationService {
         boolean claimsAllowlist = (lower.contains("allowlist") || lower.contains("whitelist") || lower.contains("white list"))
                 && !lower.contains("without allowlist")
                 && !lower.contains("no allowlist")
-                && !lower.contains("without whitelist");
+                && !lower.contains("without whitelist")
+                && !ControlSoundnessGate.mentionsLeakySqlFragmentControl(lower);
         return claimsParameterized || knexIdentifierBinding || claimsAllowlist
                 || lower.contains("ispropertymapped")
                 || lower.contains("ispropertyenabled");

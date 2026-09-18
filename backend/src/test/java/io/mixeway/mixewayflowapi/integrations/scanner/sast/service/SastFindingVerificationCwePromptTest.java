@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SastFindingVerificationCwePromptTest {
 
     private final SastFindingVerificationService service = new SastFindingVerificationService(
-            null, null, null, null, null, new SastCwePromptGuidanceService());
+            null, null, null, null, null, new SastCwePromptGuidanceService(), null);
 
     @Test
     void pathTraversalOverlayOmitsUnrelatedCweExceptions() {
@@ -84,6 +84,18 @@ class SastFindingVerificationCwePromptTest {
         assertTrue(overlay.contains("http.createServer"), overlay);
         assertFalse(overlay.contains("RISKY SCHEME"), overlay);
         assertFalse(overlay.contains("setattr"), overlay);
+    }
+
+    @Test
+    void sqlGuidanceRejectsDenylistAsCompleteAllowlist() {
+        SastRuleMetadata metadata = new SastRuleMetadata(
+                "python_lang_sql_injection", List.of("89"), VulnerabilityFamily.SQL_INJECTION,
+                PromptProfile.INJECTION, PolicyProfile.STRICT_SOURCE_TO_SINK, true, false, false);
+        String guidance = new SastCwePromptGuidanceService().buildGuidance(metadata, "python");
+
+        assertTrue(guidance.contains("denylist"), guidance);
+        assertTrue(guidance.contains("computed"), guidance);
+        assertTrue(guidance.contains("NOT an allowlist"), guidance);
     }
 
     private String overlayFor(String ruleId, String cwe, VulnerabilityFamily family,
