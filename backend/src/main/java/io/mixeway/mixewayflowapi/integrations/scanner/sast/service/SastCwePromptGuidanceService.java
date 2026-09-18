@@ -183,6 +183,7 @@ public class SastCwePromptGuidanceService {
                         + "UNCERTAIN — do not invent completeness from the helper name.",
                 "A manual tag/script blocklist is NOT a sanitizer (strip <script>/<style>, regex </script>, or reading "
                         + "text after HTML was assigned). XSS occurs at the HTML write; keep TRUE_POSITIVE for that pattern.",
+                "html.unescape / entity decode after a regex or tag filter reopens the markup → TRUE_POSITIVE.",
                 "FALSE_POSITIVE requires framework auto-escaping, a text-only sink, a JSON (not HTML) HTTP response, "
                         + "CR/LF stripping for header sinks, a tight library sanitizer/safelist proven on the exact sink "
                         + "variable, a proven same-node round-trip of non-attacker content, render API with sanitized field, "
@@ -190,6 +191,8 @@ public class SastCwePromptGuidanceService {
         guidance.put("89", List.of(
                 "Identify the exact SQL value, source, type, and query construction sink.",
                 "TRUE_POSITIVE is mandatory when the SQL value is not a hardcoded/literal/constant origin AND the shown code clearly concatenates or interpolates that string into dynamic SQL without parameterization or a complete allowlist.",
+                "A complete allowlist is a closed map/enum of identifiers (default deny) or bound placeholders. A keyword/metacharacter denylist (union, quotes, comments, negative lookahead), quote-doubling then concat, or a regex that still allows SELECT/parentheses/commas is NOT an allowlist → TRUE_POSITIVE.",
+                "When SQL is built from several fragments, judge EACH interpolated fragment. A SOUND column catalog does not neutralize a sibling computed/SQL-expression concatenated into the same query.",
                 "Unknown input_source / unknown callers do NOT justify UNCERTAIN when the shown code clearly concatenates/interpolates a non-literal string into SQL (any language: +, ., f-string, template literal, sprintf, #{}, $var, etc.): that case is TRUE_POSITIVE.",
                 "A SQL string held in a variable is not automatically TRUE_POSITIVE: if the query text is a literal, constant, or framework-parameterized builder and only values are bound, prefer FALSE_POSITIVE.",
                 "Numeric typed or parsed values (int/Integer/long/number/parseInt/Integer.parseInt/int()/strconv.Atoi) cannot inject SQL syntax through that parameter; confirm FALSE_POSITIVE when proven.",
@@ -992,6 +995,8 @@ public class SastCwePromptGuidanceService {
                         + "(Express often defaults to text/html) remains an XSS candidate.",
                 "A manual tag/script blocklist is NOT a sanitizer: querySelector('script').remove(), stripping <style>, "
                         + "regex </script>, or textContent taken AFTER innerHTML was assigned.",
+                "html.unescape / decodeEntities AFTER a regex/tag filter reopens markup → TRUE_POSITIVE. "
+                        + "Cite 'unescape after filter'.",
                 "CMS HTML via innerHTML / dangerouslySetInnerHTML / v-html: mapToContentComponent, ContentComponent, "
                         + "component.data from Strapi, Contentful, Sanity, WordPress, Drupal, Wagtail, Sitecore, "
                         + "Storyblok, Prismic, Payload, AEM, or equivalent. Cite 'unsanitized CMS HTML'.",
@@ -1021,7 +1026,9 @@ public class SastCwePromptGuidanceService {
         return List.of(
                 "knex.raw / sequelize.query / mysql.query with string concat/template interpolation of user data "
                         + "is TRUE_POSITIVE. Bound replacements (`?`, named binds) with a literal query are FALSE_POSITIVE.",
-                "ORM findAll/where objects that bind values are generally safe.");
+                "ORM findAll/where objects that bind values are generally safe.",
+                "A regex/denylist on a computed SQL expression concatenated into db.prepare(sql) is TRUE_POSITIVE. "
+                        + "An identifier catalog for column names does not cover that sibling fragment.");
     }
 
     private static List<String> jsWeakHashChecks() {
@@ -1162,7 +1169,9 @@ public class SastCwePromptGuidanceService {
         return List.of(
                 "Django filter/exclude/get and SQLAlchemy filter bind values and are generally safe. "
                         + "raw()/extra()/RawSQL/cursor.execute with concatenated/interpolated SQL is the risk.",
-                "f-strings / % / .format into SQL text are TRUE_POSITIVE when the fragment is non-literal.");
+                "f-strings / % / .format into SQL text are TRUE_POSITIVE when the fragment is non-literal.",
+                "assert_* / regex denylist on a computed SQL expression that is then concatenated is NOT parameterization. "
+                        + "Cite 'denylist is not an allowlist' and keep TRUE_POSITIVE.");
     }
 
     private static List<String> pythonWeakHashChecks() {
