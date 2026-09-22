@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import io.mixeway.mixewayflowapi.db.entity.Finding;
 import io.mixeway.mixewayflowapi.integrations.llm.service.LlmApiClient;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.BearerScanDataflow;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.BearerScanSecurity;
@@ -60,6 +61,7 @@ public class SastFindingVerificationService {
      * Initialized in @PostConstruct based on maxConcurrentCalls configuration.
      */
     private Semaphore rateLimitSemaphore;
+    private int appliedConcurrency;
     private final ConcurrentLinkedQueue<Long> recentCallTimes = new ConcurrentLinkedQueue<>();
     
     @PostConstruct
@@ -76,6 +78,7 @@ public class SastFindingVerificationService {
                 });
         
         rateLimitSemaphore = new Semaphore(maxConcurrentCalls);
+        appliedConcurrency = maxConcurrentCalls;
     }
 
     /** Hardcoded secret/password rules skipped from LLM verification (cookie/JWT/session stay analyzed). */
@@ -298,6 +301,7 @@ public class SastFindingVerificationService {
             log.debug("[SastVerification] LLM evaluation is disabled, skipping verification");
             return;
         }
+        applyScanConcurrency();
 
         log.info("[SastVerification] Starting LLM-based SAST finding verification (critical/high/medium only)");
         VerificationSummary summary = new VerificationSummary();
@@ -6668,6 +6672,23 @@ public class SastFindingVerificationService {
      * - 4th call: waits until 2000ms elapsed since 1st call
      * - This gives ~1.5 req/sec sustained rate with burst capability
      */
+    private synchronized void applyScanConcurrency() {
+        int desired = llmApiClient.scanConcurrency(Finding.Source.SAST);
+        if (desired < 1) {
+            desired = maxConcurrentCalls;
+        }
+        if (rateLimitSemaphore != null && desired == appliedConcurrency) {
+            return;
+        }
+        if (rateLimitSemaphore != null && rateLimitSemaphore.availablePermits() != appliedConcurrency) {
+            log.info("[SastVerification] Scan concurrency change to {} deferred; calls are in flight", desired);
+            return;
+        }
+        rateLimitSemaphore = new Semaphore(desired);
+        appliedConcurrency = desired;
+        log.info("[SastVerification] Scan concurrency set to {}", desired);
+    }
+
     private void rateLimitPause() {
         try {
             rateLimitSemaphore.acquire();

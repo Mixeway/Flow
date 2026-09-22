@@ -107,7 +107,7 @@ export class RepositoryInfoComponent implements OnInit {
   @Output() runScanEvent = new EventEmitter<void>();
   @Output() runScanBranchEvent = new EventEmitter<string>();
   @Output() uploadSbomScanEvent = new EventEmitter<{ file: File; branch?: string }>();
-  @Output() evaluateLlmEvent = new EventEmitter<void>();
+  @Output() evaluateLlmEvent = new EventEmitter<'SAST' | 'SECRETS'>();
   @Output() openChangeTeamModalEvent = new EventEmitter<void>();
   @Output() deleteRepoEvent = new EventEmitter<void>();
 
@@ -170,9 +170,9 @@ export class RepositoryInfoComponent implements OnInit {
     this.runScanEvent.emit();
   }
 
-  evaluateWithLlm(): void {
+  evaluateWithLlm(source: 'SAST' | 'SECRETS'): void {
     this.scanDropdownOpen = false;
-    this.evaluateLlmEvent.emit();
+    this.evaluateLlmEvent.emit(source);
   }
 
   toggleScanDropdown(): void {

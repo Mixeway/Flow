@@ -154,10 +154,22 @@ export class AdminSettingsComponent implements OnInit{
 
     /** Remediation SLA per severity in days; null means no SLA is tracked. */
     slaConfig: SlaConfig = { criticalDays: 14, highDays: 30, mediumDays: null, lowDays: null };
-    enableLlmEvaluation: boolean = false;
-    llmApiUrl: string = '';
-    llmApiKey2: string = '';
-    llmModel: string = '';
+    llmSources: Array<{
+        source: string;
+        label: string;
+        enabled: boolean;
+        apiUrl: string;
+        apiKey: string;
+        model: string;
+        contextWindow: number;
+        scanConcurrency: number;
+    }> = [
+        { source: 'SAST', label: 'SAST', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 16384, scanConcurrency: 2 },
+        { source: 'SCA', label: 'SCA', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2 },
+        { source: 'IAC', label: 'IaC', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2 },
+        { source: 'SECRETS', label: 'Secrets', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2 },
+        { source: 'DAST', label: 'DAST', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2 },
+    ];
     repoTokenSearchTerm: string = '';
     repoTokenValue: string = '';
     repoTokenRows: AdminRepoTokenRow[] = [];
@@ -341,11 +353,7 @@ export class AdminSettingsComponent implements OnInit{
                 this.isWizEnabled = this.settings.enableWiz;
 
                 this.geminiApiKey = this.settings.geminiApiKey || '';
-
-                this.enableLlmEvaluation = this.settings.enableLlmEvaluation || false;
-                this.llmApiUrl = this.settings.llmApiUrl || '';
-                this.llmApiKey2 = this.settings.llmApiKeyConfigured ? '************' : '';
-                this.llmModel = this.settings.llmModel || '';
+                this.applyLlmSources(this.settings.llmSources);
 
             }
         });
@@ -617,22 +625,61 @@ export class AdminSettingsComponent implements OnInit{
         });
     }
 
+    private applyLlmSources(incoming: any[] | undefined) {
+        const bySource = new Map((incoming || []).map(row => [row.source, row]));
+        this.llmSources = this.llmSources.map(section => {
+            const row = bySource.get(section.source);
+            if (!row) {
+                return { ...section, enabled: false, apiUrl: '', apiKey: '', model: '' };
+            }
+            return {
+                ...section,
+                enabled: !!row.enabled,
+                apiUrl: row.apiUrl || '',
+                apiKey: row.apiKeyConfigured ? '************' : '',
+                model: row.model || '',
+                contextWindow: row.contextWindow || 8192,
+                scanConcurrency: row.scanConcurrency || 2
+            };
+        });
+    }
+
     saveOtherConfigurationSettings() {
         this.settingsService.changeOtherConfig({
-            geminiApiKey: this.geminiApiKey,
-            enableLlmEvaluation: this.enableLlmEvaluation,
-            llmApiUrl: this.llmApiUrl,
-            llmApiKey: this.llmApiKey2,
-            llmModel: this.llmModel
+            geminiApiKey: this.geminiApiKey
         }).subscribe({
             next: () => {
                 this.toastStatus = "success";
                 this.toastMessage = "Application configuration updated successfully";
                 this.toggleToast();
             },
-            error: (error) => {
+            error: () => {
                 this.toastStatus = "danger";
                 this.toastMessage = "Failed to update";
+                this.toggleToast();
+            }
+        });
+    }
+
+    saveLlmConfiguration() {
+        this.settingsService.changeLlmConfig(this.llmSources.map(section => ({
+                source: section.source,
+                enabled: section.enabled,
+                apiUrl: section.apiUrl,
+                apiKey: section.apiKey,
+                model: section.model,
+                contextWindow: section.contextWindow,
+                scanConcurrency: section.scanConcurrency
+            }))
+        ).subscribe({
+            next: () => {
+                this.toastStatus = "success";
+                this.toastMessage = "LLM configuration updated successfully";
+                this.toggleToast();
+            },
+            error: () => {
+                this.toastStatus = "danger";
+                this.toastMessage = "Failed to update LLM configuration";
                 this.toggleToast();
             }
         });

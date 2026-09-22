@@ -15,7 +15,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -80,6 +79,15 @@ public class SecretsService {
         }
         log.info("[GitLeaks SecretScan] GitLeaks Secret scan results saved [for: {}]", repoDir);
         createFindingService.saveFindings(filteredFindings, branch, codeRepo, Finding.Source.SECRETS, null);
+    }
+
+    /**
+     * Placeholder for LLM-based false positive verification of secret findings.
+     */
+    public void runGitleaksWithLlmEvaluation(String repoDir, CodeRepo codeRepo, CodeRepoBranch branch) {
+        // TODO: evaluate existing SECRETS findings with LLM
+        log.info("[GitLeaks SecretScan] Secrets LLM evaluation is not implemented yet [{} / {}]",
+                codeRepo.getRepourl(), branch.getName());
     }
 
     /**

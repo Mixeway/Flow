@@ -1181,11 +1181,12 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         });
     }
 
-    evaluateWithLlm() {
-        this.repoService.runLlmEvaluation(+this.repoId).subscribe({
+    evaluateWithLlm(source: 'SAST' | 'SECRETS') {
+        this.repoService.runLlmEvaluation(+this.repoId, source).subscribe({
             next: () => {
+                const label = source === 'SECRETS' ? 'secrets' : 'SAST';
                 this.toastStatus = 'success';
-                this.toastMessage = 'AI verification requested. SAST scan + AI analysis will run in the background.';
+                this.toastMessage = `AI verification requested. ${label} analysis will run in the background.`;
                 this.toggleToast();
                 this.loadRepoInfo();
             },

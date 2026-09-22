@@ -266,8 +266,21 @@ public class FindFindingService {
      */
     @Transactional(readOnly = true)
     public List<Finding> findActiveSastFindings(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
+        return findActiveFindingsBySource(Finding.Source.SAST, codeRepo, codeRepoBranch);
+    }
+
+    /**
+     * Active (NEW/EXISTING) secret findings for a branch, with vulnerability eagerly loaded
+     * so LLM evaluation can reconstruct items after the transaction ends.
+     */
+    @Transactional(readOnly = true)
+    public List<Finding> findActiveSecretsFindings(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
+        return findActiveFindingsBySource(Finding.Source.SECRETS, codeRepo, codeRepoBranch);
+    }
+
+    private List<Finding> findActiveFindingsBySource(Finding.Source source, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
         return findingRepository.findBySourceAndCodeRepoAndCodeRepoBranchAndStatusIn(
-                Finding.Source.SAST,
+                source,
                 codeRepo,
                 codeRepoBranch,
                 List.of(Finding.Status.NEW, Finding.Status.EXISTING));

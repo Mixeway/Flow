@@ -157,10 +157,16 @@ public class CodeRepoController {
 
     @PreAuthorize("hasAuthority('USER')")
     @PostMapping(value= "/api/v1/coderepo/{id}/evaluate-llm")
-    public ResponseEntity<StatusDTO> runLlmEvaluation(@PathVariable("id") Long id, Principal principal){
+    public ResponseEntity<StatusDTO> runLlmEvaluation(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody EvaluateLlmRequestDto request,
+            Principal principal){
         try {
-            codeRepoApiService.runLlmEvaluation(id, principal);
+            codeRepoApiService.runLlmEvaluation(id, request.getSource(), principal);
             return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.OK);
+        } catch (IllegalArgumentException e) {
+            log.warn("[CodeRepo] Invalid LLM evaluation source for {}: {}", id, e.getMessage());
+            return new ResponseEntity<>(new StatusDTO(e.getMessage()), HttpStatus.BAD_REQUEST);
         } catch (Exception e){
             log.error("[CodeRepo] Error running LLM evaluation for {}", id);
             return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);

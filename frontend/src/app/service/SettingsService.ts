@@ -3,7 +3,7 @@ import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
 import {environment} from "../../environments/environment";
 import {map} from "rxjs/operators";
-import {OtherConfigRequestDTO} from "../model/settings/other-config-request-dto";
+import {LlmSourceConfigRequest, OtherConfigRequestDTO} from "../model/settings/other-config-request-dto";
 
 @Injectable({
     providedIn: 'root'
@@ -27,6 +27,10 @@ export class SettingsService {
     }
     changeOtherConfig(changeOtherConfigRequest: OtherConfigRequestDTO): Observable<any> {
         return this.http.post<any>(`${this.loginUrl}/api/v1/admin/settings/other`, changeOtherConfigRequest, { withCredentials: true });
+    }
+
+    changeLlmConfig(llmSources: LlmSourceConfigRequest[]): Observable<any> {
+        return this.http.post<any>(`${this.loginUrl}/api/v1/admin/settings/llmconfig`, llmSources, { withCredentials: true });
     }
 
     isWizEnabled(): Observable<boolean> {

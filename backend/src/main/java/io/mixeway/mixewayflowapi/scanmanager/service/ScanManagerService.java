@@ -550,10 +550,10 @@ public class ScanManagerService {
     }
 
     /**
-     * Clones the repo and runs LLM-based false positive verification on existing SAST findings.
-     * Triggered on-demand by user via "Evaluate with LLM" button.
+     * Clones the repo and runs LLM-based false positive verification on existing findings
+     * for the requested source (SAST or SECRETS).
      */
-    public void runLlmEvaluation(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
+    public void runLlmEvaluation(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, Finding.Source source) {
         executorService.submit(() -> {
             String repoDir = "/tmp/" + codeRepo.getName();
             String repoUrl = codeRepo.getRepourl();
@@ -561,13 +561,18 @@ public class ScanManagerService {
             CodeRepo.RepoType repoType = codeRepo.getType();
 
             try {
-                log.info("[ScanManagerService] Starting LLM evaluation for [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
+                log.info("[ScanManagerService] Starting {} LLM evaluation for [{} / {}]",
+                        source, codeRepo.getRepourl(), codeRepoBranch.getName());
                 fetchRepository(null, repoUrl, accessToken, codeRepoBranch, repoDir, repoType);
-                sastService.runBearerScanWithLlmEvaluation(repoDir, codeRepo, codeRepoBranch);
+                if (source == Finding.Source.SECRETS) {
+                    secretsService.runGitleaksWithLlmEvaluation(repoDir, codeRepo, codeRepoBranch);
+                } else {
+                    sastService.runBearerScanWithLlmEvaluation(repoDir, codeRepo, codeRepoBranch);
+                }
             } catch (Throwable t) {
                 Thread.interrupted(); // clear interrupt flag so log.error can write
-                log.error("[ScanManagerService] LLM evaluation failed for [{} / {}]: {}",
-                        codeRepo.getRepourl(), codeRepoBranch.getName(), t.getMessage(), t);
+                log.error("[ScanManagerService] {} LLM evaluation failed for [{} / {}]: {}",
+                        source, codeRepo.getRepourl(), codeRepoBranch.getName(), t.getMessage(), t);
             } finally {
                 try {
                     cleanUp(repoDir);

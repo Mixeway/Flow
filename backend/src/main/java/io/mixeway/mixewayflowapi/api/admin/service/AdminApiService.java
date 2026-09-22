@@ -8,6 +8,8 @@ import io.mixeway.mixewayflowapi.exceptions.SettingsException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class AdminApiService {
@@ -41,6 +43,10 @@ public class AdminApiService {
 
     public void otherConfig(OtherConfigRequestDto otherConfigRequestDto) throws SettingsException {
         updateSettingsService.changeSettingsOther(otherConfigRequestDto);
+    }
+
+    public void llmConfig(List<LlmSourceConfigDto> llmSources) throws SettingsException {
+        updateSettingsService.changeSettingsLlm(llmSources);
     }
 
     public void slaConfig(SlaConfigDto slaConfigDto) throws SettingsException {

@@ -16,6 +16,9 @@
                         <button cTab [itemKey]="3" class="d-flex align-items-center">
                             <svg cIcon name="cil-building" class="me-2"></svg> Organizations
                         </button>
+                        <button cTab [itemKey]="5" class="d-flex align-items-center">
+                            <svg cIcon name="cil-lightbulb" class="me-2"></svg> LLM
+                        </button>
                         <button cTab [itemKey]="4" class="d-flex align-items-center">
                             <svg cIcon name="cil-settings" class="me-2"></svg> Other
                         </button>
@@ -534,42 +537,6 @@
                                 </button>
                             </div>
 
-                            <!-- LLM Evaluation Configuration -->
-                            <div class="config-section p-4 mb-4 rounded shadow-sm">
-                                <h4 class="mb-3 section-title">LLM Evaluation (SAST False Positive Reduction)</h4>
-                                <c-form-check [switch]="true" class="mb-3">
-                                    <input cFormCheckInput id="llmEnabled" type="checkbox"
-                                           [(ngModel)]="enableLlmEvaluation" />
-                                    <label cFormCheckLabel for="llmEnabled" class="ms-2">Enable LLM Evaluation</label>
-                                </c-form-check>
-
-                                <div *ngIf="enableLlmEvaluation" class="p-3 border rounded config-input-section">
-                                    <div class="mb-3">
-                                        <label cLabel for="llmApiUrl">API URL</label>
-                                        <input cFormControl id="llmApiUrl" type="url"
-                                               [(ngModel)]="llmApiUrl"
-                                               placeholder="https://api.featherless.ai/v1/chat/completions" />
-                                        <small class="text-muted">
-                                            Full URL to OpenAI-compatible chat completions endpoint
-                                        </small>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label cLabel for="llmApiKeyField">API Key</label>
-                                        <input cFormControl id="llmApiKeyField" type="password"
-                                               [(ngModel)]="llmApiKey2"
-                                               placeholder="Enter LLM API key" />
-                                    </div>
-                                    <div class="mb-3">
-                                        <label cLabel for="llmModel">Model name</label>
-                                        <input cFormControl id="llmModel" type="text"
-                                               [(ngModel)]="llmModel"
-                                               placeholder="e.g. meta-llama/Meta-Llama-3.1-8B-Instruct" />
-                                        <small class="text-muted">
-                                            Model ID as expected by your API provider
-                                        </small>
-                                    </div>
-                                </div>
-                            </div>
                             <!-- Other Configuration -->
                             <div class="config-section p-4 rounded shadow-sm">
                                 <h4 class="mb-3 section-title">Other Settings</h4>
@@ -584,6 +551,62 @@
                                 </div>
                             </div>
                             <button cButton color="primary" class="mt-3" (click)="saveOtherConfigurationSettings()">Save Configuration</button>
+                        </c-tab-panel>
+                        <c-tab-panel class="p-4" [itemKey]="5">
+                            <div class="config-section p-4 mb-4 rounded shadow-sm" *ngFor="let llm of llmSources">
+                                <h4 class="mb-3 section-title">LLM — {{ llm.label }}</h4>
+                                <c-form-check [switch]="true" class="mb-3">
+                                    <input cFormCheckInput [id]="'llmEnabled-' + llm.source" type="checkbox"
+                                           [(ngModel)]="llm.enabled" />
+                                    <label cFormCheckLabel [for]="'llmEnabled-' + llm.source" class="ms-2">Enable LLM</label>
+                                </c-form-check>
+
+                                <div *ngIf="llm.enabled" class="p-3 border rounded config-input-section">
+                                    <div class="mb-3">
+                                        <label cLabel [for]="'llmApiUrl-' + llm.source">API URL</label>
+                                        <input cFormControl [id]="'llmApiUrl-' + llm.source" type="url"
+                                               [(ngModel)]="llm.apiUrl"
+                                               placeholder="https://api.featherless.ai/v1/chat/completions" />
+                                        <small class="text-muted">
+                                            Full URL to OpenAI-compatible chat completions endpoint
+                                        </small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label cLabel [for]="'llmApiKey-' + llm.source">API Key</label>
+                                        <input cFormControl [id]="'llmApiKey-' + llm.source" type="password"
+                                               [(ngModel)]="llm.apiKey"
+                                               placeholder="Enter LLM API key" />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label cLabel [for]="'llmModel-' + llm.source">Model name</label>
+                                        <input cFormControl [id]="'llmModel-' + llm.source" type="text"
+                                               [(ngModel)]="llm.model"
+                                               placeholder="e.g. meta-llama/Meta-Llama-3.1-8B-Instruct" />
+                                        <small class="text-muted">
+                                            Model ID as expected by your API provider
+                                        </small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label cLabel [for]="'llmContextWindow-' + llm.source">Context window</label>
+                                        <input cFormControl [id]="'llmContextWindow-' + llm.source" type="number"
+                                               min="256" max="200000"
+                                               [(ngModel)]="llm.contextWindow" />
+                                        <small class="text-muted">
+                                            Max tokens sent to the model for this source
+                                        </small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label cLabel [for]="'llmScanConcurrency-' + llm.source">Scan concurrency</label>
+                                        <input cFormControl [id]="'llmScanConcurrency-' + llm.source" type="number"
+                                               min="1" max="16"
+                                               [(ngModel)]="llm.scanConcurrency" />
+                                        <small class="text-muted">
+                                            How many LLM calls for this source may run at the same time
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            <button cButton color="primary" (click)="saveLlmConfiguration()">Save LLM</button>
                         </c-tab-panel>
                     </c-tabs-content>
                 </c-tabs>

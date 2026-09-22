@@ -2,6 +2,7 @@ package io.mixeway.mixewayflowapi.integrations.llm.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.mixeway.mixewayflowapi.db.entity.Finding;
 import io.mixeway.mixewayflowapi.db.entity.Settings;
 import io.mixeway.mixewayflowapi.domain.settings.FindSettingsService;
 import lombok.RequiredArgsConstructor;
@@ -50,24 +51,29 @@ public class LlmApiClient {
         log.info("[LlmApiClient] Using max_tokens={} (override with LLM_MAX_TOKENS)", maxTokens);
     }
 
+    /** SAST callers keep using the no-arg check; it reads the SAST LLM section. */
     public boolean isEnabled() {
-        Settings s = findSettingsService.get();
-        return s != null
-                && s.isEnableLlmEvaluation()
-                && s.getLlmApiUrl() != null && !s.getLlmApiUrl().isBlank()
-                && s.getLlmApiKey() != null && !s.getLlmApiKey().isBlank()
-                && s.getLlmModel() != null && !s.getLlmModel().isBlank();
+        return isEnabled(Finding.Source.SAST);
+    }
+
+    public boolean isEnabled(Finding.Source source) {
+        return resolve(source) != null;
     }
 
     /**
      * Single-shot completion from a system + user prompt (no conversation state).
+     * Uses the SAST LLM section.
      */
     public LlmResponse chatCompletion(String systemPrompt, String userPrompt) {
+        return chatCompletion(systemPrompt, userPrompt, Finding.Source.SAST);
+    }
+
+    public LlmResponse chatCompletion(String systemPrompt, String userPrompt, Finding.Source source) {
         List<Map<String, Object>> messages = List.of(
                 Map.of("role", "system", "content", systemPrompt),
                 Map.of("role", "user", "content", userPrompt)
         );
-        return chatCompletion(messages, false);
+        return chatCompletion(messages, false, source);
     }
 
     /**
@@ -80,34 +86,71 @@ public class LlmApiClient {
      *                        to push the model toward valid JSON output.
      */
     public LlmResponse chatCompletion(List<Map<String, Object>> messages, boolean forceJsonObject) {
-        if (!isEnabled()) {
+        return chatCompletion(messages, forceJsonObject, Finding.Source.SAST);
+    }
+
+    public LlmResponse chatCompletion(List<Map<String, Object>> messages, boolean forceJsonObject, Finding.Source source) {
+        LlmCredentials credentials = resolve(source);
+        if (credentials == null) {
             return LlmResponse.empty();
         }
         if (messages == null || messages.isEmpty()) {
             return LlmResponse.empty();
         }
 
-        Settings settings = findSettingsService.get();
-        String url = settings.getLlmApiUrl().replaceAll("/+$", "");
-        String model = settings.getLlmModel();
+        String url = credentials.url.replaceAll("/+$", "");
         List<Map<String, Object>> jsonFallbackMessages = forceJsonObject
                 ? withPromptSchemaFallback(messages)
                 : messages;
-        return doPost(url, settings, model, jsonFallbackMessages);
+        return doPost(url, credentials, jsonFallbackMessages);
     }
 
-    private LlmResponse doPost(String url, Settings settings, String model,
+    private LlmCredentials resolve(Finding.Source source) {
+        if (source == null) {
+            return null;
+        }
+        Settings settings = findSettingsService.get();
+        if (settings == null) {
+            return null;
+        }
+        if (!settings.isSourceLlmConfigured(source)) {
+            return null;
+        }
+        int contextWindow = settings.sourceLlmContextWindow(source);
+        if (contextWindow < 256) {
+            contextWindow = maxTokens;
+        }
+        return new LlmCredentials(
+                source,
+                settings.sourceLlmApiUrl(source),
+                settings.sourceLlmApiKey(source),
+                settings.sourceLlmModel(source),
+                sanitizeMaxTokens(contextWindow)
+        );
+    }
+
+    public int scanConcurrency(Finding.Source source) {
+        Settings settings = findSettingsService.get();
+        if (settings == null || source == null) {
+            return 3;
+        }
+        int configured = settings.sourceLlmScanConcurrency(source);
+        return configured < 1 ? 3 : configured;
+    }
+
+    private LlmResponse doPost(String url, LlmCredentials credentials,
                                List<Map<String, Object>> messages) {
         Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", model);
+        requestBody.put("model", credentials.model);
+        int maxTokensForCall = credentials.contextWindow;
         requestBody.put("messages", messages);
         requestBody.put("temperature", 0.0);
-        requestBody.put("max_tokens", maxTokens);
+        requestBody.put("max_tokens", maxTokensForCall);
 
         long callId = CALL_SEQ.incrementAndGet();
         int promptChars = totalPromptChars(messages);
-        log.info("[LlmApiClient] req#{} POST {} model={} messages={} prompt_chars={} max_tokens={}",
-                callId, url, model, messages.size(), promptChars, maxTokens);
+        log.info("[LlmApiClient] req#{} source={} POST {} model={} messages={} prompt_chars={} max_tokens={}",
+                callId, credentials.source, url, credentials.model, messages.size(), promptChars, maxTokensForCall);
 
         long deadline = System.currentTimeMillis() + RETRY_WINDOW.toMillis();
         int attempt = 0;
@@ -117,7 +160,7 @@ public class LlmApiClient {
             try {
                 String responseJson = webClient.post()
                         .uri(url)
-                        .header("Authorization", "Bearer " + settings.getLlmApiKey())
+                        .header("Authorization", "Bearer " + credentials.apiKey)
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(requestBody)
                         .retrieve()
@@ -312,6 +355,9 @@ public class LlmApiClient {
         } catch (InterruptedException interruptedException) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    private record LlmCredentials(Finding.Source source, String url, String apiKey, String model, int contextWindow) {
     }
 
     public record LlmResponse(String content, int promptTokens, int completionTokens) {

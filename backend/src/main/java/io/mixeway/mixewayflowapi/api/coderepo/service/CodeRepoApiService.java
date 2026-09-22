@@ -87,10 +87,29 @@ public class CodeRepoApiService {
         }
     }
 
-    public void runLlmEvaluation(Long id, Principal principal) {
+    public void runLlmEvaluation(Long id, String source, Principal principal) {
         CodeRepo repo = findCodeRepoService.findById(id, principal);
         if (repo != null) {
-            scanManagerService.runLlmEvaluation(repo, repo.getDefaultBranch());
+            scanManagerService.runLlmEvaluation(repo, repo.getDefaultBranch(), parseEvaluationSource(source));
+        }
+    }
+
+    static Finding.Source parseEvaluationSource(String source) {
+        if (source == null || source.isBlank()) {
+            throw new IllegalArgumentException("source is required (SAST or SECRETS)");
+        }
+        String normalized = source.trim().toUpperCase();
+        try {
+            Finding.Source parsed = Finding.Source.valueOf(normalized);
+            if (parsed != Finding.Source.SAST && parsed != Finding.Source.SECRETS) {
+                throw new IllegalArgumentException("LLM evaluation does not support " + source);
+            }
+            return parsed;
+        } catch (IllegalArgumentException e) {
+            if (e.getMessage() != null && e.getMessage().startsWith("LLM evaluation")) {
+                throw e;
+            }
+            throw new IllegalArgumentException("LLM evaluation supports SAST or SECRETS, got: " + source);
         }
     }
 

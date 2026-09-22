@@ -76,9 +76,15 @@
                             </li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
-                                <button class="dropdown-item" (click)="evaluateWithLlm()">
+                                <button class="dropdown-item" (click)="evaluateWithLlm('SAST')">
                                     <svg cIcon name="cil-lightbulb" class="me-1"></svg>
-                                    Verify with AI
+                                    Verify SAST with AI
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item" (click)="evaluateWithLlm('SECRETS')">
+                                    <svg cIcon name="cil-lightbulb" class="me-1"></svg>
+                                    Verify secrets with AI
                                 </button>
                             </li>
                         </ul>

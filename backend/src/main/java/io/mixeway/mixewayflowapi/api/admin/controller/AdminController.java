@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @Validated
@@ -95,6 +97,18 @@ public class AdminController {
             return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
         }
     }
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @PostMapping(value = "/api/v1/admin/settings/llmconfig")
+    public ResponseEntity<StatusDTO> changeLlmConfig(@Valid @RequestBody List<LlmSourceConfigDto> llmSources) {
+        try {
+            adminApiService.llmConfig(llmSources);
+            return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("[AdminSettings] Error changing LLM config {}", e.getLocalizedMessage());
+            return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
+        }
+    }
+
     @PreAuthorize("hasAuthority('ADMIN')")
     @PostMapping(value = "/api/v1/admin/settings/other")
     public ResponseEntity<StatusDTO> changeOtherConfig(@Valid @RequestBody OtherConfigRequestDto otherConfigRequestDto) {

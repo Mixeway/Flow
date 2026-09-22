@@ -136,16 +136,26 @@ public class CreateFindingService {
     @Transactional
     public void saveAiVerificationForSastItem(String location, CodeRepoBranch codeRepoBranch,
             Finding.AiVerificationGrade grade, Double confidence, String reasoning, String recommendation) {
+        saveAiVerification(location, codeRepoBranch, Finding.Source.SAST, grade, confidence, reasoning, recommendation);
+    }
+
+    /**
+     * Immediately persists AI verification fields for a single finding identified by
+     * branch + location + source.
+     */
+    @Transactional
+    public void saveAiVerification(String location, CodeRepoBranch codeRepoBranch, Finding.Source source,
+            Finding.AiVerificationGrade grade, Double confidence, String reasoning, String recommendation) {
         if (grade == null || grade == Finding.AiVerificationGrade.NOT_VERIFIED) {
             return;
         }
         int updated = findingRepository.updateAiVerificationForSastFinding(
                 codeRepoBranch, location,
-                Finding.Source.SAST, Finding.Status.REMOVED,
+                source, Finding.Status.REMOVED,
                 grade, confidence, reasoning, recommendation);
         if (updated > 0) {
-            log.debug("[Finding Service] Intermediate AI save: {} finding(s) at {} grade={} confidence={}",
-                    updated, location, grade, confidence);
+            log.debug("[Finding Service] Intermediate AI save: {} finding(s) at {} source={} grade={} confidence={}",
+                    updated, location, source, grade, confidence);
         }
     }
 

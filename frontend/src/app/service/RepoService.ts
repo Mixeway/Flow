@@ -55,8 +55,8 @@ export class RepoService {
         return this.http.get<string[]>(this.loginUrl + '/api/v1/coderepo/' + id + '/git-branches', { withCredentials: true });
     }
 
-    runLlmEvaluation(id: number): Observable<any> {
-        return this.http.post<any>(this.loginUrl + '/api/v1/coderepo/' + id + '/evaluate-llm', {}, { withCredentials: true });
+    runLlmEvaluation(id: number, source: 'SAST' | 'SECRETS'): Observable<any> {
+        return this.http.post<any>(this.loginUrl + '/api/v1/coderepo/' + id + '/evaluate-llm', { source }, { withCredentials: true });
     }
 
     runScanForBranch(id: number, branchName: string): Observable<any> {
