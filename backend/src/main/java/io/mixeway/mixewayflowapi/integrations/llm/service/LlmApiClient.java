@@ -7,13 +7,10 @@ import io.mixeway.mixewayflowapi.db.entity.Settings;
 import io.mixeway.mixewayflowapi.domain.settings.FindSettingsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
-
-import jakarta.annotation.PostConstruct;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -36,20 +33,6 @@ public class LlmApiClient {
     private final FindSettingsService findSettingsService;
     private final WebClient webClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
-
-    /**
-     * Completion budget sent as {@code max_tokens}. Reasoning models (Ornith/vLLM)
-     * share this budget with thinking tokens, so 4000 is too small.
-     * Override with env {@code LLM_MAX_TOKENS}.
-     */
-    @Value("${llm.max-tokens:16000}")
-    private int maxTokens;
-
-    @PostConstruct
-    void logTokenBudget() {
-        maxTokens = sanitizeMaxTokens(maxTokens);
-        log.info("[LlmApiClient] Using max_tokens={} (override with LLM_MAX_TOKENS)", maxTokens);
-    }
 
     /** SAST callers keep using the no-arg check; it reads the SAST LLM section. */
     public boolean isEnabled() {
@@ -116,26 +99,22 @@ public class LlmApiClient {
         if (!settings.isSourceLlmConfigured(source)) {
             return null;
         }
-        int contextWindow = settings.sourceLlmContextWindow(source);
-        if (contextWindow < 256) {
-            contextWindow = maxTokens;
-        }
         return new LlmCredentials(
                 source,
                 settings.sourceLlmApiUrl(source),
                 settings.sourceLlmApiKey(source),
                 settings.sourceLlmModel(source),
-                sanitizeMaxTokens(contextWindow)
+                sanitizeMaxTokens(settings.sourceLlmContextWindow(source))
         );
     }
 
     public int scanConcurrency(Finding.Source source) {
         Settings settings = findSettingsService.get();
         if (settings == null || source == null) {
-            return 3;
+            return 2;
         }
         int configured = settings.sourceLlmScanConcurrency(source);
-        return configured < 1 ? 3 : configured;
+        return configured < 1 ? 2 : configured;
     }
 
     private LlmResponse doPost(String url, LlmCredentials credentials,

@@ -9,8 +9,6 @@ services:
       - "8443:8443"
     environment:
       SSL: "TRUE"
-      # Completion budget for SAST LLM. Ornith/vLLM shares this with reasoning tokens.
-      LLM_MAX_TOKENS: "16000"
       # Uncomment and set these when using SSO
       # SSO: "TRUE"
       # SSO_CLIENT_ID: your_client_id
