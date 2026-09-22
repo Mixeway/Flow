@@ -90,6 +90,10 @@ public class ScanManagerService {
     private final ExecutorService executorService = Executors.newFixedThreadPool(10);
     private final ExecutorService scanExecutorService = Executors.newFixedThreadPool(10);
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    /** One SAST LLM analysis at a time; further requests wait in this queue. */
+    private final ThreadPoolExecutor sastLlmExecutor = singleAnalysisExecutor("sast-llm-analysis");
+    /** One Secrets LLM analysis at a time; further requests wait in this queue. */
+    private final ThreadPoolExecutor secretsLlmExecutor = singleAnalysisExecutor("secrets-llm-analysis");
 
     // Counters for tracking parallel scans
     private final AtomicInteger totalScansRunning = new AtomicInteger(0);
@@ -552,17 +556,25 @@ public class ScanManagerService {
     /**
      * Clones the repo and runs LLM-based false positive verification on existing findings
      * for the requested source (SAST or SECRETS).
+     * SAST and Secrets each have their own queue, and each queue runs one analysis at a time.
      */
     public void runLlmEvaluation(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, Finding.Source source) {
-        executorService.submit(() -> {
-            String repoDir = "/tmp/" + codeRepo.getName();
+        ThreadPoolExecutor queue = llmExecutor(source);
+        int waiting = queue.getQueue().size();
+        int running = queue.getActiveCount();
+        if (running > 0 || waiting > 0) {
+            log.info("[ScanManagerService] Queued {} LLM evaluation for [{} / {}] (running={}, waiting={})",
+                    source, codeRepo.getRepourl(), codeRepoBranch.getName(), running, waiting);
+        }
+        queue.submit(() -> {
+            String repoDir = llmRepoDir(codeRepo, source);
             String repoUrl = codeRepo.getRepourl();
             String accessToken = codeRepo.getAccessToken();
             CodeRepo.RepoType repoType = codeRepo.getType();
 
             try {
-                log.info("[ScanManagerService] Starting {} LLM evaluation for [{} / {}]",
-                        source, codeRepo.getRepourl(), codeRepoBranch.getName());
+                log.info("[ScanManagerService] Starting {} LLM evaluation for [{} / {}], waiting in queue {}",
+                        source, codeRepo.getRepourl(), codeRepoBranch.getName(), queue.getQueue().size());
                 fetchRepository(null, repoUrl, accessToken, codeRepoBranch, repoDir, repoType);
                 if (source == Finding.Source.SECRETS) {
                     secretsService.runGitleaksWithLlmEvaluation(repoDir, codeRepo, codeRepoBranch);
@@ -581,6 +593,37 @@ public class ScanManagerService {
                 }
             }
         });
+    }
+
+    private ThreadPoolExecutor llmExecutor(Finding.Source source) {
+        return switch (source) {
+            case SECRETS -> secretsLlmExecutor;
+            case SAST -> sastLlmExecutor;
+            default -> throw new IllegalArgumentException("LLM evaluation does not support " + source);
+        };
+    }
+
+    /**
+     * Checkout path isolated from regular scans and from the other LLM queue,
+     * so a SAST analysis and a Secrets analysis can run at the same time.
+     */
+    private String llmRepoDir(CodeRepo codeRepo, Finding.Source source) {
+        String suffix = source == Finding.Source.SECRETS ? "secrets" : "sast";
+        return "/tmp/" + codeRepo.getName() + "-llm-" + suffix;
+    }
+
+    private static ThreadPoolExecutor singleAnalysisExecutor(String threadName) {
+        return new ThreadPoolExecutor(
+                1,
+                1,
+                0L,
+                TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(),
+                runnable -> {
+                    Thread thread = new Thread(runnable, threadName);
+                    thread.setDaemon(false);
+                    return thread;
+                });
     }
 
     private String fetchRepository(String commitId, String repoUrl, String accessToken,
@@ -926,5 +969,7 @@ public class ScanManagerService {
         try { scheduler.shutdownNow(); } catch (Exception ignored) {}
         try { executorService.shutdown(); } catch (Exception ignored) {}
         try { scanExecutorService.shutdown(); } catch (Exception ignored) {}
+        try { sastLlmExecutor.shutdown(); } catch (Exception ignored) {}
+        try { secretsLlmExecutor.shutdown(); } catch (Exception ignored) {}
     }
 }

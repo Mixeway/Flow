@@ -8,13 +8,11 @@ import io.mixeway.mixewayflowapi.domain.appdatatype.CreateAppDataTypeService;
 import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.component.GetOrCreateComponentService;
 import io.mixeway.mixewayflowapi.domain.finding.CreateFindingService;
-import io.mixeway.mixewayflowapi.domain.finding.FindFindingService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.BearerScanDataflow;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.BearerScanSecurity;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.Item;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
-import io.mixeway.mixewayflowapi.db.entity.Vulnerability;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Value;
@@ -45,11 +43,9 @@ public class SASTService {
     private final CreateFindingService createFindingService;
     private final CreateAppDataTypeService createAppDataTypeService;
     private final SastFindingVerificationService sastFindingVerificationService;
-    private final FindFindingService findFindingService;
 
     /** Max number of stderr lines kept for diagnostics when bearer fails. */
     private static final int MAX_ERROR_LINES = 50;
-    private static final String CODE_EXTRACT_PREFIX = "Code where problem is found: ";
 
     @Value("${bearer.queries.dir}")
     private String bearerRulesDir;
@@ -154,29 +150,11 @@ public class SASTService {
     }
 
     /**
-     * Runs LLM-based false positive verification for SAST findings.
+     * Runs a fresh Bearer scan, then LLM-based false positive verification on its findings.
      * Triggered on-demand by user via "Evaluate with LLM" button.
-     * Uses existing SAST findings from the database (from a prior scan) so evaluation
-     * does not depend on a fresh Bearer re-scan, which can return empty on large JS/TS repos.
      */
     public void runBearerScanWithLlmEvaluation(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) throws IOException, InterruptedException, ScanException {
-        log.info("[BearerScanService] Starting Bearer scan with LLM evaluation for repository: {} branch: {}", codeRepo.getName(), codeRepoBranch.getName());
-
-        List<Finding> existing = findFindingService.findActiveSastFindings(codeRepo, codeRepoBranch).stream()
-                .filter(finding -> finding.getSeverity() == Finding.Severity.CRITICAL
-                        || finding.getSeverity() == Finding.Severity.HIGH
-                        || finding.getSeverity() == Finding.Severity.MEDIUM)
-                .toList();
-
-        if (!existing.isEmpty()) {
-            log.info("[BearerScanService] Evaluating {} existing SAST findings from database for [{} / {}] (skipping Bearer re-scan)",
-                    existing.size(), codeRepo.getRepourl(), codeRepoBranch.getName());
-            evaluateFindingsWithLlm(toBearerScanSecurity(existing), null, repoDir, codeRepo, codeRepoBranch, false);
-            return;
-        }
-
-        log.info("[BearerScanService] No existing SAST findings in database, running Bearer scan for [{} / {}]",
-                codeRepo.getRepourl(), codeRepoBranch.getName());
+        log.info("[BearerScanService] Starting fresh Bearer scan with LLM evaluation for repository: {} branch: {}", codeRepo.getName(), codeRepoBranch.getName());
 
         File securityReportFile = new File(repoDir, "bearer_scan_security.json");
         File dataflowReportFile = new File(repoDir, "bearer_scan_dataflow.json");
@@ -276,63 +254,6 @@ public class SASTService {
         log.info("[BearerScanService] LLM evaluation completed for [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
     }
 
-    /**
-     * Rebuilds a Bearer security report DTO from persisted SAST findings so LLM verification
-     * can run without a fresh Bearer scan.
-     */
-    private BearerScanSecurity toBearerScanSecurity(List<Finding> findings) {
-        BearerScanSecurity scan = new BearerScanSecurity();
-        scan.setCritical(new ArrayList<>());
-        scan.setHigh(new ArrayList<>());
-        scan.setMedium(new ArrayList<>());
-        scan.setLow(new ArrayList<>());
-        for (Finding finding : findings) {
-            Item item = toItem(finding);
-            switch (finding.getSeverity()) {
-                case CRITICAL -> scan.getCritical().add(item);
-                case HIGH -> scan.getHigh().add(item);
-                case MEDIUM -> scan.getMedium().add(item);
-                case LOW -> scan.getLow().add(item);
-                default -> { }
-            }
-        }
-        return scan;
-    }
-
-    private Item toItem(Finding finding) {
-        Item item = new Item();
-        Vulnerability vulnerability = finding.getVulnerability();
-        if (vulnerability != null) {
-            item.setTitle(vulnerability.getName());
-            item.setDescription(vulnerability.getDescription());
-            // SAST findings persist Bearer documentation_url in recommendation; ref is unused.
-            String docs = firstNonBlank(vulnerability.getRef(), vulnerability.getRecommendation());
-            item.setDocumentationUrl(docs);
-            item.setId(ruleIdFromRef(docs));
-        }
-        String location = finding.getLocation();
-        if (location != null) {
-            int colon = location.lastIndexOf(':');
-            if (colon > 0) {
-                item.setFilename(location.substring(0, colon));
-                try {
-                    item.setLineNumber(Integer.parseInt(location.substring(colon + 1)));
-                } catch (NumberFormatException ignored) {
-                    item.setFilename(location);
-                }
-            } else {
-                item.setFilename(location);
-            }
-        }
-        String explanation = finding.getExplanation();
-        if (explanation != null && explanation.startsWith(CODE_EXTRACT_PREFIX)) {
-            item.setCodeExtract(explanation.substring(CODE_EXTRACT_PREFIX.length()));
-        } else if (explanation != null && !explanation.isBlank()) {
-            item.setCodeExtract(explanation);
-        }
-        return item;
-    }
-
     static String ruleIdFromRef(String ref) {
         if (ref == null || ref.isBlank()) {
             return null;
@@ -357,16 +278,6 @@ public class SASTService {
         }
         id = id.substring(0, end).trim();
         return id.isEmpty() ? null : id;
-    }
-
-    private static String firstNonBlank(String a, String b) {
-        if (a != null && !a.isBlank()) {
-            return a;
-        }
-        if (b != null && !b.isBlank()) {
-            return b;
-        }
-        return null;
     }
 
     /**
