@@ -604,9 +604,26 @@
                                             How many LLM calls for this source may run at the same time
                                         </small>
                                     </div>
+                                    <div class="mb-3">
+                                        <label class="form-label d-block">Severities to analyze</label>
+                                        <div class="d-flex flex-wrap gap-3">
+                                            <c-form-check *ngFor="let severity of llmSeverityOptions">
+                                                <input cFormCheckInput type="checkbox"
+                                                       [id]="'llmSeverity-' + llm.source + '-' + severity.id"
+                                                       [checked]="isLlmSeveritySelected(llm, severity.id)"
+                                                       (change)="toggleLlmSeverity(llm, severity.id, $event)" />
+                                                <label cFormCheckLabel
+                                                       [for]="'llmSeverity-' + llm.source + '-' + severity.id"
+                                                       class="ms-1">{{ severity.label }}</label>
+                                            </c-form-check>
+                                        </div>
+                                        <small class="text-muted">
+                                            Only findings of the selected severities are sent to the LLM
+                                        </small>
+                                    </div>
                                 </div>
                             </div>
-                            <button cButton color="primary" (click)="saveLlmConfiguration()">Save LLM</button>
+                            <button cButton color="primary" (click)="saveLlmConfiguration()">Save LLM Configurations</button>
                         </c-tab-panel>
                     </c-tabs-content>
                 </c-tabs>

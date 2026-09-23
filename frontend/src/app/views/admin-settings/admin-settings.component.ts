@@ -154,6 +154,14 @@ export class AdminSettingsComponent implements OnInit{
 
     /** Remediation SLA per severity in days; null means no SLA is tracked. */
     slaConfig: SlaConfig = { criticalDays: 14, highDays: 30, mediumDays: null, lowDays: null };
+    readonly llmSeverityOptions = [
+        { id: 'CRITICAL', label: 'Critical' },
+        { id: 'HIGH', label: 'High' },
+        { id: 'MEDIUM', label: 'Medium' },
+        { id: 'LOW', label: 'Low' },
+        { id: 'INFO', label: 'Info' },
+    ];
+    private readonly defaultLlmSeverities = ['CRITICAL', 'HIGH'];
     llmSources: Array<{
         source: string;
         label: string;
@@ -163,12 +171,13 @@ export class AdminSettingsComponent implements OnInit{
         model: string;
         contextWindow: number;
         scanConcurrency: number;
+        severities: string[];
     }> = [
-        { source: 'SAST', label: 'SAST', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 16384, scanConcurrency: 2 },
-        { source: 'SCA', label: 'SCA', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2 },
-        { source: 'IAC', label: 'IaC', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2 },
-        { source: 'SECRETS', label: 'Secrets', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2 },
-        { source: 'DAST', label: 'DAST', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2 },
+        { source: 'SAST', label: 'SAST', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 16384, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'] },
+        { source: 'SCA', label: 'SCA', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'] },
+        { source: 'IAC', label: 'IaC', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'] },
+        { source: 'SECRETS', label: 'Secrets', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'] },
+        { source: 'DAST', label: 'DAST', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'] },
     ];
     repoTokenSearchTerm: string = '';
     repoTokenValue: string = '';
@@ -639,9 +648,29 @@ export class AdminSettingsComponent implements OnInit{
                 apiKey: row.apiKeyConfigured ? '************' : '',
                 model: row.model || '',
                 contextWindow: row.contextWindow || 8192,
-                scanConcurrency: row.scanConcurrency || 2
+                scanConcurrency: row.scanConcurrency || 2,
+                severities: Array.isArray(row.severities) && row.severities.length
+                    ? row.severities
+                    : [...this.defaultLlmSeverities]
             };
         });
+    }
+
+    isLlmSeveritySelected(section: { severities: string[] }, severity: string): boolean {
+        return section.severities?.includes(severity) ?? false;
+    }
+
+    toggleLlmSeverity(section: { severities: string[] }, severity: string, event: Event): void {
+        const checked = (event.target as HTMLInputElement).checked;
+        const selected = new Set(section.severities || []);
+        if (checked) {
+            selected.add(severity);
+        } else {
+            selected.delete(severity);
+        }
+        section.severities = this.llmSeverityOptions
+            .map(option => option.id)
+            .filter(id => selected.has(id));
     }
 
     saveOtherConfigurationSettings() {
@@ -669,7 +698,8 @@ export class AdminSettingsComponent implements OnInit{
                 apiKey: section.apiKey,
                 model: section.model,
                 contextWindow: section.contextWindow,
-                scanConcurrency: section.scanConcurrency
+                scanConcurrency: section.scanConcurrency,
+                severities: section.severities
             }))
         ).subscribe({
             next: () => {

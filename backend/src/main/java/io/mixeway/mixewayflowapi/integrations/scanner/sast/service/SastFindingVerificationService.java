@@ -303,17 +303,21 @@ public class SastFindingVerificationService {
         }
         applyScanConcurrency();
 
-        log.info("[SastVerification] Starting LLM-based SAST finding verification (critical/high/medium only)");
+        Set<Finding.Severity> severities = llmApiClient.analysisSeverities(Finding.Source.SAST);
+        log.info("[SastVerification] Starting LLM-based SAST finding verification for severities {}", severities);
         VerificationSummary summary = new VerificationSummary();
 
-        if (scanSecurity.getCritical() != null && !scanSecurity.getCritical().isEmpty()) {
+        if (severities.contains(Finding.Severity.CRITICAL) && scanSecurity.getCritical() != null && !scanSecurity.getCritical().isEmpty()) {
             summary.add(verifyItems(scanSecurity.getCritical(), repoDir, scanDataflow, true, onItemVerified));
         }
-        if (scanSecurity.getHigh() != null && !scanSecurity.getHigh().isEmpty()) {
+        if (severities.contains(Finding.Severity.HIGH) && scanSecurity.getHigh() != null && !scanSecurity.getHigh().isEmpty()) {
             summary.add(verifyItems(scanSecurity.getHigh(), repoDir, scanDataflow, true, onItemVerified));
         }
-        if (scanSecurity.getMedium() != null && !scanSecurity.getMedium().isEmpty()) {
+        if (severities.contains(Finding.Severity.MEDIUM) && scanSecurity.getMedium() != null && !scanSecurity.getMedium().isEmpty()) {
             summary.add(verifyItems(scanSecurity.getMedium(), repoDir, scanDataflow, true, onItemVerified));
+        }
+        if (severities.contains(Finding.Severity.LOW) && scanSecurity.getLow() != null && !scanSecurity.getLow().isEmpty()) {
+            summary.add(verifyItems(scanSecurity.getLow(), repoDir, scanDataflow, true, onItemVerified));
         }
 
         log.info("[SastVerification] Completed LLM evaluation. Total findings: {}, LLM requests: {}, valid verdicts: {}, not verified: {}, cache hits: {}, normalized verdicts: {}, json repairs attempted: {}, json repairs succeeded: {}, duplicate actions skipped: {}, query expansions used: {}, validation overrides: {}, remediation corrections: {}, rejection reasons: {}",

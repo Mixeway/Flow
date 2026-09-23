@@ -6,6 +6,7 @@ export interface LlmSourceConfigRequest {
     model: string;
     contextWindow: number;
     scanConcurrency: number;
+    severities: string[];
 }
 
 export interface OtherConfigRequestDTO {

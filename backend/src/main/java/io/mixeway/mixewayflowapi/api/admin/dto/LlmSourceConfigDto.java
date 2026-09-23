@@ -4,6 +4,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.List;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -15,4 +17,5 @@ public class LlmSourceConfigDto {
     private String model;
     private Integer contextWindow;
     private Integer scanConcurrency;
+    private List<String> severities;
 }

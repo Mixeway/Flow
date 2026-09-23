@@ -14,9 +14,11 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
@@ -115,6 +117,14 @@ public class LlmApiClient {
         }
         int configured = settings.sourceLlmScanConcurrency(source);
         return configured < 1 ? 2 : configured;
+    }
+
+    public Set<Finding.Severity> analysisSeverities(Finding.Source source) {
+        Settings settings = findSettingsService.get();
+        if (settings == null || source == null) {
+            return EnumSet.of(Finding.Severity.CRITICAL, Finding.Severity.HIGH);
+        }
+        return settings.sourceLlmSeverities(source);
     }
 
     private LlmResponse doPost(String url, LlmCredentials credentials,

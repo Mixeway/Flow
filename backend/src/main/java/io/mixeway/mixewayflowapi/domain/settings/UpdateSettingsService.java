@@ -15,7 +15,10 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -152,16 +155,17 @@ public class UpdateSettingsService {
 
             int contextWindow = normalizeContextWindow(dto.getContextWindow(), source, dto.isEnabled());
             int scanConcurrency = normalizeScanConcurrency(dto.getScanConcurrency(), source, dto.isEnabled());
+            String severities = normalizeSeverities(dto.getSeverities(), source, dto.isEnabled());
             if (dto.isEnabled()) {
                 String apiKey = resolveLlmApiKey(storedLlmApiKey(settings, source), dto.getApiKey());
                 if (!hasText(dto.getApiUrl()) || !hasText(apiKey) || !hasText(dto.getModel())) {
                     log.warn("[Settings] Error enabling LLM for {} - API URL, API key and model are required", source);
                     throw new SettingsException("API URL, API key and model are required when enabling LLM for " + source);
                 }
-                settings.upsertLlmSource(source, true, dto.getApiUrl().trim(), apiKey, dto.getModel().trim(), contextWindow, scanConcurrency);
+                settings.upsertLlmSource(source, true, dto.getApiUrl().trim(), apiKey, dto.getModel().trim(), contextWindow, scanConcurrency, severities);
                 log.info("[Settings] LLM enabled for {} with URL: {}", source, dto.getApiUrl());
             } else {
-                settings.upsertLlmSource(source, false, null, null, null, contextWindow, scanConcurrency);
+                settings.upsertLlmSource(source, false, null, null, null, contextWindow, scanConcurrency, severities);
                 log.info("[Settings] LLM disabled for {}", source);
             }
         }
@@ -193,6 +197,35 @@ public class UpdateSettingsService {
             throw new SettingsException("Context window for " + source + " must be between " + MIN_CONTEXT_WINDOW + " and " + MAX_CONTEXT_WINDOW);
         }
         return value;
+    }
+
+    private String normalizeSeverities(List<String> requested, Finding.Source source, boolean required) throws SettingsException {
+        Set<Finding.Severity> selected = EnumSet.noneOf(Finding.Severity.class);
+        if (requested != null) {
+            for (String value : requested) {
+                if (value == null || value.isBlank()) {
+                    continue;
+                }
+                try {
+                    selected.add(Finding.Severity.valueOf(value.trim().toUpperCase()));
+                } catch (IllegalArgumentException ex) {
+                    throw new SettingsException("Unknown severity for " + source + ": " + value);
+                }
+            }
+        }
+        if (selected.isEmpty()) {
+            if (required) {
+                throw new SettingsException("Select at least one severity when enabling LLM for " + source);
+            }
+            return "CRITICAL,HIGH";
+        }
+        List<String> ordered = new ArrayList<>();
+        for (Finding.Severity severity : Finding.Severity.values()) {
+            if (selected.contains(severity)) {
+                ordered.add(severity.name());
+            }
+        }
+        return String.join(",", ordered);
     }
 
     private int normalizeScanConcurrency(Integer value, Finding.Source source, boolean required) throws SettingsException {
