@@ -66,7 +66,7 @@ public class SastFindingVerificationService {
     
     @PostConstruct
     public void init() {
-        log.info("[SastVerification] Initializing with {} threads, {} max concurrent calls, {}ms rate limit",
+        log.debug("[SastVerification] Initializing with {} threads, {} max concurrent calls, {}ms rate limit",
                 verificationThreads, maxConcurrentCalls, rateLimitMs);
         
         verificationExecutor = Executors.newFixedThreadPool(
@@ -269,7 +269,7 @@ public class SastFindingVerificationService {
 
     @PreDestroy
     public void shutdown() {
-        log.info("[SastVerification] Shutting down verification executor");
+        log.debug("[SastVerification] Shutting down verification executor");
         verificationExecutor.shutdown();
         try {
             if (!verificationExecutor.awaitTermination(60, TimeUnit.SECONDS)) {
@@ -304,7 +304,7 @@ public class SastFindingVerificationService {
         applyScanConcurrency();
 
         Set<Finding.Severity> severities = llmApiClient.analysisSeverities(Finding.Source.SAST);
-        log.info("[SastVerification] Starting LLM-based SAST finding verification for severities {}", severities);
+        log.debug("[SastVerification] Starting LLM-based SAST finding verification for severities {}", severities);
         VerificationSummary summary = new VerificationSummary();
 
         if (severities.contains(Finding.Severity.CRITICAL) && scanSecurity.getCritical() != null && !scanSecurity.getCritical().isEmpty()) {
@@ -320,7 +320,7 @@ public class SastFindingVerificationService {
             summary.add(verifyItems(scanSecurity.getLow(), repoDir, scanDataflow, true, onItemVerified));
         }
 
-        log.info("[SastVerification] Completed LLM evaluation. Total findings: {}, LLM requests: {}, valid verdicts: {}, not verified: {}, cache hits: {}, normalized verdicts: {}, json repairs attempted: {}, json repairs succeeded: {}, duplicate actions skipped: {}, query expansions used: {}, validation overrides: {}, remediation corrections: {}, rejection reasons: {}",
+        log.debug("[SastVerification] Completed LLM evaluation. Total findings: {}, LLM requests: {}, valid verdicts: {}, not verified: {}, cache hits: {}, normalized verdicts: {}, json repairs attempted: {}, json repairs succeeded: {}, duplicate actions skipped: {}, query expansions used: {}, validation overrides: {}, remediation corrections: {}, rejection reasons: {}",
                 summary.totalFindings, summary.llmRequests, summary.validVerdicts, summary.notVerified,
                 summary.cacheHits, summary.normalizedVerdicts, summary.jsonRepairAttempts,
                 summary.jsonRepairSuccesses, summary.duplicateActionsSkipped,
@@ -342,7 +342,7 @@ public class SastFindingVerificationService {
         List<Item> toVerify = new ArrayList<>();
         for (Item item : items) {
             if (isHardcodedSecretFinding(item)) {
-                log.info("[SastVerification] Skipping LLM verification for hardcoded secret {}",
+                log.debug("[SastVerification] Skipping LLM verification for hardcoded secret {}",
                         formatItemRef(item));
                 summary.totalFindings.decrementAndGet();
                 continue;
@@ -369,7 +369,7 @@ public class SastFindingVerificationService {
         }
 
         // Phase 2: Parallel verification of remaining findings
-        log.info("[SastVerification] Verifying {} findings in parallel", toVerify.size());
+        log.debug("[SastVerification] Verifying {} findings in parallel", toVerify.size());
         
         List<CompletableFuture<Void>> futures = new ArrayList<>();
         for (Item item : toVerify) {
@@ -716,7 +716,7 @@ public class SastFindingVerificationService {
         messages.add(Map.of("role", "user", "content", userPrompt));
 
         long startedAt = System.currentTimeMillis();
-        log.info("[SastVerification] Starting ReAct verification for {}", itemRef);
+        log.debug("[SastVerification] Starting ReAct verification for {}", itemRef);
 
         int toolBudget = resolveToolBudget(category, metadata);
         int maxToolRounds = resolveToolRounds(category, metadata);
@@ -902,7 +902,7 @@ public class SastFindingVerificationService {
             }
 
             if (result.verified()) {
-                log.info("[SastVerification] ReAct verification succeeded for {} after {} ms ({} tool call(s)). Verdict: {}, confidence: {} ({})",
+                log.debug("[SastVerification] ReAct verification succeeded for {} after {} ms ({} tool call(s)). Verdict: {}, confidence: {} ({})",
                         itemRef, elapsedMs, resolveToolBudget(category, metadata) - toolBudget,
                         item.getAiVerdict(), item.getAiConfidence(),
                         ConfidenceLevel.fromConfidence(item.getAiConfidence()));
@@ -928,7 +928,7 @@ public class SastFindingVerificationService {
             if ("search_repo".equals(action)) {
                 String pattern = node.path("pattern").asText("");
                 String pathGlob = node.path("path_glob").asText("");
-                log.info("[SastVerification] ReAct search_repo(pattern='{}', glob='{}') for {}",
+                log.debug("[SastVerification] ReAct search_repo(pattern='{}', glob='{}') for {}",
                         truncateForLog(pattern, 120), pathGlob, itemRef);
                 String result = codeSearchService.searchRepo(repoDir, pattern, pathGlob);
                 if (!isNoMatchesResult(result)) {
@@ -957,7 +957,7 @@ public class SastFindingVerificationService {
                 String path = node.path("path").asText("");
                 int startLine = node.path("start_line").asInt(0);
                 int endLine = node.path("end_line").asInt(0);
-                log.info("[SastVerification] ReAct read_file(path='{}', {}-{}) for {}",
+                log.debug("[SastVerification] ReAct read_file(path='{}', {}-{}) for {}",
                         path, startLine, endLine, itemRef);
                 return ActionExecution.of(codeSearchService.readFile(repoDir, path, startLine, endLine), false);
             }
@@ -1362,7 +1362,7 @@ public class SastFindingVerificationService {
         }
 
         if (uncertainResolution && !stageOneVerdict.verdict().equals(item.getAiVerdict())) {
-            log.info("[SastVerification] Stage-2 resolved UNCERTAIN for {} -> {} (confidence: {})",
+            log.debug("[SastVerification] Stage-2 resolved UNCERTAIN for {} -> {} (confidence: {})",
                     itemRef, item.getAiVerdict(),
                     String.format(Locale.ROOT, "%.2f", item.getAiConfidence()));
             return parsed.withMetrics(1, 0, 0, 0, 0);
@@ -1989,7 +1989,7 @@ public class SastFindingVerificationService {
             }
 
             overrides = 1;
-            log.info("[SastVerification] Validation OVERRODE verdict for {}: {} ({}) -> {} ({}) | {}",
+            log.debug("[SastVerification] Validation OVERRODE verdict for {}: {} ({}) -> {} ({}) | {}",
                     itemRef, previousVerdict,
                     String.format(Locale.ROOT, "%.2f", previousConfidence),
                     validatorVerdict,
@@ -2003,7 +2003,7 @@ public class SastFindingVerificationService {
                                 item.getAiRecommendation()));
             }
         } else {
-            log.info("[SastVerification] Validation CONFIRMED verdict for {}: {} ({})",
+            log.debug("[SastVerification] Validation CONFIRMED verdict for {}: {} ({})",
                     itemRef, item.getAiVerdict(),
                     String.format(Locale.ROOT, "%.2f", item.getAiConfidence()));
         }
@@ -2022,7 +2022,7 @@ public class SastFindingVerificationService {
                 item.setAiRecommendation(currentRec + "\n\n### Corrected remediation code\n```\n"
                         + correctedRemediation + "\n```");
                 remediationFixes = 1;
-                log.info("[SastVerification] Validation corrected remediation for {}", itemRef);
+                log.debug("[SastVerification] Validation corrected remediation for {}", itemRef);
             }
         }
 
@@ -2741,7 +2741,7 @@ public class SastFindingVerificationService {
             log.warn("[SastVerification] LLM response for {} did not contain input_source", item.getTitle());
             return VerificationResult.failed(ParseFailureReason.MISSING_INPUT_SOURCE);
         }
-        log.info("[SastVerification] LLM classified context for {}: execution_context={}, input_source={}",
+        log.debug("[SastVerification] LLM classified context for {}: execution_context={}, input_source={}",
                 item.getTitle(), executionContext.isBlank() ? "not provided" : executionContext,
                 inputSource.isBlank() ? "not provided" : inputSource);
 
@@ -4390,7 +4390,7 @@ public class SastFindingVerificationService {
             boolean riskyTrustedSqlConcat = hasSqlRiskyTrustedConcatPattern(
                     item, context, reactText, "", item.getAiReasoning());
 
-            log.info("[SastVerification] Deterministic normalization check for {}: isSqlInjection={}, "
+            log.debug("[SastVerification] Deterministic normalization check for {}: isSqlInjection={}, "
                             + "hasNumericEvidence={}, hasOrmSafeSql={}, allCallsitesLiteral={}, "
                             + "hasUnneutralizedStringSql={}, riskyTrustedSqlConcat={}",
                     itemRef, true, hasNumericEvidence, hasOrmSafeSql, allCallsitesLiteral,
@@ -6685,12 +6685,12 @@ public class SastFindingVerificationService {
             return;
         }
         if (rateLimitSemaphore != null && rateLimitSemaphore.availablePermits() != appliedConcurrency) {
-            log.info("[SastVerification] Scan concurrency change to {} deferred; calls are in flight", desired);
+            log.debug("[SastVerification] Scan concurrency change to {} deferred; calls are in flight", desired);
             return;
         }
         rateLimitSemaphore = new Semaphore(desired);
         appliedConcurrency = desired;
-        log.info("[SastVerification] Scan concurrency set to {}", desired);
+        log.debug("[SastVerification] Scan concurrency set to {}", desired);
     }
 
     private void rateLimitPause() {

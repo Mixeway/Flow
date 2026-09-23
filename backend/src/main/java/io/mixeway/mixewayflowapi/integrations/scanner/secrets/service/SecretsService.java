@@ -86,7 +86,7 @@ public class SecretsService {
      */
     public void runGitleaksWithLlmEvaluation(String repoDir, CodeRepo codeRepo, CodeRepoBranch branch) {
         // TODO: evaluate existing SECRETS findings with LLM
-        log.info("[GitLeaks SecretScan] Secrets LLM evaluation is not implemented yet [{} / {}]",
+        log.debug("[GitLeaks SecretScan] Secrets LLM evaluation is not implemented yet [{} / {}]",
                 codeRepo.getRepourl(), branch.getName());
     }
 

@@ -138,7 +138,7 @@ public class LlmApiClient {
 
         long callId = CALL_SEQ.incrementAndGet();
         int promptChars = totalPromptChars(messages);
-        log.info("[LlmApiClient] req#{} source={} POST {} model={} messages={} prompt_chars={} max_tokens={}",
+        log.debug("[LlmApiClient] req#{} source={} POST {} model={} messages={} prompt_chars={} max_tokens={}",
                 callId, credentials.source, url, credentials.model, messages.size(), promptChars, maxTokensForCall);
 
         long deadline = System.currentTimeMillis() + RETRY_WINDOW.toMillis();
@@ -177,7 +177,7 @@ public class LlmApiClient {
                 String content = contentNode == null || contentNode.isNull() || contentNode.isMissingNode()
                         ? ""
                         : contentNode.asText("");
-                log.info("[LlmApiClient] req#{} attempt={} elapsedMs={} raw_len={} finish_reason={} usage={} content_len={} content_blank={} reasoning_len={}",
+                log.debug("[LlmApiClient] req#{} attempt={} elapsedMs={} raw_len={} finish_reason={} usage={} content_len={} content_blank={} reasoning_len={}",
                         callId, attempt, elapsedMs, responseJson.length(), finishReason(root), usageSummary(root),
                         content.length(), content.isBlank(),
                         extraFieldLen(message, "reasoning_content", "reasoning"));

@@ -563,7 +563,7 @@ public class ScanManagerService {
         int waiting = queue.getQueue().size();
         int running = queue.getActiveCount();
         if (running > 0 || waiting > 0) {
-            log.info("[ScanManagerService] Queued {} LLM evaluation for [{} / {}] (running={}, waiting={})",
+            log.debug("[ScanManagerService] Queued {} LLM evaluation for [{} / {}] (running={}, waiting={})",
                     source, codeRepo.getRepourl(), codeRepoBranch.getName(), running, waiting);
         }
         queue.submit(() -> {
@@ -573,7 +573,8 @@ public class ScanManagerService {
             CodeRepo.RepoType repoType = codeRepo.getType();
 
             try {
-                log.info("[ScanManagerService] Starting {} LLM evaluation for [{} / {}], waiting in queue {}",
+                log.info("[ScanManagerService] LLM analysis for {} and {} started", source, repoUrl);
+                log.debug("[ScanManagerService] Starting {} LLM evaluation for [{} / {}], waiting in queue {}",
                         source, codeRepo.getRepourl(), codeRepoBranch.getName(), queue.getQueue().size());
                 fetchRepository(null, repoUrl, accessToken, codeRepoBranch, repoDir, repoType);
                 if (source == Finding.Source.SECRETS) {
@@ -581,6 +582,7 @@ public class ScanManagerService {
                 } else {
                     sastService.runBearerScanWithLlmEvaluation(repoDir, codeRepo, codeRepoBranch);
                 }
+                log.info("[ScanManagerService] LLM analysis for {} and {} finished", source, repoUrl);
             } catch (Throwable t) {
                 Thread.interrupted(); // clear interrupt flag so log.error can write
                 log.error("[ScanManagerService] {} LLM evaluation failed for [{} / {}]: {}",

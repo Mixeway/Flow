@@ -92,10 +92,10 @@ public class CustomControlSoundnessService {
             return ControlAuditReport.noneFound(llmRequests);
         }
         if (candidates.isEmpty()) {
-            log.info("[ControlSoundness] No controls identified for {}", itemRef);
+            log.debug("[ControlSoundness] No controls identified for {}", itemRef);
             return ControlAuditReport.noneFound(llmRequests);
         }
-        log.info("[ControlSoundness] {} candidate control(s) for {}: {}",
+        log.debug("[ControlSoundness] {} candidate control(s) for {}: {}",
                 candidates.size(), itemRef, candidates.stream().map(SecurityControl::label).toList());
 
         List<ControlSoundness> results = new ArrayList<>();
@@ -495,14 +495,14 @@ public class CustomControlSoundnessService {
             if ("search_repo".equals(action)) {
                 String pattern = node.path("pattern").asText("");
                 String pathGlob = node.path("path_glob").asText("");
-                log.info("[ControlSoundness] search_repo(pattern='{}') for {}", truncate(pattern, 80), itemRef);
+                log.debug("[ControlSoundness] search_repo(pattern='{}') for {}", truncate(pattern, 80), itemRef);
                 return truncate(codeSearchService.searchRepo(repoDir, pattern, pathGlob), MAX_TOOL_RESULT_CHARS);
             }
             if ("read_file".equals(action)) {
                 String path = node.path("path").asText("");
                 int startLine = node.path("start_line").asInt(0);
                 int endLine = node.path("end_line").asInt(0);
-                log.info("[ControlSoundness] read_file(path='{}', {}-{}) for {}", path, startLine, endLine, itemRef);
+                log.debug("[ControlSoundness] read_file(path='{}', {}-{}) for {}", path, startLine, endLine, itemRef);
                 return truncate(codeSearchService.readFile(repoDir, path, startLine, endLine), MAX_TOOL_RESULT_CHARS);
             }
             return "Unknown action: " + action;

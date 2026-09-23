@@ -154,7 +154,7 @@ public class SASTService {
      * Triggered on-demand by user via "Evaluate with LLM" button.
      */
     public void runBearerScanWithLlmEvaluation(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) throws IOException, InterruptedException, ScanException {
-        log.info("[BearerScanService] Starting fresh Bearer scan with LLM evaluation for repository: {} branch: {}", codeRepo.getName(), codeRepoBranch.getName());
+        log.debug("[BearerScanService] Starting fresh Bearer scan with LLM evaluation for repository: {} branch: {}", codeRepo.getName(), codeRepoBranch.getName());
 
         File securityReportFile = new File(repoDir, "bearer_scan_security.json");
         File dataflowReportFile = new File(repoDir, "bearer_scan_dataflow.json");
@@ -185,7 +185,7 @@ public class SASTService {
         ObjectMapper objectMapper = new ObjectMapper();
 
         if (isEmptyReport(securityReportFile) || !looksLikeJson(securityReportFile)) {
-            log.info("[BearerScanService] No SAST findings to evaluate for [{} / {}]. Bearer exit: {}, report preview: {}",
+            log.debug("[BearerScanService] No SAST findings to evaluate for [{} / {}]. Bearer exit: {}, report preview: {}",
                     codeRepo.getRepourl(), codeRepoBranch.getName(), securityResult.exitCode, previewFile(securityReportFile));
             return;
         }
@@ -241,7 +241,7 @@ public class SASTService {
         }
 
         if (persistFindings) {
-            log.info("[BearerScanService] Persisting findings to database for [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
+            log.debug("[BearerScanService] Persisting findings to database for [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
             createFindingService.saveFindings(
                     createFindingService.mapBearerScanToFindings(bearerScanSecurity, codeRepo, codeRepoBranch),
                     codeRepoBranch, codeRepo, Finding.Source.SAST, null);
@@ -251,7 +251,7 @@ public class SASTService {
             }
         }
 
-        log.info("[BearerScanService] LLM evaluation completed for [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
+        log.debug("[BearerScanService] LLM evaluation completed for [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
     }
 
     static String ruleIdFromRef(String ref) {
