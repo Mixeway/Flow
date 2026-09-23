@@ -25,8 +25,8 @@ public class Comment {
     @JoinColumn(name = "finding_id", nullable = false)
     private final Finding finding;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
     private final UserInfo user;
 
     @CreationTimestamp

@@ -53,7 +53,7 @@ public class FindingService {
             getFindingResponseDto.setRefs(finding.getVulnerability().getRef());
             getFindingResponseDto.setExplanation(finding.getExplanation());
             getFindingResponseDto.setComments(finding.getComments().stream()
-                    .map(comment -> new CommentDto(comment.getCreatedDate(), comment.getUser().getUsername(), comment.getMessage()))
+                    .map(comment -> new CommentDto(comment.getCreatedDate(), comment.authorName(), comment.getMessage()))
                     .toList());
             return getFindingResponseDto;
         } else {

@@ -34,6 +34,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Log4j2
 public class CreateFindingService {
+    private static final String AI_FALSE_POSITIVE_COMMENT = "Ocenione przez AI";
+
     private final FindingRepository findingRepository;
     private final GetOrCreateVulnerabilityService getOrCreateVulnerabilityService;
     private final CheckSuppressRuleService checkSuppressRuleService;
@@ -70,6 +72,7 @@ public class CreateFindingService {
                     existingFinding.updateStatus(Finding.Status.EXISTING, existingFinding.getSuppressedReason());
                 }
                 existingFinding.copyAiVerificationFrom(newFinding);
+                applyAiFalsePositive(existingFinding);
                 existingFinding.noteFindingDetected();  // Ensure updatedDate is always updated
                 findingRepository.saveAndFlush(existingFinding);
                 existingFindingsMap.remove(key);
@@ -95,6 +98,7 @@ public class CreateFindingService {
                 } else {
                     newFinding.updateStatus(Finding.Status.NEW, null);
                 }
+                applyAiFalsePositive(newFinding);
                 Finding savedFinding = findingRepository.saveAndFlush(newFinding);
                 checkSuppressRuleService.validate(savedFinding);
                 if (savedFinding.getStatus() == Finding.Status.NEW) {
@@ -149,13 +153,40 @@ public class CreateFindingService {
         if (grade == null || grade == Finding.AiVerificationGrade.NOT_VERIFIED) {
             return;
         }
-        int updated = findingRepository.updateAiVerificationForSastFinding(
-                codeRepoBranch, location,
-                source, Finding.Status.REMOVED,
-                grade, confidence, reasoning, recommendation);
-        if (updated > 0) {
+        List<Finding> findings = findingRepository.findByBranchAndLocationAndSourceExcludingStatus(
+                codeRepoBranch, location, source, Finding.Status.REMOVED);
+        for (Finding finding : findings) {
+            finding.setAiVerification(grade, confidence, reasoning, recommendation);
+            applyAiFalsePositive(finding);
+            findingRepository.save(finding);
+        }
+        if (!findings.isEmpty()) {
             log.debug("[Finding Service] Intermediate AI save: {} finding(s) at {} source={} grade={} confidence={}",
-                    updated, location, source, grade, confidence);
+                    findings.size(), location, source, grade, confidence);
+        }
+    }
+
+    /**
+     * A false-positive AI verdict suppresses the finding immediately and records who decided it.
+     * An existing suppression with a different reason is left unchanged.
+     */
+    private void applyAiFalsePositive(Finding finding) {
+        if (finding.getAiVerificationGrade() != Finding.AiVerificationGrade.FALSE_POSITIVE) {
+            return;
+        }
+        if (finding.getStatus() == Finding.Status.REMOVED) {
+            return;
+        }
+        if (finding.getStatus() != Finding.Status.SUPRESSED) {
+            finding.suppress(Finding.SuppressedReason.FALSE_POSITIVE.name());
+            jiraTicketLifecycleService.onFindingSuppressed(finding);
+        } else if (finding.getSuppressedReason() != Finding.SuppressedReason.FALSE_POSITIVE) {
+            return;
+        }
+        boolean alreadyCommented = finding.getComments().stream()
+                .anyMatch(comment -> AI_FALSE_POSITIVE_COMMENT.equals(comment.getMessage()));
+        if (!alreadyCommented) {
+            finding.addComment(new Comment(AI_FALSE_POSITIVE_COMMENT, finding));
         }
     }
 
