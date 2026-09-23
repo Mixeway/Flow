@@ -53,6 +53,15 @@ public class Comment {
         this.user = user;
     }
 
+    /** Automated comment with no user account, shown as AI. */
+    public Comment(String message, Finding finding) {
+        this(message, finding, null);
+    }
+
+    public String authorName() {
+        return user == null || user.getUsername() == null ? "AI" : user.getUsername();
+    }
+
     @PreUpdate
     protected void onUpdate() {
         this.updatedDate = LocalDateTime.now();

@@ -125,6 +125,7 @@ public class FindingsByTeamService {
                 log.warn("Unable to enrich VulnsResponseDto with urgency: {}", e.getMessage());
             }
             getFindingResponseDto.setVulnsResponseDto(vulnsResponseDto);
+            FindingMapper.mapAiVerificationDetails(getFindingResponseDto, finding);
             getFindingResponseDto.setDescription(finding.getVulnerability().getDescription());
             getFindingResponseDto.setRecommendation(finding.getVulnerability().getRecommendation());
             getFindingResponseDto.setRefs(finding.getVulnerability().getRef());

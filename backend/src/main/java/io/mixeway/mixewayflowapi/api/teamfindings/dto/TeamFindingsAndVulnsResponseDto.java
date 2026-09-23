@@ -23,6 +23,8 @@ public class TeamFindingsAndVulnsResponseDto {
     String description;
     String explanation;
     String recommendation;
+    @JsonProperty("ai_verification_reasoning")
+    String aiVerificationReasoning;
     @JsonProperty("ai_verification_recommendation")
     String aiVerificationRecommendation;
     BigDecimal epss;

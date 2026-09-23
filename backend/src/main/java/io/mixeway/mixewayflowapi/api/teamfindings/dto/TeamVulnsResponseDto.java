@@ -24,10 +24,6 @@ public class TeamVulnsResponseDto {
     String aiVerificationGrade;
     @JsonProperty("ai_verification_confidence")
     Double aiVerificationConfidence;
-    @JsonProperty("ai_verification_reasoning")
-    String aiVerificationReasoning;
-    @JsonProperty("ai_verification_recommendation")
-    String aiVerificationRecommendation;
 
 
 }

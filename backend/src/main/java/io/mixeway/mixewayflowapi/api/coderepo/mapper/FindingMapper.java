@@ -1,5 +1,6 @@
 package io.mixeway.mixewayflowapi.api.coderepo.mapper;
 
+import io.mixeway.mixewayflowapi.api.coderepo.dto.GetFindingResponseDto;
 import io.mixeway.mixewayflowapi.db.entity.Finding;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.VulnsResponseDto;
 
@@ -22,9 +23,12 @@ public class FindingMapper {
         dto.setSuppressedUntil(finding.getSuppressedUntil() != null ? finding.getSuppressedUntil().toString() : null);
         dto.setAiVerificationGrade(finding.getAiVerificationGrade().name());
         dto.setAiVerificationConfidence(finding.getAiVerificationConfidence());
+        return dto;
+    }
+
+    public static void mapAiVerificationDetails(GetFindingResponseDto dto, Finding finding) {
         dto.setAiVerificationReasoning(finding.getAiVerificationReasoning());
         dto.setAiVerificationRecommendation(finding.getAiVerificationRecommendation());
-        return dto;
     }
 
     public static List<VulnsResponseDto> mapToDtoList(List<Finding> findings) {
