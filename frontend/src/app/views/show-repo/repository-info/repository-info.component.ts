@@ -14,6 +14,7 @@ import {
     ModalFooterComponent,
     ModalHeaderComponent,
     ModalTitleDirective,
+    ProgressBarComponent,
     ProgressComponent,
     RowComponent,
     SpinnerComponent,
@@ -37,6 +38,7 @@ import {RepoService} from "../../../service/RepoService";
         ButtonDirective,
         IconDirective,
         SpinnerComponent,
+        ProgressBarComponent,
         ProgressComponent,
         NgIf,
         NgFor,
@@ -60,6 +62,7 @@ import {RepoService} from "../../../service/RepoService";
 export class RepositoryInfoComponent implements OnInit {
   @Input() repoData: any;
   @Input() scanRunning: boolean = false;
+  @Input() llmProgress: { analyzed: number; total: number } | null = null;
   @Input() userRole: string = 'USER';
   @Input() topLanguages: { name: string; value: number; color: string }[] = [];
   @Input() chartPieData: any;
@@ -110,6 +113,13 @@ export class RepositoryInfoComponent implements OnInit {
   @Output() evaluateLlmEvent = new EventEmitter<'SAST' | 'SECRETS'>();
   @Output() openChangeTeamModalEvent = new EventEmitter<void>();
   @Output() deleteRepoEvent = new EventEmitter<void>();
+
+  get llmPercent(): number {
+    if (!this.llmProgress || this.llmProgress.total <= 0) {
+      return 0;
+    }
+    return Math.min(100, Math.round((this.llmProgress.analyzed / this.llmProgress.total) * 100));
+  }
 
   ngOnInit(): void {
     // Enhance chart options with better defaults

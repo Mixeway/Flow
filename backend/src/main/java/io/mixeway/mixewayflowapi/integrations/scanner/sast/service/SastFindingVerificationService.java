@@ -297,6 +297,11 @@ public class SastFindingVerificationService {
      */
     public void verifyFindings(BearerScanSecurity scanSecurity, BearerScanDataflow scanDataflow, String repoDir,
             Consumer<Item> onItemVerified) {
+        verifyFindings(scanSecurity, scanDataflow, repoDir, onItemVerified, null, 0L);
+    }
+
+    public void verifyFindings(BearerScanSecurity scanSecurity, BearerScanDataflow scanDataflow, String repoDir,
+            Consumer<Item> onItemVerified, SastLlmProgress progress, long repoId) {
         if (!llmApiClient.isEnabled()) {
             log.debug("[SastVerification] LLM evaluation is disabled, skipping verification");
             return;
@@ -305,19 +310,22 @@ public class SastFindingVerificationService {
 
         Set<Finding.Severity> severities = llmApiClient.analysisSeverities(Finding.Source.SAST);
         log.debug("[SastVerification] Starting LLM-based SAST finding verification for severities {}", severities);
+        if (progress != null) {
+            progress.begin(repoId, countEligible(scanSecurity, severities));
+        }
         VerificationSummary summary = new VerificationSummary();
 
         if (severities.contains(Finding.Severity.CRITICAL) && scanSecurity.getCritical() != null && !scanSecurity.getCritical().isEmpty()) {
-            summary.add(verifyItems(scanSecurity.getCritical(), repoDir, scanDataflow, true, onItemVerified));
+            summary.add(verifyItems(scanSecurity.getCritical(), repoDir, scanDataflow, true, onItemVerified, progress, repoId));
         }
         if (severities.contains(Finding.Severity.HIGH) && scanSecurity.getHigh() != null && !scanSecurity.getHigh().isEmpty()) {
-            summary.add(verifyItems(scanSecurity.getHigh(), repoDir, scanDataflow, true, onItemVerified));
+            summary.add(verifyItems(scanSecurity.getHigh(), repoDir, scanDataflow, true, onItemVerified, progress, repoId));
         }
         if (severities.contains(Finding.Severity.MEDIUM) && scanSecurity.getMedium() != null && !scanSecurity.getMedium().isEmpty()) {
-            summary.add(verifyItems(scanSecurity.getMedium(), repoDir, scanDataflow, true, onItemVerified));
+            summary.add(verifyItems(scanSecurity.getMedium(), repoDir, scanDataflow, true, onItemVerified, progress, repoId));
         }
         if (severities.contains(Finding.Severity.LOW) && scanSecurity.getLow() != null && !scanSecurity.getLow().isEmpty()) {
-            summary.add(verifyItems(scanSecurity.getLow(), repoDir, scanDataflow, true, onItemVerified));
+            summary.add(verifyItems(scanSecurity.getLow(), repoDir, scanDataflow, true, onItemVerified, progress, repoId));
         }
 
         log.debug("[SastVerification] Completed LLM evaluation. Total findings: {}, LLM requests: {}, valid verdicts: {}, not verified: {}, cache hits: {}, normalized verdicts: {}, json repairs attempted: {}, json repairs succeeded: {}, duplicate actions skipped: {}, query expansions used: {}, validation overrides: {}, remediation corrections: {}, rejection reasons: {}",
@@ -329,11 +337,11 @@ public class SastFindingVerificationService {
     }
 
     private VerificationSummary verifyItems(List<Item> items, String repoDir, BearerScanDataflow dataflow, boolean useDataflow) {
-        return verifyItems(items, repoDir, dataflow, useDataflow, null);
+        return verifyItems(items, repoDir, dataflow, useDataflow, null, null, 0L);
     }
 
     private VerificationSummary verifyItems(List<Item> items, String repoDir, BearerScanDataflow dataflow,
-            boolean useDataflow, Consumer<Item> onItemVerified) {
+            boolean useDataflow, Consumer<Item> onItemVerified, SastLlmProgress progress, long repoId) {
         ConcurrentVerificationSummary summary = new ConcurrentVerificationSummary();
         if (items == null || items.isEmpty()) return summary.toVerificationSummary();
         summary.totalFindings.set(items.size());
@@ -358,6 +366,7 @@ public class SastFindingVerificationService {
                     summary.cacheHits.incrementAndGet();
                     summary.validVerdicts.incrementAndGet();
                     invokeCallback(onItemVerified, item);
+                    markAnalyzed(progress, repoId);
                     continue;
                 }
             }
@@ -396,14 +405,17 @@ public class SastFindingVerificationService {
                             summary.normalizedVerdicts.incrementAndGet();
                         }
                         invokeCallback(onItemVerified, item);
+                        markAnalyzed(progress, repoId);
                     } else {
                         summary.notVerified.incrementAndGet();
                         summary.addFailure(result.failureReason());
+                        markAnalyzed(progress, repoId);
                     }
                 } catch (Throwable t) {
                     summary.notVerified.incrementAndGet();
                     log.error("[SastVerification] Verification threw for {}: {}",
                             formatItemRef(item), t.getMessage(), t);
+                    markAnalyzed(progress, repoId);
                 }
             }, verificationExecutor);
             
@@ -578,6 +590,42 @@ public class SastFindingVerificationService {
         return metadata.promptProfile() == PromptProfile.MISCONFIGURATION
                 || metadata.promptProfile() == PromptProfile.COOKIE_SECURITY
                 || metadata.family() == VulnerabilityFamily.COOKIE_SECURITY;
+    }
+
+    private int countEligible(BearerScanSecurity scanSecurity, Set<Finding.Severity> severities) {
+        int total = 0;
+        if (severities.contains(Finding.Severity.CRITICAL)) {
+            total += countEligible(scanSecurity.getCritical());
+        }
+        if (severities.contains(Finding.Severity.HIGH)) {
+            total += countEligible(scanSecurity.getHigh());
+        }
+        if (severities.contains(Finding.Severity.MEDIUM)) {
+            total += countEligible(scanSecurity.getMedium());
+        }
+        if (severities.contains(Finding.Severity.LOW)) {
+            total += countEligible(scanSecurity.getLow());
+        }
+        return total;
+    }
+
+    private int countEligible(List<Item> items) {
+        if (items == null || items.isEmpty()) {
+            return 0;
+        }
+        int count = 0;
+        for (Item item : items) {
+            if (!isHardcodedSecretFinding(item)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private void markAnalyzed(SastLlmProgress progress, long repoId) {
+        if (progress != null) {
+            progress.advance(repoId);
+        }
     }
 
     private boolean isHardcodedSecretFinding(Item item) {

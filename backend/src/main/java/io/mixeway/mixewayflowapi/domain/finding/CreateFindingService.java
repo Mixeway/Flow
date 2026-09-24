@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Log4j2
 public class CreateFindingService {
-    private static final String AI_FALSE_POSITIVE_COMMENT = "Ocenione przez AI";
+    private static final String AI_FALSE_POSITIVE_COMMENT = "Assessed and suppressed by AI";
 
     private final FindingRepository findingRepository;
     private final GetOrCreateVulnerabilityService getOrCreateVulnerabilityService;

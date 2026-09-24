@@ -144,6 +144,17 @@ public class CodeRepoController {
     }
 
     @PreAuthorize("hasAuthority('USER')")
+    @GetMapping(value = "/api/v1/coderepo/{id}/sast-llm-progress")
+    public ResponseEntity<SastLlmProgressDto> sastLlmProgress(@PathVariable("id") Long id, Principal principal) {
+        try {
+            return new ResponseEntity<>(codeRepoApiService.sastLlmProgress(id, principal), HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("[CodeRepo] Error reading SAST LLM progress for {}", id);
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('USER')")
     @GetMapping(value= "/api/v1/coderepo/{id}/run")
     public ResponseEntity<StatusDTO> runScan(@PathVariable("id") Long id, Principal principal){
         try {

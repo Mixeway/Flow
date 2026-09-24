@@ -43,6 +43,7 @@ public class SASTService {
     private final CreateFindingService createFindingService;
     private final CreateAppDataTypeService createAppDataTypeService;
     private final SastFindingVerificationService sastFindingVerificationService;
+    private final SastLlmProgress sastLlmProgress;
 
     /** Max number of stderr lines kept for diagnostics when bearer fails. */
     private static final int MAX_ERROR_LINES = 50;
@@ -226,10 +227,13 @@ public class SASTService {
         };
 
         try {
-            sastFindingVerificationService.verifyFindings(bearerScanSecurity, bearerScanDataflow, repoDir, saveCallback);
+            sastFindingVerificationService.verifyFindings(bearerScanSecurity, bearerScanDataflow, repoDir, saveCallback,
+                    sastLlmProgress, codeRepo.getId());
         } catch (Throwable t) {
             log.error("[BearerScanService] LLM verification failed, persisting verdicts collected so far for [{} / {}]: {}",
                     codeRepo.getRepourl(), codeRepoBranch.getName(), t.getMessage(), t);
+        } finally {
+            sastLlmProgress.clear(codeRepo.getId());
         }
 
         // Clear interrupt flag that may have been set by rateLimitPause inside verifyFindings.

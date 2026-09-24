@@ -31,6 +31,12 @@
                     </span>
                 </ng-container>
             </div>
+            <div class="llm-progress" *ngIf="llmProgress && llmProgress.total > 0">
+                <div class="llm-progress-label">AI analysis {{ llmProgress.analyzed }} / {{ llmProgress.total }}</div>
+                <c-progress thin>
+                    <c-progress-bar [value]="llmPercent" color="info"></c-progress-bar>
+                </c-progress>
+            </div>
         </div>
 
 <div class="repo-actions d-flex align-items-center gap-2">

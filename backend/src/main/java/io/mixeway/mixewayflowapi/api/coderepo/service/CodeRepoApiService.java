@@ -3,6 +3,7 @@ package io.mixeway.mixewayflowapi.api.coderepo.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.GetCodeReposResponseDto;
+import io.mixeway.mixewayflowapi.api.coderepo.dto.SastLlmProgressDto;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.RunOrchScanDetailsDto;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.RunOrchScanReportDto;
 import io.mixeway.mixewayflowapi.api.gitlabcicd.dto.GitLabCICDDetailsResponseDto;
@@ -14,6 +15,7 @@ import io.mixeway.mixewayflowapi.domain.coderepobranch.GetOrCreateCodeRepoBranch
 import io.mixeway.mixewayflowapi.domain.finding.FindFindingService;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GitService;
+import io.mixeway.mixewayflowapi.integrations.scanner.sast.service.SastLlmProgress;
 import io.mixeway.mixewayflowapi.exceptions.CodeRepoNotFoundException;
 import io.mixeway.mixewayflowapi.exceptions.ScanThrottledException;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
@@ -53,6 +55,7 @@ public class CodeRepoApiService {
     private final GitService gitService;
     private final GetOrCreateCodeRepoBranchService getOrCreateCodeRepoBranchService;
     private final ObjectMapper objectMapper;
+    private final SastLlmProgress sastLlmProgress;
 
     public List<GetCodeReposResponseDto> getRepos(Principal principal) {
         return findCodeRepoService.getCodeReposResponseDtos(principal);
@@ -64,6 +67,15 @@ public class CodeRepoApiService {
 
     public CodeRepo getRepo(Long id, Principal principal) {
         return findCodeRepoService.findById(id, principal);
+    }
+
+    public SastLlmProgressDto sastLlmProgress(Long id, Principal principal) {
+        CodeRepo repo = findCodeRepoService.findById(id, principal);
+        if (repo == null) {
+            throw new CodeRepoNotFoundException("Repository not found");
+        }
+        SastLlmProgress.Snapshot snapshot = sastLlmProgress.get(repo.getId());
+        return new SastLlmProgressDto(snapshot.active(), snapshot.analyzed(), snapshot.total());
     }
 
     public List<GetCodeReposResponseDto> getReposByTeam(Long teamId, Principal principal) {

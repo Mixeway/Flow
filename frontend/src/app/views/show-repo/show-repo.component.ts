@@ -2,6 +2,7 @@ import {
     AfterViewInit,
     ChangeDetectorRef,
     Component,
+    OnDestroy,
     OnInit,
     QueryList,
     ViewChildren,
@@ -215,7 +216,7 @@ interface TeamUser {
     providers: [DatePipe, provideMarkdown()],
     encapsulation: ViewEncapsulation.None
 })
-export class ShowRepoComponent implements OnInit, AfterViewInit {
+export class ShowRepoComponent implements OnInit, AfterViewInit, OnDestroy {
     repoData: any;
     repoId: string = '';
     findings: FindingDTO | undefined;
@@ -247,6 +248,8 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
         version: '',
     };
     scanRunning: boolean = false;
+    llmProgress: { analyzed: number; total: number } | null = null;
+    private llmProgressTimer: ReturnType<typeof setInterval> | null = null;
     userRole: string = 'USER';
 
     filteredComponents: any[] = [];
@@ -430,6 +433,13 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
 
     }
 
+    ngOnDestroy(): void {
+        if (this.llmProgressTimer != null) {
+            clearInterval(this.llmProgressTimer);
+            this.llmProgressTimer = null;
+        }
+    }
+
     ngAfterViewInit() {
         //this.cdr.detectChanges();
     }
@@ -479,6 +489,8 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
             },
         });
         this.loadRepoInfo();
+        this.pollSastLlmProgress();
+        this.llmProgressTimer = setInterval(() => this.pollSastLlmProgress(), 2000);
         this.loadSourceStats();
         this.loadFindings();
         this.loadFindingStats();
@@ -523,6 +535,22 @@ export class ShowRepoComponent implements OnInit, AfterViewInit {
                 }
             }
         };
+    }
+
+    private pollSastLlmProgress(): void {
+        if (!this.repoId) {
+            return;
+        }
+        this.repoService.getSastLlmProgress(+this.repoId).subscribe({
+            next: (response) => {
+                this.llmProgress = response?.active && response.total > 0
+                    ? { analyzed: response.analyzed, total: response.total }
+                    : null;
+            },
+            error: () => {
+                // Keep the last counter. A single failed poll should not hide the bar.
+            },
+        });
     }
 
     loadRepoInfo() {
