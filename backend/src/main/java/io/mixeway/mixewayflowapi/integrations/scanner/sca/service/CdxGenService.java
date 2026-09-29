@@ -12,7 +12,11 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -80,6 +84,8 @@ public class CdxGenService {
         if (runPipreqs) {
             runPipreqsIfAvailable(repoDir);
         }
+
+        removeEmptyPomFiles(repoDir);
 
         ProcessBuilder pb = new ProcessBuilder(
                 "cdxgen",
@@ -172,6 +178,51 @@ public class CdxGenService {
             }
         } else {
             log.warn("[CdxGen] SBOM file not found: {}", bomFile.getAbsolutePath());
+        }
+    }
+
+    /**
+     * Deletes blank {@code pom.xml} files from the (temporary) checkout. Maven aborts the whole
+     * reactor on a "Non-readable POM", and cdxgen's pom.xml fallback parser then crashes with
+     * {@code TypeError: Cannot read properties of undefined (reading 'parent')}, so no SBOM is produced.
+     */
+    private void removeEmptyPomFiles(String repoDir) {
+        Path root = Path.of(repoDir);
+        Set<String> skippedDirs = Set.of(".git", "node_modules", "target");
+        List<Path> emptyPoms;
+        try (var paths = Files.walk(root)) {
+            emptyPoms = paths
+                    .filter(p -> "pom.xml".equals(String.valueOf(p.getFileName())))
+                    .filter(p -> {
+                        for (Path part : root.relativize(p)) {
+                            if (skippedDirs.contains(part.toString())) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    })
+                    .filter(Files::isRegularFile)
+                    .filter(CdxGenService::isBlankFile)
+                    .toList();
+        } catch (IOException e) {
+            log.warn("[CdxGen] Could not scan {} for empty pom.xml files: {}", repoDir, e.getMessage());
+            return;
+        }
+        for (Path pom : emptyPoms) {
+            try {
+                Files.delete(pom);
+                log.warn("[CdxGen] Removed empty pom.xml before SBOM generation: {}", pom);
+            } catch (IOException e) {
+                log.warn("[CdxGen] Could not remove empty pom.xml {}: {}", pom, e.getMessage());
+            }
+        }
+    }
+
+    private static boolean isBlankFile(Path file) {
+        try {
+            return Files.size(file) == 0 || Files.readString(file).isBlank();
+        } catch (IOException e) {
+            return false;
         }
     }
 
