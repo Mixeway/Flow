@@ -3,6 +3,29 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {environment} from "../../environments/environment";
 
+export type InactiveTokenStatus = 'UNAUTHORIZED' | 'NOT_FOUND' | 'UNREACHABLE';
+
+export interface InactiveTokenRepo {
+    id: number;
+    name: string;
+    repoUrl: string;
+    type: string;
+    status: InactiveTokenStatus;
+}
+
+export interface InactiveTokenTeam {
+    teamId: number;
+    teamName: string;
+    repositories: InactiveTokenRepo[];
+}
+
+export interface InactiveTokenReport {
+    checkedRepositories: number;
+    inactiveRepositories: number;
+    unverifiedRepositories: number;
+    teams: InactiveTokenTeam[];
+}
+
 
 @Injectable({
     providedIn: 'root'
@@ -106,6 +129,12 @@ export class RepoService {
     deleteRepo(repoId: number): Observable<any> {
         return this.http.delete<any>(
             `${this.loginUrl}/api/v1/coderepo/${repoId}`,
+            { withCredentials: true }
+        );
+    }
+    getInactiveTokens(): Observable<InactiveTokenReport> {
+        return this.http.get<InactiveTokenReport>(
+            `${this.loginUrl}/api/v1/coderepo/admin/inactive-tokens`,
             { withCredentials: true }
         );
     }
