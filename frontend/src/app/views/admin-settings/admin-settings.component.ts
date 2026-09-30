@@ -43,7 +43,7 @@ import {Router} from "@angular/router";
 import {UserService} from "../../service/UserService";
 import {AppConfigService} from "../../service/AppConfigService";
 import {OrganizationService} from "../../service/OrganizationService";
-import {RepoService} from "../../service/RepoService";
+import {InactiveTokenReport, InactiveTokenStatus, RepoService} from "../../service/RepoService";
 
 interface AdminRepoTokenRow {
     id: number;
@@ -161,6 +161,9 @@ export class AdminSettingsComponent implements OnInit{
     selectedRepoTokenIds: number[] = [];
     repoTokenLoading: boolean = false;
     repoTokenSaving: boolean = false;
+
+    inactiveTokenReport: InactiveTokenReport | null = null;
+    inactiveTokenChecking: boolean = false;
 
     constructor(private fb: FormBuilder, private authService: AuthService, private settingsService: SettingsService,
                 private router: Router,
@@ -723,5 +726,35 @@ export class AdminSettingsComponent implements OnInit{
                 this.repoTokenSaving = false;
             }
         });
+    }
+
+    checkInactiveTokens() {
+        this.inactiveTokenChecking = true;
+        this.repoService.getInactiveTokens().subscribe({
+            next: (report) => {
+                this.inactiveTokenReport = report;
+                this.inactiveTokenChecking = false;
+            },
+            error: () => {
+                this.toastStatus = "danger";
+                this.toastMessage = "Failed to check repository access tokens";
+                this.toggleToast();
+                this.inactiveTokenChecking = false;
+            }
+        });
+    }
+
+    getInactiveTokenStatusLabel(status: InactiveTokenStatus): string {
+        switch (status) {
+            case 'UNAUTHORIZED': return 'Unauthorized / Inactive';
+            case 'NOT_FOUND': return 'Repository not found / no access';            default: return 'Could not verify';
+        }
+    }
+
+    getInactiveTokenStatusColor(status: InactiveTokenStatus): string {
+        switch (status) {
+            case 'UNAUTHORIZED': return 'danger';
+            case 'NOT_FOUND': return 'warning';            default: return 'secondary';
+        }
     }
 }

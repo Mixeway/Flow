@@ -2,6 +2,7 @@ package io.mixeway.mixewayflowapi.api.coderepo.controller;
 
 import io.mixeway.mixewayflowapi.api.coderepo.dto.*;
 import io.mixeway.mixewayflowapi.api.coderepo.service.CodeRepoApiService;
+import io.mixeway.mixewayflowapi.api.coderepo.service.InactiveTokenService;
 import io.mixeway.mixewayflowapi.api.gitlabcicd.dto.GitLabCICDRequestDto;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.domain.coderepo.CreateCodeRepoService;
@@ -36,6 +37,7 @@ public class CodeRepoController {
     private final CreateCodeRepoService createCodeRepoService;
     private final CodeRepoApiService codeRepoApiService;
     private final DeleteCodeRepoService deleteCodeRepoService;
+    private final InactiveTokenService inactiveTokenService;
 
     private ResponseEntity<StatusDTO> buildCreateRepoErrorResponse(Exception e) {
         Throwable rootCause = e;
@@ -264,6 +266,18 @@ public class CodeRepoController {
         } catch (Exception e) {
             log.error("[CodeRepo] Error during token change for repo {} by {}: {}", id, principal.getName(), e.getMessage());
             return new ResponseEntity<>(new StatusDTO("Error during access token update."), HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @GetMapping(value = "/api/v1/coderepo/admin/inactive-tokens")
+    public ResponseEntity<InactiveTokenReportDto> getInactiveTokens(Principal principal) {
+        try {
+            log.info("[CodeRepo] Inactive access token check requested by {}", principal.getName());
+            return ResponseEntity.ok(inactiveTokenService.checkAllRepositories());
+        } catch (Exception e) {
+            log.error("[CodeRepo] Error during inactive access token check by {}: {}", principal.getName(), e.getMessage());
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
