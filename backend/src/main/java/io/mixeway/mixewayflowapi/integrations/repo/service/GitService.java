@@ -15,6 +15,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * Service class for interacting with Git repositories.
@@ -171,6 +173,67 @@ public class GitService {
             }
         }
         return branches;
+    }
+
+    public enum RemoteAccessStatus {
+        VALID, UNAUTHORIZED, NOT_FOUND, UNREACHABLE
+    }
+
+    /**
+     * Verifies whether the stored access token still grants read access to the repository
+     * by running {@code git ls-remote}. Credential prompts are disabled so a rejected token
+     * fails fast instead of hanging.
+     *
+     * @param timeoutSeconds maximum time to wait for the remote to answer
+     */
+    public RemoteAccessStatus checkRemoteAccess(String repoUrl, String accessToken, CodeRepo.RepoType repoType, long timeoutSeconds) {
+        String authenticatedUrl = buildAuthenticatedUrl(repoUrl, accessToken, repoType);
+        ProcessBuilder pb = new ProcessBuilder(gitWithAuth(repoUrl, accessToken, repoType, "ls-remote", "--heads", authenticatedUrl));
+        pb.environment().put("GIT_TERMINAL_PROMPT", "0");
+        pb.environment().put("GIT_ASKPASS", "echo");
+        pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+        Process process = null;
+        try {
+            process = pb.start();
+            if (!process.waitFor(timeoutSeconds, TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+                return RemoteAccessStatus.UNREACHABLE;
+            }
+            if (process.exitValue() == 0) {
+                return RemoteAccessStatus.VALID;
+            }
+            String error;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                error = reader.lines().collect(Collectors.joining("\n")).toLowerCase();
+            }
+            return classifyRemoteError(error);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            if (process != null) {
+                process.destroyForcibly();
+            }
+            return RemoteAccessStatus.UNREACHABLE;
+        } catch (IOException e) {
+            log.warn("[Git Service] Could not verify access for {}: {}", repoUrl, maskCredentials(e.getMessage()));
+            return RemoteAccessStatus.UNREACHABLE;
+        }
+    }
+
+    private RemoteAccessStatus classifyRemoteError(String error) {
+        if (error.contains("authentication failed")
+                || error.contains("access denied")
+                || error.contains("could not read username")
+                || error.contains("could not read password")
+                || error.contains("invalid username or password")
+                || error.contains("invalid credentials")
+                || error.contains("returned error: 401")
+                || error.contains("returned error: 403")) {
+            return RemoteAccessStatus.UNAUTHORIZED;
+        }
+        if (error.contains("not found") || error.contains("returned error: 404")) {
+            return RemoteAccessStatus.NOT_FOUND;
+        }
+        return RemoteAccessStatus.UNREACHABLE;
     }
 
     /**
