@@ -87,7 +87,7 @@ public class LlmApiClient {
         List<Map<String, Object>> jsonFallbackMessages = forceJsonObject
                 ? withPromptSchemaFallback(messages)
                 : messages;
-        return doPost(url, credentials, jsonFallbackMessages);
+        return doPost(url, credentials, jsonFallbackMessages, false);
     }
 
     private LlmCredentials resolve(Finding.Source source) {
@@ -128,18 +128,24 @@ public class LlmApiClient {
     }
 
     private LlmResponse doPost(String url, LlmCredentials credentials,
-                               List<Map<String, Object>> messages) {
+                               List<Map<String, Object>> messages, boolean reducedReasoning) {
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", credentials.model);
         int maxTokensForCall = credentials.contextWindow;
         requestBody.put("messages", messages);
         requestBody.put("temperature", 0.0);
         requestBody.put("max_tokens", maxTokensForCall);
+        if (reducedReasoning) {
+            // OpenAI-style servers read reasoning_effort; Qwen-family chat templates (vLLM/SGLang) read enable_thinking.
+            requestBody.put("reasoning_effort", "low");
+            requestBody.put("chat_template_kwargs", Map.of("enable_thinking", false));
+        }
 
         long callId = CALL_SEQ.incrementAndGet();
         int promptChars = totalPromptChars(messages);
-        log.debug("[LlmApiClient] req#{} source={} POST {} model={} messages={} prompt_chars={} max_tokens={}",
-                callId, credentials.source, url, credentials.model, messages.size(), promptChars, maxTokensForCall);
+        log.debug("[LlmApiClient] req#{} source={} POST {} model={} messages={} prompt_chars={} max_tokens={} reduced_reasoning={}",
+                callId, credentials.source, url, credentials.model, messages.size(), promptChars, maxTokensForCall,
+                reducedReasoning);
 
         long deadline = System.currentTimeMillis() + RETRY_WINDOW.toMillis();
         int attempt = 0;
@@ -186,8 +192,15 @@ public class LlmApiClient {
                     int promptTokens = root.path("usage").path("prompt_tokens").asInt(0);
                     int completionTokens = root.path("usage").path("completion_tokens").asInt(0);
                     if (content.isBlank()) {
-                        log.warn("[LlmApiClient] req#{} HTTP 200 but empty message.content (finish_reason={}, usage={}, content_node={})",
-                                callId, finishReason(root), usageSummary(root), contentNodeType(contentNode));
+                        String reason = finishReason(root);
+                        log.warn("[LlmApiClient] req#{} HTTP 200 but empty message.content (finish_reason={}, usage={}, content_node={}, reasoning_len={})",
+                                callId, reason, usageSummary(root), contentNodeType(contentNode),
+                                extraFieldLen(message, "reasoning_content", "reasoning"));
+                        if ("length".equals(reason) && !reducedReasoning) {
+                            log.warn("[LlmApiClient] req#{} output budget exhausted before content; retrying with reduced reasoning",
+                                    callId);
+                            return doPost(url, credentials, messages, true);
+                        }
                     }
                     return new LlmResponse(content.trim(), promptTokens, completionTokens);
                 }
