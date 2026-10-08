@@ -1,4 +1,5 @@
-import {Component, OnInit} from '@angular/core';
+import {Component, OnDestroy, OnInit} from '@angular/core';
+import {Subscription, switchMap, timer} from "rxjs";
 import {
     BadgeComponent,
     ButtonCloseDirective,
@@ -20,6 +21,7 @@ import {
     ModalFooterComponent,
     ModalHeaderComponent,
     ModalTitleDirective,
+    ProgressComponent,
     RowComponent,
     RowDirective,
     TabDirective,
@@ -43,7 +45,14 @@ import {Router} from "@angular/router";
 import {UserService} from "../../service/UserService";
 import {AppConfigService} from "../../service/AppConfigService";
 import {OrganizationService} from "../../service/OrganizationService";
-import {InactiveTokenReport, InactiveTokenStatus, RepoService} from "../../service/RepoService";
+import {
+    InactiveTokenCheckStatus,
+    InactiveTokenReport,
+    InactiveTokenStatus,
+    RepoService
+} from "../../service/RepoService";
+
+const INACTIVE_TOKEN_POLL_INTERVAL_MS = 4000;
 
 interface AdminRepoTokenRow {
     id: number;
@@ -94,12 +103,13 @@ interface AdminRepoTokenRow {
         ModalFooterComponent,
         ModalTitleDirective,
         ButtonCloseDirective,
-        TableDirective
+        TableDirective,
+        ProgressComponent
     ],
   templateUrl: './admin-settings.component.html',
   styleUrl: './admin-settings.component.scss'
 })
-export class AdminSettingsComponent implements OnInit{
+export class AdminSettingsComponent implements OnInit, OnDestroy {
     // For Scanner Configuration Tab
     softwareComponent: string = 'embedded';
     isEmbededDTChecked: boolean = true;
@@ -164,6 +174,8 @@ export class AdminSettingsComponent implements OnInit{
 
     inactiveTokenReport: InactiveTokenReport | null = null;
     inactiveTokenChecking: boolean = false;
+    inactiveTokenCheckStatus: InactiveTokenCheckStatus | null = null;
+    private inactiveTokenPollSubscription?: Subscription;
 
     constructor(private fb: FormBuilder, private authService: AuthService, private settingsService: SettingsService,
                 private router: Router,
@@ -215,7 +227,13 @@ export class AdminSettingsComponent implements OnInit{
         this.loadAvailableUsers();
         this.loadAppRunMode();
         this.loadRepositoriesForTokenUpdate();
+        this.loadInactiveTokenCheckStatus();
     }
+
+    ngOnDestroy() {
+        this.inactiveTokenPollSubscription?.unsubscribe();
+    }
+
     onWizToggleChange() {
         this.isWizEnabled = !this.isWizEnabled;
         this.wizConfigForm.patchValue({enabled: this.isWizEnabled});
@@ -730,18 +748,63 @@ export class AdminSettingsComponent implements OnInit{
 
     checkInactiveTokens() {
         this.inactiveTokenChecking = true;
-        this.repoService.getInactiveTokens().subscribe({
-            next: (report) => {
-                this.inactiveTokenReport = report;
-                this.inactiveTokenChecking = false;
-            },
+        this.repoService.startInactiveTokenCheck().subscribe({
+            next: (status) => this.applyInactiveTokenCheckStatus(status),
             error: () => {
                 this.toastStatus = "danger";
-                this.toastMessage = "Failed to check repository access tokens";
+                this.toastMessage = "Failed to start repository access token check";
                 this.toggleToast();
                 this.inactiveTokenChecking = false;
             }
         });
+    }
+
+    get inactiveTokenProgressPercent(): number {
+        const status = this.inactiveTokenCheckStatus;
+        if (!status || status.totalRepositories === 0) {
+            return 0;
+        }
+        return Math.round(status.checkedRepositories * 100 / status.totalRepositories);
+    }
+
+    private loadInactiveTokenCheckStatus() {
+        this.repoService.getInactiveTokenCheckStatus().subscribe({
+            next: (status) => this.applyInactiveTokenCheckStatus(status),
+            error: () => {}
+        });
+    }
+
+    private applyInactiveTokenCheckStatus(status: InactiveTokenCheckStatus) {
+        const wasChecking = this.inactiveTokenChecking;
+        this.inactiveTokenCheckStatus = status;
+        if (status.state === 'RUNNING') {
+            this.inactiveTokenChecking = true;
+            this.scheduleInactiveTokenStatusPoll();
+            return;
+        }
+        this.inactiveTokenChecking = false;
+        if (status.state === 'DONE') {
+            this.inactiveTokenReport = status.report;
+        } else if (status.state === 'FAILED' && wasChecking) {
+            this.toastStatus = "danger";
+            this.toastMessage = "Failed to check repository access tokens";
+            this.toggleToast();
+        }
+    }
+
+    private scheduleInactiveTokenStatusPoll() {
+        this.inactiveTokenPollSubscription?.unsubscribe();
+        this.inactiveTokenPollSubscription = timer(INACTIVE_TOKEN_POLL_INTERVAL_MS)
+            .pipe(switchMap(() => this.repoService.getInactiveTokenCheckStatus()))
+            .subscribe({
+                next: (status) => this.applyInactiveTokenCheckStatus(status),
+                error: () => {
+                    this.toastStatus = "danger";
+                    this.toastMessage = "Lost connection while checking access tokens. The check continues on the server - reopen this page to see the result.";
+                    this.toggleToast();
+                    this.inactiveTokenChecking = false;
+                }
+            });
     }
 
     getInactiveTokenStatusLabel(status: InactiveTokenStatus): string {
