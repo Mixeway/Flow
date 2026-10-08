@@ -26,6 +26,18 @@ export interface InactiveTokenReport {
     teams: InactiveTokenTeam[];
 }
 
+export type InactiveTokenCheckState = 'IDLE' | 'RUNNING' | 'DONE' | 'FAILED';
+
+export interface InactiveTokenCheckStatus {
+    state: InactiveTokenCheckState;
+    requestedBy: string | null;
+    startedAt: string | null;
+    finishedAt: string | null;
+    checkedRepositories: number;
+    totalRepositories: number;
+    report: InactiveTokenReport | null;
+}
+
 
 @Injectable({
     providedIn: 'root'
@@ -132,9 +144,16 @@ export class RepoService {
             { withCredentials: true }
         );
     }
-    getInactiveTokens(): Observable<InactiveTokenReport> {
-        return this.http.get<InactiveTokenReport>(
-            `${this.loginUrl}/api/v1/coderepo/admin/inactive-tokens`,
+    startInactiveTokenCheck(): Observable<InactiveTokenCheckStatus> {
+        return this.http.post<InactiveTokenCheckStatus>(
+            `${this.loginUrl}/api/v1/coderepo/admin/inactive-tokens/check`,
+            {},
+            { withCredentials: true }
+        );
+    }
+    getInactiveTokenCheckStatus(): Observable<InactiveTokenCheckStatus> {
+        return this.http.get<InactiveTokenCheckStatus>(
+            `${this.loginUrl}/api/v1/coderepo/admin/inactive-tokens/status`,
             { withCredentials: true }
         );
     }

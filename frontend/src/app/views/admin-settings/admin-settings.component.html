@@ -569,11 +569,30 @@
                                     </button>
                                 </div>
 
-                                <p *ngIf="inactiveTokenChecking" class="text-body-secondary">
-                                    Checking access for all repositories. This can take a while for large installations.
+                                <div *ngIf="inactiveTokenChecking" class="mb-3">
+                                    <p class="text-body-secondary mb-2">
+                                        Checking access for all repositories. This can take a while for large installations.
+                                        You can leave this page - the check continues on the server.
+                                    </p>
+                                    <c-progress [value]="inactiveTokenProgressPercent" color="primary" class="mb-1"></c-progress>
+                                    <small class="text-body-secondary">
+                                        Checked {{ inactiveTokenCheckStatus?.checkedRepositories ?? 0 }} / {{ inactiveTokenCheckStatus?.totalRepositories ?? 0 }}
+                                        <span *ngIf="inactiveTokenCheckStatus?.requestedBy">
+                                            &middot; started by {{ inactiveTokenCheckStatus?.requestedBy }}
+                                            at {{ inactiveTokenCheckStatus?.startedAt | date:'medium' }}
+                                        </span>
+                                    </small>
+                                </div>
+
+                                <p *ngIf="!inactiveTokenChecking && inactiveTokenCheckStatus?.state === 'FAILED'" class="text-danger">
+                                    The last check failed at {{ inactiveTokenCheckStatus?.finishedAt | date:'medium' }}.
                                 </p>
 
                                 <ng-container *ngIf="inactiveTokenReport && !inactiveTokenChecking">
+                                    <p *ngIf="inactiveTokenCheckStatus?.finishedAt" class="text-body-secondary small mb-2">
+                                        Last check: {{ inactiveTokenCheckStatus?.finishedAt | date:'medium' }}
+                                        by {{ inactiveTokenCheckStatus?.requestedBy }}
+                                    </p>
                                     <div class="d-flex flex-wrap gap-3 mb-4">
                                         <span>Checked: <strong>{{ inactiveTokenReport.checkedRepositories }}</strong></span>
                                         <span>Repositories with inactive token: <strong class="text-danger">{{ inactiveTokenReport.inactiveRepositories }}</strong></span>

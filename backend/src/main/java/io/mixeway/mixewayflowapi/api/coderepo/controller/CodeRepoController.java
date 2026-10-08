@@ -270,15 +270,16 @@ public class CodeRepoController {
     }
 
     @PreAuthorize("hasAuthority('ADMIN')")
-    @GetMapping(value = "/api/v1/coderepo/admin/inactive-tokens")
-    public ResponseEntity<InactiveTokenReportDto> getInactiveTokens(Principal principal) {
-        try {
-            log.info("[CodeRepo] Inactive access token check requested by {}", principal.getName());
-            return ResponseEntity.ok(inactiveTokenService.checkAllRepositories());
-        } catch (Exception e) {
-            log.error("[CodeRepo] Error during inactive access token check by {}: {}", principal.getName(), e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+    @PostMapping(value = "/api/v1/coderepo/admin/inactive-tokens/check")
+    public ResponseEntity<InactiveTokenCheckStatusDto> startInactiveTokenCheck(Principal principal) {
+        log.info("[CodeRepo] Inactive access token check requested by {}", principal.getName());
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(inactiveTokenService.startCheck(principal.getName()));
+    }
+
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @GetMapping(value = "/api/v1/coderepo/admin/inactive-tokens/status")
+    public ResponseEntity<InactiveTokenCheckStatusDto> getInactiveTokenCheckStatus() {
+        return ResponseEntity.ok(inactiveTokenService.getStatus());
     }
 
     @PreAuthorize("hasAnyAuthority('ADMIN','TEAM_MANAGER')")
