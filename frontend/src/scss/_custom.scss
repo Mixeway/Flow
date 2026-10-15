@@ -23,3 +23,25 @@ markdown h6 {
   margin-top: 1.25rem;
   margin-bottom: 0.5rem;
 }
+
+markdown code {
+  background-color: var(--cui-tertiary-bg);
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.875em;
+}
+
+markdown pre {
+  background-color: var(--cui-tertiary-bg);
+  border: 1px solid var(--cui-border-color-translucent);
+  border-radius: 5px;
+  padding: 1rem;
+  overflow-x: auto;
+
+  code {
+    background-color: transparent;
+    padding: 0;
+    font-size: 0.85em;
+    white-space: pre;
+  }
+}
