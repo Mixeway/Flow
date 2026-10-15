@@ -24,6 +24,19 @@ markdown h6 {
   margin-bottom: 0.5rem;
 }
 
+markdown blockquote {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid var(--cui-warning);
+  background-color: rgba(var(--cui-warning-rgb), 0.08);
+  font-size: 0.85rem;
+  color: var(--cui-secondary-color);
+
+  p:last-child {
+    margin-bottom: 0;
+  }
+}
+
 markdown code {
   background-color: var(--cui-tertiary-bg);
   padding: 0.2rem 0.4rem;
