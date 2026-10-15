@@ -25,6 +25,11 @@ services:
     depends_on:
       - flowdb
     restart: always  # Add this line
+    # tini as PID 1 reaps orphaned scanner processes so zombies do not use up the PID limit
+    init: true
+    # Size to the host; the JVM heap takes MaxRAMPercentage of this (see JAVA_OPTS in entrypoint.sh)
+    mem_limit: 8g
+    pids_limit: 4096
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8080" ]
       interval: 30s
