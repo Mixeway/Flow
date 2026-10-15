@@ -37,6 +37,8 @@ public class SastFindingVerificationService {
     private final CustomControlSoundnessService customControlSoundnessService;
     private final ObjectMapper objectMapper = JsonMapper.builder()
             .enable(JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER)
+            .enable(JsonReadFeature.ALLOW_TRAILING_COMMA)
+            .enable(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)
             .build();
 
     private final Map<String, CachedVerdict> fingerprintCache = new ConcurrentHashMap<>();
@@ -306,6 +308,17 @@ public class SastFindingVerificationService {
             log.debug("[SastVerification] LLM evaluation is disabled, skipping verification");
             return;
         }
+        String consistencyScope = (repoDir == null ? "" : repoDir) + "#" + System.nanoTime();
+        try {
+            verifyFindingsInScope(scanSecurity, scanDataflow, repoDir, onItemVerified, progress, repoId,
+                    consistencyScope);
+        } finally {
+            sastConsistencyService.clearScope(consistencyScope);
+        }
+    }
+
+    private void verifyFindingsInScope(BearerScanSecurity scanSecurity, BearerScanDataflow scanDataflow, String repoDir,
+            Consumer<Item> onItemVerified, SastLlmProgress progress, long repoId, String consistencyScope) {
         applyScanConcurrency();
 
         Set<Finding.Severity> severities = llmApiClient.analysisSeverities(Finding.Source.SAST);
@@ -316,16 +329,16 @@ public class SastFindingVerificationService {
         VerificationSummary summary = new VerificationSummary();
 
         if (severities.contains(Finding.Severity.CRITICAL) && scanSecurity.getCritical() != null && !scanSecurity.getCritical().isEmpty()) {
-            summary.add(verifyItems(scanSecurity.getCritical(), repoDir, scanDataflow, true, onItemVerified, progress, repoId));
+            summary.add(verifyItems(scanSecurity.getCritical(), repoDir, scanDataflow, true, onItemVerified, progress, repoId, consistencyScope));
         }
         if (severities.contains(Finding.Severity.HIGH) && scanSecurity.getHigh() != null && !scanSecurity.getHigh().isEmpty()) {
-            summary.add(verifyItems(scanSecurity.getHigh(), repoDir, scanDataflow, true, onItemVerified, progress, repoId));
+            summary.add(verifyItems(scanSecurity.getHigh(), repoDir, scanDataflow, true, onItemVerified, progress, repoId, consistencyScope));
         }
         if (severities.contains(Finding.Severity.MEDIUM) && scanSecurity.getMedium() != null && !scanSecurity.getMedium().isEmpty()) {
-            summary.add(verifyItems(scanSecurity.getMedium(), repoDir, scanDataflow, true, onItemVerified, progress, repoId));
+            summary.add(verifyItems(scanSecurity.getMedium(), repoDir, scanDataflow, true, onItemVerified, progress, repoId, consistencyScope));
         }
         if (severities.contains(Finding.Severity.LOW) && scanSecurity.getLow() != null && !scanSecurity.getLow().isEmpty()) {
-            summary.add(verifyItems(scanSecurity.getLow(), repoDir, scanDataflow, true, onItemVerified, progress, repoId));
+            summary.add(verifyItems(scanSecurity.getLow(), repoDir, scanDataflow, true, onItemVerified, progress, repoId, consistencyScope));
         }
 
         log.debug("[SastVerification] Completed LLM evaluation. Total findings: {}, LLM requests: {}, valid verdicts: {}, not verified: {}, cache hits: {}, normalized verdicts: {}, json repairs attempted: {}, json repairs succeeded: {}, duplicate actions skipped: {}, query expansions used: {}, validation overrides: {}, remediation corrections: {}, rejection reasons: {}",
@@ -342,6 +355,12 @@ public class SastFindingVerificationService {
 
     private VerificationSummary verifyItems(List<Item> items, String repoDir, BearerScanDataflow dataflow,
             boolean useDataflow, Consumer<Item> onItemVerified, SastLlmProgress progress, long repoId) {
+        return verifyItems(items, repoDir, dataflow, useDataflow, onItemVerified, progress, repoId, "");
+    }
+
+    private VerificationSummary verifyItems(List<Item> items, String repoDir, BearerScanDataflow dataflow,
+            boolean useDataflow, Consumer<Item> onItemVerified, SastLlmProgress progress, long repoId,
+            String consistencyScope) {
         ConcurrentVerificationSummary summary = new ConcurrentVerificationSummary();
         if (items == null || items.isEmpty()) return summary.toVerificationSummary();
         summary.totalFindings.set(items.size());
@@ -388,7 +407,7 @@ public class SastFindingVerificationService {
                     return;
                 }
                 try {
-                    VerificationResult result = verifySingleItem(item, repoDir, dataflow, useDataflow);
+                    VerificationResult result = verifySingleItem(item, repoDir, dataflow, useDataflow, consistencyScope);
                     
                     // Update thread-safe counters
                     summary.llmRequests.addAndGet(result.llmRequests());
@@ -440,7 +459,11 @@ public class SastFindingVerificationService {
         return summary.toVerificationSummary();
     }
 
-    private record ReactOutcome(VerificationResult result, List<Map<String, Object>> messages) {}
+    private record ReactOutcome(VerificationResult result, List<Map<String, Object>> messages, boolean forcedFinal) {
+        private ReactOutcome(VerificationResult result, List<Map<String, Object>> messages) {
+            this(result, messages, false);
+        }
+    }
 
     private String systemPromptFor(SastRuleMetadata metadata, Item item) {
         StringBuilder sb = new StringBuilder(
@@ -634,7 +657,8 @@ public class SastFindingVerificationService {
                 && SKIP_LLM_HARDCODED_SECRET_RULES.contains(item.getId());
     }
 
-    private VerificationResult verifySingleItem(Item item, String repoDir, BearerScanDataflow dataflow, boolean useDataflow) {
+    private VerificationResult verifySingleItem(Item item, String repoDir, BearerScanDataflow dataflow,
+            boolean useDataflow, String consistencyScope) {
         CodeContextExtractor.CodeContext context = useDataflow && dataflow != null
                 ? codeContextExtractor.extractWithDataflow(repoDir, item, dataflow)
                 : codeContextExtractor.extractLocal(repoDir, item);
@@ -672,6 +696,14 @@ public class SastFindingVerificationService {
         ReactOutcome outcome = runReactVerification(item, repoDir, userPrompt.toString(), itemRef,
                 context.category(), metadata);
         VerificationResult result = outcome.result();
+        if (result.verified()) {
+            try {
+                result = huntSourceIfUnresolved(item, repoDir, outcome, result, metadata, itemRef);
+            } catch (Throwable t) {
+                log.error("[SastVerification] Source-origin hunt threw for {}, keeping ReAct verdict {}: {}",
+                        itemRef, item.getAiVerdict(), t.getMessage(), t);
+            }
+        }
 
         ControlAuditReport controlAudit = ControlAuditReport.skipped();
         if (result.verified() && customControlSoundnessService != null) {
@@ -730,17 +762,21 @@ public class SastFindingVerificationService {
         }
         if (result.verified()) {
             try {
-                sastConsistencyService.recordFinding(item, structuredEvidence);
+                sastConsistencyService.recordFinding(consistencyScope, item, structuredEvidence);
             } catch (Throwable t) {
                 log.error("[SastVerification] Consistency recording threw for {}: {}", itemRef, t.getMessage(), t);
             }
-            String publicReasoning = SastDeveloperFacingReasoning.sanitize(item.getAiReasoning());
+            String publicReasoning = SastDeveloperFacingReasoning.forDisplay(item.getAiReasoning());
+            String publicRecommendation = "TRUE_POSITIVE".equals(item.getAiVerdict())
+                    ? SastDeveloperFacingReasoning.recommendationForDisplay(item.getAiVerdict(), item.getAiRecommendation())
+                    : null;
             item.setAiReasoning(publicReasoning);
+            item.setAiRecommendation(publicRecommendation);
             if (item.getFingerprint() != null) {
                 CachedVerdict cached = fingerprintCache.get(item.getFingerprint());
                 if (cached != null) {
                     fingerprintCache.put(item.getFingerprint(),
-                            new CachedVerdict(cached.verdict(), cached.confidence(), publicReasoning, cached.recommendation()));
+                            new CachedVerdict(cached.verdict(), cached.confidence(), publicReasoning, publicRecommendation));
                 }
             }
         }
@@ -777,8 +813,12 @@ public class SastFindingVerificationService {
         boolean pendingReadAfterSearch = false;
         int readEnforcementPrompts = 0;
         Set<String> seenActions = new HashSet<>();
+        boolean forcedFinal = false;
         for (int round = 0; round <= maxToolRounds; round++) {
             boolean lastRound = round == maxToolRounds || toolBudget <= 0;
+            if (lastRound) {
+                forcedFinal = true;
+            }
 
             List<Map<String, Object>> requestMessages = messages;
             if (lastRound) {
@@ -795,7 +835,7 @@ public class SastFindingVerificationService {
                 log.warn("[SastVerification] LLM request failed or returned empty response for {} after {} ms (round {}).",
                         itemRef, elapsedMs, round);
                 return new ReactOutcome(VerificationResult.failed(ParseFailureReason.EMPTY_RESPONSE, llmRequests, jsonRepairAttempts,
-                        jsonRepairSuccesses, duplicateActionsSkipped, queryExpansionsUsed), messages);
+                        jsonRepairSuccesses, duplicateActionsSkipped, queryExpansionsUsed), messages, forcedFinal);
             }
 
             JsonNode node = tryParseJson(response.content());
@@ -867,7 +907,7 @@ public class SastFindingVerificationService {
                         jsonRepairSuccesses++;
                         return new ReactOutcome(VerificationResult.verified(repaired.normalized(),
                                 llmRequests, jsonRepairAttempts, jsonRepairSuccesses,
-                                duplicateActionsSkipped, queryExpansionsUsed), messages);
+                                duplicateActionsSkipped, queryExpansionsUsed), messages, forcedFinal);
                     }
                     result = VerificationResult.failed(repaired.failureReason(),
                             llmRequests, jsonRepairAttempts, jsonRepairSuccesses,
@@ -882,7 +922,7 @@ public class SastFindingVerificationService {
                         jsonRepairSuccesses++;
                         return new ReactOutcome(VerificationResult.verified(repaired.normalized(),
                                 llmRequests, jsonRepairAttempts, jsonRepairSuccesses,
-                                duplicateActionsSkipped, queryExpansionsUsed), messages);
+                                duplicateActionsSkipped, queryExpansionsUsed), messages, forcedFinal);
                     }
                     result = VerificationResult.failed(repaired.failureReason(),
                             llmRequests, jsonRepairAttempts, jsonRepairSuccesses,
@@ -897,7 +937,7 @@ public class SastFindingVerificationService {
                         jsonRepairSuccesses++;
                         return new ReactOutcome(VerificationResult.verified(repaired.normalized(),
                                 llmRequests, jsonRepairAttempts, jsonRepairSuccesses,
-                                duplicateActionsSkipped, queryExpansionsUsed), messages);
+                                duplicateActionsSkipped, queryExpansionsUsed), messages, forcedFinal);
                     }
                     result = VerificationResult.failed(repaired.failureReason(),
                             llmRequests, jsonRepairAttempts, jsonRepairSuccesses,
@@ -916,7 +956,22 @@ public class SastFindingVerificationService {
                         jsonRepairSuccesses++;
                         return new ReactOutcome(VerificationResult.verified(repaired.normalized(),
                                 llmRequests, jsonRepairAttempts, jsonRepairSuccesses,
-                                duplicateActionsSkipped, queryExpansionsUsed), messages);
+                                duplicateActionsSkipped, queryExpansionsUsed), messages, forcedFinal);
+                    }
+                    result = VerificationResult.failed(repaired.failureReason(),
+                            llmRequests, jsonRepairAttempts, jsonRepairSuccesses,
+                            duplicateActionsSkipped, queryExpansionsUsed);
+                } else if (result.failureReason() == ParseFailureReason.MISSING_ACTION
+                        && jsonRepairAttempts < 1) {
+                    jsonRepairAttempts++;
+                    VerificationResult repaired = retryForcedMinimalFinal(messages, response.content(), item, itemRef,
+                            metadata);
+                    llmRequests += repaired.llmRequests();
+                    if (repaired.verified()) {
+                        jsonRepairSuccesses++;
+                        return new ReactOutcome(VerificationResult.verified(repaired.normalized(),
+                                llmRequests, jsonRepairAttempts, jsonRepairSuccesses,
+                                duplicateActionsSkipped, queryExpansionsUsed), messages, forcedFinal);
                     }
                     result = VerificationResult.failed(repaired.failureReason(),
                             llmRequests, jsonRepairAttempts, jsonRepairSuccesses,
@@ -955,16 +1010,214 @@ public class SastFindingVerificationService {
                         item.getAiVerdict(), item.getAiConfidence(),
                         ConfidenceLevel.fromConfidence(item.getAiConfidence()));
             } else {
-                log.warn("[SastVerification] ReAct verification completed but response was not usable for {} after {} ms",
-                        itemRef, elapsedMs);
+                log.warn("[SastVerification] ReAct verification completed but response was not usable for {} after {} ms ({}): {}",
+                        itemRef, elapsedMs, result.failureReason(), truncateForLog(response.content(), 400));
             }
-            return new ReactOutcome(result, messages);
+            return new ReactOutcome(result, messages, forcedFinal);
         }
 
         return new ReactOutcome(
                 VerificationResult.failed(ParseFailureReason.EMPTY_RESPONSE, llmRequests, jsonRepairAttempts,
                         jsonRepairSuccesses, duplicateActionsSkipped, queryExpansionsUsed),
-                messages);
+                messages, forcedFinal);
+    }
+
+    /**
+     * When ReAct finishes without a concrete writer for the sink value, run a short
+     * source-only search and ask for one revised verdict. A named channel such as
+     * {@code http_request} is left alone. A framework setting ({@code settings.NAME},
+     * {@code @Value}) labeled {@code config_file} or {@code environment_variable} is not
+     * left alone: the file and the writer of that key are still unresolved.
+     */
+    private VerificationResult huntSourceIfUnresolved(Item item, String repoDir, ReactOutcome outcome,
+                                                      VerificationResult result, SastRuleMetadata metadata,
+                                                      String itemRef) {
+        if (result == null || !result.verified() || repoDir == null || repoDir.isBlank()) {
+            return result;
+        }
+        String inputSource = latestInputSource(outcome.messages());
+        String codeContext = (item.getCodeExtract() == null ? "" : item.getCodeExtract())
+                + "\n" + (item.getAiReasoning() == null ? "" : item.getAiReasoning());
+        if (!SourceOriginHunt.shouldHunt(metadata, isCodeInjectionPrompt(metadata, item), inputSource,
+                item.getAiVerdict(), codeContext)) {
+            return result;
+        }
+        log.info("[SastVerification] Source-origin hunt for {} after ReAct (input_source={}, verdict={}, forcedFinal={})",
+                itemRef, inputSource.isBlank() ? "unknown" : inputSource, item.getAiVerdict(), outcome.forcedFinal());
+
+        List<Map<String, Object>> huntMessages = new ArrayList<>();
+        huntMessages.add(Map.of("role", "system", "content", SourceOriginHunt.systemPrompt()));
+        huntMessages.add(Map.of("role", "user", "content", SourceOriginHunt.userPrompt(
+                item, metadata, inputSource, item.getAiVerdict(), item.getAiReasoning())));
+
+        int huntLlm = 0;
+        int productive = 0;
+        int tools = 0;
+        Set<String> seen = new HashSet<>();
+        String trace = "";
+        String writer = "";
+        String neutralizer = "";
+        String callers = "";
+        boolean originFound = false;
+
+        for (int round = 0; round <= SourceOriginHunt.MAX_TOOL_CALLS; round++) {
+            boolean last = round == SourceOriginHunt.MAX_TOOL_CALLS || tools >= SourceOriginHunt.MAX_TOOL_CALLS;
+            List<Map<String, Object>> request = huntMessages;
+            if (last) {
+                request = new ArrayList<>(huntMessages);
+                request.add(Map.of("role", "user", "content", SourceOriginHunt.FORCE_FINAL));
+            }
+            LlmApiClient.LlmResponse response = llmApiClient.chatCompletion(request, true);
+            huntLlm++;
+            if (response.isEmpty()) {
+                break;
+            }
+            JsonNode node = tryParseJson(response.content());
+            String action = node != null ? node.path("action").asText("") : "";
+            if (!last && ("search_repo".equals(action) || "read_file".equals(action))) {
+                String key = buildActionKey(action, node);
+                huntMessages.add(Map.of("role", "assistant", "content", response.content()));
+                if (!seen.add(key)) {
+                    huntMessages.add(Map.of("role", "user", "content",
+                            "TOOL RESULT (" + action + "):\nDuplicate action skipped. "
+                                    + "Search a different identifier or read a returned path."));
+                    continue;
+                }
+                ActionExecution execution = executeReactAction(action, node, repoDir, itemRef);
+                if (SourceOriginHunt.productiveObservation(execution.observation())) {
+                    productive++;
+                }
+                huntMessages.add(Map.of("role", "user", "content",
+                        "TOOL RESULT (" + action + "):\n" + execution.observation()));
+                tools++;
+                continue;
+            }
+            if (node != null && "final".equals(action)) {
+                originFound = node.path("origin_found").asBoolean(false);
+                writer = textValue(node, "writer");
+                neutralizer = textValue(node, "neutralizer_on_path");
+                callers = textValue(node, "in_repo_callers");
+                trace = textValue(node, "trace");
+                if (trace.isBlank()) {
+                    trace = textValue(node, "reasoning");
+                }
+            }
+            break;
+        }
+
+        if (!SourceOriginHunt.traceIsUseful(originFound, trace, writer, productive)) {
+            if (SourceOriginHunt.shouldReviseWithoutCaller(item.getAiVerdict(), originFound, writer, tools,
+                    item.getFilename())) {
+                huntLlm += reviseWithoutCaller(item, outcome, metadata, callers, trace, itemRef);
+                return addLlmRequests(result, huntLlm);
+            }
+            log.info("[SastVerification] Source-origin hunt for {} found no additional writer; keeping verdict {}",
+                    itemRef, item.getAiVerdict());
+            return addLlmRequests(result, huntLlm);
+        }
+
+        String previous = item.getAiVerdict();
+        List<Map<String, Object>> revision = new ArrayList<>(outcome.messages());
+        revision.add(Map.of("role", "user", "content", SourceOriginHunt.revisionPrompt(
+                previous, inputSource, SourceOriginHunt.formatReport(originFound, writer, neutralizer, trace))));
+        LlmApiClient.LlmResponse revised = llmApiClient.chatCompletion(revision, true);
+        huntLlm++;
+        if (revised.isEmpty()) {
+            log.warn("[SastVerification] Source-origin revision returned empty for {}; keeping {}", itemRef, previous);
+            return addLlmRequests(result, huntLlm);
+        }
+        VerificationResult parsed = parseSingleResponse(revised.content(), item, metadata);
+        if (!parsed.verified()) {
+            log.warn("[SastVerification] Source-origin revision unusable for {} ({}); keeping {}",
+                    itemRef, parsed.failureReason(), previous);
+            return addLlmRequests(result, huntLlm);
+        }
+        log.info("[SastVerification] Source-origin hunt revised {} from {} to {} (confidence {})",
+                itemRef, previous, item.getAiVerdict(), item.getAiConfidence());
+        VerificationResult cost = addLlmRequests(result, huntLlm);
+        return new VerificationResult(
+                true,
+                null,
+                cost.normalized() || parsed.normalized(),
+                cost.llmRequests(),
+                cost.jsonRepairAttempts(),
+                cost.jsonRepairSuccesses(),
+                cost.duplicateActionsSkipped(),
+                cost.queryExpansionsUsed(),
+                cost.validationOverrides(),
+                cost.remediationCorrections());
+    }
+
+    /**
+     * Vendored or demo code where the hunt found no writer: one revision limited to
+     * FALSE_POSITIVE (capped confidence) or UNCERTAIN. Returns the number of LLM calls made.
+     */
+    private int reviseWithoutCaller(Item item, ReactOutcome outcome, SastRuleMetadata metadata,
+                                    String callers, String trace, String itemRef) {
+        String previous = item.getAiVerdict();
+        List<Map<String, Object>> revision = new ArrayList<>(outcome.messages());
+        revision.add(Map.of("role", "user", "content",
+                SourceOriginHunt.noCallerRevisionPrompt(item.getFilename(), callers, trace)));
+        LlmApiClient.LlmResponse revised = llmApiClient.chatCompletion(revision, true);
+        if (revised.isEmpty()) {
+            log.warn("[SastVerification] No-caller revision returned empty for {}; keeping {}", itemRef, previous);
+            return 1;
+        }
+        JsonNode node = tryParseJson(revised.content());
+        String verdict = node == null ? "" : textValue(node, "verdict");
+        if (!"FALSE_POSITIVE".equals(verdict)) {
+            log.info("[SastVerification] No-caller revision for {} returned {}; keeping {}",
+                    itemRef, verdict.isBlank() ? "no verdict" : verdict, previous);
+            return 1;
+        }
+        VerificationResult parsed = parseSingleResponse(revised.content(), item, metadata);
+        if (!parsed.verified() || !"FALSE_POSITIVE".equals(item.getAiVerdict())) {
+            log.info("[SastVerification] No-caller revision for {} not applied ({}); verdict now {}",
+                    itemRef, parsed.failureReason(), item.getAiVerdict());
+            return 1;
+        }
+        if (item.getAiConfidence() == null || item.getAiConfidence() > SourceOriginHunt.NO_CALLER_FP_MAX_CONFIDENCE) {
+            applyVerdict(new ParsedVerdict("FALSE_POSITIVE", SourceOriginHunt.NO_CALLER_FP_MAX_CONFIDENCE,
+                    item.getAiReasoning(), null, null, ""), item);
+        }
+        log.info("[SastVerification] Source-origin hunt for {} found no in-repo caller of vendored/demo code; "
+                + "revised {} to FALSE_POSITIVE (confidence {})", itemRef, previous, item.getAiConfidence());
+        return 1;
+    }
+
+    private String latestInputSource(List<Map<String, Object>> messages) {
+        if (messages == null) {
+            return "";
+        }
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            Map<String, Object> message = messages.get(i);
+            if (message == null || !"assistant".equals(message.get("role")) || !(message.get("content") instanceof String text)) {
+                continue;
+            }
+            JsonNode node = tryParseJson(text);
+            if (node == null) {
+                continue;
+            }
+            String value = textValue(node, "input_source");
+            if (!value.isBlank()) {
+                return value;
+            }
+        }
+        return "";
+    }
+
+    private VerificationResult addLlmRequests(VerificationResult result, int extra) {
+        return new VerificationResult(
+                result.verified(),
+                result.failureReason(),
+                result.normalized(),
+                result.llmRequests() + extra,
+                result.jsonRepairAttempts(),
+                result.jsonRepairSuccesses(),
+                result.duplicateActionsSkipped(),
+                result.queryExpansionsUsed(),
+                result.validationOverrides(),
+                result.remediationCorrections());
     }
 
     /**
@@ -1188,7 +1441,7 @@ public class SastFindingVerificationService {
                         + "using Stage 1 minimal schema: "
                         + "{\"action\":\"final\",\"verdict\":\"TRUE_POSITIVE|FALSE_POSITIVE|UNCERTAIN\","
                         + "\"confidence\":0.0-1.0,\"reasoning\":\"3-6 sentences\"}. "
-                        + "No markdown, no explanation, no code fences."));
+                        + "Do not request any tool. No markdown, no explanation, no code fences."));
 
         LlmApiClient.LlmResponse repairResponse = llmApiClient.chatCompletion(repairMessages, true);
         if (repairResponse.isEmpty()) {
@@ -1221,7 +1474,7 @@ public class SastFindingVerificationService {
                         + "using this minimal final schema: "
                         + "{\"action\":\"final\",\"verdict\":\"TRUE_POSITIVE|FALSE_POSITIVE|UNCERTAIN\","
                         + "\"confidence\":0.0-1.0}. "
-                        + "No extra fields, no markdown, no prose."));
+                        + "Do not request any tool. No extra fields, no markdown, no prose."));
 
         LlmApiClient.LlmResponse retryResponse = llmApiClient.chatCompletion(retryMessages, true);
         if (retryResponse.isEmpty()) {
@@ -1254,7 +1507,7 @@ public class SastFindingVerificationService {
                         + "using Stage 1 minimal schema: "
                         + "{\"action\":\"final\",\"verdict\":\"TRUE_POSITIVE|FALSE_POSITIVE|UNCERTAIN\","
                         + "\"confidence\":0.0-1.0,\"reasoning\":\"3-6 sentences\"}. "
-                        + "No extra fields, no markdown, no prose."));
+                        + "Do not request any tool. No extra fields, no markdown, no prose."));
 
         LlmApiClient.LlmResponse retryResponse = llmApiClient.chatCompletion(retryMessages, true);
         if (retryResponse.isEmpty()) {
@@ -1277,31 +1530,57 @@ public class SastFindingVerificationService {
         return expanded.withMetrics(1 + expanded.llmRequests(), 0, 0, 0, 0);
     }
 
+    /**
+     * Last turn asked for a tool instead of a verdict. One more call, and the schema
+     * appended by the client no longer offers {@code search_repo} or {@code read_file}.
+     */
+    private VerificationResult retryForcedMinimalFinal(List<Map<String, Object>> messages, String rawResponse,
+                                                       Item item, String itemRef, SastRuleMetadata metadata) {
+        List<Map<String, Object>> retryMessages = new ArrayList<>(messages);
+        retryMessages.add(Map.of("role", "assistant", "content", rawResponse));
+        retryMessages.add(Map.of("role", "user", "content",
+                "Stop investigating and respond NOW with the final JSON object "
+                        + "(\"action\":\"final\",\"verdict\":\"TRUE_POSITIVE|FALSE_POSITIVE|UNCERTAIN\","
+                        + "\"confidence\":0.0-1.0,\"reasoning\":\"3-6 sentences\"). "
+                        + "Do not request any tool. No markdown, no prose."));
+
+        LlmApiClient.LlmResponse retryResponse = llmApiClient.chatCompletion(retryMessages, true);
+        if (retryResponse.isEmpty()) {
+            log.warn("[SastVerification] Forced-final retry returned empty response for {}", itemRef);
+            return VerificationResult.failed(ParseFailureReason.EMPTY_RESPONSE, 1, 0, 0, 0, 0);
+        }
+
+        StageOneParse stageOne = parseStageOneResponse(retryResponse.content());
+        if (stageOne.verdict() == null) {
+            log.warn("[SastVerification] Forced-final retry still unusable for {}: {}",
+                    itemRef, stageOne.failureReason());
+            return VerificationResult.failed(stageOne.failureReason(), 1, 0, 0, 0, 0);
+        }
+        VerificationResult expanded = requestStageTwoDetails(retryMessages, retryResponse.content(), stageOne.verdict(),
+                item, itemRef, metadata);
+        if (!expanded.verified()) {
+            applyMinimalVerdict(stageOne.verdict(), item);
+            return VerificationResult.verified(true, 1 + expanded.llmRequests(), 0, 0, 0, 0);
+        }
+        return expanded.withMetrics(1 + expanded.llmRequests(), 0, 0, 0, 0);
+    }
+
     private StageOneParse parseStageOneResponse(String content) {
         JsonNode node = tryParseJson(content);
         if (node == null || !node.isObject()) {
             return new StageOneParse(null, ParseFailureReason.INVALID_JSON);
         }
-        String action = textValue(node, "action");
-        if (!"final".equals(action)) {
+        SastReactResponseParser.StageOneView view = SastReactResponseParser.stageOne(node);
+        if (view.failure() == SastReactResponseParser.StageOneFailure.MISSING_ACTION) {
             return new StageOneParse(null, ParseFailureReason.MISSING_ACTION);
         }
-        String verdict = textValue(node, "verdict");
-        if (!isValidVerdict(verdict)) {
+        if (view.failure() == SastReactResponseParser.StageOneFailure.MISSING_VERDICT) {
             return new StageOneParse(null, ParseFailureReason.MISSING_VERDICT);
         }
-        if (!node.hasNonNull("confidence") || !node.get("confidence").isNumber()) {
+        if (view.failure() == SastReactResponseParser.StageOneFailure.MISSING_CONFIDENCE) {
             return new StageOneParse(null, ParseFailureReason.MISSING_CONFIDENCE);
         }
-        String reasoning = textValue(node, "reasoning");
-        if (reasoning.isBlank()) {
-            return new StageOneParse(null, ParseFailureReason.MISSING_REASONING);
-        }
-        return new StageOneParse(new MinimalVerdict(
-                verdict,
-                Math.max(0.0, Math.min(1.0, node.get("confidence").asDouble())),
-                reasoning
-        ), null);
+        return new StageOneParse(new MinimalVerdict(view.verdict(), view.confidence(), view.reasoning()), null);
     }
 
     private VerificationResult requestStageTwoDetails(List<Map<String, Object>> messages,
@@ -1413,6 +1692,7 @@ public class SastFindingVerificationService {
             log.debug("[SastVerification] Stage-2 resolved UNCERTAIN for {} -> {} (confidence: {})",
                     itemRef, item.getAiVerdict(),
                     String.format(Locale.ROOT, "%.2f", item.getAiConfidence()));
+            rememberFinalAnswers(messages, stageOneRawResponse, stageTwoResponse.content());
             return parsed.withMetrics(1, 0, 0, 0, 0);
         }
 
@@ -1427,7 +1707,20 @@ public class SastFindingVerificationService {
                     String.format(Locale.ROOT, "%.2f", item.getAiConfidence()));
             return VerificationResult.failed(ParseFailureReason.INVALID_STAGE2_MISMATCH, 1, 0, 0, 0, 0);
         }
+        rememberFinalAnswers(messages, stageOneRawResponse, stageTwoResponse.content());
         return parsed.withMetrics(1, 0, 0, 0, 0);
+    }
+
+    private void rememberFinalAnswers(List<Map<String, Object>> messages, String stageOneRaw, String stageTwoRaw) {
+        if (messages == null) {
+            return;
+        }
+        if (stageOneRaw != null && !stageOneRaw.isBlank()) {
+            messages.add(Map.of("role", "assistant", "content", stageOneRaw));
+        }
+        if (stageTwoRaw != null && !stageTwoRaw.isBlank()) {
+            messages.add(Map.of("role", "assistant", "content", stageTwoRaw));
+        }
     }
 
     private void applyMinimalVerdict(MinimalVerdict minimalVerdict, Item item) {
@@ -2167,11 +2460,7 @@ public class SastFindingVerificationService {
     }
 
     private JsonNode tryParseJson(String content) {
-        try {
-            return objectMapper.readTree(extractJson(content));
-        } catch (Exception e) {
-            return null;
-        }
+        return SastReactResponseParser.tryParse(content);
     }
 
     private String formatItemRef(Item item) {
@@ -2537,6 +2826,12 @@ public class SastFindingVerificationService {
             sb.append("Evidence category is AMBIGUOUS: the source is partially visible but not conclusive. ");
             sb.append("Check the definitions and caller sections above, then use search_repo/read_file to ");
             sb.append("resolve any remaining gaps.\n\n");
+        }
+        if (isXssPrompt(metadata, item) || (metadata != null && metadata.family() == VulnerabilityFamily.OPEN_REDIRECT)) {
+            sb.append("The expression bound to the sink is not the source. A dialog field, editor data property, ");
+            sb.append("element.value, or innerHTML/href read is an intermediate until you find the writer. ");
+            sb.append("Search for the assignment and for who can set that value. A javascript: or URL check in ");
+            sb.append("another file counts only when this call path invokes it.\n\n");
         }
 
         sb.append("Available investigation actions:\n");
@@ -6688,24 +6983,13 @@ public class SastFindingVerificationService {
             return trimmedRecommendation;
         }
         if (trimmedCode.startsWith("Cannot provide a safe code snippet:")) {
-            return trimmedRecommendation + "\n\nRemediation code:\n" + trimmedCode;
+            return trimmedRecommendation + "\n\n###### Remediation code\n\n" + trimmedCode;
         }
-        return trimmedRecommendation + "\n\nRemediation code:\n```\n" + trimmedCode + "\n```";
+        return trimmedRecommendation + "\n\n###### Remediation code\n\n```\n" + trimmedCode + "\n```";
     }
 
     private String extractJson(String content) {
-        if (content == null) return "{}";
-        content = content.trim();
-
-        if (content.startsWith("```json")) {
-            content = content.substring(7);
-        } else if (content.startsWith("```")) {
-            content = content.substring(3);
-        }
-        if (content.endsWith("```")) {
-            content = content.substring(0, content.length() - 3);
-        }
-        return content.trim();
+        return SastReactResponseParser.extractJson(content);
     }
 
     private String truncateForLog(String value, int maxLength) {

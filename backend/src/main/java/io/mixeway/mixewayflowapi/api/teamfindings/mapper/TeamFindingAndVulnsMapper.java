@@ -2,6 +2,7 @@ package io.mixeway.mixewayflowapi.api.teamfindings.mapper;
 
 import io.mixeway.mixewayflowapi.api.teamfindings.dto.TeamFindingsAndVulnsResponseDto;
 import io.mixeway.mixewayflowapi.db.entity.Finding;
+import io.mixeway.mixewayflowapi.integrations.scanner.sast.service.SastDeveloperFacingReasoning;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -22,8 +23,10 @@ public class TeamFindingAndVulnsMapper {
             dto.setDescription(finding.getVulnerability().getDescription());
             dto.setExplanation(finding.getExplanation());
             dto.setRecommendation(finding.getVulnerability().getRecommendation());
-            dto.setAiVerificationReasoning(finding.getAiVerificationReasoning());
-            dto.setAiVerificationRecommendation(finding.getAiVerificationRecommendation());
+            String grade = finding.getAiVerificationGrade() == null ? null : finding.getAiVerificationGrade().name();
+            dto.setAiVerificationReasoning(SastDeveloperFacingReasoning.forDisplay(finding.getAiVerificationReasoning()));
+            dto.setAiVerificationRecommendation(SastDeveloperFacingReasoning.recommendationForDisplay(
+                    grade, finding.getAiVerificationRecommendation()));
             dto.setEpss(finding.getVulnerability().getEpss());
 
 

@@ -148,6 +148,9 @@ public class SourceToSinkEvidenceBuilder implements SastEvidenceBuilder {
         String key = metadata.family() == VulnerabilityFamily.SQL_INJECTION
                 ? sqlConsistencyKey(metadata, item, sink)
                 : consistencyKey(metadata, item, source, sink);
+        if (metadata.family() != VulnerabilityFamily.SQL_INJECTION) {
+            key = key + "|" + (sanitizers.isEmpty() ? "no_neutralizer" : "neutralizer_seen");
+        }
 
         return new FindingEvidence(
                 true,

@@ -99,11 +99,15 @@ public class CodeRepoApiService {
         }
     }
 
-    public void runLlmEvaluation(Long id, String source, Principal principal) {
+    /**
+     * @return {@code true} when the AI scan was put in a queue behind other AI scans
+     */
+    public boolean runLlmEvaluation(Long id, String source, Principal principal) {
         CodeRepo repo = findCodeRepoService.findById(id, principal);
         if (repo != null) {
-            scanManagerService.runLlmEvaluation(repo, repo.getDefaultBranch(), parseEvaluationSource(source));
+            return scanManagerService.runLlmEvaluation(repo, repo.getDefaultBranch(), parseEvaluationSource(source));
         }
+        return false;
     }
 
     static Finding.Source parseEvaluationSource(String source) {

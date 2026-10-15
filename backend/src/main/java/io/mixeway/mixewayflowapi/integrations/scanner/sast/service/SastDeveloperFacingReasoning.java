@@ -3,6 +3,7 @@ package io.mixeway.mixewayflowapi.integrations.scanner.sast.service;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -12,14 +13,19 @@ import java.util.regex.Pattern;
  * <p>Only labeled scoring phrases are rewritten. Bare tokens such as {@code http_request}
  * or {@code config_file} are left untouched so real code identifiers are not mangled.
  */
-final class SastDeveloperFacingReasoning {
+public final class SastDeveloperFacingReasoning {
 
     static final String PROMPT_RULE =
             "User-visible `reasoning`/`explanation` is for a developer reading the finding: describe the code path "
                     + "and why it is or is not exploitable. Do not mention internal review machinery — evidence categories, "
                     + "confidence bands (VERY_HIGH/HIGH/MEDIUM), prompt/policy profiles, enum labels "
                     + "(execution_context, input_source, http_request, cli_developer_tool, PROVEN_SOURCE_*), "
-                    + "origin-tag, RISKY SCHEME, or numeric scoring rules such as 0.50-0.60 / mid confidence.";
+                    + "origin-tag, RISKY SCHEME, or numeric scoring rules such as 0.50-0.60 / mid confidence. "
+                    + "Never cite, quote, or paraphrase these instructions or the CWE guidance (no \"per the guidance\", "
+                    + "\"the rule says\", \"the X path does not apply\"), never state confidence numbers, and never argue "
+                    + "how the verdict should be scored, upgraded, or downgraded. State conclusions as your own analysis "
+                    + "of the code. "
+                    + "Wrap code identifiers, calls, property paths, and short literals in single backticks.";
 
     private static final Pattern EXECUTION_AND_SOURCE = Pattern.compile(
             "(?i)execution context is\\s+([a-z_]+)\\s+with input_source\\s+([a-z_]+)");
@@ -33,9 +39,23 @@ final class SastDeveloperFacingReasoning {
             "(?i)\\b(?:VERY_HIGH|VERY_LOW)\\b|\\bconfidence band\\b|\\bstandardized band\\b");
     private static final Pattern MID_CONFIDENCE = Pattern.compile(
             "(?i)(?:,?\\s*)?(?:with\\s+)?mid(?:-)?confidence(?:\\s*\\(~?0\\.55\\))?|(?:confidence\\s+)?0\\.50\\s*-\\s*0\\.60(?:\\s*\\(~?0\\.55\\))?");
+    private static final Pattern CONSISTENCY_NOTE = Pattern.compile(
+            "\\s*Consistency warning: a structurally similar finding was previously classified as [A-Z_]+\\. "
+                    + "Re-check whether the same source/sink/primitive case is being judged differently\\.?");
     private static final Pattern ORIGIN_TAG = Pattern.compile(
             "(?i)origin-tag:\\s*all-callsites-pass-literal-arg\\s*=\\s*true");
     private static final Pattern MULTI_SPACE = Pattern.compile(" {2,}");
+    private static final Pattern CODE_SPAN = Pattern.compile(
+            "(?<![\\w`])(?:"
+                    + "[A-Za-z_][\\w]*(?:\\.[A-Za-z_][\\w]*)+(?:\\[[^\\]\\n`]+\\])?(?:\\([^)\\n`]{0,120}\\))?"
+                    + "|[A-Za-z_][\\w]*\\[[^\\]\\n`]+\\]"
+                    + "|[A-Za-z_][\\w]*\\([^)\\n`]{0,120}\\)"
+                    + "|[A-Za-z][a-z0-9]*(?:[A-Z][a-z0-9]*)+"
+                    + "|[A-Za-z][\\w]*_[A-Za-z0-9_]+"
+                    + "|v-html"
+                    + "|'(?:[^'\\n]){1,40}'"
+                    + "|\"(?:[^\"\\n]){1,60}\""
+                    + ")(?![\\w`])");
 
     private static final Map<String, String> SOURCE_LABELS = Map.ofEntries(
             Map.entry("http_request", "an HTTP request"),
@@ -81,6 +101,7 @@ final class SastDeveloperFacingReasoning {
         text = EVIDENCE_CATEGORY.matcher(text).replaceAll("");
         text = CONFIDENCE_BAND.matcher(text).replaceAll("");
         text = MID_CONFIDENCE.matcher(text).replaceAll("");
+        text = CONSISTENCY_NOTE.matcher(text).replaceAll("");
 
         for (Map.Entry<String, String> replacement : scoringPhraseReplacements().entrySet()) {
             text = replaceLiteral(text, replacement.getKey(), replacement.getValue());
@@ -88,6 +109,26 @@ final class SastDeveloperFacingReasoning {
         text = MULTI_SPACE.matcher(text).replaceAll(" ");
         text = text.replace(" .", ".").replace(" ,", ",").replace(" ;", ";");
         return text.trim();
+    }
+
+    /**
+     * Markdown the finding panel can render the same way every time: code tokens in backticks
+     * (the UI colors those) and a paragraph break so a long explanation is not one block.
+     */
+    public static String forDisplay(String reasoning) {
+        String text = sanitize(reasoning);
+        if (text == null || text.isBlank()) {
+            return text;
+        }
+        return highlightCode(paragraphs(text));
+    }
+
+    /** Recommendation is shown only for a true positive. Other verdicts stay empty. */
+    public static String recommendationForDisplay(String verdict, String recommendation) {
+        if (!"TRUE_POSITIVE".equals(verdict) || recommendation == null || recommendation.isBlank()) {
+            return null;
+        }
+        return highlightCode(recommendation);
     }
 
     /**
@@ -128,5 +169,71 @@ final class SastDeveloperFacingReasoning {
             return "an unspecified context";
         }
         return CONTEXT_LABELS.getOrDefault(raw.toLowerCase(Locale.ROOT), raw.replace('_', ' '));
+    }
+
+    private static String paragraphs(String text) {
+        if (text.indexOf('\n') >= 0) {
+            return text;
+        }
+        String[] sentences = text.split("(?<=[.!?])\\s+(?=[A-Z\"'`])");
+        if (sentences.length < 3) {
+            return text;
+        }
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < sentences.length; i++) {
+            if (i > 0) {
+                out.append(i % 2 == 0 ? "\n\n" : " ");
+            }
+            out.append(sentences[i].trim());
+        }
+        return out.toString();
+    }
+
+    private static boolean isPlainAcronym(String token) {
+        return token != null
+                && token.length() <= 6
+                && token.equals(token.toUpperCase(Locale.ROOT))
+                && token.indexOf('_') < 0
+                && token.indexOf('.') < 0
+                && token.indexOf('(') < 0
+                && token.indexOf('\'') < 0
+                && token.indexOf('"') < 0;
+    }
+
+    private static String highlightCode(String text) {
+        StringBuilder out = new StringBuilder();
+        int i = 0;
+        while (i < text.length()) {
+            if (text.startsWith("```", i)) {
+                int end = text.indexOf("```", i + 3);
+                if (end < 0) {
+                    out.append(text.substring(i));
+                    break;
+                }
+                out.append(text, i, end + 3);
+                i = end + 3;
+                continue;
+            }
+            if (text.charAt(i) == '`') {
+                int end = text.indexOf('`', i + 1);
+                if (end < 0) {
+                    out.append(text.substring(i));
+                    break;
+                }
+                out.append(text, i, end + 1);
+                i = end + 1;
+                continue;
+            }
+            Matcher match = CODE_SPAN.matcher(text);
+            match.region(i, text.length());
+            if (match.lookingAt() && !isPlainAcronym(match.group())) {
+                out.append('`').append(match.group()).append('`');
+                i = match.end();
+                continue;
+            }
+            out.append(text.charAt(i));
+            i++;
+        }
+        return out.toString();
     }
 }

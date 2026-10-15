@@ -1,7 +1,9 @@
 package io.mixeway.mixewayflowapi.integrations.llm.service;
 
+import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.mixeway.mixewayflowapi.db.entity.Finding;
 import io.mixeway.mixewayflowapi.db.entity.Settings;
 import io.mixeway.mixewayflowapi.domain.settings.FindSettingsService;
@@ -17,6 +19,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
@@ -31,10 +34,17 @@ public class LlmApiClient {
     private static final Duration RETRY_WINDOW = Duration.ofMinutes(5);
     private static final Duration NON_200_RETRY_INTERVAL = Duration.ofSeconds(5);
     private static final AtomicLong CALL_SEQ = new AtomicLong();
+    private static final ObjectMapper LENIENT_MAPPER = JsonMapper.builder()
+            .enable(JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER)
+            .enable(JsonReadFeature.ALLOW_TRAILING_COMMA)
+            .enable(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)
+            .build();
 
     private final FindSettingsService findSettingsService;
     private final WebClient webClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    /** Set after a server rejects {@code response_format=json_object}, so later calls stay on the prompt fallback. */
+    private volatile boolean jsonObjectFormatRejected;
 
     /** SAST callers keep using the no-arg check; it reads the SAST LLM section. */
     public boolean isEnabled() {
@@ -84,10 +94,11 @@ public class LlmApiClient {
         }
 
         String url = credentials.url.replaceAll("/+$", "");
+        boolean finalOnly = forceJsonObject && requestsFinalOnly(messages);
         List<Map<String, Object>> jsonFallbackMessages = forceJsonObject
-                ? withPromptSchemaFallback(messages)
+                ? withPromptSchemaFallback(messages, finalOnly)
                 : messages;
-        return doPost(url, credentials, jsonFallbackMessages, false);
+        return doPost(url, credentials, jsonFallbackMessages, false, forceJsonObject);
     }
 
     private LlmCredentials resolve(Finding.Source source) {
@@ -128,13 +139,18 @@ public class LlmApiClient {
     }
 
     private LlmResponse doPost(String url, LlmCredentials credentials,
-                               List<Map<String, Object>> messages, boolean reducedReasoning) {
+                               List<Map<String, Object>> messages, boolean reducedReasoning,
+                               boolean requestJsonObject) {
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", credentials.model);
         int maxTokensForCall = credentials.contextWindow;
         requestBody.put("messages", messages);
         requestBody.put("temperature", 0.0);
         requestBody.put("max_tokens", maxTokensForCall);
+        boolean sendJsonObject = requestJsonObject && !jsonObjectFormatRejected;
+        if (sendJsonObject) {
+            requestBody.put("response_format", Map.of("type", "json_object"));
+        }
         if (reducedReasoning) {
             // OpenAI-style servers read reasoning_effort; Qwen-family chat templates (vLLM/SGLang) read enable_thinking.
             requestBody.put("reasoning_effort", "low");
@@ -180,9 +196,13 @@ public class LlmApiClient {
                 JsonNode choices = root.path("choices");
                 JsonNode message = choices.isArray() && !choices.isEmpty() ? choices.get(0).path("message") : null;
                 JsonNode contentNode = message == null ? null : message.get("content");
-                String content = contentNode == null || contentNode.isNull() || contentNode.isMissingNode()
-                        ? ""
-                        : contentNode.asText("");
+                String content = messageText(contentNode);
+                String reasoningText = extraFieldText(message, "reasoning_content", "reasoning");
+                if (!containsJsonObject(content) && containsJsonObject(reasoningText)) {
+                    content = reasoningText;
+                } else if (content.isBlank() && !reasoningText.isBlank()) {
+                    content = reasoningText;
+                }
                 log.debug("[LlmApiClient] req#{} attempt={} elapsedMs={} raw_len={} finish_reason={} usage={} content_len={} content_blank={} reasoning_len={}",
                         callId, attempt, elapsedMs, responseJson.length(), finishReason(root), usageSummary(root),
                         content.length(), content.isBlank(),
@@ -199,7 +219,16 @@ public class LlmApiClient {
                         if ("length".equals(reason) && !reducedReasoning) {
                             log.warn("[LlmApiClient] req#{} output budget exhausted before content; retrying with reduced reasoning",
                                     callId);
-                            return doPost(url, credentials, messages, true);
+                            return doPost(url, credentials, messages, true, requestJsonObject);
+                        }
+                    }
+                    if (shouldRetryProseOnly(requestJsonObject, reducedReasoning, content)) {
+                        log.warn("[LlmApiClient] req#{} JSON requested but content has no JSON object (finish_reason={}, content_len={}); "
+                                        + "retrying with reduced reasoning",
+                                callId, finishReason(root), content.length());
+                        LlmResponse retried = doPost(url, credentials, messages, true, requestJsonObject);
+                        if (!retried.isEmpty()) {
+                            return retried;
                         }
                     }
                     return new LlmResponse(content.trim(), promptTokens, completionTokens);
@@ -218,6 +247,13 @@ public class LlmApiClient {
                 int status = e.getStatusCode().value();
                 log.warn("[LlmApiClient] req#{} attempt={} elapsedMs={} HTTP {}",
                         callId, attempt, elapsedMs, status);
+
+                if (status == 400 && sendJsonObject && responseFormatRejected(e)) {
+                    jsonObjectFormatRejected = true;
+                    log.warn("[LlmApiClient] req#{} server rejected response_format=json_object; retrying with prompt-only JSON",
+                            callId);
+                    return doPost(url, credentials, messages, reducedReasoning, false);
+                }
 
                 if (!shouldRetryStatus(status)) {
                     log.warn("[LlmApiClient] Non-retryable HTTP {} from LLM API", status);
@@ -309,32 +345,127 @@ public class LlmApiClient {
     }
 
     private static int extraFieldLen(JsonNode message, String... names) {
+        return extraFieldText(message, names).length();
+    }
+
+    private static String extraFieldText(JsonNode message, String... names) {
         if (message == null || !message.isObject()) {
-            return 0;
+            return "";
         }
         for (String name : names) {
             JsonNode node = message.get(name);
-            if (node != null && node.isTextual()) {
-                return node.asText("").length();
+            if (node != null && node.isTextual() && !node.asText("").isBlank()) {
+                return node.asText("");
             }
         }
-        return 0;
+        return "";
+    }
+
+    private static String messageText(JsonNode content) {
+        if (content == null || content.isNull() || content.isMissingNode()) {
+            return "";
+        }
+        if (content.isTextual()) {
+            return content.asText("");
+        }
+        if (content.isArray()) {
+            StringBuilder text = new StringBuilder();
+            for (JsonNode part : content) {
+                String piece = "";
+                if (part.isTextual()) {
+                    piece = part.asText("");
+                } else if (part.isObject() && part.path("text").isTextual()) {
+                    piece = part.path("text").asText("");
+                }
+                if (!piece.isBlank()) {
+                    if (!text.isEmpty()) {
+                        text.append('\n');
+                    }
+                    text.append(piece);
+                }
+            }
+            return text.toString();
+        }
+        return content.asText("");
+    }
+
+    /**
+     * Thinking models sometimes write their whole analysis into {@code content} and never emit
+     * the object; with thinking disabled they usually answer with the JSON directly.
+     */
+    static boolean shouldRetryProseOnly(boolean requestJsonObject, boolean reducedReasoning, String content) {
+        return requestJsonObject && !reducedReasoning && content != null && !content.isBlank()
+                && !containsParsableJsonObject(content);
+    }
+
+    private static boolean containsParsableJsonObject(String value) {
+        int attempts = 0;
+        for (int i = value.indexOf('{'); i >= 0 && attempts < 64; i = value.indexOf('{', i + 1), attempts++) {
+            try {
+                JsonNode node = LENIENT_MAPPER.readTree(value.substring(i));
+                if (node != null && node.isObject()) {
+                    return true;
+                }
+            } catch (Exception ignored) {
+                // Not an object starting here; try the next brace.
+            }
+        }
+        return false;
+    }
+
+    private static boolean containsJsonObject(String value) {
+        if (value == null) {
+            return false;
+        }
+        int open = value.indexOf('{');
+        return open >= 0 && value.indexOf('}', open + 1) > open;
+    }
+
+    private static boolean responseFormatRejected(WebClientResponseException exception) {
+        String body = exception.getResponseBodyAsString();
+        if (body == null || body.isBlank()) {
+            return false;
+        }
+        String lower = body.toLowerCase(Locale.ROOT);
+        return lower.contains("response_format") || lower.contains("json_object") || lower.contains("json_schema");
     }
 
     private boolean shouldRetryStatus(int status) {
         return status == 408 || status == 429 || status >= 500;
     }
 
-    private List<Map<String, Object>> withPromptSchemaFallback(List<Map<String, Object>> messages) {
+    private List<Map<String, Object>> withPromptSchemaFallback(List<Map<String, Object>> messages, boolean finalOnly) {
         List<Map<String, Object>> augmentedMessages = new ArrayList<>(messages);
         augmentedMessages.add(Map.of(
                 "role", "user",
-                "content", buildPromptSchemaFallbackInstruction()
+                "content", schemaFallbackInstruction(finalOnly)
         ));
         return augmentedMessages;
     }
 
-    private String buildPromptSchemaFallbackInstruction() {
+    /**
+     * The forced-final turn already told the model to stop calling tools. The generic schema
+     * lists {@code search_repo} and {@code read_file} as allowed, and because it is appended
+     * last the model treats that as permission to investigate again.
+     */
+    static boolean requestsFinalOnly(List<Map<String, Object>> messages) {
+        String last = lastUserContent(messages).toLowerCase(Locale.ROOT);
+        return last.contains("do not request any tool")
+                || last.contains("do not request a tool")
+                || last.contains("stop investigating")
+                || last.contains("stop searching");
+    }
+
+    static String schemaFallbackInstruction(boolean finalOnly) {
+        if (finalOnly) {
+            return "RESPONSE FORMAT REQUIREMENT:\n"
+                    + "Return ONLY one valid JSON object. No markdown, no prose, no tool request.\n"
+                    + "Required shape: {\"action\":\"final\",\"verdict\":\"TRUE_POSITIVE|FALSE_POSITIVE|UNCERTAIN\","
+                    + "\"confidence\":0.0-1.0,\"reasoning\":\"3-6 sentences\"}.\n"
+                    + "verdict must be exactly TRUE_POSITIVE, FALSE_POSITIVE, or UNCERTAIN.\n"
+                    + "confidence must be a JSON number from 0.0 to 1.0.\n"
+                    + "Do not request search_repo or read_file.";
+        }
         return "RESPONSE FORMAT REQUIREMENT (prompt-level fallback):\n"
                 + "Return ONLY one valid JSON object. No markdown, no prose.\n"
                 + "Allowed `action` values: `search_repo`, `read_file`, `final`.\n"
@@ -349,6 +480,20 @@ public class LlmApiClient {
                 + "- verdict: TRUE_POSITIVE | FALSE_POSITIVE | UNCERTAIN\n"
                 + "confidence must be a number in range [0.0, 1.0].\n"
                 + "Do not add any extra top-level fields.";
+    }
+
+    private static String lastUserContent(List<Map<String, Object>> messages) {
+        if (messages == null) {
+            return "";
+        }
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            Map<String, Object> message = messages.get(i);
+            if (message != null && "user".equals(message.get("role"))) {
+                Object content = message.get("content");
+                return content == null ? "" : content.toString();
+            }
+        }
+        return "";
     }
 
     private void sleepBeforeRetry() {

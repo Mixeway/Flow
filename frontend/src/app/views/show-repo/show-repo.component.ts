@@ -1211,10 +1211,12 @@ export class ShowRepoComponent implements OnInit, AfterViewInit, OnDestroy {
 
     evaluateWithLlm(source: 'SAST' | 'SECRETS') {
         this.repoService.runLlmEvaluation(+this.repoId, source).subscribe({
-            next: () => {
+            next: (response) => {
                 const label = source === 'SECRETS' ? 'secrets' : 'SAST';
                 this.toastStatus = 'success';
-                this.toastMessage = `AI verification requested. ${label} analysis will run in the background.`;
+                this.toastMessage = response?.status === 'queued'
+                    ? `AI scan added to the queue. ${label} analysis will start once the AI scans ahead of it finish.`
+                    : `AI verification requested. ${label} analysis will run in the background.`;
                 this.toggleToast();
                 this.loadRepoInfo();
             },

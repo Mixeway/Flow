@@ -15,3 +15,11 @@
 .select-week .calendar-row.current {
   cursor: pointer;
 }
+
+// sub-heading inside rendered findings markdown (e.g. "Remediation code" under the AI recommendation)
+markdown h6 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}

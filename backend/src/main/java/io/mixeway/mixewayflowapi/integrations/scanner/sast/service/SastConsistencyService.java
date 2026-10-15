@@ -10,8 +10,10 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Soft consistency only: when siblings share a consistency key but disagree on verdict,
- * append a warning to reasoning. Never mutates verdict, confidence, or recommendation.
+ * Soft consistency only: when siblings in the same scan share a consistency key but
+ * disagree on verdict, log the disagreement. The note is not written into developer-facing
+ * reasoning, because the first verdict is not more correct than a later one.
+ * Never mutates verdict, confidence, recommendation, or reasoning.
  */
 @Service
 @Log4j2
@@ -19,13 +21,18 @@ public class SastConsistencyService {
 
     private final Map<String, List<Item>> findingsByKey = new ConcurrentHashMap<>();
 
-    public void recordFinding(Item item, FindingEvidence evidence) {
+    public void clearScope(String scope) {
+        String prefix = scopePrefix(scope);
+        findingsByKey.keySet().removeIf(key -> key.startsWith(prefix));
+    }
+
+    public void recordFinding(String scope, Item item, FindingEvidence evidence) {
         if (item == null || evidence == null || evidence.consistencyKey() == null || evidence.consistencyKey().isBlank()
                 || item.getAiVerdict() == null || item.getAiVerdict().isBlank()) {
             return;
         }
 
-        String key = evidence.consistencyKey();
+        String key = scopePrefix(scope) + evidence.consistencyKey();
         List<Item> siblings = findingsByKey.computeIfAbsent(key, ignored -> new ArrayList<>());
         synchronized (siblings) {
             siblings.add(item);
@@ -70,13 +77,14 @@ public class SastConsistencyService {
             if (verdict == null || referenceVerdict.equals(verdict)) {
                 continue;
             }
-            String note = "Consistency warning: a structurally similar finding was previously classified as "
-                    + referenceVerdict
-                    + ". Re-check whether the same source/sink/primitive case is being judged differently.";
-            String reasoning = item.getAiReasoning();
-            if (reasoning == null || !reasoning.contains("Consistency warning:")) {
-                item.setAiReasoning(reasoning == null || reasoning.isBlank() ? note : reasoning + "\n\n" + note);
-            }
+            log.info("[SastConsistency] {} ({}) is {} but an earlier similar finding in this scan was {}. "
+                            + "Leaving this verdict unchanged.",
+                    item.getFilename(), item.getLineNumber(), verdict, referenceVerdict);
         }
+    }
+
+    private static String scopePrefix(String scope) {
+        String normalized = scope == null ? "" : scope;
+        return normalized + "|";
     }
 }

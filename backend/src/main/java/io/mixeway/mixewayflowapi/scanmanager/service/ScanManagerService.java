@@ -558,13 +558,20 @@ public class ScanManagerService {
      * for the requested source (SAST or SECRETS).
      * SAST and Secrets each have their own queue, and each queue runs one analysis at a time.
      */
-    public void runLlmEvaluation(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, Finding.Source source) {
+    /**
+     * @return {@code true} when the evaluation has to wait behind other LLM evaluations of the same source
+     */
+    public boolean runLlmEvaluation(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, Finding.Source source) {
         ThreadPoolExecutor queue = llmExecutor(source);
         int waiting = queue.getQueue().size();
         int running = queue.getActiveCount();
-        if (running > 0 || waiting > 0) {
-            log.debug("[ScanManagerService] Queued {} LLM evaluation for [{} / {}] (running={}, waiting={})",
+        boolean queued = running >= queue.getMaximumPoolSize() || waiting > 0;
+        if (queued) {
+            log.info("[ScanManagerService] {} AI scan for [{} / {}] added to queue (running={}, waiting={})",
                     source, codeRepo.getRepourl(), codeRepoBranch.getName(), running, waiting);
+        } else {
+            log.info("[ScanManagerService] {} AI scan for [{} / {}] accepted, starting immediately",
+                    source, codeRepo.getRepourl(), codeRepoBranch.getName());
         }
         queue.submit(() -> {
             String repoDir = llmRepoDir(codeRepo, source);
@@ -595,6 +602,7 @@ public class ScanManagerService {
                 }
             }
         });
+        return queued;
     }
 
     private ThreadPoolExecutor llmExecutor(Finding.Source source) {

@@ -3,6 +3,7 @@ package io.mixeway.mixewayflowapi.api.coderepo.mapper;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.GetFindingResponseDto;
 import io.mixeway.mixewayflowapi.db.entity.Finding;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.VulnsResponseDto;
+import io.mixeway.mixewayflowapi.integrations.scanner.sast.service.SastDeveloperFacingReasoning;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -27,8 +28,10 @@ public class FindingMapper {
     }
 
     public static void mapAiVerificationDetails(GetFindingResponseDto dto, Finding finding) {
-        dto.setAiVerificationReasoning(finding.getAiVerificationReasoning());
-        dto.setAiVerificationRecommendation(finding.getAiVerificationRecommendation());
+        String grade = finding.getAiVerificationGrade() == null ? null : finding.getAiVerificationGrade().name();
+        dto.setAiVerificationReasoning(SastDeveloperFacingReasoning.forDisplay(finding.getAiVerificationReasoning()));
+        dto.setAiVerificationRecommendation(SastDeveloperFacingReasoning.recommendationForDisplay(
+                grade, finding.getAiVerificationRecommendation()));
     }
 
     public static List<VulnsResponseDto> mapToDtoList(List<Finding> findings) {

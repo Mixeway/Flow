@@ -173,8 +173,8 @@ public class CodeRepoController {
             @Valid @RequestBody EvaluateLlmRequestDto request,
             Principal principal){
         try {
-            codeRepoApiService.runLlmEvaluation(id, request.getSource(), principal);
-            return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.OK);
+            boolean queued = codeRepoApiService.runLlmEvaluation(id, request.getSource(), principal);
+            return new ResponseEntity<>(new StatusDTO(queued ? "queued" : "ok"), HttpStatus.OK);
         } catch (IllegalArgumentException e) {
             log.warn("[CodeRepo] Invalid LLM evaluation source for {}: {}", id, e.getMessage());
             return new ResponseEntity<>(new StatusDTO(e.getMessage()), HttpStatus.BAD_REQUEST);
