@@ -92,11 +92,15 @@ public class CodeRepoApiService {
     }
 
 
-    public void runScan(Long id, Principal principal) {
+    /**
+     * @return {@code true} when the scan waits behind another scan or AI analysis of the repository
+     */
+    public boolean runScan(Long id, Principal principal) {
         CodeRepo repo = findCodeRepoService.findById(id, principal);
         if (repo != null){
-            scanManagerService.scanRepository(repo, repo.getDefaultBranch(),null, null);
+            return scanManagerService.scanRepository(repo, repo.getDefaultBranch(),null, null);
         }
+        return false;
     }
 
     /**
@@ -142,13 +146,13 @@ public class CodeRepoApiService {
         }
     }
 
-    public void runScanForBranch(Long id, String branchName, Principal principal) {
+    public boolean runScanForBranch(Long id, String branchName, Principal principal) {
         CodeRepo repo = findCodeRepoService.findById(id, principal);
         if (repo == null) {
             throw new CodeRepoNotFoundException("Repository not found");
         }
         CodeRepoBranch branch = getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(branchName, repo);
-        scanManagerService.scanRepository(repo, branch, null, null);
+        return scanManagerService.scanRepository(repo, branch, null, null);
     }
 
     /**

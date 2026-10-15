@@ -158,8 +158,8 @@ public class CodeRepoController {
     @GetMapping(value= "/api/v1/coderepo/{id}/run")
     public ResponseEntity<StatusDTO> runScan(@PathVariable("id") Long id, Principal principal){
         try {
-            codeRepoApiService.runScan(id, principal);
-            return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.OK);
+            boolean queued = codeRepoApiService.runScan(id, principal);
+            return new ResponseEntity<>(new StatusDTO(queued ? "queued" : "ok"), HttpStatus.OK);
         } catch (Exception e){
             log.error("[CodeRepo] Error Running scan for {}", id);
             return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
@@ -223,8 +223,8 @@ public class CodeRepoController {
     @PostMapping(value= "/api/v1/coderepo/{id}/run/branch")
     public ResponseEntity<StatusDTO> runScanForBranch(@PathVariable("id") Long id, @Valid @RequestBody RunScanBranchRequestDto request, Principal principal){
         try {
-            codeRepoApiService.runScanForBranch(id, request.getBranchName(), principal);
-            return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.OK);
+            boolean queued = codeRepoApiService.runScanForBranch(id, request.getBranchName(), principal);
+            return new ResponseEntity<>(new StatusDTO(queued ? "queued" : "ok"), HttpStatus.OK);
         } catch (Exception e){
             log.error("[CodeRepo] Error running scan for branch {} on repo {}", request.getBranchName(), id);
             return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);

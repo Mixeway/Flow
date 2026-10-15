@@ -1202,7 +1202,9 @@ export class ShowRepoComponent implements OnInit, AfterViewInit, OnDestroy {
         this.repoService.runScan(+this.repoId).subscribe({
             next: (response) => {
                 this.toastStatus = 'success';
-                this.toastMessage = 'Successfully requested a scan';
+                this.toastMessage = response?.status === 'queued'
+                    ? 'Scan added to the queue. It will start once the scan or AI analysis running for this repository finishes.'
+                    : 'Successfully requested a scan';
                 this.toggleToast();
                 this.loadRepoInfo();
             },
@@ -1215,7 +1217,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit, OnDestroy {
                 const label = source === 'SECRETS' ? 'secrets' : 'SAST';
                 this.toastStatus = 'success';
                 this.toastMessage = response?.status === 'queued'
-                    ? `AI scan added to the queue. ${label} analysis will start once the AI scans ahead of it finish.`
+                    ? `AI scan added to the queue. ${label} analysis will start once the scans ahead of it finish.`
                     : `AI verification requested. ${label} analysis will run in the background.`;
                 this.toggleToast();
                 this.loadRepoInfo();
@@ -1230,9 +1232,11 @@ export class ShowRepoComponent implements OnInit, AfterViewInit, OnDestroy {
 
     runScanForBranch(branchName: string) {
         this.repoService.runScanForBranch(+this.repoId, branchName).subscribe({
-            next: () => {
+            next: (response) => {
                 this.toastStatus = 'success';
-                this.toastMessage = `Scan requested for branch: ${branchName}`;
+                this.toastMessage = response?.status === 'queued'
+                    ? `Scan for branch ${branchName} added to the queue. It will start once the scan or AI analysis running for this repository finishes.`
+                    : `Scan requested for branch: ${branchName}`;
                 this.toggleToast();
                 this.loadRepoInfo();
             },
