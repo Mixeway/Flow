@@ -7,6 +7,8 @@ export class FindingDTO {
     severity: string = "";
     inserted: string = "";
     last_seen: string= "";
+    ai_verification_grade: string = "";
+    ai_verification_confidence: number | null = null;
 }
 interface Comment {
     inserted: string;
@@ -21,4 +23,6 @@ export class SingleFindingDTO {
     explanation: string = "";
     refs:string = "";
     comments: Comment[] = [];
+    ai_verification_reasoning: string = "";
+    ai_verification_recommendation: string = "";
 }

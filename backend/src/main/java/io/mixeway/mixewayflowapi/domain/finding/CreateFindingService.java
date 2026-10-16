@@ -34,6 +34,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Log4j2
 public class CreateFindingService {
+    private static final String AI_FALSE_POSITIVE_COMMENT = "Assessed and suppressed by AI";
+
     private final FindingRepository findingRepository;
     private final GetOrCreateVulnerabilityService getOrCreateVulnerabilityService;
     private final CheckSuppressRuleService checkSuppressRuleService;
@@ -69,6 +71,8 @@ public class CreateFindingService {
                 } else if (existingFinding.getStatus() != Finding.Status.SUPRESSED) {
                     existingFinding.updateStatus(Finding.Status.EXISTING, existingFinding.getSuppressedReason());
                 }
+                existingFinding.copyAiVerificationFrom(newFinding);
+                applyAiFalsePositive(existingFinding);
                 existingFinding.noteFindingDetected();  // Ensure updatedDate is always updated
                 findingRepository.saveAndFlush(existingFinding);
                 existingFindingsMap.remove(key);
@@ -94,6 +98,7 @@ public class CreateFindingService {
                 } else {
                     newFinding.updateStatus(Finding.Status.NEW, null);
                 }
+                applyAiFalsePositive(newFinding);
                 Finding savedFinding = findingRepository.saveAndFlush(newFinding);
                 checkSuppressRuleService.validate(savedFinding);
                 if (savedFinding.getStatus() == Finding.Status.NEW) {
@@ -125,6 +130,64 @@ public class CreateFindingService {
             log.info("[Finding Service] Saved {} findings. Source: {}", newFindings.size(), source.toString());
         }
 
+    }
+
+    /**
+     * Immediately persists AI verification fields for a single SAST finding identified by its
+     * branch + location. Called after each item is verified so that restarts don't discard
+     * already-completed verdicts.
+     */
+    @Transactional
+    public void saveAiVerificationForSastItem(String location, CodeRepoBranch codeRepoBranch,
+            Finding.AiVerificationGrade grade, Double confidence, String reasoning, String recommendation) {
+        saveAiVerification(location, codeRepoBranch, Finding.Source.SAST, grade, confidence, reasoning, recommendation);
+    }
+
+    /**
+     * Immediately persists AI verification fields for a single finding identified by
+     * branch + location + source.
+     */
+    @Transactional
+    public void saveAiVerification(String location, CodeRepoBranch codeRepoBranch, Finding.Source source,
+            Finding.AiVerificationGrade grade, Double confidence, String reasoning, String recommendation) {
+        if (grade == null || grade == Finding.AiVerificationGrade.NOT_VERIFIED) {
+            return;
+        }
+        List<Finding> findings = findingRepository.findByBranchAndLocationAndSourceExcludingStatus(
+                codeRepoBranch, location, source, Finding.Status.REMOVED);
+        for (Finding finding : findings) {
+            finding.setAiVerification(grade, confidence, reasoning, recommendation);
+            applyAiFalsePositive(finding);
+            findingRepository.save(finding);
+        }
+        if (!findings.isEmpty()) {
+            log.debug("[Finding Service] Intermediate AI save: {} finding(s) at {} source={} grade={} confidence={}",
+                    findings.size(), location, source, grade, confidence);
+        }
+    }
+
+    /**
+     * A false-positive AI verdict suppresses the finding immediately and records who decided it.
+     * An existing suppression with a different reason is left unchanged.
+     */
+    private void applyAiFalsePositive(Finding finding) {
+        if (finding.getAiVerificationGrade() != Finding.AiVerificationGrade.FALSE_POSITIVE) {
+            return;
+        }
+        if (finding.getStatus() == Finding.Status.REMOVED) {
+            return;
+        }
+        if (finding.getStatus() != Finding.Status.SUPRESSED) {
+            finding.suppress(Finding.SuppressedReason.FALSE_POSITIVE.name());
+            jiraTicketLifecycleService.onFindingSuppressed(finding);
+        } else if (finding.getSuppressedReason() != Finding.SuppressedReason.FALSE_POSITIVE) {
+            return;
+        }
+        boolean alreadyCommented = finding.getComments().stream()
+                .anyMatch(comment -> AI_FALSE_POSITIVE_COMMENT.equals(comment.getMessage()));
+        if (!alreadyCommented) {
+            finding.addComment(new Comment(AI_FALSE_POSITIVE_COMMENT, finding));
+        }
     }
 
     private String findingKey(Finding finding) {
@@ -290,9 +353,8 @@ public class CreateFindingService {
             if (!mergedFindingsMap.containsKey(key)) {
                 mergedFindingsMap.put(key, finding);
             } else {
-                // Merge logic: Assuming merging means combining data, adjust as necessary
                 Finding existingFinding = mergedFindingsMap.get(key);
-                // Adjust merging logic here if needed
+                existingFinding.copyAiVerificationFrom(finding);
             }
         }
 
@@ -395,7 +457,7 @@ public class CreateFindingService {
     private List<Finding> mapItemsToFindings(List<Item> items, CodeRepoBranch codeRepoBranch, CodeRepo codeRepo, Finding.Severity severity) {
         return items.stream().map(item -> {
             Vulnerability vulnerability = getOrCreateVulnerabilityService.getOrCreate(item.getTitle(), item.getDescription(), null, item.getDocumentationUrl(), null, null, null, null);
-            return new Finding(
+            Finding finding = new Finding(
                     vulnerability,
                     null,
                     codeRepoBranch,
@@ -406,6 +468,18 @@ public class CreateFindingService {
                     severity,
                     Finding.Source.SAST
             );
+
+            if (item.getAiVerdict() != null) {
+                Finding.AiVerificationGrade grade = switch (item.getAiVerdict()) {
+                    case "TRUE_POSITIVE" -> Finding.AiVerificationGrade.TRUE_POSITIVE;
+                    case "FALSE_POSITIVE" -> Finding.AiVerificationGrade.FALSE_POSITIVE;
+                    case "UNCERTAIN" -> Finding.AiVerificationGrade.UNCERTAIN;
+                    default -> Finding.AiVerificationGrade.NOT_VERIFIED;
+                };
+                finding.setAiVerification(grade, item.getAiConfidence(), item.getAiReasoning(), item.getAiRecommendation());
+            }
+
+            return finding;
         }).collect(Collectors.toList());
     }
 }

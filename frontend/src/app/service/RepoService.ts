@@ -26,7 +26,6 @@ export interface InactiveTokenReport {
     teams: InactiveTokenTeam[];
 }
 
-
 @Injectable({
     providedIn: 'root'
 })
@@ -37,6 +36,12 @@ export class RepoService {
 
     getRepo(id: number): Observable<any> {
         return this.http.get<any>(this.loginUrl + '/api/v1/coderepo/' + id,{ withCredentials: true });
+    }
+    getSastLlmProgress(id: number): Observable<{ active: boolean; analyzed: number; total: number }> {
+        return this.http.get<{ active: boolean; analyzed: number; total: number }>(
+            this.loginUrl + '/api/v1/coderepo/' + id + '/sast-llm-progress',
+            { withCredentials: true }
+        );
     }
     getRepos(): Observable<any> {
         return this.http.get<any>(this.loginUrl + '/api/v1/coderepo',{ withCredentials: true });
@@ -76,6 +81,10 @@ export class RepoService {
 
     getRemoteBranches(id: number): Observable<string[]> {
         return this.http.get<string[]>(this.loginUrl + '/api/v1/coderepo/' + id + '/git-branches', { withCredentials: true });
+    }
+
+    runLlmEvaluation(id: number, source: 'SAST' | 'SECRETS'): Observable<any> {
+        return this.http.post<any>(this.loginUrl + '/api/v1/coderepo/' + id + '/evaluate-llm', { source }, { withCredentials: true });
     }
 
     runScanForBranch(id: number, branchName: string): Observable<any> {

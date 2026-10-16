@@ -27,6 +27,15 @@ import java.util.Map;
 public interface FindingRepository extends JpaRepository<Finding, Long> {
     List<Finding> findBySourceAndCloudSubscription(Finding.Source source, CloudSubscription cloudSubscription);
     List<Finding> findBySourceAndCodeRepoBranchAndCodeRepo(Finding.Source source, CodeRepoBranch codeRepoBranch, CodeRepo codeRepo);
+
+    @EntityGraph(attributePaths = {"vulnerability"})
+    @Query("SELECT f FROM Finding f WHERE f.source = :source AND f.codeRepo = :codeRepo "
+            + "AND f.codeRepoBranch = :codeRepoBranch AND f.status IN :statuses")
+    List<Finding> findBySourceAndCodeRepoAndCodeRepoBranchAndStatusIn(
+            @Param("source") Finding.Source source,
+            @Param("codeRepo") CodeRepo codeRepo,
+            @Param("codeRepoBranch") CodeRepoBranch codeRepoBranch,
+            @Param("statuses") Collection<Finding.Status> statuses);
     List<Finding> findBySourceAndCodeRepo(Finding.Source source, CodeRepo codeRepo);
     List<Finding> findByCloudSubscriptionAndSource(CloudSubscription cloudSubscription, Finding.Source source);
     List<Finding> findByCloudSubscription(CloudSubscription cloudSubscription);
@@ -90,6 +99,34 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
 
     List<Finding> findByCodeRepoAndVulnerability(CodeRepo codeRepo, Vulnerability vulnerability);
     boolean existsByCodeRepoBranch(CodeRepoBranch codeRepoBranch);
+
+    @Query("SELECT f FROM Finding f WHERE f.codeRepoBranch = :branch AND f.location = :location AND f.source = :source AND f.status <> :removedStatus")
+    List<Finding> findByBranchAndLocationAndSourceExcludingStatus(
+            @Param("branch") CodeRepoBranch branch,
+            @Param("location") String location,
+            @Param("source") Finding.Source source,
+            @Param("removedStatus") Finding.Status removedStatus);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE Finding f SET " +
+           "f.aiVerificationGrade = :grade, " +
+           "f.aiVerificationConfidence = :confidence, " +
+           "f.aiVerificationReasoning = :reasoning, " +
+           "f.aiVerificationRecommendation = :recommendation " +
+           "WHERE f.source = :source " +
+           "AND f.codeRepoBranch = :branch " +
+           "AND f.location = :location " +
+           "AND f.status <> :removedStatus")
+    int updateAiVerificationForSastFinding(
+            @Param("branch") CodeRepoBranch branch,
+            @Param("location") String location,
+            @Param("source") Finding.Source source,
+            @Param("removedStatus") Finding.Status removedStatus,
+            @Param("grade") Finding.AiVerificationGrade grade,
+            @Param("confidence") Double confidence,
+            @Param("reasoning") String reasoning,
+            @Param("recommendation") String recommendation);
 
     @Query("SELECT f FROM Finding f WHERE f.codeRepo = :codeRepo AND f.vulnerability.name = :vulnerabilityName AND f.codeRepoBranch = :codeRepoBranch AND f.location = :location")
     List<Finding> findByCodeRepoAndVulnerabilityNameAndBranchAndLocation(

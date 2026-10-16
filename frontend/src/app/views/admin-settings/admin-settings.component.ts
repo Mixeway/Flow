@@ -154,6 +154,31 @@ export class AdminSettingsComponent implements OnInit{
 
     /** Remediation SLA per severity in days; null means no SLA is tracked. */
     slaConfig: SlaConfig = { criticalDays: 14, highDays: 30, mediumDays: null, lowDays: null };
+    readonly llmSeverityOptions = [
+        { id: 'CRITICAL', label: 'Critical' },
+        { id: 'HIGH', label: 'High' },
+        { id: 'MEDIUM', label: 'Medium' },
+        { id: 'LOW', label: 'Low' },
+        { id: 'INFO', label: 'Info' },
+    ];
+    private readonly defaultLlmSeverities = ['CRITICAL', 'HIGH'];
+    llmSources: Array<{
+        source: string;
+        label: string;
+        enabled: boolean;
+        apiUrl: string;
+        apiKey: string;
+        model: string;
+        contextWindow: number;
+        scanConcurrency: number;
+        severities: string[];
+    }> = [
+        { source: 'SAST', label: 'SAST', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 16384, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'] },
+        { source: 'SCA', label: 'SCA', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'] },
+        { source: 'IAC', label: 'IaC', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'] },
+        { source: 'SECRETS', label: 'Secrets', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'] },
+        { source: 'DAST', label: 'DAST', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'] },
+    ];
     repoTokenSearchTerm: string = '';
     repoTokenValue: string = '';
     repoTokenRows: AdminRepoTokenRow[] = [];
@@ -339,7 +364,8 @@ export class AdminSettingsComponent implements OnInit{
                 this.wizConfigForm.patchValue({secret: "************"});
                 this.isWizEnabled = this.settings.enableWiz;
 
-                this.geminiApiKey = this.settings.geminiApiKey;
+                this.geminiApiKey = this.settings.geminiApiKey || '';
+                this.applyLlmSources(this.settings.llmSources);
 
             }
         });
@@ -611,6 +637,45 @@ export class AdminSettingsComponent implements OnInit{
         });
     }
 
+    private applyLlmSources(incoming: any[] | undefined) {
+        const bySource = new Map((incoming || []).map(row => [row.source, row]));
+        this.llmSources = this.llmSources.map(section => {
+            const row = bySource.get(section.source);
+            if (!row) {
+                return { ...section, enabled: false, apiUrl: '', apiKey: '', model: '' };
+            }
+            return {
+                ...section,
+                enabled: !!row.enabled,
+                apiUrl: row.apiUrl || '',
+                apiKey: row.apiKeyConfigured ? '************' : '',
+                model: row.model || '',
+                contextWindow: row.contextWindow || 8192,
+                scanConcurrency: row.scanConcurrency || 2,
+                severities: Array.isArray(row.severities) && row.severities.length
+                    ? row.severities
+                    : [...this.defaultLlmSeverities]
+            };
+        });
+    }
+
+    isLlmSeveritySelected(section: { severities: string[] }, severity: string): boolean {
+        return section.severities?.includes(severity) ?? false;
+    }
+
+    toggleLlmSeverity(section: { severities: string[] }, severity: string, event: Event): void {
+        const checked = (event.target as HTMLInputElement).checked;
+        const selected = new Set(section.severities || []);
+        if (checked) {
+            selected.add(severity);
+        } else {
+            selected.delete(severity);
+        }
+        section.severities = this.llmSeverityOptions
+            .map(option => option.id)
+            .filter(id => selected.has(id));
+    }
+
     saveOtherConfigurationSettings() {
         this.settingsService.changeOtherConfig({
             geminiApiKey: this.geminiApiKey
@@ -620,9 +685,34 @@ export class AdminSettingsComponent implements OnInit{
                 this.toastMessage = "Application configuration updated successfully";
                 this.toggleToast();
             },
-            error: (error) => {
+            error: () => {
                 this.toastStatus = "danger";
                 this.toastMessage = "Failed to update";
+                this.toggleToast();
+            }
+        });
+    }
+
+    saveLlmConfiguration() {
+        this.settingsService.changeLlmConfig(this.llmSources.map(section => ({
+                source: section.source,
+                enabled: section.enabled,
+                apiUrl: section.apiUrl,
+                apiKey: section.apiKey,
+                model: section.model,
+                contextWindow: section.contextWindow,
+                scanConcurrency: section.scanConcurrency,
+                severities: section.severities
+            }))
+        ).subscribe({
+            next: () => {
+                this.toastStatus = "success";
+                this.toastMessage = "LLM configuration updated successfully";
+                this.toggleToast();
+            },
+            error: () => {
+                this.toastStatus = "danger";
+                this.toastMessage = "Failed to update LLM configuration";
                 this.toggleToast();
             }
         });
@@ -747,14 +837,16 @@ export class AdminSettingsComponent implements OnInit{
     getInactiveTokenStatusLabel(status: InactiveTokenStatus): string {
         switch (status) {
             case 'UNAUTHORIZED': return 'Unauthorized / Inactive';
-            case 'NOT_FOUND': return 'Repository not found / no access';            default: return 'Could not verify';
+            case 'NOT_FOUND': return 'Repository not found / no access';
+            default: return 'Could not verify';
         }
     }
 
     getInactiveTokenStatusColor(status: InactiveTokenStatus): string {
         switch (status) {
             case 'UNAUTHORIZED': return 'danger';
-            case 'NOT_FOUND': return 'warning';            default: return 'secondary';
+            case 'NOT_FOUND': return 'warning';
+            default: return 'secondary';
         }
     }
 }

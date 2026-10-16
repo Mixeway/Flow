@@ -20,6 +20,10 @@ public class TeamVulnsResponseDto {
     String repoUrl;
     @JsonProperty("jira_ticket_key")
     String jiraTicketKey;
+    @JsonProperty("ai_verification_grade")
+    String aiVerificationGrade;
+    @JsonProperty("ai_verification_confidence")
+    Double aiVerificationConfidence;
 
 
 }

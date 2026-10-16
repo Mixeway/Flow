@@ -25,8 +25,8 @@ public class Comment {
     @JoinColumn(name = "finding_id", nullable = false)
     private final Finding finding;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
     private final UserInfo user;
 
     @CreationTimestamp
@@ -51,6 +51,15 @@ public class Comment {
         this.message = message;
         this.finding = finding;
         this.user = user;
+    }
+
+    /** Automated comment with no user account, shown as AI. */
+    public Comment(String message, Finding finding) {
+        this(message, finding, null);
+    }
+
+    public String authorName() {
+        return user == null || user.getUsername() == null ? "AI" : user.getUsername();
     }
 
     @PreUpdate

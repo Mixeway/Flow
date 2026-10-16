@@ -39,6 +39,7 @@ public class CloudIssuesService {
             GetFindingResponseDto getFindingResponseDto = new GetFindingResponseDto();
             VulnsResponseDto vulnsResponseDto = FindingMapper.mapToDto(issue.get());
             getFindingResponseDto.setVulnsResponseDto(vulnsResponseDto);
+            FindingMapper.mapAiVerificationDetails(getFindingResponseDto, issue.get());
             getFindingResponseDto.setDescription(issue.get().getVulnerability().getDescription());
             getFindingResponseDto.setRecommendation(issue.get().getVulnerability().getRecommendation());
             getFindingResponseDto.setRefs(issue.get().getVulnerability().getRef());

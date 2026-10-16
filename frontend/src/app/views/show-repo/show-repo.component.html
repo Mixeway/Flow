@@ -1,6 +1,7 @@
 <app-repository-info
         [repoData]="repoData"
         [scanRunning]="scanRunning"
+        [llmProgress]="llmProgress"
         [userRole]="userRole"
         [topLanguages]="topLanguages"
         [chartPieData]="chartPieData"
@@ -9,6 +10,7 @@
         (runScanEvent)="runScan()"
         (runScanBranchEvent)="runScanForBranch($event)"
         (uploadSbomScanEvent)="uploadSbomScan($event)"
+        (evaluateLlmEvent)="evaluateWithLlm($event)"
         (openChangeTeamModalEvent)="openChangeTeamModal()"
         (deleteRepoEvent)="openDeleteRepoModal()"
 ></app-repository-info>

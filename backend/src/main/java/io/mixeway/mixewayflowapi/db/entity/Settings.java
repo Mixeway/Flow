@@ -1,9 +1,15 @@
 package io.mixeway.mixewayflowapi.db.entity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Set;
 
 @Entity
 @Getter
@@ -101,6 +107,263 @@ public class Settings {
         this.slaHighDays = highDays;
         this.slaMediumDays = mediumDays;
         this.slaLowDays = lowDays;
+    }
+
+    @Column(name = "sast_llm_enabled", nullable = false)
+    private boolean sastLlmEnabled = false;
+    @Column(name = "sast_llm_api_url", length = 500)
+    private String sastLlmApiUrl;
+    @Column(name = "sast_llm_api_key", length = 500)
+    @JsonIgnore
+    private String sastLlmApiKey;
+    @Column(name = "sast_llm_model", length = 200)
+    private String sastLlmModel;
+    @Column(name = "sast_llm_context_window", nullable = false)
+    private int sastLlmContextWindow = 16384;
+    @Column(name = "sast_llm_scan_concurrency", nullable = false)
+    private int sastLlmScanConcurrency = 2;
+    @Column(name = "sast_llm_severities", nullable = false, length = 100)
+    private String sastLlmSeverities = "CRITICAL,HIGH";
+
+    @Column(name = "sca_llm_enabled", nullable = false)
+    private boolean scaLlmEnabled = false;
+    @Column(name = "sca_llm_api_url", length = 500)
+    private String scaLlmApiUrl;
+    @Column(name = "sca_llm_api_key", length = 500)
+    @JsonIgnore
+    private String scaLlmApiKey;
+    @Column(name = "sca_llm_model", length = 200)
+    private String scaLlmModel;
+    @Column(name = "sca_llm_context_window", nullable = false)
+    private int scaLlmContextWindow = 8192;
+    @Column(name = "sca_llm_scan_concurrency", nullable = false)
+    private int scaLlmScanConcurrency = 2;
+    @Column(name = "sca_llm_severities", nullable = false, length = 100)
+    private String scaLlmSeverities = "CRITICAL,HIGH";
+
+    @Column(name = "iac_llm_enabled", nullable = false)
+    private boolean iacLlmEnabled = false;
+    @Column(name = "iac_llm_api_url", length = 500)
+    private String iacLlmApiUrl;
+    @Column(name = "iac_llm_api_key", length = 500)
+    @JsonIgnore
+    private String iacLlmApiKey;
+    @Column(name = "iac_llm_model", length = 200)
+    private String iacLlmModel;
+    @Column(name = "iac_llm_context_window", nullable = false)
+    private int iacLlmContextWindow = 8192;
+    @Column(name = "iac_llm_scan_concurrency", nullable = false)
+    private int iacLlmScanConcurrency = 2;
+    @Column(name = "iac_llm_severities", nullable = false, length = 100)
+    private String iacLlmSeverities = "CRITICAL,HIGH";
+
+    @Column(name = "secrets_llm_enabled", nullable = false)
+    private boolean secretsLlmEnabled = false;
+    @Column(name = "secrets_llm_api_url", length = 500)
+    private String secretsLlmApiUrl;
+    @Column(name = "secrets_llm_api_key", length = 500)
+    @JsonIgnore
+    private String secretsLlmApiKey;
+    @Column(name = "secrets_llm_model", length = 200)
+    private String secretsLlmModel;
+    @Column(name = "secrets_llm_context_window", nullable = false)
+    private int secretsLlmContextWindow = 8192;
+    @Column(name = "secrets_llm_scan_concurrency", nullable = false)
+    private int secretsLlmScanConcurrency = 2;
+    @Column(name = "secrets_llm_severities", nullable = false, length = 100)
+    private String secretsLlmSeverities = "CRITICAL,HIGH";
+
+    @Column(name = "dast_llm_enabled", nullable = false)
+    private boolean dastLlmEnabled = false;
+    @Column(name = "dast_llm_api_url", length = 500)
+    private String dastLlmApiUrl;
+    @Column(name = "dast_llm_api_key", length = 500)
+    @JsonIgnore
+    private String dastLlmApiKey;
+    @Column(name = "dast_llm_model", length = 200)
+    private String dastLlmModel;
+    @Column(name = "dast_llm_context_window", nullable = false)
+    private int dastLlmContextWindow = 8192;
+    @Column(name = "dast_llm_scan_concurrency", nullable = false)
+    private int dastLlmScanConcurrency = 2;
+    @Column(name = "dast_llm_severities", nullable = false, length = 100)
+    private String dastLlmSeverities = "CRITICAL,HIGH";
+
+    /**
+     * One LLM endpoint per scanner source, read from columns on this settings row.
+     */
+    @JsonProperty("llmSources")
+    public List<LlmSourceView> getLlmSources() {
+        List<LlmSourceView> views = new ArrayList<>();
+        for (Finding.Source source : Finding.Source.values()) {
+            LlmFields fields = llmFields(source);
+            views.add(new LlmSourceView(
+                    source.name(),
+                    fields.enabled,
+                    fields.apiUrl,
+                    fields.model,
+                    hasText(fields.apiKey),
+                    fields.contextWindow,
+                    fields.scanConcurrency,
+                    severityNames(fields.severities)
+            ));
+        }
+        return views;
+    }
+
+    @JsonIgnore
+    public boolean isSourceLlmConfigured(Finding.Source source) {
+        LlmFields fields = llmFields(source);
+        return fields.enabled && hasText(fields.apiUrl) && hasText(fields.apiKey) && hasText(fields.model);
+    }
+
+    @JsonIgnore
+    public String sourceLlmApiUrl(Finding.Source source) {
+        return llmFields(source).apiUrl;
+    }
+
+    @JsonIgnore
+    public String sourceLlmApiKey(Finding.Source source) {
+        return llmFields(source).apiKey;
+    }
+
+    @JsonIgnore
+    public String sourceLlmModel(Finding.Source source) {
+        return llmFields(source).model;
+    }
+
+    @JsonIgnore
+    public int sourceLlmContextWindow(Finding.Source source) {
+        return llmFields(source).contextWindow;
+    }
+
+    @JsonIgnore
+    public int sourceLlmScanConcurrency(Finding.Source source) {
+        return llmFields(source).scanConcurrency;
+    }
+
+    @JsonIgnore
+    public Set<Finding.Severity> sourceLlmSeverities(Finding.Source source) {
+        return parseSeverities(llmFields(source).severities);
+    }
+
+    public void upsertLlmSource(Finding.Source source, boolean enabled, String apiUrl, String apiKey, String model,
+                                int contextWindow, int scanConcurrency, String severities) {
+        switch (source) {
+            case SAST -> {
+                this.sastLlmEnabled = enabled;
+                this.sastLlmApiUrl = apiUrl;
+                this.sastLlmApiKey = apiKey;
+                this.sastLlmModel = model;
+                this.sastLlmContextWindow = contextWindow;
+                this.sastLlmScanConcurrency = scanConcurrency;
+                this.sastLlmSeverities = severities;
+            }
+            case SCA -> {
+                this.scaLlmEnabled = enabled;
+                this.scaLlmApiUrl = apiUrl;
+                this.scaLlmApiKey = apiKey;
+                this.scaLlmModel = model;
+                this.scaLlmContextWindow = contextWindow;
+                this.scaLlmScanConcurrency = scanConcurrency;
+                this.scaLlmSeverities = severities;
+            }
+            case IAC -> {
+                this.iacLlmEnabled = enabled;
+                this.iacLlmApiUrl = apiUrl;
+                this.iacLlmApiKey = apiKey;
+                this.iacLlmModel = model;
+                this.iacLlmContextWindow = contextWindow;
+                this.iacLlmScanConcurrency = scanConcurrency;
+                this.iacLlmSeverities = severities;
+            }
+            case SECRETS -> {
+                this.secretsLlmEnabled = enabled;
+                this.secretsLlmApiUrl = apiUrl;
+                this.secretsLlmApiKey = apiKey;
+                this.secretsLlmModel = model;
+                this.secretsLlmContextWindow = contextWindow;
+                this.secretsLlmScanConcurrency = scanConcurrency;
+                this.secretsLlmSeverities = severities;
+            }
+            case DAST -> {
+                this.dastLlmEnabled = enabled;
+                this.dastLlmApiUrl = apiUrl;
+                this.dastLlmApiKey = apiKey;
+                this.dastLlmModel = model;
+                this.dastLlmContextWindow = contextWindow;
+                this.dastLlmScanConcurrency = scanConcurrency;
+                this.dastLlmSeverities = severities;
+            }
+            default -> throw new IllegalArgumentException("LLM settings are not stored for " + source);
+        }
+    }
+
+    private LlmFields llmFields(Finding.Source source) {
+        return switch (source) {
+            case SAST -> new LlmFields(sastLlmEnabled, sastLlmApiUrl, sastLlmApiKey, sastLlmModel, sastLlmContextWindow, sastLlmScanConcurrency, sastLlmSeverities);
+            case SCA -> new LlmFields(scaLlmEnabled, scaLlmApiUrl, scaLlmApiKey, scaLlmModel, scaLlmContextWindow, scaLlmScanConcurrency, scaLlmSeverities);
+            case IAC -> new LlmFields(iacLlmEnabled, iacLlmApiUrl, iacLlmApiKey, iacLlmModel, iacLlmContextWindow, iacLlmScanConcurrency, iacLlmSeverities);
+            case SECRETS -> new LlmFields(secretsLlmEnabled, secretsLlmApiUrl, secretsLlmApiKey, secretsLlmModel, secretsLlmContextWindow, secretsLlmScanConcurrency, secretsLlmSeverities);
+            case DAST -> new LlmFields(dastLlmEnabled, dastLlmApiUrl, dastLlmApiKey, dastLlmModel, dastLlmContextWindow, dastLlmScanConcurrency, dastLlmSeverities);
+            default -> new LlmFields(false, null, null, null, 8192, 2, "CRITICAL,HIGH");
+        };
+    }
+
+    private static Set<Finding.Severity> parseSeverities(String stored) {
+        EnumSet<Finding.Severity> selected = EnumSet.noneOf(Finding.Severity.class);
+        if (stored != null) {
+            for (String part : stored.split(",")) {
+                if (part == null || part.isBlank()) {
+                    continue;
+                }
+                try {
+                    selected.add(Finding.Severity.valueOf(part.trim()));
+                } catch (IllegalArgumentException ignored) {
+                    // skip unknown values left in older rows
+                }
+            }
+        }
+        if (selected.isEmpty()) {
+            selected.add(Finding.Severity.CRITICAL);
+            selected.add(Finding.Severity.HIGH);
+        }
+        return selected;
+    }
+
+    private static List<String> severityNames(String stored) {
+        return parseSeverities(stored).stream().map(Enum::name).toList();
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private record LlmFields(boolean enabled, String apiUrl, String apiKey, String model, int contextWindow, int scanConcurrency, String severities) {
+    }
+
+    @Getter
+    public static final class LlmSourceView {
+        private final String source;
+        private final boolean enabled;
+        private final String apiUrl;
+        private final String model;
+        private final boolean apiKeyConfigured;
+        private final int contextWindow;
+        private final int scanConcurrency;
+        private final List<String> severities;
+
+        public LlmSourceView(String source, boolean enabled, String apiUrl, String model, boolean apiKeyConfigured,
+                             int contextWindow, int scanConcurrency, List<String> severities) {
+            this.source = source;
+            this.enabled = enabled;
+            this.apiUrl = apiUrl;
+            this.model = model;
+            this.apiKeyConfigured = apiKeyConfigured;
+            this.contextWindow = contextWindow;
+            this.scanConcurrency = scanConcurrency;
+            this.severities = severities;
+        }
     }
 
     public void enableWiz(String clientId, String secret) {

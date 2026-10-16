@@ -3,8 +3,10 @@ package io.mixeway.mixewayflowapi.domain.settings;
 import io.mixeway.mixewayflowapi.api.admin.dto.ConfigScaRequestDto;
 import io.mixeway.mixewayflowapi.api.admin.dto.ConfigSmtpRequestDto;
 import io.mixeway.mixewayflowapi.api.admin.dto.ConfigWizRequestDto;
+import io.mixeway.mixewayflowapi.api.admin.dto.LlmSourceConfigDto;
 import io.mixeway.mixewayflowapi.api.admin.dto.OtherConfigRequestDto;
 import io.mixeway.mixewayflowapi.api.admin.dto.SlaConfigDto;
+import io.mixeway.mixewayflowapi.db.entity.Finding;
 import io.mixeway.mixewayflowapi.db.entity.Settings;
 import io.mixeway.mixewayflowapi.db.repository.SettingsRepository;
 import io.mixeway.mixewayflowapi.exceptions.SettingsException;
@@ -13,10 +15,21 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Set;
+
 @Service
 @RequiredArgsConstructor
 @Log4j2
 public class UpdateSettingsService {
+    private static final int DEFAULT_CONTEXT_WINDOW = 8192;
+    private static final int DEFAULT_SCAN_CONCURRENCY = 2;
+    private static final int MIN_CONTEXT_WINDOW = 256;
+    private static final int MAX_CONTEXT_WINDOW = 200000;
+    private static final int MAX_SCAN_CONCURRENCY = 16;
+
     private final SettingsRepository settingsRepository;
     private final FindSettingsService findSettingsService;
 
@@ -108,14 +121,127 @@ public class UpdateSettingsService {
                 slaConfigDto.getMediumDays(), slaConfigDto.getLowDays());
     }
 
+    @Transactional
     public void changeSettingsOther(OtherConfigRequestDto otherConfigRequestDto) throws SettingsException {
         Settings settings = findSettingsService.get();
         if(otherConfigRequestDto.getGeminiApiKey() != null){
             settings.setGeminiApiKey(otherConfigRequestDto.getGeminiApiKey());
-            settingsRepository.save(settings);
-        } else {
-            log.error("Gemini API Key cannot be null");
-            throw new SettingsException("Gemini API Key cannot be null");
         }
+
+        settingsRepository.save(settings);
+    }
+
+    @Transactional
+    public void changeSettingsLlm(List<LlmSourceConfigDto> llmSources) throws SettingsException {
+        if (llmSources == null) {
+            throw new SettingsException("LLM source configuration is required");
+        }
+        Settings settings = findSettingsService.get();
+        applyLlmSources(settings, llmSources);
+        settingsRepository.save(settings);
+    }
+
+    private void applyLlmSources(Settings settings, List<LlmSourceConfigDto> llmSources) throws SettingsException {
+        for (LlmSourceConfigDto dto : llmSources) {
+            if (dto == null || !hasText(dto.getSource())) {
+                throw new SettingsException("LLM source is required");
+            }
+            Finding.Source source;
+            try {
+                source = Finding.Source.valueOf(dto.getSource().trim());
+            } catch (IllegalArgumentException ex) {
+                throw new SettingsException("Unknown LLM source: " + dto.getSource());
+            }
+
+            int contextWindow = normalizeContextWindow(dto.getContextWindow(), source, dto.isEnabled());
+            int scanConcurrency = normalizeScanConcurrency(dto.getScanConcurrency(), source, dto.isEnabled());
+            String severities = normalizeSeverities(dto.getSeverities(), source, dto.isEnabled());
+            if (dto.isEnabled()) {
+                String apiKey = resolveLlmApiKey(storedLlmApiKey(settings, source), dto.getApiKey());
+                if (!hasText(dto.getApiUrl()) || !hasText(apiKey) || !hasText(dto.getModel())) {
+                    log.warn("[Settings] Error enabling LLM for {} - API URL, API key and model are required", source);
+                    throw new SettingsException("API URL, API key and model are required when enabling LLM for " + source);
+                }
+                settings.upsertLlmSource(source, true, dto.getApiUrl().trim(), apiKey, dto.getModel().trim(), contextWindow, scanConcurrency, severities);
+                log.info("[Settings] LLM enabled for {} with URL: {}", source, dto.getApiUrl());
+            } else {
+                settings.upsertLlmSource(source, false, null, null, null, contextWindow, scanConcurrency, severities);
+                log.info("[Settings] LLM disabled for {}", source);
+            }
+        }
+    }
+
+    private String storedLlmApiKey(Settings settings, Finding.Source source) {
+        return settings.sourceLlmApiKey(source);
+    }
+
+    private String resolveLlmApiKey(String storedApiKey, String requestedApiKey) {
+        if (hasText(requestedApiKey) && !isMaskedSecret(requestedApiKey)) {
+            return requestedApiKey;
+        }
+        return storedApiKey;
+    }
+
+    private boolean isMaskedSecret(String value) {
+        return "************".equals(value);
+    }
+
+    private int normalizeContextWindow(Integer value, Finding.Source source, boolean required) throws SettingsException {
+        if (value == null) {
+            if (required) {
+                throw new SettingsException("Context window is required when enabling LLM for " + source);
+            }
+            return DEFAULT_CONTEXT_WINDOW;
+        }
+        if (value < MIN_CONTEXT_WINDOW || value > MAX_CONTEXT_WINDOW) {
+            throw new SettingsException("Context window for " + source + " must be between " + MIN_CONTEXT_WINDOW + " and " + MAX_CONTEXT_WINDOW);
+        }
+        return value;
+    }
+
+    private String normalizeSeverities(List<String> requested, Finding.Source source, boolean required) throws SettingsException {
+        Set<Finding.Severity> selected = EnumSet.noneOf(Finding.Severity.class);
+        if (requested != null) {
+            for (String value : requested) {
+                if (value == null || value.isBlank()) {
+                    continue;
+                }
+                try {
+                    selected.add(Finding.Severity.valueOf(value.trim().toUpperCase()));
+                } catch (IllegalArgumentException ex) {
+                    throw new SettingsException("Unknown severity for " + source + ": " + value);
+                }
+            }
+        }
+        if (selected.isEmpty()) {
+            if (required) {
+                throw new SettingsException("Select at least one severity when enabling LLM for " + source);
+            }
+            return "CRITICAL,HIGH";
+        }
+        List<String> ordered = new ArrayList<>();
+        for (Finding.Severity severity : Finding.Severity.values()) {
+            if (selected.contains(severity)) {
+                ordered.add(severity.name());
+            }
+        }
+        return String.join(",", ordered);
+    }
+
+    private int normalizeScanConcurrency(Integer value, Finding.Source source, boolean required) throws SettingsException {
+        if (value == null) {
+            if (required) {
+                throw new SettingsException("Scan concurrency is required when enabling LLM for " + source);
+            }
+            return DEFAULT_SCAN_CONCURRENCY;
+        }
+        if (value < 1 || value > MAX_SCAN_CONCURRENCY) {
+            throw new SettingsException("Scan concurrency for " + source + " must be between 1 and " + MAX_SCAN_CONCURRENCY);
+        }
+        return value;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 }
