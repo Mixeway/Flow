@@ -30,6 +30,9 @@ else
     SPRING_PROFILE="prod"
 fi
 
+# Heap is a share of the container memory limit; the rest is left for ZAP and the scanners.
+JAVA_OPTS="${JAVA_OPTS:--XX:MaxRAMPercentage=50}"
+
 ## Start Dependency-Track in the background with 4GB of memory and log output to a file
 #LOG_FILE="/var/log/dtrack.log"
 #echo "Starting Dependency-Track..."
@@ -146,16 +149,16 @@ if [ "$(echo $SSL | tr '[:upper:]' '[:lower:]')" = "true" ]; then
 
     echo "Proceeding to run the application with SSL and profile $SPRING_PROFILE..."
     if [ -n "$PROXY_HOST" ] && [ -n "$PROXY_PORT" ]; then
-        java -Dspring.profiles.active=$SPRING_PROFILE -Dserver.ssl.key-store=/etc/pki/certificate.p12 -Dserver.ssl.key-store-password=$P12PASS -Dserver.ssl.key-alias=flow -Dproxy.host=$PROXY_HOST -Dproxy.port=$PROXY_PORT -jar /app/flowapi.jar
+        exec java $JAVA_OPTS -Dspring.profiles.active=$SPRING_PROFILE -Dserver.ssl.key-store=/etc/pki/certificate.p12 -Dserver.ssl.key-store-password=$P12PASS -Dserver.ssl.key-alias=flow -Dproxy.host=$PROXY_HOST -Dproxy.port=$PROXY_PORT -jar /app/flowapi.jar
     else
-        java -Dspring.profiles.active=$SPRING_PROFILE -Dserver.ssl.key-store=/etc/pki/certificate.p12 -Dserver.ssl.key-store-password=$P12PASS -Dserver.ssl.key-alias=flow -jar /app/flowapi.jar
+        exec java $JAVA_OPTS -Dspring.profiles.active=$SPRING_PROFILE -Dserver.ssl.key-store=/etc/pki/certificate.p12 -Dserver.ssl.key-store-password=$P12PASS -Dserver.ssl.key-alias=flow -jar /app/flowapi.jar
     fi
 else
     echo "SSL is not enabled. Running the application without SSL..."
     SPRING_PROFILE=prodhttp
     if [ -n "$PROXY_HOST" ] && [ -n "$PROXY_PORT" ]; then
-        java -Dspring.profiles.active=$SPRING_PROFILE -Dproxy.host=$PROXY_HOST -Dproxy.port=$PROXY_PORT -jar /app/flowapi.jar
+        exec java $JAVA_OPTS -Dspring.profiles.active=$SPRING_PROFILE -Dproxy.host=$PROXY_HOST -Dproxy.port=$PROXY_PORT -jar /app/flowapi.jar
     else
-        java -Dspring.profiles.active=$SPRING_PROFILE -jar /app/flowapi.jar
+        exec java $JAVA_OPTS -Dspring.profiles.active=$SPRING_PROFILE -jar /app/flowapi.jar
     fi
 fi

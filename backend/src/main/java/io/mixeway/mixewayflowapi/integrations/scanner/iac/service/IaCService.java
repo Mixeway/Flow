@@ -8,6 +8,7 @@ import io.mixeway.mixewayflowapi.db.entity.Finding;
 import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.finding.CreateFindingService;
 import io.mixeway.mixewayflowapi.integrations.scanner.iac.dto.KicsReport;
+import io.mixeway.mixewayflowapi.utils.ScannerProcesses;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Value;
@@ -58,7 +59,7 @@ public class IaCService {
         pb.redirectOutput(ProcessBuilder.Redirect.PIPE);
         pb.redirectError(ProcessBuilder.Redirect.PIPE);
 
-        Process process = pb.start();
+        Process process = ScannerProcesses.start(pb);
 
         ExecutorService executorService = Executors.newFixedThreadPool(2);
 
@@ -92,15 +93,11 @@ public class IaCService {
             // Wait for the process to finish with a timeout
             boolean finished = process.waitFor(30, TimeUnit.MINUTES);
             if (!finished) {
-                log.warn("[KicsService] KICS scan did not finish within 20 minutes. Terminating process.");
-                process.destroyForcibly(); // Terminate the process
-                process.waitFor(); // Wait for the process to terminate
+                log.warn("[KicsService] KICS scan did not finish within 30 minutes. Terminating process.");
             }
         } finally {
+            ScannerProcesses.killTree(process);
             executorService.shutdownNow(); // Ensure executor service is properly shut down
-            if (process.isAlive()) {
-                process.destroyForcibly();
-            }
         }
 
         if (!reportFile.exists()) {

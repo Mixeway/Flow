@@ -3,16 +3,27 @@ package io.mixeway.mixewayflowapi.integrations.scanner.sca.service;
 import ch.qos.logback.core.spi.ScanException;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
+import io.mixeway.mixewayflowapi.utils.ScannerProcesses;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
+import javax.xml.XMLConstants;
+import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -52,6 +63,13 @@ public class CdxGenService {
     @Value("${scan.cdxgen.run-pipreqs:true}")
     private boolean runPipreqs;
 
+    /**
+     * When true (default), installs the checkout's own parent/aggregator POMs into the local Maven
+     * repository before cdxgen, so modules whose parent was never deployed can still be resolved.
+     */
+    @Value("${scan.cdxgen.install-local-parent-poms:true}")
+    private boolean installLocalParentPoms;
+
     @Value("${proxy.host:#{null}}")
     private String proxyHost;
 
@@ -79,6 +97,12 @@ public class CdxGenService {
 
         if (runPipreqs) {
             runPipreqsIfAvailable(repoDir);
+        }
+
+        removeEmptyPomFiles(repoDir);
+
+        if (installLocalParentPoms) {
+            installLocalParentPoms(repoDir);
         }
 
         ProcessBuilder pb = new ProcessBuilder(
@@ -113,7 +137,7 @@ public class CdxGenService {
             log.info("[CdxGen] Proxy settings applied: {}:{}", proxyHost, proxyPort);
         }
 
-        Process process = pb.start();
+        Process process = ScannerProcesses.start(pb);
 
         ExecutorService executorService = Executors.newFixedThreadPool(2);
 
@@ -143,11 +167,6 @@ public class CdxGenService {
             boolean finished = process.waitFor(30, TimeUnit.MINUTES);
             if (!finished) {
                 log.warn("[CdxGen] SBOM generation did not finish within 30 minutes. Terminating process.");
-                process.destroyForcibly();
-                boolean terminated = process.waitFor(1, TimeUnit.MINUTES);
-                if (!terminated) {
-                    log.error("[CdxGen] Process could not be terminated gracefully.");
-                }
             } else {
                 int exitCode = process.exitValue();
                 if (exitCode != 0) {
@@ -156,11 +175,8 @@ public class CdxGenService {
             }
 
         } finally {
+            ScannerProcesses.killTree(process);
             executorService.shutdownNow();
-            if (process.isAlive()) {
-                log.warn("[CdxGen] Process is still alive after termination attempt. Forcibly destroying it.");
-                process.destroyForcibly();
-            }
         }
 
         File bomFile = new File(repoDir, "sbom.json");
@@ -172,6 +188,133 @@ public class CdxGenService {
             }
         } else {
             log.warn("[CdxGen] SBOM file not found: {}", bomFile.getAbsolutePath());
+        }
+    }
+
+    /**
+     * Deletes blank {@code pom.xml} files from the (temporary) checkout. Maven aborts the whole
+     * reactor on a "Non-readable POM", and cdxgen's pom.xml fallback parser then crashes with
+     * {@code TypeError: Cannot read properties of undefined (reading 'parent')}, so no SBOM is produced.
+     */
+    private void removeEmptyPomFiles(String repoDir) {
+        List<Path> emptyPoms;
+        try {
+            emptyPoms = findPomFiles(repoDir).stream()
+                    .filter(CdxGenService::isBlankFile)
+                    .toList();
+        } catch (IOException e) {
+            log.warn("[CdxGen] Could not scan {} for empty pom.xml files: {}", repoDir, e.getMessage());
+            return;
+        }
+        for (Path pom : emptyPoms) {
+            try {
+                Files.delete(pom);
+                log.warn("[CdxGen] Removed empty pom.xml before SBOM generation: {}", pom);
+            } catch (IOException e) {
+                log.warn("[CdxGen] Could not remove empty pom.xml {}: {}", pom, e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Installs every {@code <packaging>pom</packaging>} module of the checkout (non-recursively,
+     * shallowest first) into the local Maven repository. Projects often deploy their modules as
+     * SNAPSHOTs but not the root parent POM; cdxgen then runs Maven per module, the parent cannot be
+     * resolved remotely, and cdxgen falls back to direct dependencies only.
+     * Failures are logged and ignored - cdxgen still runs afterwards.
+     */
+    private void installLocalParentPoms(String repoDir) {
+        List<Path> parentPoms;
+        try {
+            parentPoms = findPomFiles(repoDir).stream()
+                    .filter(CdxGenService::isPomPackaging)
+                    .sorted(Comparator.comparingInt(Path::getNameCount))
+                    .toList();
+        } catch (IOException e) {
+            log.warn("[CdxGen] Could not scan {} for parent pom.xml files: {}", repoDir, e.getMessage());
+            return;
+        }
+
+        for (Path pom : parentPoms) {
+            ProcessBuilder pb = new ProcessBuilder(
+                    "mvn", "-B", "-q", "-N", "install",
+                    "-DskipTests", "-Dmaven.test.skip=true",
+                    "-Denforcer.skip=true", "-Dgpg.skip=true", "-Dmaven.javadoc.skip=true",
+                    "-Dcheckstyle.skip=true", "-Dspotbugs.skip=true", "-Djacoco.skip=true"
+            );
+            pb.directory(pom.getParent().toFile());
+            pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+            pb.redirectError(ProcessBuilder.Redirect.DISCARD);
+            applyScannerEnvironment(pb);
+
+            Process process = null;
+            try {
+                process = ScannerProcesses.start(pb);
+                if (!process.waitFor(5, TimeUnit.MINUTES)) {
+                    log.warn("[CdxGen] Installing parent POM {} timed out", pom);
+                } else if (process.exitValue() != 0) {
+                    log.warn("[CdxGen] Installing parent POM {} failed with exit code {}", pom, process.exitValue());
+                } else {
+                    log.info("[CdxGen] Installed parent POM into local Maven repository: {}", pom);
+                }
+            } catch (IOException e) {
+                log.warn("[CdxGen] Could not install parent POM {}: {}", pom, e.getMessage());
+                return;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            } finally {
+                if (process != null) {
+                    ScannerProcesses.killTree(process);
+                }
+            }
+        }
+    }
+
+    private static List<Path> findPomFiles(String repoDir) throws IOException {
+        Path root = Path.of(repoDir);
+        Set<String> skippedDirs = Set.of(".git", "node_modules", "target");
+        try (var paths = Files.walk(root)) {
+            return paths
+                    .filter(p -> "pom.xml".equals(String.valueOf(p.getFileName())))
+                    .filter(p -> {
+                        for (Path part : root.relativize(p)) {
+                            if (skippedDirs.contains(part.toString())) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    })
+                    .filter(Files::isRegularFile)
+                    .toList();
+        }
+    }
+
+    private static boolean isPomPackaging(Path pom) {
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            factory.setExpandEntityReferences(false);
+            Element project = factory.newDocumentBuilder().parse(pom.toFile()).getDocumentElement();
+            NodeList children = project.getChildNodes();
+            for (int i = 0; i < children.getLength(); i++) {
+                Node child = children.item(i);
+                if (child.getNodeType() == Node.ELEMENT_NODE && "packaging".equals(child.getNodeName())) {
+                    return "pom".equals(child.getTextContent().trim());
+                }
+            }
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static boolean isBlankFile(Path file) {
+        try {
+            return Files.size(file) == 0 || Files.readString(file).isBlank();
+        } catch (IOException e) {
+            return false;
         }
     }
 
