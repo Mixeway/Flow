@@ -67,11 +67,15 @@ ENV PATH="$JAVA_HOME/bin:$PATH"
 # scanned project's own ./gradlew) resolves Java toolchains to a pre-installed
 # JDK, offline and deterministically. Gradle auto-detection alone never scans
 # /usr/local/jdk-*, so without this toolchain resolution fails and the SBOM is empty.
+# Daemons are disabled because each scan would otherwise leave an idle Gradle JVM
+# running for hours, exhausting the container's threads and memory.
 ENV GRADLE_USER_HOME=/root/.gradle
 RUN mkdir -p "$GRADLE_USER_HOME" && \
     printf '%s\n' \
       'org.gradle.java.installations.paths=/usr/local/jdk-11,/usr/local/jdk-17,/usr/local/jdk-21,/usr/local/jdk-22,/usr/local/jdk-23' \
       'org.gradle.java.installations.auto-download=false' \
+      'org.gradle.daemon=false' \
+      'org.gradle.jvmargs=-Xmx1g' \
       > "$GRADLE_USER_HOME/gradle.properties"
 
 ENV GRADLE_VERSION=8.6

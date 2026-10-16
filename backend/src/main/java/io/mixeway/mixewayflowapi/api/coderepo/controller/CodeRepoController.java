@@ -310,6 +310,18 @@ public class CodeRepoController {
         }
     }
 
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @GetMapping(value = "/api/v1/coderepo/admin/inactive-tokens")
+    public ResponseEntity<InactiveTokenReportDto> getInactiveTokens(Principal principal) {
+        try {
+            log.info("[CodeRepo] Inactive access token check requested by {}", principal.getName());
+            return ResponseEntity.ok(inactiveTokenService.checkAllRepositories());
+        } catch (Exception e) {
+            log.error("[CodeRepo] Error during inactive access token check by {}: {}", principal.getName(), e.getMessage());
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     @PreAuthorize("hasAnyAuthority('ADMIN','TEAM_MANAGER')")
     @PutMapping(value = "/api/v1/coderepo/{id}/rename")
     public ResponseEntity<StatusDTO> renameCodeRepo(
