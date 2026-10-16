@@ -11,6 +11,7 @@ import io.mixeway.mixewayflowapi.domain.finding.CreateFindingService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.BearerScanDataflow;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.BearerScanSecurity;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.Item;
+import io.mixeway.mixewayflowapi.utils.ScannerProcesses;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import lombok.RequiredArgsConstructor;
@@ -295,7 +296,7 @@ public class SASTService {
         pb.redirectOutput(ProcessBuilder.Redirect.PIPE);
         pb.redirectError(ProcessBuilder.Redirect.PIPE);
 
-        Process process = pb.start();
+        Process process = ScannerProcesses.start(pb);
 
         // Keep the last stderr lines so the real cause is visible if bearer fails.
         List<String> errorLines = Collections.synchronizedList(new ArrayList<>());
@@ -340,12 +341,11 @@ public class SASTService {
             boolean finished = process.waitFor(30, TimeUnit.MINUTES);
             if (!finished) {
                 log.warn("[SASTService] Process did not finish within 30 minutes. Terminating process.");
-                process.destroyForcibly(); // Terminate the process
-                process.waitFor(); // Wait for the process to terminate
             } else {
                 exitCode = process.exitValue();
             }
         } finally {
+            ScannerProcesses.killTree(process);
             executor.shutdown();
             try {
                 if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
@@ -354,9 +354,6 @@ public class SASTService {
             } catch (InterruptedException e) {
                 executor.shutdownNow();
                 Thread.currentThread().interrupt();
-            }
-            if (process.isAlive()) {
-                process.destroyForcibly();
             }
         }
 
