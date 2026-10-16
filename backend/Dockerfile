@@ -87,11 +87,11 @@ RUN npm install -g @cyclonedx/cdxgen@latest
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then \
         wget -O gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.12.0/gitleaks_8.12.0_linux_x64.tar.gz; \
-        wget -O bearer.tar.gz https://github.com/Bearer/bearer/releases/download/v1.50.2/bearer_1.50.2_linux_amd64.tar.gz; \
+        wget -O bearer.tar.gz https://github.com/Bearer/bearer/releases/download/v2.1.2/bearer_2.1.2_linux_amd64.tar.gz; \
         wget -O grype.tar.gz https://github.com/anchore/grype/releases/download/v0.112.0/grype_0.112.0_linux_amd64.tar.gz; \
     elif [ "$ARCH" = "aarch64" ]; then \
         wget -O gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.12.0/gitleaks_8.12.0_linux_arm64.tar.gz; \
-        wget -O bearer.tar.gz https://github.com/Bearer/bearer/releases/download/v1.50.2/bearer_1.50.2_linux_arm64.tar.gz; \
+        wget -O bearer.tar.gz https://github.com/Bearer/bearer/releases/download/v2.1.2/bearer_2.1.2_linux_arm64.tar.gz; \
         wget -O grype.tar.gz https://github.com/anchore/grype/releases/download/v0.112.0/grype_0.112.0_linux_arm64.tar.gz; \
     else \
         echo "Unsupported architecture: $ARCH"; exit 1; \
