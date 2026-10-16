@@ -15,6 +15,7 @@ import io.mixeway.mixewayflowapi.domain.component.GetOrCreateComponentService;
 import io.mixeway.mixewayflowapi.domain.finding.CreateFindingService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.dto.GrypeReport;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.dto.SBOMDto;
+import io.mixeway.mixewayflowapi.utils.ScannerProcesses;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -93,7 +94,7 @@ public class SCAGrypeService {
 
         applyProxyEnvironment(pb);
 
-        Process process = pb.start();
+        Process process = ScannerProcesses.start(pb);
 
         // Keep the last stderr lines so the real cause is visible if grype fails
         // (e.g. vulnerability DB update blocked by proxy/network).
@@ -135,16 +136,12 @@ public class SCAGrypeService {
             boolean finished = process.waitFor(30, TimeUnit.MINUTES);
             if (!finished) {
                 log.warn("[GrypeService] Grype scan did not finish within 30 minutes. Terminating process.");
-                process.destroyForcibly(); // Terminate the process
-                process.waitFor(); // Wait for the process to terminate
             } else {
                 exitCode = process.exitValue();
             }
         } finally {
+            ScannerProcesses.killTree(process);
             executorService.shutdownNow(); // Ensure executor service is properly shut down
-            if (process.isAlive()) {
-                process.destroyForcibly();
-            }
         }
 
         String grypeStderr = String.join(System.lineSeparator(), errorLines);

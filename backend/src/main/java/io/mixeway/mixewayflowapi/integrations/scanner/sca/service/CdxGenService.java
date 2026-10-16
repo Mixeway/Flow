@@ -3,6 +3,7 @@ package io.mixeway.mixewayflowapi.integrations.scanner.sca.service;
 import ch.qos.logback.core.spi.ScanException;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
+import io.mixeway.mixewayflowapi.utils.ScannerProcesses;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -119,7 +120,7 @@ public class CdxGenService {
             log.info("[CdxGen] Proxy settings applied: {}:{}", proxyHost, proxyPort);
         }
 
-        Process process = pb.start();
+        Process process = ScannerProcesses.start(pb);
 
         ExecutorService executorService = Executors.newFixedThreadPool(2);
 
@@ -149,11 +150,6 @@ public class CdxGenService {
             boolean finished = process.waitFor(30, TimeUnit.MINUTES);
             if (!finished) {
                 log.warn("[CdxGen] SBOM generation did not finish within 30 minutes. Terminating process.");
-                process.destroyForcibly();
-                boolean terminated = process.waitFor(1, TimeUnit.MINUTES);
-                if (!terminated) {
-                    log.error("[CdxGen] Process could not be terminated gracefully.");
-                }
             } else {
                 int exitCode = process.exitValue();
                 if (exitCode != 0) {
@@ -162,11 +158,8 @@ public class CdxGenService {
             }
 
         } finally {
+            ScannerProcesses.killTree(process);
             executorService.shutdownNow();
-            if (process.isAlive()) {
-                log.warn("[CdxGen] Process is still alive after termination attempt. Forcibly destroying it.");
-                process.destroyForcibly();
-            }
         }
 
         File bomFile = new File(repoDir, "sbom.json");
