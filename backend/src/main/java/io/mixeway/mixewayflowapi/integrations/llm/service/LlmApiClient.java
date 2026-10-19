@@ -464,7 +464,7 @@ public class LlmApiClient {
                     + "\"confidence\":0.0-1.0,\"reasoning\":\"3-6 sentences\"}.\n"
                     + "verdict must be exactly TRUE_POSITIVE, FALSE_POSITIVE, or UNCERTAIN.\n"
                     + "confidence must be a JSON number from 0.0 to 1.0.\n"
-                    + "Do not request search_repo or read_file.";
+                    + "Do not request any tool.";
         }
         return "RESPONSE FORMAT REQUIREMENT (prompt-level fallback):\n"
                 + "Return ONLY one valid JSON object. No markdown, no prose.\n"

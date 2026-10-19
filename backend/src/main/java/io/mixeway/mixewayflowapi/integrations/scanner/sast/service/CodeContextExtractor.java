@@ -257,7 +257,9 @@ public class CodeContextExtractor {
     private static final Pattern PYTHON_FUNC_PATTERN = Pattern.compile(
             "^(\\s*)(def |class |async def )", Pattern.MULTILINE);
     private static final Pattern BRACE_FUNC_PATTERN = Pattern.compile(
-            "^\\s*(public |private |protected |static |async |export |function |def |class |override )",
+            "^\\s*(public |private |protected |static |async |export |function |def |class |override )"
+                    + "|^\\s*(?:(?:final|synchronized|native|abstract|default)\\s+)*"
+                    + "(?:void|[A-Za-z_][\\w$.<>,\\[\\]?]*)\\s+[A-Za-z_]\\w*\\s*\\([^;]*\\)\\s*(?:\\{|throws\\b)",
             Pattern.MULTILINE);
     private static final Pattern IMPORT_PATTERN = Pattern.compile(
             "^\\s*(import |from |require\\(|#include |using |package )", Pattern.MULTILINE);
