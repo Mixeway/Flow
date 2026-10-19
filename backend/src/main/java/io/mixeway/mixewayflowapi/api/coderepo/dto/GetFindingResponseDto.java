@@ -1,5 +1,6 @@
 package io.mixeway.mixewayflowapi.api.coderepo.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.util.List;
@@ -12,4 +13,8 @@ public class GetFindingResponseDto {
     String explanation;
     String refs;
     List<CommentDto> comments;
+    @JsonProperty("ai_verification_reasoning")
+    String aiVerificationReasoning;
+    @JsonProperty("ai_verification_recommendation")
+    String aiVerificationRecommendation;
 }

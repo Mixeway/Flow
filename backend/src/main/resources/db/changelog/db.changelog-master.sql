@@ -830,3 +830,59 @@ ALTER TABLE settings ADD COLUMN IF NOT EXISTS sla_medium_days INTEGER;
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS sla_low_days INTEGER;
 UPDATE settings SET sla_critical_days = 14 WHERE sla_critical_days IS NULL;
 UPDATE settings SET sla_high_days = 30 WHERE sla_high_days IS NULL;
+
+--changeset majaberej:add-ai-verification-to-finding
+ALTER TABLE finding ADD COLUMN ai_verification_grade VARCHAR(20) DEFAULT 'NOT_VERIFIED' NOT NULL;
+ALTER TABLE finding ADD COLUMN ai_verification_confidence DOUBLE PRECISION;
+ALTER TABLE finding ADD COLUMN ai_verification_reasoning TEXT;
+
+--changeset majaberej:add-ai-verification-recommendation-to-finding
+ALTER TABLE finding ADD COLUMN IF NOT EXISTS ai_verification_recommendation TEXT;
+
+--changeset majaberej:settings-llm-per-source
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sast_llm_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sast_llm_api_url VARCHAR(500);
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sast_llm_api_key VARCHAR(500);
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sast_llm_model VARCHAR(200);
+
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sca_llm_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sca_llm_api_url VARCHAR(500);
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sca_llm_api_key VARCHAR(500);
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sca_llm_model VARCHAR(200);
+
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS iac_llm_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS iac_llm_api_url VARCHAR(500);
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS iac_llm_api_key VARCHAR(500);
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS iac_llm_model VARCHAR(200);
+
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS secrets_llm_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS secrets_llm_api_url VARCHAR(500);
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS secrets_llm_api_key VARCHAR(500);
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS secrets_llm_model VARCHAR(200);
+
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS dast_llm_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS dast_llm_api_url VARCHAR(500);
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS dast_llm_api_key VARCHAR(500);
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS dast_llm_model VARCHAR(200);
+
+--changeset majaberej:settings-llm-context-and-concurrency
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sast_llm_context_window INTEGER NOT NULL DEFAULT 16384;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sast_llm_scan_concurrency INTEGER NOT NULL DEFAULT 2;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sca_llm_context_window INTEGER NOT NULL DEFAULT 8192;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sca_llm_scan_concurrency INTEGER NOT NULL DEFAULT 2;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS iac_llm_context_window INTEGER NOT NULL DEFAULT 8192;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS iac_llm_scan_concurrency INTEGER NOT NULL DEFAULT 2;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS secrets_llm_context_window INTEGER NOT NULL DEFAULT 8192;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS secrets_llm_scan_concurrency INTEGER NOT NULL DEFAULT 2;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS dast_llm_context_window INTEGER NOT NULL DEFAULT 8192;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS dast_llm_scan_concurrency INTEGER NOT NULL DEFAULT 2;
+
+--changeset majaberej:settings-llm-severities
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sast_llm_severities VARCHAR(100) NOT NULL DEFAULT 'CRITICAL,HIGH';
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sca_llm_severities VARCHAR(100) NOT NULL DEFAULT 'CRITICAL,HIGH';
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS iac_llm_severities VARCHAR(100) NOT NULL DEFAULT 'CRITICAL,HIGH';
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS secrets_llm_severities VARCHAR(100) NOT NULL DEFAULT 'CRITICAL,HIGH';
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS dast_llm_severities VARCHAR(100) NOT NULL DEFAULT 'CRITICAL,HIGH';
+
+--changeset majaberej:comment-user-optional
+ALTER TABLE comment ALTER COLUMN user_id DROP NOT NULL;

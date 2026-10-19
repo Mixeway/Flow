@@ -1,7 +1,9 @@
 package io.mixeway.mixewayflowapi.api.coderepo.mapper;
 
+import io.mixeway.mixewayflowapi.api.coderepo.dto.GetFindingResponseDto;
 import io.mixeway.mixewayflowapi.db.entity.Finding;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.VulnsResponseDto;
+import io.mixeway.mixewayflowapi.integrations.scanner.sast.service.SastDeveloperFacingReasoning;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -20,7 +22,16 @@ public class FindingMapper {
         dto.setLastSeen(finding.getUpdatedDate().toString());
         dto.setJiraTicketKey(finding.getJiraTicketKey());
         dto.setSuppressedUntil(finding.getSuppressedUntil() != null ? finding.getSuppressedUntil().toString() : null);
+        dto.setAiVerificationGrade(finding.getAiVerificationGrade().name());
+        dto.setAiVerificationConfidence(finding.getAiVerificationConfidence());
         return dto;
+    }
+
+    public static void mapAiVerificationDetails(GetFindingResponseDto dto, Finding finding) {
+        String grade = finding.getAiVerificationGrade() == null ? null : finding.getAiVerificationGrade().name();
+        dto.setAiVerificationReasoning(SastDeveloperFacingReasoning.forDisplay(finding.getAiVerificationReasoning()));
+        dto.setAiVerificationRecommendation(SastDeveloperFacingReasoning.recommendationForDisplay(
+                grade, finding.getAiVerificationRecommendation()));
     }
 
     public static List<VulnsResponseDto> mapToDtoList(List<Finding> findings) {

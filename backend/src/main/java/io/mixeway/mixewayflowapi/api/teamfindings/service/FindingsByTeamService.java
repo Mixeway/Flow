@@ -125,12 +125,13 @@ public class FindingsByTeamService {
                 log.warn("Unable to enrich VulnsResponseDto with urgency: {}", e.getMessage());
             }
             getFindingResponseDto.setVulnsResponseDto(vulnsResponseDto);
+            FindingMapper.mapAiVerificationDetails(getFindingResponseDto, finding);
             getFindingResponseDto.setDescription(finding.getVulnerability().getDescription());
             getFindingResponseDto.setRecommendation(finding.getVulnerability().getRecommendation());
             getFindingResponseDto.setRefs(finding.getVulnerability().getRef());
             getFindingResponseDto.setExplanation(finding.getExplanation());
             getFindingResponseDto.setComments(finding.getComments().stream()
-                    .map(comment -> new CommentDto(comment.getCreatedDate(), comment.getUser().getUsername(), comment.getMessage()))
+                    .map(comment -> new CommentDto(comment.getCreatedDate(), comment.authorName(), comment.getMessage()))
                     .toList());
             return getFindingResponseDto;
         } else {

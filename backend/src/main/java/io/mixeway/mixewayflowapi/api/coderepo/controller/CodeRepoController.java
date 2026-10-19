@@ -146,13 +146,42 @@ public class CodeRepoController {
     }
 
     @PreAuthorize("hasAuthority('USER')")
+    @GetMapping(value = "/api/v1/coderepo/{id}/sast-llm-progress")
+    public ResponseEntity<SastLlmProgressDto> sastLlmProgress(@PathVariable("id") Long id, Principal principal) {
+        try {
+            return new ResponseEntity<>(codeRepoApiService.sastLlmProgress(id, principal), HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("[CodeRepo] Error reading SAST LLM progress for {}", id);
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('USER')")
     @GetMapping(value= "/api/v1/coderepo/{id}/run")
     public ResponseEntity<StatusDTO> runScan(@PathVariable("id") Long id, Principal principal){
         try {
-            codeRepoApiService.runScan(id, principal);
-            return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.OK);
+            boolean queued = codeRepoApiService.runScan(id, principal);
+            return new ResponseEntity<>(new StatusDTO(queued ? "queued" : "ok"), HttpStatus.OK);
         } catch (Exception e){
             log.error("[CodeRepo] Error Running scan for {}", id);
+            return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('USER')")
+    @PostMapping(value= "/api/v1/coderepo/{id}/evaluate-llm")
+    public ResponseEntity<StatusDTO> runLlmEvaluation(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody EvaluateLlmRequestDto request,
+            Principal principal){
+        try {
+            boolean queued = codeRepoApiService.runLlmEvaluation(id, request.getSource(), principal);
+            return new ResponseEntity<>(new StatusDTO(queued ? "queued" : "ok"), HttpStatus.OK);
+        } catch (IllegalArgumentException e) {
+            log.warn("[CodeRepo] Invalid LLM evaluation source for {}: {}", id, e.getMessage());
+            return new ResponseEntity<>(new StatusDTO(e.getMessage()), HttpStatus.BAD_REQUEST);
+        } catch (Exception e){
+            log.error("[CodeRepo] Error running LLM evaluation for {}", id);
             return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
         }
     }
@@ -196,8 +225,8 @@ public class CodeRepoController {
     @PostMapping(value= "/api/v1/coderepo/{id}/run/branch")
     public ResponseEntity<StatusDTO> runScanForBranch(@PathVariable("id") Long id, @Valid @RequestBody RunScanBranchRequestDto request, Principal principal){
         try {
-            codeRepoApiService.runScanForBranch(id, request.getBranchName(), principal);
-            return new ResponseEntity<>(new StatusDTO("ok"), HttpStatus.OK);
+            boolean queued = codeRepoApiService.runScanForBranch(id, request.getBranchName(), principal);
+            return new ResponseEntity<>(new StatusDTO(queued ? "queued" : "ok"), HttpStatus.OK);
         } catch (Exception e){
             log.error("[CodeRepo] Error running scan for branch {} on repo {}", request.getBranchName(), id);
             return new ResponseEntity<>(new StatusDTO("Not ok"), HttpStatus.BAD_REQUEST);
@@ -239,6 +268,18 @@ public class CodeRepoController {
         } catch (Exception e) {
             log.error("[CodeRepo] Error during bulk team change by {}: {}", principal.getName(), e.getMessage());
             return new ResponseEntity<>(new StatusDTO(e.getMessage()), HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @GetMapping(value = "/api/v1/coderepo/admin/inactive-tokens")
+    public ResponseEntity<InactiveTokenReportDto> getInactiveTokens(Principal principal) {
+        try {
+            log.info("[CodeRepo] Inactive access token check requested by {}", principal.getName());
+            return ResponseEntity.ok(inactiveTokenService.checkAllRepositories());
+        } catch (Exception e) {
+            log.error("[CodeRepo] Error during inactive access token check by {}: {}", principal.getName(), e.getMessage());
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 

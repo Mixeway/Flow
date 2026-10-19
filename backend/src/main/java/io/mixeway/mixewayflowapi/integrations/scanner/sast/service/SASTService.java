@@ -10,6 +10,8 @@ import io.mixeway.mixewayflowapi.domain.component.GetOrCreateComponentService;
 import io.mixeway.mixewayflowapi.domain.finding.CreateFindingService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.BearerScanDataflow;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.BearerScanSecurity;
+import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.Item;
+import io.mixeway.mixewayflowapi.utils.ScannerProcesses;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepoBranch;
 import io.mixeway.mixewayflowapi.utils.ScannerProcesses;
@@ -26,6 +28,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -41,6 +44,8 @@ public class SASTService {
 
     private final CreateFindingService createFindingService;
     private final CreateAppDataTypeService createAppDataTypeService;
+    private final SastFindingVerificationService sastFindingVerificationService;
+    private final SastLlmProgress sastLlmProgress;
 
     /** Max number of stderr lines kept for diagnostics when bearer fails. */
     private static final int MAX_ERROR_LINES = 50;
@@ -69,17 +74,19 @@ public class SASTService {
 
         // Check if bearerRulesDir is null or empty, and adjust the ProcessBuilder commands accordingly
         if (bearerRulesDir == null || bearerRulesDir.isEmpty()) {
-            securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--skip-path=.git,vendor", "--report=security", "--format=json", "--output=bearer_scan_security.json");
-            dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--skip-path=.git,vendor", "--report=dataflow", "--format=json", "--output=bearer_scan_dataflow.json");
+            securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--skip-path=.git,vendor", "--report=security", "--format=json", "--output=bearer_scan_security.json", "--disable-default-rules");
+            dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--skip-path=.git,vendor", "--report=dataflow", "--format=json", "--output=bearer_scan_dataflow.json", "--disable-default-rules");
         } else {
-            securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir="+ bearerRulesDir, "--skip-path=.git,vendor", "--report=security", "--format=json", "--output=bearer_scan_security.json");
-            dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir="+ bearerRulesDir, "--skip-path=.git,vendor", "--report=dataflow", "--format=json", "--output=bearer_scan_dataflow.json");
+            securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir="+ bearerRulesDir, "--skip-path=.git,vendor", "--report=security", "--format=json", "--output=bearer_scan_security.json", "--disable-default-rules");
+            dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir="+ bearerRulesDir, "--skip-path=.git,vendor", "--report=dataflow", "--format=json", "--output=bearer_scan_dataflow.json", "--disable-default-rules");
         }
         securityPb.directory(new File(repoDir));
         dataflowPb.directory(new File(repoDir));
 
         ProcessResult securityResult = runProcess(securityPb);
         ProcessResult dataflowResult = runProcess(dataflowPb);
+        recoverReportFromStdout(securityReportFile, securityResult);
+        recoverReportFromStdout(dataflowReportFile, dataflowResult);
 
         // Bearer exit codes: 0 = success/no findings, 1 = success WITH findings (normal),
         // anything else indicates an actual scan error.
@@ -129,7 +136,6 @@ public class SASTService {
                     ? null
                     : objectMapper.readValue(dataflowReportFile, BearerScanDataflow.class);
 
-            // Save findings and update status
             createFindingService.saveFindings(createFindingService.mapBearerScanToFindings(bearerScanSecurity, codeRepo, codeRepoBranch), codeRepoBranch, codeRepo, Finding.Source.SAST, null);
 
             if (bearerScanDataflow != null && bearerScanDataflow.getDataTypes() != null) {
@@ -147,6 +153,140 @@ public class SASTService {
     }
 
     /**
+     * Runs a fresh Bearer scan, then LLM-based false positive verification on its findings.
+     * Triggered on-demand by user via "Evaluate with LLM" button.
+     */
+    public void runBearerScanWithLlmEvaluation(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) throws IOException, InterruptedException, ScanException {
+        log.debug("[BearerScanService] Starting fresh Bearer scan with LLM evaluation for repository: {} branch: {}", codeRepo.getName(), codeRepoBranch.getName());
+
+        File securityReportFile = new File(repoDir, "bearer_scan_security.json");
+        File dataflowReportFile = new File(repoDir, "bearer_scan_dataflow.json");
+
+        ProcessBuilder securityPb;
+        ProcessBuilder dataflowPb;
+
+        if (bearerRulesDir == null || bearerRulesDir.isEmpty()) {
+            securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--skip-path=.git,vendor", "--report=security", "--format=json", "--output=bearer_scan_security.json", "--disable-default-rules");
+            dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--skip-path=.git,vendor", "--report=dataflow", "--format=json", "--output=bearer_scan_dataflow.json", "--disable-default-rules");
+        } else {
+            securityPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir="+ bearerRulesDir, "--skip-path=.git,vendor", "--report=security", "--format=json", "--output=bearer_scan_security.json", "--disable-default-rules");
+            dataflowPb = new ProcessBuilder("bearer", "scan", ".", "--scanner=sast", "--external-rule-dir="+ bearerRulesDir, "--skip-path=.git,vendor", "--report=dataflow", "--format=json", "--output=bearer_scan_dataflow.json", "--disable-default-rules");
+        }
+        securityPb.directory(new File(repoDir));
+        dataflowPb.directory(new File(repoDir));
+
+        ProcessResult securityResult = runProcess(securityPb);
+        ProcessResult dataflowResult = runProcess(dataflowPb);
+        recoverReportFromStdout(securityReportFile, securityResult);
+        recoverReportFromStdout(dataflowReportFile, dataflowResult);
+
+        if (isBearerError(securityResult.exitCode)) {
+            log.warn("[BearerScanService] Bearer (security report) exited with error code {} for [{} / {}]. Stderr:{}{}",
+                    securityResult.exitCode, codeRepo.getRepourl(), codeRepoBranch.getName(), System.lineSeparator(), securityResult.stderr());
+        }
+
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        if (isEmptyReport(securityReportFile) || !looksLikeJson(securityReportFile)) {
+            log.debug("[BearerScanService] No SAST findings to evaluate for [{} / {}]. Bearer exit: {}, report preview: {}",
+                    codeRepo.getRepourl(), codeRepoBranch.getName(), securityResult.exitCode, previewFile(securityReportFile));
+            return;
+        }
+
+        BearerScanSecurity bearerScanSecurity;
+        BearerScanDataflow bearerScanDataflow;
+        try {
+            bearerScanSecurity = objectMapper.readValue(securityReportFile, BearerScanSecurity.class);
+            bearerScanDataflow = (isEmptyReport(dataflowReportFile) || !looksLikeJson(dataflowReportFile))
+                    ? null
+                    : objectMapper.readValue(dataflowReportFile, BearerScanDataflow.class);
+        } catch (JsonProcessingException e) {
+            log.warn("[BearerScanService] Failed to parse Bearer report for LLM evaluation [{} / {}]: {}",
+                    codeRepo.getRepourl(), codeRepoBranch.getName(), e.getMessage());
+            return;
+        }
+
+        evaluateFindingsWithLlm(bearerScanSecurity, bearerScanDataflow, repoDir, codeRepo, codeRepoBranch, true);
+    }
+
+    private void evaluateFindingsWithLlm(BearerScanSecurity bearerScanSecurity, BearerScanDataflow bearerScanDataflow,
+            String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, boolean persistFindings) {
+        Consumer<Item> saveCallback = item -> {
+            if (item.getAiVerdict() == null) return;
+            Finding.AiVerificationGrade grade = switch (item.getAiVerdict()) {
+                case "TRUE_POSITIVE"  -> Finding.AiVerificationGrade.TRUE_POSITIVE;
+                case "FALSE_POSITIVE" -> Finding.AiVerificationGrade.FALSE_POSITIVE;
+                case "UNCERTAIN"      -> Finding.AiVerificationGrade.UNCERTAIN;
+                default               -> Finding.AiVerificationGrade.NOT_VERIFIED;
+            };
+            createFindingService.saveAiVerificationForSastItem(
+                    item.getFilename() + ":" + item.getLineNumber(),
+                    codeRepoBranch,
+                    grade,
+                    item.getAiConfidence(),
+                    item.getAiReasoning(),
+                    item.getAiRecommendation());
+        };
+
+        try {
+            sastFindingVerificationService.verifyFindings(bearerScanSecurity, bearerScanDataflow, repoDir, saveCallback,
+                    sastLlmProgress, codeRepo.getId());
+        } catch (Throwable t) {
+            log.error("[BearerScanService] LLM verification failed, persisting verdicts collected so far for [{} / {}]: {}",
+                    codeRepo.getRepourl(), codeRepoBranch.getName(), t.getMessage(), t);
+        } finally {
+            sastLlmProgress.clear(codeRepo.getId());
+        }
+
+        // Clear interrupt flag that may have been set by rateLimitPause inside verifyFindings.
+        // If the flag is left set, HikariCP will refuse to acquire a connection and saveFindings will fail silently.
+        boolean wasInterrupted = Thread.interrupted();
+        if (wasInterrupted) {
+            log.warn("[BearerScanService] Thread interrupt flag was set after LLM verification for [{} / {}]; cleared before saveFindings",
+                    codeRepo.getRepourl(), codeRepoBranch.getName());
+        }
+
+        if (persistFindings) {
+            log.debug("[BearerScanService] Persisting findings to database for [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
+            createFindingService.saveFindings(
+                    createFindingService.mapBearerScanToFindings(bearerScanSecurity, codeRepo, codeRepoBranch),
+                    codeRepoBranch, codeRepo, Finding.Source.SAST, null);
+
+            if (bearerScanDataflow != null && bearerScanDataflow.getDataTypes() != null) {
+                createAppDataTypeService.getDataTypesForCodeRepo(codeRepo, bearerScanDataflow);
+            }
+        }
+
+        log.debug("[BearerScanService] LLM evaluation completed for [{} / {}]", codeRepo.getRepourl(), codeRepoBranch.getName());
+    }
+
+    static String ruleIdFromRef(String ref) {
+        if (ref == null || ref.isBlank()) {
+            return null;
+        }
+        int idx = ref.lastIndexOf("/rules/");
+        if (idx < 0) {
+            return null;
+        }
+        String id = ref.substring(idx + "/rules/".length());
+        int end = id.length();
+        int slash = id.indexOf('/');
+        int query = id.indexOf('?');
+        int hash = id.indexOf('#');
+        if (slash >= 0) {
+            end = Math.min(end, slash);
+        }
+        if (query >= 0) {
+            end = Math.min(end, query);
+        }
+        if (hash >= 0) {
+            end = Math.min(end, hash);
+        }
+        id = id.substring(0, end).trim();
+        return id.isEmpty() ? null : id;
+    }
+
+    /**
      * Runs a process defined by the provided ProcessBuilder. The output and error streams of the process are discarded.
      *
      * @param pb  The ProcessBuilder that defines the process to be run.
@@ -161,18 +301,22 @@ public class SASTService {
 
         // Keep the last stderr lines so the real cause is visible if bearer fails.
         List<String> errorLines = Collections.synchronizedList(new ArrayList<>());
+        StringBuilder stdout = new StringBuilder();
         Integer exitCode = null;
 
         ExecutorService executor = Executors.newFixedThreadPool(2);
 
         try {
-            // Stream gobbler for process output
+            // Stream gobbler for process output — kept so --output can be recovered if Bearer writes JSON to stdout.
             executor.submit(() -> {
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                     while (!Thread.currentThread().isInterrupted()) {
                         String line = reader.readLine();
                         if (line == null) break;
-                        // Optionally process the output
+                        if (stdout.length() > 0) {
+                            stdout.append('\n');
+                        }
+                        stdout.append(line);
                     }
                 } catch (IOException e) {
                     log.error("Error reading process output", e);
@@ -203,10 +347,60 @@ public class SASTService {
             }
         } finally {
             ScannerProcesses.killTree(process);
-            executor.shutdownNow(); // Shutdown the executor to stop stream gobblers
+            executor.shutdown();
+            try {
+                if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
         }
 
-        return new ProcessResult(exitCode == null ? -1 : exitCode, new ArrayList<>(errorLines));
+        return new ProcessResult(exitCode == null ? -1 : exitCode, new ArrayList<>(errorLines), stdout.toString());
+    }
+
+    /**
+     * Some Bearer versions write the JSON report to stdout even when {@code --output} is set.
+     * If the output file is empty or not JSON, persist a JSON document recovered from stdout.
+     */
+    private void recoverReportFromStdout(File reportFile, ProcessResult result) {
+        if (!isEmptyReport(reportFile) && looksLikeJson(reportFile)) {
+            return;
+        }
+        String json = extractJsonDocument(result.stdout());
+        if (json == null) {
+            return;
+        }
+        try {
+            Files.writeString(reportFile.toPath(), json, StandardCharsets.UTF_8);
+            log.info("[BearerScanService] Recovered Bearer JSON report from stdout into {}", reportFile.getName());
+        } catch (IOException e) {
+            log.warn("[BearerScanService] Failed to persist recovered Bearer stdout report: {}", e.getMessage());
+        }
+    }
+
+    private String extractJsonDocument(String stdout) {
+        if (stdout == null) {
+            return null;
+        }
+        String trimmed = stdout.trim();
+        int objectStart = trimmed.indexOf('{');
+        int arrayStart = trimmed.indexOf('[');
+        int start = -1;
+        if (objectStart >= 0 && arrayStart >= 0) {
+            start = Math.min(objectStart, arrayStart);
+        } else if (objectStart >= 0) {
+            start = objectStart;
+        } else if (arrayStart >= 0) {
+            start = arrayStart;
+        }
+        if (start < 0) {
+            return null;
+        }
+        String candidate = trimmed.substring(start).trim();
+        return (candidate.startsWith("{") || candidate.startsWith("[")) ? candidate : null;
     }
 
     /**
@@ -267,8 +461,8 @@ public class SASTService {
         }
     }
 
-    /** Holds the outcome of a subprocess: exit code and captured stderr lines. */
-    private record ProcessResult(int exitCode, List<String> errorLines) {
+    /** Holds the outcome of a subprocess: exit code, captured stderr lines, and stdout. */
+    private record ProcessResult(int exitCode, List<String> errorLines, String stdout) {
         String stderr() {
             return String.join(System.lineSeparator(), errorLines);
         }

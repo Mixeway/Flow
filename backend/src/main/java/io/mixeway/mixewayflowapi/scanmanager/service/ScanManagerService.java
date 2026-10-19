@@ -90,6 +90,12 @@ public class ScanManagerService {
     private final ExecutorService executorService = Executors.newFixedThreadPool(10);
     private final ExecutorService scanExecutorService = Executors.newFixedThreadPool(10);
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    /** One SAST LLM analysis at a time; further requests wait in this queue. */
+    private final ThreadPoolExecutor sastLlmExecutor = singleAnalysisExecutor("sast-llm-analysis");
+    /** One Secrets LLM analysis at a time; further requests wait in this queue. */
+    private final ThreadPoolExecutor secretsLlmExecutor = singleAnalysisExecutor("secrets-llm-analysis");
+    /** One job per repository at a time (scan, AI analysis, SBOM scan); further requests for the repo wait. */
+    private final RepoScanQueue repoScanQueue = new RepoScanQueue();
 
     // Counters for tracking parallel scans
     private final AtomicInteger totalScansRunning = new AtomicInteger(0);
@@ -116,8 +122,9 @@ public class ScanManagerService {
      * @param codeRepoBranch The branch of the code repository to scan.
      * @param commitId       The commit ID to scan. If null, the latest commit on the branch will be scanned.
      * @param iid            Optional merge request IID for processing merge comments.
+     * @return {@code true} when the scan waits behind another scan or AI analysis of the same repository
      */
-    public void scanRepository(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId, Long iid) {
+    public boolean scanRepository(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId, Long iid) {
         // Get or create a lock object for the repository
         Object repoLock = repoLocks.computeIfAbsent(codeRepo.getId(), k -> new Object());
 
@@ -137,15 +144,14 @@ public class ScanManagerService {
                     log.warn("[ScanManagerService] Unable to create throttled ScanInfo snapshot: {}", e.getMessage());
                 }
 
-                return;
+                return false;
             }
 
             // Add repository to the throttler cache
             scanThrottler.put(codeRepo.getId(), Boolean.TRUE);
         }
 
-        // Submit the scan task to the executor service
-        executorService.submit(() -> {
+        boolean queued = repoScanQueue.submit(codeRepo.getId(), executorService, () -> {
             try {
                 // Set scan running status
                 updateCodeRepoService.setScanRunning(codeRepo);
@@ -252,6 +258,11 @@ public class ScanManagerService {
                 repoLocks.remove(codeRepo.getId());
             }
         });
+        if (queued) {
+            log.info("[ScanManagerService] Scan for repo {} added to queue, waiting for the running scan or AI analysis of this repo",
+                    codeRepo.getName());
+        }
+        return queued;
     }
 
     public void scanRepositorySync(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId, Long iid) {
@@ -281,6 +292,7 @@ public class ScanManagerService {
             scanThrottler.put(codeRepo.getId(), Boolean.TRUE);
         }
 
+        boolean ran = repoScanQueue.runBlocking(codeRepo.getId(), () -> {
             try {
                 // Set scan running status
                 updateCodeRepoService.setScanRunning(codeRepo);
@@ -386,6 +398,10 @@ public class ScanManagerService {
                 // Remove the repository from the locks map
                 repoLocks.remove(codeRepo.getId());
             }
+        });
+        if (!ran) {
+            log.warn("[ScanManagerService] Interrupted while waiting for the running job of repo {}; scan skipped", codeRepo.getName());
+        }
     }
 
     private Future<Void> runSecretScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {
@@ -550,9 +566,90 @@ public class ScanManagerService {
     }
 
     /**
-     * Modified fetchRepository method to handle the zero commit ID case by getting the latest commit from the branch.
-     * This is an excerpt from the ScanManagerService class focusing on the fixed method.
+     * Clones the repo and runs LLM-based false positive verification on existing findings
+     * for the requested source (SAST or SECRETS).
+     * SAST and Secrets each have their own queue, and each queue runs one analysis at a time.
+     * The analysis also waits for any scan or other AI analysis already running for the same repository.
+     *
+     * @return {@code true} when the evaluation has to wait behind other LLM evaluations of the same source
+     *         or behind another job of the same repository
      */
+    public boolean runLlmEvaluation(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, Finding.Source source) {
+        ThreadPoolExecutor queue = llmExecutor(source);
+        int waiting = queue.getQueue().size();
+        int running = queue.getActiveCount();
+        boolean llmQueued = running >= queue.getMaximumPoolSize() || waiting > 0;
+        boolean repoQueued = repoScanQueue.submit(codeRepo.getId(), queue, () -> {
+            String repoDir = llmRepoDir(codeRepo, source);
+            String repoUrl = codeRepo.getRepourl();
+            String accessToken = codeRepo.getAccessToken();
+            CodeRepo.RepoType repoType = codeRepo.getType();
+
+            try {
+                log.info("[ScanManagerService] LLM analysis for {} and {} started", source, repoUrl);
+                log.debug("[ScanManagerService] Starting {} LLM evaluation for [{} / {}], waiting in queue {}",
+                        source, codeRepo.getRepourl(), codeRepoBranch.getName(), queue.getQueue().size());
+                fetchRepository(null, repoUrl, accessToken, codeRepoBranch, repoDir, repoType);
+                if (source == Finding.Source.SECRETS) {
+                    secretsService.runGitleaksWithLlmEvaluation(repoDir, codeRepo, codeRepoBranch);
+                } else {
+                    sastService.runBearerScanWithLlmEvaluation(repoDir, codeRepo, codeRepoBranch);
+                }
+                log.info("[ScanManagerService] LLM analysis for {} and {} finished", source, repoUrl);
+            } catch (Throwable t) {
+                Thread.interrupted(); // clear interrupt flag so log.error can write
+                log.error("[ScanManagerService] {} LLM evaluation failed for [{} / {}]: {}",
+                        source, codeRepo.getRepourl(), codeRepoBranch.getName(), t.getMessage(), t);
+            } finally {
+                try {
+                    cleanUp(repoDir);
+                } catch (IOException cleanupEx) {
+                    log.error("[ScanManagerService] Failed to clean up after LLM evaluation {}: {}", repoDir, cleanupEx.getMessage());
+                }
+            }
+        });
+        boolean queued = llmQueued || repoQueued;
+        if (queued) {
+            log.info("[ScanManagerService] {} AI scan for [{} / {}] added to queue (AI running={}, AI waiting={}, waiting for repo job={})",
+                    source, codeRepo.getRepourl(), codeRepoBranch.getName(), running, waiting, repoQueued);
+        } else {
+            log.info("[ScanManagerService] {} AI scan for [{} / {}] accepted, starting immediately",
+                    source, codeRepo.getRepourl(), codeRepoBranch.getName());
+        }
+        return queued;
+    }
+
+    private ThreadPoolExecutor llmExecutor(Finding.Source source) {
+        return switch (source) {
+            case SECRETS -> secretsLlmExecutor;
+            case SAST -> sastLlmExecutor;
+            default -> throw new IllegalArgumentException("LLM evaluation does not support " + source);
+        };
+    }
+
+    /**
+     * Checkout path isolated from regular scans and from the other LLM queue,
+     * so a SAST analysis and a Secrets analysis can run at the same time.
+     */
+    private String llmRepoDir(CodeRepo codeRepo, Finding.Source source) {
+        String suffix = source == Finding.Source.SECRETS ? "secrets" : "sast";
+        return "/tmp/" + codeRepo.getName() + "-llm-" + suffix;
+    }
+
+    private static ThreadPoolExecutor singleAnalysisExecutor(String threadName) {
+        return new ThreadPoolExecutor(
+                1,
+                1,
+                0L,
+                TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(),
+                runnable -> {
+                    Thread thread = new Thread(runnable, threadName);
+                    thread.setDaemon(false);
+                    return thread;
+                });
+    }
+
     private String fetchRepository(String commitId, String repoUrl, String accessToken,
                                    CodeRepoBranch codeRepoBranch, String repoDir,
                                    io.mixeway.mixewayflowapi.db.entity.CodeRepo.RepoType repoType)
@@ -825,7 +922,7 @@ public class ScanManagerService {
 
         String workDirPath = workDir.toAbsolutePath().toString();
 
-        executorService.submit(() -> {
+        repoScanQueue.submit(codeRepo.getId(), executorService, () -> {
             try {
                 updateCodeRepoService.setScaScanRunning(codeRepo);
                 validateInputs(codeRepo, codeRepoBranch);
@@ -896,5 +993,7 @@ public class ScanManagerService {
         try { scheduler.shutdownNow(); } catch (Exception ignored) {}
         try { executorService.shutdown(); } catch (Exception ignored) {}
         try { scanExecutorService.shutdown(); } catch (Exception ignored) {}
+        try { sastLlmExecutor.shutdown(); } catch (Exception ignored) {}
+        try { secretsLlmExecutor.shutdown(); } catch (Exception ignored) {}
     }
 }

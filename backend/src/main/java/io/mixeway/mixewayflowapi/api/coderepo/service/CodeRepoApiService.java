@@ -3,6 +3,7 @@ package io.mixeway.mixewayflowapi.api.coderepo.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.GetCodeReposResponseDto;
+import io.mixeway.mixewayflowapi.api.coderepo.dto.SastLlmProgressDto;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.RunOrchScanDetailsDto;
 import io.mixeway.mixewayflowapi.api.coderepo.dto.RunOrchScanReportDto;
 import io.mixeway.mixewayflowapi.api.gitlabcicd.dto.GitLabCICDDetailsResponseDto;
@@ -14,6 +15,7 @@ import io.mixeway.mixewayflowapi.domain.coderepobranch.GetOrCreateCodeRepoBranch
 import io.mixeway.mixewayflowapi.domain.finding.FindFindingService;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GitService;
+import io.mixeway.mixewayflowapi.integrations.scanner.sast.service.SastLlmProgress;
 import io.mixeway.mixewayflowapi.exceptions.CodeRepoNotFoundException;
 import io.mixeway.mixewayflowapi.exceptions.ScanThrottledException;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
@@ -53,6 +55,7 @@ public class CodeRepoApiService {
     private final GitService gitService;
     private final GetOrCreateCodeRepoBranchService getOrCreateCodeRepoBranchService;
     private final ObjectMapper objectMapper;
+    private final SastLlmProgress sastLlmProgress;
 
     public List<GetCodeReposResponseDto> getRepos(Principal principal) {
         return findCodeRepoService.getCodeReposResponseDtos(principal);
@@ -64,6 +67,15 @@ public class CodeRepoApiService {
 
     public CodeRepo getRepo(Long id, Principal principal) {
         return findCodeRepoService.findById(id, principal);
+    }
+
+    public SastLlmProgressDto sastLlmProgress(Long id, Principal principal) {
+        CodeRepo repo = findCodeRepoService.findById(id, principal);
+        if (repo == null) {
+            throw new CodeRepoNotFoundException("Repository not found");
+        }
+        SastLlmProgress.Snapshot snapshot = sastLlmProgress.get(repo.getId());
+        return new SastLlmProgressDto(snapshot.active(), snapshot.analyzed(), snapshot.total());
     }
 
     public List<GetCodeReposResponseDto> getReposByTeam(Long teamId, Principal principal) {
@@ -80,10 +92,44 @@ public class CodeRepoApiService {
     }
 
 
-    public void runScan(Long id, Principal principal) {
+    /**
+     * @return {@code true} when the scan waits behind another scan or AI analysis of the repository
+     */
+    public boolean runScan(Long id, Principal principal) {
         CodeRepo repo = findCodeRepoService.findById(id, principal);
         if (repo != null){
-            scanManagerService.scanRepository(repo, repo.getDefaultBranch(),null, null);
+            return scanManagerService.scanRepository(repo, repo.getDefaultBranch(),null, null);
+        }
+        return false;
+    }
+
+    /**
+     * @return {@code true} when the AI scan was put in a queue behind other AI scans
+     */
+    public boolean runLlmEvaluation(Long id, String source, Principal principal) {
+        CodeRepo repo = findCodeRepoService.findById(id, principal);
+        if (repo != null) {
+            return scanManagerService.runLlmEvaluation(repo, repo.getDefaultBranch(), parseEvaluationSource(source));
+        }
+        return false;
+    }
+
+    static Finding.Source parseEvaluationSource(String source) {
+        if (source == null || source.isBlank()) {
+            throw new IllegalArgumentException("source is required (SAST or SECRETS)");
+        }
+        String normalized = source.trim().toUpperCase();
+        try {
+            Finding.Source parsed = Finding.Source.valueOf(normalized);
+            if (parsed != Finding.Source.SAST && parsed != Finding.Source.SECRETS) {
+                throw new IllegalArgumentException("LLM evaluation does not support " + source);
+            }
+            return parsed;
+        } catch (IllegalArgumentException e) {
+            if (e.getMessage() != null && e.getMessage().startsWith("LLM evaluation")) {
+                throw e;
+            }
+            throw new IllegalArgumentException("LLM evaluation supports SAST or SECRETS, got: " + source);
         }
     }
 
@@ -100,13 +146,13 @@ public class CodeRepoApiService {
         }
     }
 
-    public void runScanForBranch(Long id, String branchName, Principal principal) {
+    public boolean runScanForBranch(Long id, String branchName, Principal principal) {
         CodeRepo repo = findCodeRepoService.findById(id, principal);
         if (repo == null) {
             throw new CodeRepoNotFoundException("Repository not found");
         }
         CodeRepoBranch branch = getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(branchName, repo);
-        scanManagerService.scanRepository(repo, branch, null, null);
+        return scanManagerService.scanRepository(repo, branch, null, null);
     }
 
     /**
