@@ -119,6 +119,9 @@ public class CodeRepoApiService {
             throw new IllegalArgumentException("source is required (SAST or SECRETS)");
         }
         String normalized = source.trim().toUpperCase();
+        if ("SECRET".equals(normalized)) {
+            normalized = "SECRETS";
+        }
         try {
             Finding.Source parsed = Finding.Source.valueOf(normalized);
             if (parsed != Finding.Source.SAST && parsed != Finding.Source.SECRETS) {

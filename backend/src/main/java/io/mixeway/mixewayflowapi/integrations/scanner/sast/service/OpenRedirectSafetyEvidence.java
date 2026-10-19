@@ -72,13 +72,19 @@ final class OpenRedirectSafetyEvidence {
         boolean hasSink = REDIRECT_SINK.matcher(combined).find();
         boolean hostMutated = hasHostMutation(combined);
 
-        if (sameOriginBase && searchParamsOnly && hasSink && !hostMutated) {
+        if (hostMutated) {
+            return false;
+        }
+        if (sameOriginBase && searchParamsOnly && hasSink) {
             return true;
         }
 
         // Truncated code extract may show only the sink; accept explicit reviewer proof.
-        String lower = combined.toLowerCase(Locale.ROOT);
-        return reviewerSameOriginProof(lower);
+        // Redirect assignments such as location.href = are the sink, not proof the URL
+        // was built from the current page.
+        String withoutRedirectSink = combined.replaceAll(
+                "(?i)(?:window\\.)?location(?:\\.href)?\\s*=", " ");
+        return reviewerSameOriginProof(withoutRedirectSink.toLowerCase(Locale.ROOT));
     }
 
     private static boolean hasHostMutation(String combined) {

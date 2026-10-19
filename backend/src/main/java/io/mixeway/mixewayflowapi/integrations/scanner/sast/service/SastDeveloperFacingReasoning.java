@@ -38,7 +38,7 @@ public final class SastDeveloperFacingReasoning {
     private static final Pattern CONFIDENCE_BAND = Pattern.compile(
             "(?i)\\b(?:VERY_HIGH|VERY_LOW)\\b|\\bconfidence band\\b|\\bstandardized band\\b");
     private static final Pattern MID_CONFIDENCE = Pattern.compile(
-            "(?i)(?:,?\\s*)?(?:with\\s+)?mid(?:-)?confidence(?:\\s*\\(~?0\\.55\\))?|(?:confidence\\s+)?0\\.50\\s*-\\s*0\\.60(?:\\s*\\(~?0\\.55\\))?");
+            "(?i)(?:,?\\s*)?(?:with\\s+)?mid[\\s-]?confidence(?:\\s*\\(~?\\d+(?:\\.\\d+)?\\))?|(?:confidence\\s+)?0\\.50\\s*-\\s*0\\.60(?:\\s*\\(~?0\\.55\\))?");
     private static final Pattern CONSISTENCY_NOTE = Pattern.compile(
             "\\s*Consistency warning: a structurally similar finding was previously classified as [A-Z_]+\\. "
                     + "Re-check whether the same source/sink/primitive case is being judged differently\\.?");
