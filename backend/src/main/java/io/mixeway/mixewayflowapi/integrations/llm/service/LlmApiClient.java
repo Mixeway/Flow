@@ -41,7 +41,7 @@ public class LlmApiClient {
             .build();
 
     private final FindSettingsService findSettingsService;
-    private final WebClient webClient;
+    private final WebClient llmWebClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
     /** Set after a server rejects {@code response_format=json_object}, so later calls stay on the prompt fallback. */
     private volatile boolean jsonObjectFormatRejected;
@@ -169,7 +169,7 @@ public class LlmApiClient {
             attempt++;
             long startedAt = System.currentTimeMillis();
             try {
-                String responseJson = webClient.post()
+                String responseJson = llmWebClient.post()
                         .uri(url)
                         .header("Authorization", "Bearer " + credentials.apiKey)
                         .contentType(MediaType.APPLICATION_JSON)

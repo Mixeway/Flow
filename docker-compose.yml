@@ -19,9 +19,18 @@ services:
       # SSO_USER_INFO_URI: http://your-user-info-uri
       # SSO_JWK_SET_URI: http://your-jwk-set-uri
       # FRONTEND_URL: http://your-frontend-url
+      # Uncomment when the LLM provider requires mTLS (client certificate)
+      # LLM_MTLS_ENABLED: "true"
+      # LLM_MTLS_KEY_STORE: file:/etc/pki/llm-client.p12
+      # LLM_MTLS_KEY_STORE_PASSWORD: your_client_p12_password
+      # Only when the provider's CA is not in the JVM cacerts:
+      # LLM_MTLS_TRUST_STORE: file:/etc/pki/llm-ca.p12
+      # LLM_MTLS_TRUST_STORE_PASSWORD: your_ca_p12_password
     volumes:
       - pki_data:/etc/pki
       - dependency_track_data:/root/.dependency-track
+      # - ./certs/llm-client.p12:/etc/pki/llm-client.p12:ro
+      # - ./certs/llm-ca.p12:/etc/pki/llm-ca.p12:ro
     depends_on:
       - flowdb
     restart: always  # Add this line
