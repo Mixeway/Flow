@@ -24,7 +24,7 @@ import { IconDirective } from '@coreui/icons-angular';
 import { DatePipe, NgClass, NgFor, NgIf } from '@angular/common';
 import { ChartjsComponent } from "@coreui/angular-chartjs";
 import {FormsModule} from "@angular/forms";
-import {RepoService} from "../../../service/RepoService";
+import {RepoService, SastLlmProgressView} from "../../../service/RepoService";
 
 @Component({
   selector: 'app-repository-info',
@@ -62,7 +62,7 @@ import {RepoService} from "../../../service/RepoService";
 export class RepositoryInfoComponent implements OnInit {
   @Input() repoData: any;
   @Input() scanRunning: boolean = false;
-  @Input() llmProgress: { analyzed: number; total: number } | null = null;
+  @Input() llmProgress: SastLlmProgressView | null = null;
   @Input() userRole: string = 'USER';
   @Input() topLanguages: { name: string; value: number; color: string }[] = [];
   @Input() chartPieData: any;
@@ -119,6 +119,20 @@ export class RepositoryInfoComponent implements OnInit {
       return 0;
     }
     return Math.min(100, Math.round((this.llmProgress.analyzed / this.llmProgress.total) * 100));
+  }
+
+  get llmCounting(): boolean {
+    return !!this.llmProgress && this.llmProgress.phase === 'ANALYZING' && this.llmProgress.total > 0;
+  }
+
+  get llmProgressLabel(): string {
+    if (this.llmCounting) {
+      return `AI analysis ${this.llmProgress!.analyzed} / ${this.llmProgress!.total}`;
+    }
+    if (this.llmProgress?.phase === 'QUEUED') {
+      return 'AI analysis queued…';
+    }
+    return 'Preparing AI analysis (cloning and scanning)…';
   }
 
   ngOnInit(): void {

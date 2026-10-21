@@ -24,6 +24,7 @@ import io.mixeway.mixewayflowapi.integrations.scanner.cloud_scanner.service.Clou
 import io.mixeway.mixewayflowapi.integrations.scanner.gitlab_scanner.service.GitLabScannerService;
 import io.mixeway.mixewayflowapi.integrations.scanner.iac.service.IaCService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.service.SASTService;
+import io.mixeway.mixewayflowapi.integrations.scanner.sast.service.SastLlmProgress;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.apiclient.KEVApiClient;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.dto.CatalogDto;
 import io.mixeway.mixewayflowapi.integrations.scanner.sca.dto.VulnerabilityDto;
@@ -63,6 +64,7 @@ public class ScanManagerService {
     private final SecretsService secretsService;
     private final IaCService iaCService;
     private final SASTService sastService;
+    private final SastLlmProgress sastLlmProgress;
     private final ZAPService zapService;
     private final ConcurrentHashMap<Long, Boolean> scanningRepos = new ConcurrentHashMap<>();
     private final UpdateCodeRepoService updateCodeRepoService;
@@ -579,13 +581,42 @@ public class ScanManagerService {
         int waiting = queue.getQueue().size();
         int running = queue.getActiveCount();
         boolean llmQueued = running >= queue.getMaximumPoolSize() || waiting > 0;
-        boolean repoQueued = repoScanQueue.submit(codeRepo.getId(), queue, () -> {
+        boolean trackSastProgress = source == Finding.Source.SAST;
+        if (trackSastProgress) {
+            sastLlmProgress.queue(codeRepo.getId());
+        }
+        boolean repoQueued;
+        try {
+            repoQueued = submitLlmEvaluation(codeRepo, codeRepoBranch, source, queue, trackSastProgress);
+        } catch (RuntimeException e) {
+            if (trackSastProgress) {
+                sastLlmProgress.clear(codeRepo.getId());
+            }
+            throw e;
+        }
+        boolean queued = llmQueued || repoQueued;
+        if (queued) {
+            log.info("[ScanManagerService] {} AI scan for [{} / {}] added to queue (AI running={}, AI waiting={}, waiting for repo job={})",
+                    source, codeRepo.getRepourl(), codeRepoBranch.getName(), running, waiting, repoQueued);
+        } else {
+            log.info("[ScanManagerService] {} AI scan for [{} / {}] accepted, starting immediately",
+                    source, codeRepo.getRepourl(), codeRepoBranch.getName());
+        }
+        return queued;
+    }
+
+    private boolean submitLlmEvaluation(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, Finding.Source source,
+                                        ThreadPoolExecutor queue, boolean trackSastProgress) {
+        return repoScanQueue.submit(codeRepo.getId(), queue, () -> {
             String repoDir = llmRepoDir(codeRepo, source);
             String repoUrl = codeRepo.getRepourl();
             String accessToken = codeRepo.getAccessToken();
             CodeRepo.RepoType repoType = codeRepo.getType();
 
             try {
+                if (trackSastProgress) {
+                    sastLlmProgress.prepare(codeRepo.getId());
+                }
                 log.info("[ScanManagerService] LLM analysis for {} and {} started", source, repoUrl);
                 log.debug("[ScanManagerService] Starting {} LLM evaluation for [{} / {}], waiting in queue {}",
                         source, codeRepo.getRepourl(), codeRepoBranch.getName(), queue.getQueue().size());
@@ -601,6 +632,9 @@ public class ScanManagerService {
                 log.error("[ScanManagerService] {} LLM evaluation failed for [{} / {}]: {}",
                         source, codeRepo.getRepourl(), codeRepoBranch.getName(), t.getMessage(), t);
             } finally {
+                if (trackSastProgress) {
+                    sastLlmProgress.clear(codeRepo.getId());
+                }
                 try {
                     cleanUp(repoDir);
                 } catch (IOException cleanupEx) {
@@ -608,15 +642,6 @@ public class ScanManagerService {
                 }
             }
         });
-        boolean queued = llmQueued || repoQueued;
-        if (queued) {
-            log.info("[ScanManagerService] {} AI scan for [{} / {}] added to queue (AI running={}, AI waiting={}, waiting for repo job={})",
-                    source, codeRepo.getRepourl(), codeRepoBranch.getName(), running, waiting, repoQueued);
-        } else {
-            log.info("[ScanManagerService] {} AI scan for [{} / {}] accepted, starting immediately",
-                    source, codeRepo.getRepourl(), codeRepoBranch.getName());
-        }
-        return queued;
     }
 
     private ThreadPoolExecutor llmExecutor(Finding.Source source) {

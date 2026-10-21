@@ -70,7 +70,7 @@ import { ChartData } from 'chart.js/dist/types';
 import { ChartOptions } from 'chart.js';
 import { DatatableComponent, NgxDatatableModule } from '@swimlane/ngx-datatable';
 import {DatePipe, JsonPipe, NgForOf, NgIf} from '@angular/common';
-import { RepoService } from '../../service/RepoService';
+import { RepoService, SastLlmProgressView } from '../../service/RepoService';
 import { SettingsService, SlaConfig } from '../../service/SettingsService';
 import { AuthService } from '../../service/AuthService';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -248,7 +248,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit, OnDestroy {
         version: '',
     };
     scanRunning: boolean = false;
-    llmProgress: { analyzed: number; total: number } | null = null;
+    llmProgress: SastLlmProgressView | null = null;
     private llmProgressTimer: ReturnType<typeof setInterval> | null = null;
     userRole: string = 'USER';
 
@@ -543,8 +543,8 @@ export class ShowRepoComponent implements OnInit, AfterViewInit, OnDestroy {
         }
         this.repoService.getSastLlmProgress(+this.repoId).subscribe({
             next: (response) => {
-                this.llmProgress = response?.active && response.total > 0
-                    ? { analyzed: response.analyzed, total: response.total }
+                this.llmProgress = response?.active
+                    ? { phase: response.phase, analyzed: response.analyzed, total: response.total }
                     : null;
             },
             error: () => {
@@ -1221,6 +1221,9 @@ export class ShowRepoComponent implements OnInit, AfterViewInit, OnDestroy {
                     : `AI verification requested. ${label} analysis will run in the background.`;
                 this.toggleToast();
                 this.loadRepoInfo();
+                if (source === 'SAST') {
+                    this.pollSastLlmProgress();
+                }
             },
             error: () => {
                 this.toastStatus = 'danger';
