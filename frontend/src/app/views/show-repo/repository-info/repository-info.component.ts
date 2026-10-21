@@ -132,7 +132,7 @@ export class RepositoryInfoComponent implements OnInit {
     if (this.llmProgress?.phase === 'QUEUED') {
       return 'AI analysis queued…';
     }
-    return 'Preparing AI analysis (cloning and scanning)…';
+    return 'Preparing AI analysis…';
   }
 
   ngOnInit(): void {
