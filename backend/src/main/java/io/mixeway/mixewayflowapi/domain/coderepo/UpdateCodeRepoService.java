@@ -303,10 +303,10 @@ public class UpdateCodeRepoService {
 
     @Transactional
     public void changeTeam(CodeRepo codeRepo, Team newTeam) {
-        // Simply update the team reference
+        String oldTeamName = codeRepo.getTeam().getName();
         codeRepo.updateTeam(newTeam);
         codeRepoRepository.save(codeRepo);
-        log.info("Changed team for code repo {} from {} to {}", codeRepo.getId(), codeRepo.getTeam().getName(), newTeam.getName());
+        log.info("Changed team for code repo {} from {} to {}", codeRepo.getId(), oldTeamName, newTeam.getName());
     }
 
     @Modifying

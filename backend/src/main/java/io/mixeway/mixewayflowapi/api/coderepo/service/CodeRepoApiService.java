@@ -19,6 +19,7 @@ import io.mixeway.mixewayflowapi.integrations.scanner.sast.service.SastLlmProgre
 import io.mixeway.mixewayflowapi.exceptions.CodeRepoNotFoundException;
 import io.mixeway.mixewayflowapi.exceptions.ScanThrottledException;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
+import io.mixeway.mixewayflowapi.exceptions.UnauthorizedException;
 import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import io.mixeway.mixewayflowapi.utils.PermissionFactory;
 import com.fasterxml.jackson.core.JacksonException;
@@ -235,20 +236,58 @@ public class CodeRepoApiService {
             throw new IllegalArgumentException("New team is the same as current team");
         }
 
+        Team oldTeam = codeRepo.getTeam();
+
         // Change the team
         updateCodeRepoService.changeTeam(codeRepo, newTeam);
+        log.info("[CodeRepo] User '{}' moved repository {} from team {} to team {}",
+                principal.getName(), describeRepo(codeRepo), describeTeam(oldTeam), describeTeam(newTeam));
     }
 
     public void bulkChangeTeam(List<Long> repositoryIds, Long newTeamId, Principal principal) {
-        // For bulk actions by an admin, we trust the role.
-        // Finer-grained checks could be added here if needed.
+        if (repositoryIds == null || repositoryIds.isEmpty()) {
+            throw new IllegalArgumentException("Repository IDs cannot be empty.");
+        }
+        log.info("[CodeRepo] User '{}' requested bulk team change of repositories {} to team id={}",
+                principal.getName(), repositoryIds, newTeamId);
 
-        // Find the new team
         Team newTeam = findTeamService.findById(newTeamId)
                 .orElseThrow(() -> new TeamNotFoundException("New team not found"));
+        checkCanManageTeamForBulkChange(newTeam, "target", principal);
 
-        // Call the bulk update service
+        Set<Long> checkedSourceTeamIds = new HashSet<>();
+        List<String> movedRepos = new ArrayList<>();
+        for (Long repositoryId : repositoryIds) {
+            CodeRepo repository = findCodeRepoService.findById(repositoryId)
+                    .orElseThrow(() -> new CodeRepoNotFoundException("Repository not found: " + repositoryId));
+            Team sourceTeam = repository.getTeam();
+            if (checkedSourceTeamIds.add(sourceTeam.getId())) {
+                checkCanManageTeamForBulkChange(sourceTeam, "source", principal);
+            }
+            movedRepos.add(describeRepo(repository) + " from team " + describeTeam(sourceTeam));
+        }
+
         updateCodeRepoService.bulkChangeTeam(repositoryIds, newTeam);
+        log.info("[CodeRepo] User '{}' moved {} repositories to team {}: {}",
+                principal.getName(), movedRepos.size(), describeTeam(newTeam), String.join("; ", movedRepos));
+    }
+
+    private void checkCanManageTeamForBulkChange(Team team, String teamRole, Principal principal) {
+        try {
+            permissionFactory.canUserManageTeam(team, principal);
+        } catch (UnauthorizedException e) {
+            log.warn("[CodeRepo] Bulk team change denied for user '{}': not allowed to manage {} team {}",
+                    principal.getName(), teamRole, describeTeam(team));
+            throw e;
+        }
+    }
+
+    private static String describeRepo(CodeRepo repo) {
+        return "'" + repo.getName() + "' (id=" + repo.getId() + ")";
+    }
+
+    private static String describeTeam(Team team) {
+        return "'" + team.getName() + "' (id=" + team.getId() + ")";
     }
 
     public void changeAccessToken(Long repoId, String accessToken, Principal principal) {

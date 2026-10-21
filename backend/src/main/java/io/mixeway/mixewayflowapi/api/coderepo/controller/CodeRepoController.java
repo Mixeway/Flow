@@ -259,14 +259,23 @@ public class CodeRepoController {
         }
     }
 
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN','TEAM_MANAGER')")
     @PutMapping(value = "/api/v1/coderepo/bulk/change-team")
     public ResponseEntity<StatusDTO> bulkChangeTeam(@Valid @RequestBody BulkChangeTeamRequestDto request, Principal principal) {
         try {
             codeRepoApiService.bulkChangeTeam(request.getRepositoryIds(), request.getNewTeamId(), principal);
             return ResponseEntity.ok(new StatusDTO("Repositories successfully moved to the new team."));
+        } catch (UnauthorizedException e) {
+            log.error("[CodeRepo] Unauthorized bulk team change attempt by {} (repositories {}, target team id={})",
+                    principal.getName(), request.getRepositoryIds(), request.getNewTeamId());
+            return new ResponseEntity<>(new StatusDTO("Unauthorized"), HttpStatus.FORBIDDEN);
+        } catch (TeamNotFoundException | CodeRepoNotFoundException e) {
+            log.error("[CodeRepo] Resource not found during bulk team change by {} (repositories {}, target team id={}): {}",
+                    principal.getName(), request.getRepositoryIds(), request.getNewTeamId(), e.getMessage());
+            return new ResponseEntity<>(new StatusDTO(e.getMessage()), HttpStatus.NOT_FOUND);
         } catch (Exception e) {
-            log.error("[CodeRepo] Error during bulk team change by {}: {}", principal.getName(), e.getMessage());
+            log.error("[CodeRepo] Error during bulk team change by {} (repositories {}, target team id={}): {}",
+                    principal.getName(), request.getRepositoryIds(), request.getNewTeamId(), e.getMessage());
             return new ResponseEntity<>(new StatusDTO(e.getMessage()), HttpStatus.BAD_REQUEST);
         }
     }
