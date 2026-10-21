@@ -75,7 +75,7 @@ public class CodeRepoApiService {
             throw new CodeRepoNotFoundException("Repository not found");
         }
         SastLlmProgress.Snapshot snapshot = sastLlmProgress.get(repo.getId());
-        return new SastLlmProgressDto(snapshot.active(), snapshot.analyzed(), snapshot.total());
+        return new SastLlmProgressDto(snapshot.active(), snapshot.phase().name(), snapshot.analyzed(), snapshot.total());
     }
 
     public List<GetCodeReposResponseDto> getReposByTeam(Long teamId, Principal principal) {

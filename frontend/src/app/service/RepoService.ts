@@ -5,6 +5,14 @@ import {environment} from "../../environments/environment";
 
 export type InactiveTokenStatus = 'UNAUTHORIZED' | 'NOT_FOUND' | 'UNREACHABLE';
 
+export type SastLlmPhase = 'IDLE' | 'QUEUED' | 'PREPARING' | 'ANALYZING';
+
+export interface SastLlmProgressView {
+    phase: SastLlmPhase;
+    analyzed: number;
+    total: number;
+}
+
 export interface InactiveTokenRepo {
     id: number;
     name: string;
@@ -50,8 +58,8 @@ export class RepoService {
     getRepo(id: number): Observable<any> {
         return this.http.get<any>(this.loginUrl + '/api/v1/coderepo/' + id,{ withCredentials: true });
     }
-    getSastLlmProgress(id: number): Observable<{ active: boolean; analyzed: number; total: number }> {
-        return this.http.get<{ active: boolean; analyzed: number; total: number }>(
+    getSastLlmProgress(id: number): Observable<{ active: boolean; phase: SastLlmPhase; analyzed: number; total: number }> {
+        return this.http.get<{ active: boolean; phase: SastLlmPhase; analyzed: number; total: number }>(
             this.loginUrl + '/api/v1/coderepo/' + id + '/sast-llm-progress',
             { withCredentials: true }
         );

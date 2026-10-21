@@ -5,17 +5,21 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 
 import java.util.Locale;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * Pulls a verdict object out of the shapes local models actually return:
  * markdown fences, thinking tags, trailing commas, a missing {@code action},
- * and confidence written as a string.
+ * a duplicated opening brace, and confidence written as a string.
  */
 final class SastReactResponseParser {
 
     private static final Pattern THINKING = Pattern.compile(
             "(?is)<\\s*(think|thinking|redacted_reasoning)\\b[^>]*>.*?</\\s*\\1\\s*>");
+
+    // Some servers enforce json_object by prefilling an opening brace (or brace-quote) that the model then repeats.
+    private static final Pattern DUPLICATED_OPENING = Pattern.compile("\\{\\s*\"?\\s*(?=\\{)");
 
     private static final com.fasterxml.jackson.databind.ObjectMapper MAPPER = JsonMapper.builder()
             .enable(JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER)
@@ -53,7 +57,31 @@ final class SastReactResponseParser {
         String text = THINKING.matcher(content).replaceAll(" ");
         text = text.replace("```json", " ").replace("```JSON", " ").replace("```", " ").trim();
         String object = lastRelevantObject(text);
-        return object == null ? text : object;
+        String candidate = object == null ? text : object;
+        if (parses(candidate)) {
+            return candidate;
+        }
+        Matcher duplicated = DUPLICATED_OPENING.matcher(text);
+        if (duplicated.lookingAt()) {
+            String stripped = text.substring(duplicated.end());
+            String repaired = lastRelevantObject(stripped);
+            if (repaired == null) {
+                repaired = stripped;
+            }
+            if (parses(repaired)) {
+                return repaired;
+            }
+        }
+        return candidate;
+    }
+
+    private static boolean parses(String json) {
+        try {
+            JsonNode node = MAPPER.readTree(json);
+            return node != null && node.isObject();
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     static StageOneView stageOne(JsonNode node) {

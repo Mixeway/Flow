@@ -51,4 +51,36 @@ class SastReactResponseParserTest {
 
         assertEquals(SastReactResponseParser.StageOneFailure.MISSING_ACTION, view.failure());
     }
+
+    @Test
+    void recoversFinalVerdictAfterDuplicatedOpeningBrace() {
+        JsonNode node = SastReactResponseParser.tryParse(
+                "{{\"action\":\"final\",\"execution_context\":\"cli_developer_tool\",\"input_source\":\"config_file\","
+                        + "\"verdict\":\"TRUE_POSITIVE\",\"confidence\":0.98,\"reasoning\":\"Empty checkServerTrusted.\"}");
+
+        SastReactResponseParser.StageOneView view = SastReactResponseParser.stageOne(node);
+
+        assertNull(view.failure());
+        assertEquals("TRUE_POSITIVE", view.verdict());
+        assertEquals("cli_developer_tool", node.get("execution_context").asText());
+    }
+
+    @Test
+    void recoversToolCallAfterDuplicatedBraceQuotePrefix() {
+        JsonNode node = SastReactResponseParser.tryParse(
+                "{\"{\"thought\":\"Need to see socket setup.\",\"action\":\"read_file\","
+                        + "\"path\":\"src/RGWClient.java\",\"start_line\":120,\"end_line\":220}");
+
+        assertEquals("read_file", node.get("action").asText());
+        assertEquals(120, node.get("start_line").asInt());
+    }
+
+    @Test
+    void recoversToolCallWithSpacesAfterDuplicatedBraceQuotePrefix() {
+        JsonNode node = SastReactResponseParser.tryParse(
+                "{\"{\"action\": \"search_repo\", \"pattern\": \"new Socket\\\\(\\\\)\", \"path_glob\": \"*.java\"}");
+
+        assertEquals("search_repo", node.get("action").asText());
+        assertEquals("new Socket\\(\\)", node.get("pattern").asText());
+    }
 }
