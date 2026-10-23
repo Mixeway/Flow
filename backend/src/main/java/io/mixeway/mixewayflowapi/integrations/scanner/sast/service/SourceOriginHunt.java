@@ -48,7 +48,25 @@ final class SourceOriginHunt {
             VulnerabilityFamily.SQL_INJECTION,
             VulnerabilityFamily.DESERIALIZATION,
             VulnerabilityFamily.TRUST_BOUNDARY,
-            VulnerabilityFamily.XXE);
+            VulnerabilityFamily.XXE,
+            VulnerabilityFamily.REGEX_DOS);
+
+    /** The part of the flagged call whose origin decides the finding. */
+    enum Slot {
+        /** The value that reaches the sink. */
+        VALUE,
+        /** Code text run by eval, exec, compile, Function, or a script engine. */
+        EXECUTED_CODE,
+        /** The attribute name given to setattr, __set__, contribute_to_class, or Object.defineProperty. */
+        ATTRIBUTE_NAME;
+
+        static Slot of(boolean codeInjection, boolean realExecutionSink) {
+            if (!codeInjection) {
+                return VALUE;
+            }
+            return realExecutionSink ? EXECUTED_CODE : ATTRIBUTE_NAME;
+        }
+    }
 
     /** Origins the first pass already named as a concrete channel. A DOM read is not one of these. */
     private static final Set<String> CONCRETE_SOURCES = Set.of(
@@ -73,24 +91,30 @@ final class SourceOriginHunt {
     private SourceOriginHunt() {
     }
 
-    static boolean shouldHunt(SastRuleMetadata metadata, boolean codeInjection, String inputSource, String verdict) {
-        return shouldHunt(metadata, codeInjection, inputSource, verdict, null);
+    static boolean shouldHunt(SastRuleMetadata metadata, Slot slot, String inputSource, String verdict) {
+        return shouldHunt(metadata, slot, inputSource, verdict, null);
     }
 
     /**
      * {@code codeContext} is the flagged snippet plus the first-pass reasoning. A framework
      * binding such as {@code settings.NAME} or {@code @Value} is not a finished source even
      * when the first pass already labeled it {@code config_file} or {@code environment_variable}.
+     * For {@link Slot#ATTRIBUTE_NAME} the first pass reports the origin of the name, so only an
+     * unresolved name is hunted.
      */
-    static boolean shouldHunt(SastRuleMetadata metadata, boolean codeInjection, String inputSource, String verdict,
+    static boolean shouldHunt(SastRuleMetadata metadata, Slot slot, String inputSource, String verdict,
                               String codeContext) {
-        if (metadata == null || !metadata.requiresTaint() || codeInjection || metadata.family() == null) {
+        if (metadata == null || !metadata.requiresTaint() || metadata.family() == null) {
             return false;
         }
-        if (!FAMILIES.contains(metadata.family())) {
+        Slot target = slot == null ? Slot.VALUE : slot;
+        if (target == Slot.VALUE && !FAMILIES.contains(metadata.family())) {
             return false;
         }
         String source = inputSource == null ? "" : inputSource.trim().toLowerCase(Locale.ROOT);
+        if (target == Slot.ATTRIBUTE_NAME) {
+            return source.isBlank() || "unknown".equals(source);
+        }
         boolean xssLike = metadata.family() == VulnerabilityFamily.XSS
                 || metadata.family() == VulnerabilityFamily.OPEN_REDIRECT;
         if (xssLike && ("dom_content".equals(source) || "gui_input".equals(source))) {
@@ -206,21 +230,39 @@ final class SourceOriginHunt {
         sb.append("Keep UNCERTAIN when a caller exists and its argument was not shown to be constant.\n");
         sb.append("Reasoning must describe the code for a developer and must not mention this follow-up search, ")
                 .append("tool calls, or that an earlier review was inconclusive.\n");
-        sb.append("Return ONLY one JSON object with action \"final\" and the fields execution_context, input_source, ")
-                .append("verdict, confidence, reasoning, recommendation, remediation_code, false_positive_evidence.");
+        sb.append("Return ONLY one JSON object with action \"final\". ").append(FinalVerdictFormat.ORDER_RULE);
         return sb.toString();
     }
 
     static String systemPrompt() {
+        return systemPrompt(Slot.VALUE);
+    }
+
+    static String systemPrompt(Slot slot) {
+        if (slot == Slot.ATTRIBUTE_NAME) {
+            return "You trace who controls the attribute NAME passed to setattr, __set__, contribute_to_class, "
+                    + "or Object.defineProperty. The assigned value does not decide this finding; do not trace it. "
+                    + "You do not decide whether the finding is exploitable in this step. "
+                    + "Use search_repo, find_files, and read_file. An allowlist check counts only when this call path invokes it. "
+                    + "Respond with ONLY one JSON object.";
+        }
         return "You trace the origin of the single value that reaches a security sink. "
                 + "You do not decide whether the finding is exploitable in this step. "
-                + "Use search_repo and read_file. A value read from a dialog, editor data object, "
+                + "Use search_repo, find_files, and read_file. A value read from a dialog, editor data object, "
                 + "or DOM property is an intermediate, not the source, until you find the writer. "
                 + "A validator or sanitizer defined in another file counts only when this call path invokes it. "
                 + "Respond with ONLY one JSON object.";
     }
 
     static String userPrompt(Item item, SastRuleMetadata metadata, String inputSource, String verdict, String reasoning) {
+        return userPrompt(item, metadata, inputSource, verdict, reasoning, Slot.VALUE);
+    }
+
+    static String userPrompt(Item item, SastRuleMetadata metadata, String inputSource, String verdict, String reasoning,
+                             Slot slot) {
+        if (slot == Slot.ATTRIBUTE_NAME) {
+            return attributeNameUserPrompt(item, inputSource, verdict, reasoning);
+        }
         String source = inputSource == null || inputSource.isBlank() ? "unknown" : inputSource.trim();
         String family = metadata != null && metadata.family() != null ? metadata.family().name() : "unknown";
         StringBuilder sb = new StringBuilder();
@@ -228,6 +270,70 @@ final class SourceOriginHunt {
         sb.append("Prior input_source: ").append(source).append('\n');
         sb.append("Prior verdict: ").append(verdict == null ? "unknown" : verdict).append('\n');
         sb.append("Family: ").append(family).append("\n\n");
+        appendFinding(sb, item, reasoning);
+        sb.append("Search in this order:\n");
+        sb.append("1. read_file on the finding file around the flagged line.\n");
+        sb.append("2. search_repo for assignments of the sink identifier (`name =`, `.name =`, `name:`).\n");
+        sb.append("3. search_repo for callers of the enclosing function.\n");
+        if (metadata != null && (metadata.family() == VulnerabilityFamily.XSS
+                || metadata.family() == VulnerabilityFamily.OPEN_REDIRECT)) {
+            sb.append("4. For a URL or HTML value, search for a protocol or markup check ")
+                    .append("(javascript:, isUrlValid, DOMPurify, sanitize) and read whether THIS path calls it. ")
+                    .append("A check in a sibling plugin that is not called here is not on this path.\n");
+        }
+        if (configIndirection(source, codeContext(item, reasoning))) {
+            sb.append("4. This value is a framework setting or environment binding. The property name is not the file. ")
+                    .append("Locate the conventional config files with find_files (application*.yml, application*.properties, ")
+                    .append("settings*.py, .env*, appsettings*.json), then search_repo for the key; search_repo covers ")
+                    .append("yml, properties, json, xml, and .env files. ")
+                    .append("Then search who assigns the key: an operator config write, an admin or user UI, or a database. ")
+                    .append("A settings. or @Value prefix alone does not show the writer.\n");
+        }
+        if (slot == Slot.EXECUTED_CODE) {
+            sb.append("4. The sink executes code. Find the code string passed to eval, exec, compile, Function, ")
+                    .append("or the script engine: a literal or a template built only from constants and internal values, ")
+                    .append("or text that includes request, file, or database input. ")
+                    .append("A fixed allowlist of expressions counts only when this path checks it.\n");
+        }
+        if (metadata != null && metadata.family() == VulnerabilityFamily.REGEX_DOS) {
+            sb.append("4. The sink compiles a regular expression. Find who supplies the pattern string and whether ")
+                    .append("this path escapes it before compiling (re.escape, Pattern.quote, escapeRegExp, ")
+                    .append("regexp.QuoteMeta, preg_quote, Regexp.escape).\n");
+        }
+        sb.append("Prefer the finding's directory before a repo-wide search.\n\n");
+        appendResponseFormat(sb, "\"writer\":\"path:line symbol, or empty\",\"neutralizer_on_path\":\"none, or the function "
+                + "and whether this path calls it\",", "naming the writer and the sink");
+        return sb.toString();
+    }
+
+    private static String attributeNameUserPrompt(Item item, String inputSource, String verdict, String reasoning) {
+        String source = inputSource == null || inputSource.isBlank() ? "unknown" : inputSource.trim();
+        StringBuilder sb = new StringBuilder();
+        sb.append("The first review did not establish who controls the attribute NAME at this sink.\n");
+        sb.append("Prior input_source (origin of NAME): ").append(source).append('\n');
+        sb.append("Prior verdict: ").append(verdict == null ? "unknown" : verdict).append('\n');
+        sb.append("Sink: attribute assignment (setattr, __set__, contribute_to_class, Object.defineProperty)\n\n");
+        appendFinding(sb, item, reasoning);
+        sb.append("Only the attribute NAME decides this finding. The assigned VALUE may come from HTTP, GraphQL, ")
+                .append("or the database and still be safe. Do not search for the VALUE origin.\n\n");
+        sb.append("Search in this order:\n");
+        sb.append("1. read_file on the finding file around the flagged line and find the NAME argument ")
+                .append("(2nd argument of setattr, the field name given to contribute_to_class or __set__, ")
+                .append("the property key of Object.defineProperty).\n");
+        sb.append("2. If NAME is a variable, search its assignment in the enclosing function ")
+                .append("(`name =`, `for name in`, `for name, value in`).\n");
+        sb.append("3. If NAME is a parameter of the enclosing function, search callers of that function ")
+                .append("and read what they pass as NAME.\n");
+        sb.append("4. Check whether this path restricts NAME to a fixed set before the assignment ")
+                .append("(`if key in ALLOWED`, `_meta.get_field`, a model field list).\n");
+        sb.append("5. Note any eval, exec, or compile in the enclosing function and what text it runs.\n");
+        sb.append("Prefer the finding's directory before a repo-wide search.\n\n");
+        appendResponseFormat(sb, "\"writer\":\"path:line where NAME is set, or empty\",\"neutralizer_on_path\":\"none, "
+                + "or the allowlist check and whether this path calls it\",", "naming who sets NAME and the sink");
+        return sb.toString();
+    }
+
+    private static void appendFinding(StringBuilder sb, Item item, String reasoning) {
         if (item != null) {
             sb.append("File: ").append(item.getFilename() == null ? "" : item.getFilename())
                     .append(':').append(item.getLineNumber()).append('\n');
@@ -245,35 +351,20 @@ final class SourceOriginHunt {
         if (!prior.isBlank()) {
             sb.append("Prior reasoning (may have stopped too early):\n").append(prior).append("\n\n");
         }
-        sb.append("Search in this order:\n");
-        sb.append("1. read_file on the finding file around the flagged line.\n");
-        sb.append("2. search_repo for assignments of the sink identifier (`name =`, `.name =`, `name:`).\n");
-        sb.append("3. search_repo for callers of the enclosing function.\n");
-        if (metadata != null && (metadata.family() == VulnerabilityFamily.XSS
-                || metadata.family() == VulnerabilityFamily.OPEN_REDIRECT)) {
-            sb.append("4. For a URL or HTML value, search for a protocol or markup check ")
-                    .append("(javascript:, isUrlValid, DOMPurify, sanitize) and read whether THIS path calls it. ")
-                    .append("A check in a sibling plugin that is not called here is not on this path.\n");
-        }
-        if (configIndirection(source, codeContext(item, reasoning))) {
-            sb.append("4. This value is a framework setting or environment binding. The property name is not the file. ")
-                    .append("Search that key in the conventional config files: application.yml, application.yaml, ")
-                    .append("application.properties, settings.py, .env, appsettings.json. ")
-                    .append("Then search who assigns the key: an operator config write, an admin or user UI, or a database. ")
-                    .append("A settings. or @Value prefix alone does not show the writer.\n");
-        }
-        sb.append("Prefer the finding's directory before a repo-wide search.\n\n");
+    }
+
+    private static void appendResponseFormat(StringBuilder sb, String writerFields, String traceSubject) {
         sb.append("Each response is EXACTLY one JSON object.\n");
         sb.append("Investigation: {\"thought\":\"why\",\"action\":\"search_repo\",\"pattern\":\"regex or text\",\"path_glob\":\"optional glob\"}\n");
         sb.append("or {\"thought\":\"why\",\"action\":\"read_file\",\"path\":\"repo-relative/path\",\"start_line\":1,\"end_line\":80}\n");
+        sb.append("or {\"thought\":\"why\",\"action\":\"find_files\",\"glob\":\"filename or path glob\"}\n");
         sb.append("When the writer is found, or after the searches above are exhausted:\n");
         sb.append("{\"action\":\"final\",\"origin_found\":true,\"input_source\":\"http_request|database|file_untrusted|")
                 .append("gui_input|dom_content|url_fragment|internal_call|config_file|environment_variable|unknown\",")
-                .append("\"writer\":\"path:line symbol, or empty\",\"neutralizer_on_path\":\"none, or the function ")
-                .append("and whether this path calls it\",\"in_repo_callers\":\"none, or path:line of each caller ")
-                .append("of the enclosing function\",\"trace\":\"2-4 sentences naming the writer and the sink. ")
+                .append(writerFields)
+                .append("\"in_repo_callers\":\"none, or path:line of each caller ")
+                .append("of the enclosing function\",\"trace\":\"2-4 sentences ").append(traceSubject).append(". ")
                 .append("No review machinery.\"}\n");
-        return sb.toString();
     }
 
     static String formatReport(boolean originFound, String writer, String neutralizer, String trace) {
@@ -292,18 +383,50 @@ final class SourceOriginHunt {
     }
 
     static String revisionPrompt(String currentVerdict, String inputSource, String report) {
+        return revisionPrompt(currentVerdict, inputSource, report, Slot.VALUE);
+    }
+
+    static String revisionPrompt(String currentVerdict, String inputSource, String report, Slot slot) {
         String source = inputSource == null || inputSource.isBlank() ? "unknown" : inputSource.trim();
-        return "A follow-up search traced the value that reaches the sink, because the first review left the "
-                + "origin unresolved (input_source=" + source + ", verdict=" + currentVerdict + ").\n\n"
-                + report + "\n"
-                + "Re-evaluate the verdict using this trace. Change it only when the trace shows a different "
-                + "controller of the value, or a neutralizer that this path does or does not call. "
-                + "A validator that exists in another file but is not called on this value does not make the finding safe. "
-                + "If the trace still does not identify a writer, keep the previous verdict. "
+        String rules;
+        if (slot == Slot.ATTRIBUTE_NAME) {
+            rules = "A follow-up search traced who controls the attribute NAME at this sink, because the first review "
+                    + "left it unresolved (input_source=" + source + ", verdict=" + currentVerdict + ").\n\n"
+                    + report + "\n"
+                    + "Decide by the attribute NAME only. A VALUE from HTTP, GraphQL, or the database does not make "
+                    + "this finding TRUE_POSITIVE.\n"
+                    + "- FALSE_POSITIVE: NAME is a string literal, a constant, self.field, a model or _meta field id, "
+                    + "or a key that this path checks against a fixed allowlist, and no eval, exec, or compile runs "
+                    + "untrusted text.\n"
+                    + "- TRUE_POSITIVE: NAME comes from request, body, json, or form keys or another attacker-controlled "
+                    + "source with no fixed allowlist on this path, or untrusted text reaches eval, exec, or compile.\n"
+                    + "If the trace does not identify who sets NAME, keep the previous verdict. ";
+        } else {
+            rules = "A follow-up search traced the value that reaches the sink, because the first review left the "
+                    + "origin unresolved (input_source=" + source + ", verdict=" + currentVerdict + ").\n\n"
+                    + report + "\n"
+                    + "Re-evaluate the verdict using this trace. Change it only when the trace shows a different "
+                    + "controller of the value, or a neutralizer that this path does or does not call. "
+                    + "A validator that exists in another file but is not called on this value does not make the finding safe. "
+                    + "If the trace still does not identify a writer, keep the previous verdict. ";
+            if (slot == Slot.EXECUTED_CODE) {
+                rules += "For this code-execution sink, judge the code string: text built only from constants or "
+                        + "internal values is FALSE_POSITIVE even though the sink executes code; request, file, or "
+                        + "database text reaching it without a fixed allowlist is TRUE_POSITIVE. ";
+            }
+        }
+        String traceEffect = slot == Slot.ATTRIBUTE_NAME
+                ? "what the trace shows about who sets NAME, and whether that changes the previous verdict"
+                : "what the trace shows about who controls the value or which neutralizer this path calls, "
+                + "and whether that changes the previous verdict";
+        return rules
                 + "Reasoning must describe the code path for a developer and must not mention this follow-up search, "
                 + "tool calls, or that an earlier review was inconclusive.\n"
-                + "Return ONLY one JSON object with action \"final\" and the fields execution_context, input_source, "
-                + "verdict, confidence, reasoning, recommendation, remediation_code, false_positive_evidence.";
+                + "Return ONLY one JSON object with action \"final\" and the fields in this order: execution_context, "
+                + "input_source, trace_effect (" + traceEffect + "; internal, not shown to developers), "
+                + FinalVerdictFormat.EVIDENCE_THEN_VERDICT_FIELDS + ". "
+                + "Write trace_effect and analysis before verdict and derive the verdict from them. "
+                + "If trace_effect says nothing decisive changed, keep the previous verdict.";
     }
 
     private static String codeContext(Item item, String reasoning) {

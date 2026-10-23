@@ -5,7 +5,9 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LlmApiClientSchemaTest {
@@ -17,9 +19,9 @@ class LlmApiClientSchemaTest {
                         "Stop investigating and respond NOW with the final JSON object. Do not request any tool."));
 
         assertTrue(LlmApiClient.requestsFinalOnly(messages));
-        String instruction = LlmApiClient.schemaFallbackInstruction(true);
-        assertFalse(instruction.contains("search_repo"));
-        assertTrue(instruction.contains("\"action\":\"final\""));
+        String reminder = LlmApiClient.jsonOnlyReminder(true);
+        assertTrue(reminder.contains("Do not request any tool."));
+        assertFalse(reminder.contains("search_repo"));
     }
 
     @Test
@@ -28,7 +30,31 @@ class LlmApiClientSchemaTest {
                 Map.of("role", "user", "content", "TOOL RESULT (search_repo):\nno matches"));
 
         assertFalse(LlmApiClient.requestsFinalOnly(messages));
-        assertTrue(LlmApiClient.schemaFallbackInstruction(false).contains("search_repo"));
+        assertFalse(LlmApiClient.jsonOnlyReminder(false).contains("Do not request any tool"));
+    }
+
+    @Test
+    void reminderIsSentOnlyAfterTheServerRejectedJsonMode() {
+        List<Map<String, Object>> messages = List.of(Map.of("role", "user", "content", "Return the hunt JSON."));
+
+        assertSame(messages, LlmApiClient.messagesForCall(messages, true, false));
+        assertSame(messages, LlmApiClient.messagesForCall(messages, false, true));
+
+        List<Map<String, Object>> withReminder = LlmApiClient.messagesForCall(messages, true, true);
+        assertEquals(2, withReminder.size());
+        assertEquals("user", withReminder.get(1).get("role"));
+        assertTrue(withReminder.get(1).get("content").toString().startsWith("RESPONSE FORMAT REQUIREMENT"));
+    }
+
+    @Test
+    void reminderDoesNotImposeAVerdictShape() {
+        for (boolean finalOnly : new boolean[]{true, false}) {
+            String reminder = LlmApiClient.jsonOnlyReminder(finalOnly);
+            assertFalse(reminder.contains("verdict"));
+            assertFalse(reminder.contains("execution_context"));
+            assertFalse(reminder.contains("input_source"));
+            assertTrue(reminder.contains("the instructions above specify"));
+        }
     }
 
     @Test

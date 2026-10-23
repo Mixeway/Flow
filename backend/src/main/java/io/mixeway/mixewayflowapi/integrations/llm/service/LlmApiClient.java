@@ -77,8 +77,8 @@ public class LlmApiClient {
      * chat model — no native function-calling support is required.
      *
      * @param messages       the full conversation so far (system, user, assistant, …)
-     * @param forceJsonObject appends a strict JSON-output instruction to the prompt
-     *                        to push the model toward valid JSON output.
+     * @param forceJsonObject requests {@code response_format=json_object}; once a server rejects that,
+     *                        a short JSON-only reminder is appended instead. The caller's prompt owns the shape.
      */
     public LlmResponse chatCompletion(List<Map<String, Object>> messages, boolean forceJsonObject) {
         return chatCompletion(messages, forceJsonObject, Finding.Source.SAST);
@@ -94,11 +94,17 @@ public class LlmApiClient {
         }
 
         String url = credentials.url.replaceAll("/+$", "");
-        boolean finalOnly = forceJsonObject && requestsFinalOnly(messages);
-        List<Map<String, Object>> jsonFallbackMessages = forceJsonObject
-                ? withPromptSchemaFallback(messages, finalOnly)
-                : messages;
-        return doPost(url, credentials, jsonFallbackMessages, false, forceJsonObject);
+        return doPost(url, credentials, messagesForCall(messages, forceJsonObject, jsonObjectFormatRejected),
+                false, forceJsonObject);
+    }
+
+    /** The JSON-only reminder is a fallback for servers without {@code response_format}; it is not sent otherwise. */
+    static List<Map<String, Object>> messagesForCall(List<Map<String, Object>> messages, boolean forceJsonObject,
+                                                     boolean jsonObjectFormatRejected) {
+        if (!forceJsonObject || !jsonObjectFormatRejected) {
+            return messages;
+        }
+        return withJsonOnlyReminder(messages);
     }
 
     private LlmCredentials resolve(Finding.Source source) {
@@ -252,7 +258,7 @@ public class LlmApiClient {
                     jsonObjectFormatRejected = true;
                     log.warn("[LlmApiClient] req#{} server rejected response_format=json_object; retrying with prompt-only JSON",
                             callId);
-                    return doPost(url, credentials, messages, reducedReasoning, false);
+                    return doPost(url, credentials, withJsonOnlyReminder(messages), reducedReasoning, requestJsonObject);
                 }
 
                 if (!shouldRetryStatus(status)) {
@@ -434,19 +440,18 @@ public class LlmApiClient {
         return status == 408 || status == 429 || status >= 500;
     }
 
-    private List<Map<String, Object>> withPromptSchemaFallback(List<Map<String, Object>> messages, boolean finalOnly) {
+    private static List<Map<String, Object>> withJsonOnlyReminder(List<Map<String, Object>> messages) {
         List<Map<String, Object>> augmentedMessages = new ArrayList<>(messages);
         augmentedMessages.add(Map.of(
                 "role", "user",
-                "content", schemaFallbackInstruction(finalOnly)
+                "content", jsonOnlyReminder(requestsFinalOnly(messages))
         ));
         return augmentedMessages;
     }
 
     /**
-     * The forced-final turn already told the model to stop calling tools. The generic schema
-     * lists {@code search_repo} and {@code read_file} as allowed, and because it is appended
-     * last the model treats that as permission to investigate again.
+     * The forced-final turn already told the model to stop calling tools. Because the reminder
+     * is appended last, anything that sounds like permission to act would reopen tool calls.
      */
     static boolean requestsFinalOnly(List<Map<String, Object>> messages) {
         String last = lastUserContent(messages).toLowerCase(Locale.ROOT);
@@ -456,30 +461,16 @@ public class LlmApiClient {
                 || last.contains("stop searching");
     }
 
-    static String schemaFallbackInstruction(boolean finalOnly) {
+    /** Shape-neutral on purpose: callers with different JSON shapes share this client. */
+    static String jsonOnlyReminder(boolean finalOnly) {
         if (finalOnly) {
             return "RESPONSE FORMAT REQUIREMENT:\n"
-                    + "Return ONLY one valid JSON object. No markdown, no prose, no tool request.\n"
-                    + "Required shape: {\"action\":\"final\",\"verdict\":\"TRUE_POSITIVE|FALSE_POSITIVE|UNCERTAIN\","
-                    + "\"confidence\":0.0-1.0,\"reasoning\":\"3-6 sentences\"}.\n"
-                    + "verdict must be exactly TRUE_POSITIVE, FALSE_POSITIVE, or UNCERTAIN.\n"
-                    + "confidence must be a JSON number from 0.0 to 1.0.\n"
-                    + "Do not request any tool.";
+                    + "Return ONLY the final JSON object, with exactly the fields and order the instructions above specify. "
+                    + "No markdown, no prose, no text outside the JSON. Do not request any tool.";
         }
-        return "RESPONSE FORMAT REQUIREMENT (prompt-level fallback):\n"
-                + "Return ONLY one valid JSON object. No markdown, no prose.\n"
-                + "Allowed `action` values: `search_repo`, `read_file`, `final`.\n"
-                + "If action is `search_repo`, required keys: action, pattern, path_glob.\n"
-                + "If action is `read_file`, required keys: action, path, start_line, end_line.\n"
-                + "If action is `final`, required keys: action, execution_context, input_source, verdict, "
-                + "confidence, reasoning, recommendation, remediation_code, false_positive_evidence.\n"
-                + "Use exactly these enums:\n"
-                + "- execution_context: web_server | web_client | cli_developer_tool | test | library | unknown\n"
-                + "- input_source: http_request | database | file_untrusted | dom_content | url_fragment | cli_argument_developer | "
-                + "internal_call | config_file | environment_variable | unknown\n"
-                + "- verdict: TRUE_POSITIVE | FALSE_POSITIVE | UNCERTAIN\n"
-                + "confidence must be a number in range [0.0, 1.0].\n"
-                + "Do not add any extra top-level fields.";
+        return "RESPONSE FORMAT REQUIREMENT:\n"
+                + "Return ONLY one valid JSON object, in one of the shapes the instructions above specify. "
+                + "No markdown, no prose, no text outside the JSON.";
     }
 
     private static String lastUserContent(List<Map<String, Object>> messages) {

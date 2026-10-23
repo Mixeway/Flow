@@ -45,7 +45,14 @@ public class CodeSearchService {
             "py", "java", "js", "jsx", "ts", "tsx", "mjs", "cjs", "rb", "go", "php",
             "cs", "rs", "swift", "kt", "kts", "scala", "groovy", "c", "cc", "cpp",
             "cxx", "h", "hh", "hpp", "m", "mm", "vue", "svelte", "html", "erb",
-            "ejs", "tpl", "twig", "pl", "pm", "sh", "bash");
+            "ejs", "tpl", "twig", "pl", "pm", "sh", "bash",
+            "yml", "yaml", "properties", "json", "xml", "toml", "ini", "cfg", "conf", "env");
+
+    /** Generated lockfiles match almost any identifier and would crowd real code out of the capped results. */
+    private static final Set<String> SKIP_FILES = Set.of(
+            "package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "composer.lock", "packages.lock.json");
+
+    private static final int MAX_FOUND_FILES = 40;
 
     /**
      * Search source files under {@code repoDir} for a regex (or literal fallback) pattern.
@@ -148,6 +155,59 @@ public class CodeSearchService {
     }
 
     /**
+     * List repository files whose path or file name matches {@code glob} (e.g. {@code application*.yml},
+     * {@code src/config/*.json}). Any file type is listed; skipped directories stay skipped.
+     */
+    public String findFiles(String repoDir, String glob) {
+        if (repoDir == null || repoDir.isBlank()) {
+            return "Repository directory is not available.";
+        }
+        if (glob == null || glob.isBlank()) {
+            return "No results (empty glob).";
+        }
+        Path base;
+        try {
+            base = Path.of(repoDir).toRealPath();
+        } catch (IOException e) {
+            return "Repository directory is not accessible.";
+        }
+        PathMatcher matcher;
+        try {
+            matcher = FileSystems.getDefault().getPathMatcher("glob:" + glob.trim());
+        } catch (Exception e) {
+            return "No results (invalid glob: " + glob + ").";
+        }
+
+        List<String> found = new java.util.ArrayList<>();
+        boolean truncated = false;
+        try (Stream<Path> walk = Files.walk(base)) {
+            Iterator<Path> it = walk.iterator();
+            while (it.hasNext()) {
+                Path p = it.next();
+                if (Files.isDirectory(p) || isSkipped(base, p)) continue;
+                Path relPath = base.relativize(p);
+                if (!matcher.matches(relPath) && !matcher.matches(relPath.getFileName())) continue;
+                if (found.size() >= MAX_FOUND_FILES) {
+                    truncated = true;
+                    break;
+                }
+                found.add(relPath.toString().replace('\\', '/'));
+            }
+        } catch (IOException e) {
+            return "Search failed: " + e.getMessage();
+        } catch (Exception e) {
+            log.warn("[CodeSearchService] findFiles failed for glob '{}': {}", glob, e.getMessage());
+            return "Search failed unexpectedly.";
+        }
+
+        if (found.isEmpty()) {
+            return "No matches found for glob: " + glob;
+        }
+        found.sort(java.util.Comparator.comparingInt(this::pathRank).thenComparing(s -> s));
+        return "Files (" + found.size() + (truncated ? "+, truncated" : "") + "):\n" + String.join("\n", found) + "\n";
+    }
+
+    /**
      * Read a slice of a repository file. Path is confined to {@code repoDir}; the
      * returned span is capped at {@link #MAX_READ_LINES} lines.
      */
@@ -217,6 +277,12 @@ public class CodeSearchService {
 
     private boolean isSource(Path p) {
         String name = p.getFileName().toString();
+        if (SKIP_FILES.contains(name.toLowerCase(Locale.ROOT))) {
+            return false;
+        }
+        if (name.startsWith(".env")) {
+            return true;
+        }
         int dot = name.lastIndexOf('.');
         if (dot < 0 || dot == name.length() - 1) {
             return false;

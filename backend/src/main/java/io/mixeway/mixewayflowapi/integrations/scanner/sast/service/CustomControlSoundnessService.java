@@ -190,7 +190,8 @@ public class CustomControlSoundnessService {
             }
             JsonNode node = tryParseJson(response.content());
             String action = node != null ? node.path("action").asText("") : "";
-            if (!lastRound && ("search_repo".equals(action) || "read_file".equals(action))) {
+            if (!lastRound && ("search_repo".equals(action) || "read_file".equals(action)
+                    || "find_files".equals(action))) {
                 String actionKey = actionKey(action, node);
                 if (!seenActions.add(actionKey)) {
                     messages.add(Map.of("role", "assistant", "content", response.content()));
@@ -505,6 +506,11 @@ public class CustomControlSoundnessService {
                 log.debug("[ControlSoundness] read_file(path='{}', {}-{}) for {}", path, startLine, endLine, itemRef);
                 return truncate(codeSearchService.readFile(repoDir, path, startLine, endLine), MAX_TOOL_RESULT_CHARS);
             }
+            if ("find_files".equals(action)) {
+                String glob = node.path("glob").asText("");
+                log.debug("[ControlSoundness] find_files(glob='{}') for {}", glob, itemRef);
+                return truncate(codeSearchService.findFiles(repoDir, glob), MAX_TOOL_RESULT_CHARS);
+            }
             return "Unknown action: " + action;
         } catch (Exception e) {
             return "Tool execution error: " + e.getMessage();
@@ -607,6 +613,9 @@ public class CustomControlSoundnessService {
         if ("search_repo".equals(action)) {
             return "search_repo|" + node.path("pattern").asText("").trim().toLowerCase(Locale.ROOT)
                     + "|" + node.path("path_glob").asText("").trim().toLowerCase(Locale.ROOT);
+        }
+        if ("find_files".equals(action)) {
+            return "find_files|" + node.path("glob").asText("").trim().toLowerCase(Locale.ROOT);
         }
         return "read_file|" + node.path("path").asText("").trim().toLowerCase(Locale.ROOT)
                 + "|" + node.path("start_line").asInt(0) + "|" + node.path("end_line").asInt(0);
