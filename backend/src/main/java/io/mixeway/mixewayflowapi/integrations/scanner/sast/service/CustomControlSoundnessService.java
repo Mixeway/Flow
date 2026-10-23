@@ -382,7 +382,8 @@ public class CustomControlSoundnessService {
             return List.of();
         }
         JsonNode array = node.path("results");
-        if (!array.isArray() && "final".equals(node.path("action").asText()) && node.has("verdict")) {
+        String action = node.path("action").asText("").trim();
+        if (!array.isArray() && (action.isBlank() || "final".equalsIgnoreCase(action)) && node.has("verdict")) {
             ControlSoundness single = parseOneResult(node, candidates);
             return single == null ? List.of() : List.of(single);
         }

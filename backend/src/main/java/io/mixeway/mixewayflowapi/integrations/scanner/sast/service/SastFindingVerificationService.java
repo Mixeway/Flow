@@ -1094,7 +1094,7 @@ public class SastFindingVerificationService {
                 tools++;
                 continue;
             }
-            if (node != null && "final".equals(action)) {
+            if (node != null && (action.isBlank() || "final".equalsIgnoreCase(action))) {
                 originFound = node.path("origin_found").asBoolean(false);
                 writer = textValue(node, "writer");
                 neutralizer = textValue(node, "neutralizer_on_path");
