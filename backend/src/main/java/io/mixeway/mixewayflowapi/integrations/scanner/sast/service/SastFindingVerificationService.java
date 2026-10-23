@@ -841,7 +841,7 @@ public class SastFindingVerificationService {
             JsonNode node = tryParseJson(response.content());
             String action = node != null ? node.path("action").asText("") : "";
 
-            if (!lastRound && ("search_repo".equals(action) || "read_file".equals(action))) {
+            if (!lastRound && isRepoTool(action)) {
                 String actionKey = buildActionKey(action, node);
                 if (seenActions.contains(actionKey)) {
                     duplicateActionsSkipped++;
@@ -1038,17 +1038,19 @@ public class SastFindingVerificationService {
         String inputSource = latestInputSource(outcome.messages());
         String codeContext = (item.getCodeExtract() == null ? "" : item.getCodeExtract())
                 + "\n" + (item.getAiReasoning() == null ? "" : item.getAiReasoning());
-        if (!SourceOriginHunt.shouldHunt(metadata, isCodeInjectionPrompt(metadata, item), inputSource,
-                item.getAiVerdict(), codeContext)) {
+        boolean codeInjection = isCodeInjectionPrompt(metadata, item);
+        SourceOriginHunt.Slot slot = SourceOriginHunt.Slot.of(codeInjection,
+                codeInjection && CodeInjectionSinkEvidence.hasRealExecutionSink(item));
+        if (!SourceOriginHunt.shouldHunt(metadata, slot, inputSource, item.getAiVerdict(), codeContext)) {
             return result;
         }
-        log.info("[SastVerification] Source-origin hunt for {} after ReAct (input_source={}, verdict={}, forcedFinal={})",
-                itemRef, inputSource.isBlank() ? "unknown" : inputSource, item.getAiVerdict(), outcome.forcedFinal());
+        log.info("[SastVerification] Source-origin hunt for {} after ReAct (slot={}, input_source={}, verdict={}, forcedFinal={})",
+                itemRef, slot, inputSource.isBlank() ? "unknown" : inputSource, item.getAiVerdict(), outcome.forcedFinal());
 
         List<Map<String, Object>> huntMessages = new ArrayList<>();
-        huntMessages.add(Map.of("role", "system", "content", SourceOriginHunt.systemPrompt()));
+        huntMessages.add(Map.of("role", "system", "content", SourceOriginHunt.systemPrompt(slot)));
         huntMessages.add(Map.of("role", "user", "content", SourceOriginHunt.userPrompt(
-                item, metadata, inputSource, item.getAiVerdict(), item.getAiReasoning())));
+                item, metadata, inputSource, item.getAiVerdict(), item.getAiReasoning(), slot)));
 
         int huntLlm = 0;
         int productive = 0;
@@ -1074,7 +1076,7 @@ public class SastFindingVerificationService {
             }
             JsonNode node = tryParseJson(response.content());
             String action = node != null ? node.path("action").asText("") : "";
-            if (!last && ("search_repo".equals(action) || "read_file".equals(action))) {
+            if (!last && isRepoTool(action)) {
                 String key = buildActionKey(action, node);
                 huntMessages.add(Map.of("role", "assistant", "content", response.content()));
                 if (!seen.add(key)) {
@@ -1119,7 +1121,7 @@ public class SastFindingVerificationService {
         String previous = item.getAiVerdict();
         List<Map<String, Object>> revision = new ArrayList<>(outcome.messages());
         revision.add(Map.of("role", "user", "content", SourceOriginHunt.revisionPrompt(
-                previous, inputSource, SourceOriginHunt.formatReport(originFound, writer, neutralizer, trace))));
+                previous, inputSource, SourceOriginHunt.formatReport(originFound, writer, neutralizer, trace), slot)));
         LlmApiClient.LlmResponse revised = llmApiClient.chatCompletion(revision, true);
         huntLlm++;
         if (revised.isEmpty()) {
@@ -1262,6 +1264,11 @@ public class SastFindingVerificationService {
                         path, startLine, endLine, itemRef);
                 return ActionExecution.of(codeSearchService.readFile(repoDir, path, startLine, endLine), false);
             }
+            if ("find_files".equals(action)) {
+                String glob = node.path("glob").asText("");
+                log.debug("[SastVerification] ReAct find_files(glob='{}') for {}", glob, itemRef);
+                return ActionExecution.of(codeSearchService.findFiles(repoDir, glob), false);
+            }
             return ActionExecution.of("Unknown action: " + action, false);
         } catch (Exception e) {
             log.warn("[SastVerification] ReAct action '{}' failed for {}: {}", action, itemRef, e.getMessage());
@@ -1278,7 +1285,14 @@ public class SastFindingVerificationService {
             return "read_file|" + node.path("path").asText("").trim().toLowerCase(Locale.ROOT)
                     + "|" + node.path("start_line").asInt(0) + "|" + node.path("end_line").asInt(0);
         }
+        if ("find_files".equals(action)) {
+            return "find_files|" + node.path("glob").asText("").trim().toLowerCase(Locale.ROOT);
+        }
         return action;
+    }
+
+    private static boolean isRepoTool(String action) {
+        return "search_repo".equals(action) || "read_file".equals(action) || "find_files".equals(action);
     }
 
     private boolean isNoMatchesResult(String result) {
@@ -1580,6 +1594,10 @@ public class SastFindingVerificationService {
         if (view.failure() == SastReactResponseParser.StageOneFailure.MISSING_CONFIDENCE) {
             return new StageOneParse(null, ParseFailureReason.MISSING_CONFIDENCE);
         }
+        String analysis = FinalVerdictFormat.summary(node);
+        if (!analysis.isBlank()) {
+            log.debug("[SastVerification] Stage-1 analysis ({}): {}", view.verdict(), analysis);
+        }
         return new StageOneParse(new MinimalVerdict(view.verdict(), view.confidence(), view.reasoning()), null);
     }
 
@@ -1598,8 +1616,9 @@ public class SastFindingVerificationService {
         if (isMisconfigurationProfile(metadata)) {
             StringBuilder s2 = new StringBuilder();
             s2.append("Stage 2 now: return final JSON with `action` as \"final\". ")
-                    .append("Add required fields: execution_context, input_source, reasoning (3-6 sentences), ")
+                    .append("Add required fields: execution_context, input_source, analysis, reasoning (3-6 sentences), ")
                     .append("recommendation, remediation_code, false_positive_evidence. ")
+                    .append(FinalVerdictFormat.ORDER_RULE).append(' ')
                     .append("This is a MISCONFIGURATION/API-usage finding, not a classic source-to-sink taint finding. ")
                     .append("Do NOT change to FALSE_POSITIVE or UNCERTAIN merely because host/user/input origin is config_file, ")
                     .append("internal_call, environment_variable, local, library, or unknown, or because names/paths suggest ")
@@ -1616,8 +1635,9 @@ public class SastFindingVerificationService {
         } else if (uncertainResolution) {
             StringBuilder s2 = new StringBuilder();
             s2.append("Stage 2 now: return final JSON with `action` as \"final\". ")
-                    .append("Add required fields: execution_context, input_source, reasoning (3-6 sentences, ")
+                    .append("Add required fields: execution_context, input_source, analysis, reasoning (3-6 sentences, ")
                     .append("source -> transformations -> sink), recommendation, remediation_code, false_positive_evidence. ")
+                    .append(FinalVerdictFormat.ORDER_RULE).append(' ')
                     .append("IMPORTANT: now that you have classified execution_context and input_source, ")
                     .append("RE-EVALUATE your verdict. ");
             if (isCodeInjectionPrompt(metadata, item)) {
@@ -1670,8 +1690,9 @@ public class SastFindingVerificationService {
                     + "(verdict=" + stageOneVerdict.verdict() + ", confidence="
                     + String.format(Locale.ROOT, "%.2f", stageOneVerdict.confidence()) + "). "
                     + "Keep `action` as \"final\". "
-                    + "Add required fields: execution_context, input_source, reasoning (3-6 sentences, "
+                    + "Add required fields: execution_context, input_source, analysis, reasoning (3-6 sentences, "
                     + "source -> transformations -> sink), recommendation, remediation_code, false_positive_evidence. "
+                    + FinalVerdictFormat.ORDER_RULE + " "
                     + "Return only valid JSON.";
         }
         stageTwoMessages.add(Map.of("role", "user", "content", stageTwoInstruction));
@@ -1738,8 +1759,8 @@ public class SastFindingVerificationService {
         repairMessages.add(Map.of("role", "assistant", "content", rawResponse));
         repairMessages.add(Map.of("role", "user", "content",
                 "Rewrite the final JSON response now. Keep the same verdict unless evidence forces a change, "
-                        + "keep `action` as \"final\", and include required fields: execution_context, input_source, "
-                        + "verdict, confidence, reasoning, recommendation, remediation_code, false_positive_evidence. "
+                        + "keep `action` as \"final\", and include required fields in this order: "
+                        + FinalVerdictFormat.STAGE_TWO_FIELDS + ". "
                         + "If execution_context or input_source is uncertain, set it explicitly to \"unknown\". "
                         + "Also expand `reasoning` to 3-6 sentences and explicitly describe source -> transformations/calls -> sink "
                         + "with concrete code evidence. Return only valid JSON."));
@@ -1765,8 +1786,7 @@ public class SastFindingVerificationService {
         retryMessages.add(Map.of("role", "user", "content",
                 "Your previous final JSON missed required context fields. Return exactly one valid JSON object now, "
                         + "keep `action` as \"final\", keep the same verdict/confidence unless evidence forces a change, "
-                        + "and include all required fields: execution_context, input_source, verdict, confidence, reasoning, "
-                        + "recommendation, remediation_code, false_positive_evidence. "
+                        + "and include all required fields in this order: " + FinalVerdictFormat.STAGE_TWO_FIELDS + ". "
                         + "If context cannot be proven from code, set execution_context and/or input_source to \"unknown\". "
                         + "No markdown, no explanations, JSON only."));
 
@@ -2835,8 +2855,11 @@ public class SastFindingVerificationService {
         }
 
         sb.append("Available investigation actions:\n");
-        sb.append("- `search_repo`: search all source files for a regex/text; returns `path:line: content` matches.\n");
-        sb.append("- `read_file`: read a slice of a file (use paths returned by search_repo).\n");
+        sb.append("- `search_repo`: search source and config files (yml, properties, json, xml, .env) for a regex/text; ");
+        sb.append("returns `path:line: content` matches.\n");
+        sb.append("- `find_files`: list files whose name or path matches a glob (e.g. `application*.yml`, `settings*.py`); ");
+        sb.append("use it to locate a file before read_file.\n");
+        sb.append("- `read_file`: read a slice of a file (use paths returned by search_repo or find_files).\n");
         sb.append("Tool-budget strategy (local-first):\n");
         sb.append("- first inspect the finding file/function with `read_file` and same-file `search_repo`;\n");
         sb.append("- only after local evidence is exhausted, expand to repo-wide `search_repo`.\n");
@@ -3029,27 +3052,32 @@ public class SastFindingVerificationService {
         sb.append("or\n");
         sb.append("{\"thought\": \"why you need this\", \"action\": \"read_file\", ");
         sb.append("\"path\": \"repo-relative/path\", \"start_line\": 1, \"end_line\": 60}\n");
+        sb.append("or\n");
+        sb.append("{\"thought\": \"why you need this\", \"action\": \"find_files\", \"glob\": \"filename or path glob\"}\n");
         sb.append("After each investigation step you will receive a `TOOL RESULT` message; then send your next response.\n\n");
 
         sb.append("B) Stage 1 final verdict (minimal):\n");
         sb.append("{");
         sb.append("\"action\": \"final\", ");
+        sb.append(FinalVerdictFormat.ANALYSIS_SHAPE).append(", ");
+        sb.append("\"reasoning\": \"3-6 sentences describing source -> transformations/call chain -> sink with concrete code evidence. Developer-facing: no evidence categories, confidence bands, prompt profiles, or internal enum labels\", ");
         sb.append("\"verdict\": \"TRUE_POSITIVE|FALSE_POSITIVE|UNCERTAIN\", ");
-        sb.append("\"confidence\": 0.0-1.0, ");
-        sb.append("\"reasoning\": \"3-6 sentences describing source -> transformations/call chain -> sink with concrete code evidence. Developer-facing: no evidence categories, confidence bands, prompt profiles, or internal enum labels\"");
+        sb.append("\"confidence\": 0.0-1.0");
         sb.append("}\n\n");
         sb.append("C) Stage 2 details (only when requested after Stage 1):\n");
         sb.append("{");
         sb.append("\"action\": \"final\", ");
         sb.append("\"execution_context\": \"web_server|web_client|desktop_gui|cli_developer_tool|test|library|unknown\", ");
         sb.append("\"input_source\": \"http_request|database|file_untrusted|multipart_parser_temp_path|gui_input|dom_content|url_fragment|cli_argument_developer|internal_call|config_file|environment_variable|unknown\", ");
+        sb.append(FinalVerdictFormat.ANALYSIS_SHAPE).append(", ");
+        sb.append("\"reasoning\": \"3-6 sentences describing source -> transformations/call chain -> sink with concrete code evidence. Developer-facing: no evidence categories, confidence bands, prompt profiles, or internal enum labels\", ");
+        sb.append("\"false_positive_evidence\": \"for FALSE_POSITIVE: short verbatim citation of the existing sanitizer/escaping/text-only sink/allowlist/framework guarantee/trusted source/local-only non-sensitive exposure/same-origin or relative-only redirect construction, empty otherwise\", ");
         sb.append("\"verdict\": \"TRUE_POSITIVE|FALSE_POSITIVE|UNCERTAIN\", ");
         sb.append("\"confidence\": 0.0-1.0, ");
-        sb.append("\"reasoning\": \"3-6 sentences describing source -> transformations/call chain -> sink with concrete code evidence. Developer-facing: no evidence categories, confidence bands, prompt profiles, or internal enum labels\", ");
         sb.append("\"recommendation\": \"required for TRUE_POSITIVE, empty string otherwise\", ");
-        sb.append("\"remediation_code\": \"required for TRUE_POSITIVE, empty string otherwise\", ");
-        sb.append("\"false_positive_evidence\": \"for FALSE_POSITIVE: short verbatim citation of the existing sanitizer/escaping/text-only sink/allowlist/framework guarantee/trusted source/local-only non-sensitive exposure/same-origin or relative-only redirect construction, empty otherwise\"");
+        sb.append("\"remediation_code\": \"required for TRUE_POSITIVE, empty string otherwise\"");
         sb.append("}\n");
+        sb.append("Fill `analysis` before `verdict` and derive the verdict from it; `analysis` is internal and is not shown to developers.\n");
         return sb.toString();
     }
 
@@ -3087,6 +3115,10 @@ public class SastFindingVerificationService {
         log.debug("[SastVerification] LLM classified context for {}: execution_context={}, input_source={}",
                 item.getTitle(), executionContext.isBlank() ? "not provided" : executionContext,
                 inputSource.isBlank() ? "not provided" : inputSource);
+        String analysis = FinalVerdictFormat.summary(node);
+        if (!analysis.isBlank()) {
+            log.debug("[SastVerification] LLM analysis for {}: {}", item.getTitle(), analysis);
+        }
 
         String verdict = textValue(node, "verdict");
         if (!isValidVerdict(verdict)) {

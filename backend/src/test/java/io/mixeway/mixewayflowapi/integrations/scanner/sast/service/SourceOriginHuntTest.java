@@ -1,9 +1,11 @@
 package io.mixeway.mixewayflowapi.integrations.scanner.sast.service;
 
+import io.mixeway.mixewayflowapi.integrations.scanner.sast.service.SourceOriginHunt.Slot;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -11,56 +13,139 @@ class SourceOriginHuntTest {
 
     @Test
     void xssDomReadStillNeedsAWriterSearch() {
-        assertTrue(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.XSS), false, "dom_content", "TRUE_POSITIVE"));
+        assertTrue(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.XSS), Slot.VALUE, "dom_content", "TRUE_POSITIVE"));
     }
 
     @Test
     void xssUnknownSourceNeedsAWriterSearch() {
-        assertTrue(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.XSS), false, "unknown", "UNCERTAIN"));
-        assertTrue(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.XSS), false, "", "TRUE_POSITIVE"));
+        assertTrue(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.XSS), Slot.VALUE, "unknown", "UNCERTAIN"));
+        assertTrue(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.XSS), Slot.VALUE, "", "TRUE_POSITIVE"));
     }
 
     @Test
     void concreteChannelSkipsTheExtraSearch() {
-        assertFalse(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.XSS), false, "http_request", "TRUE_POSITIVE"));
-        assertFalse(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.SQL_INJECTION), false, "database", "UNCERTAIN"));
-        assertFalse(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.OPEN_REDIRECT), false, "url_fragment", "TRUE_POSITIVE"));
+        assertFalse(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.XSS), Slot.VALUE, "http_request", "TRUE_POSITIVE"));
+        assertFalse(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.SQL_INJECTION), Slot.VALUE, "database", "UNCERTAIN"));
+        assertFalse(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.OPEN_REDIRECT), Slot.VALUE, "url_fragment", "TRUE_POSITIVE"));
     }
 
     @Test
     void otherTaintFamiliesHuntOnlyWhenTheSourceIsUnknown() {
-        assertTrue(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.SQL_INJECTION), false, "unknown", "TRUE_POSITIVE"));
-        assertTrue(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.PATH_TRAVERSAL), false, "", "UNCERTAIN"));
-        assertFalse(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.PATH_TRAVERSAL), false, "dom_content", "TRUE_POSITIVE"));
+        assertTrue(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.SQL_INJECTION), Slot.VALUE, "unknown", "TRUE_POSITIVE"));
+        assertTrue(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.PATH_TRAVERSAL), Slot.VALUE, "", "UNCERTAIN"));
+        assertFalse(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.PATH_TRAVERSAL), Slot.VALUE, "dom_content", "TRUE_POSITIVE"));
     }
 
     @Test
-    void nonTaintAndCodeInjectionAreNotHunted() {
-        assertFalse(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.LOGGER_LEAK, false), false, "unknown", "UNCERTAIN"));
-        assertFalse(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.XSS), true, "unknown", "UNCERTAIN"));
-        assertFalse(SourceOriginHunt.shouldHunt(null, false, "unknown", "UNCERTAIN"));
+    void nonTaintFamiliesAreNotHunted() {
+        assertFalse(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.LOGGER_LEAK, false), Slot.VALUE, "unknown", "UNCERTAIN"));
+        assertFalse(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.LOGGER_LEAK, false), Slot.ATTRIBUTE_NAME, "unknown", "UNCERTAIN"));
+        assertFalse(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.GENERAL), Slot.VALUE, "unknown", "UNCERTAIN"));
+        assertFalse(SourceOriginHunt.shouldHunt(null, Slot.VALUE, "unknown", "UNCERTAIN"));
+    }
+
+    @Test
+    void codeInjectionSlotFollowsTheSink() {
+        String setattr = "setattr(user, \"email\", request.POST[\"email\"])";
+        String eval = "eval(request.GET[\"x\"])";
+        assertEquals(Slot.ATTRIBUTE_NAME, Slot.of(true, CodeInjectionSinkEvidence.hasRealExecutionSink(setattr)));
+        assertEquals(Slot.EXECUTED_CODE, Slot.of(true, CodeInjectionSinkEvidence.hasRealExecutionSink(eval)));
+        assertEquals(Slot.VALUE, Slot.of(false, true));
+    }
+
+    @Test
+    void attributeNameIsHuntedOnlyWhileItsOriginIsUnknown() {
+        SastRuleMetadata codeInjection = meta(VulnerabilityFamily.COMMAND_INJECTION);
+        assertTrue(SourceOriginHunt.shouldHunt(codeInjection, Slot.ATTRIBUTE_NAME, "unknown", "UNCERTAIN"));
+        assertTrue(SourceOriginHunt.shouldHunt(codeInjection, Slot.ATTRIBUTE_NAME, "", "UNCERTAIN"));
+        assertTrue(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.GENERAL), Slot.ATTRIBUTE_NAME, "unknown", "UNCERTAIN"));
+        assertFalse(SourceOriginHunt.shouldHunt(codeInjection, Slot.ATTRIBUTE_NAME, "internal_call", "FALSE_POSITIVE"));
+        assertFalse(SourceOriginHunt.shouldHunt(codeInjection, Slot.ATTRIBUTE_NAME, "http_request", "TRUE_POSITIVE"));
+        assertFalse(SourceOriginHunt.shouldHunt(codeInjection, Slot.ATTRIBUTE_NAME, "config_file", "FALSE_POSITIVE",
+                "setattr(obj, settings.FIELD, value)"));
+    }
+
+    @Test
+    void executedCodeIsHuntedLikeAValue() {
+        assertTrue(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.COMMAND_INJECTION), Slot.EXECUTED_CODE, "unknown", "UNCERTAIN"));
+        assertTrue(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.GENERAL), Slot.EXECUTED_CODE, "", "UNCERTAIN"));
+        assertFalse(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.COMMAND_INJECTION), Slot.EXECUTED_CODE, "http_request", "TRUE_POSITIVE"));
+    }
+
+    @Test
+    void attributeNamePromptsNeverTraceTheValue() {
+        String system = SourceOriginHunt.systemPrompt(Slot.ATTRIBUTE_NAME);
+        String user = SourceOriginHunt.userPrompt(null, meta(VulnerabilityFamily.COMMAND_INJECTION),
+                "unknown", "UNCERTAIN", "", Slot.ATTRIBUTE_NAME);
+        assertTrue(system.contains("do not trace it"));
+        assertTrue(user.contains("Do not search for the VALUE origin"));
+        assertTrue(user.contains("2nd argument of setattr"));
+        assertFalse(user.contains("assignments of the sink identifier"));
+    }
+
+    @Test
+    void attributeNameRevisionJudgesTheNameNotTheValue() {
+        String prompt = SourceOriginHunt.revisionPrompt("UNCERTAIN", "unknown",
+                SourceOriginHunt.formatReport(true, "views.py:12 for key in request.POST", "none", "Keys from POST."),
+                Slot.ATTRIBUTE_NAME);
+        assertTrue(prompt.contains("Decide by the attribute NAME only"));
+        assertTrue(prompt.contains("does not make this finding TRUE_POSITIVE"));
+        assertTrue(prompt.contains("- FALSE_POSITIVE: NAME is a string literal"));
+        assertTrue(prompt.contains("- TRUE_POSITIVE: NAME comes from request"));
+        assertFalse(prompt.contains("controller of the value"));
+    }
+
+    @Test
+    void revisionAsksForTheTraceEffectBeforeTheVerdict() {
+        String prompt = SourceOriginHunt.revisionPrompt("FALSE_POSITIVE", "unknown", "Origin found: yes\n", Slot.ATTRIBUTE_NAME);
+        assertTrue(prompt.contains("trace_effect (what the trace shows about who sets NAME"));
+        assertTrue(prompt.indexOf("trace_effect") < prompt.indexOf("analysis, reasoning"));
+        assertTrue(prompt.indexOf("analysis, reasoning") < prompt.indexOf("verdict, confidence"));
+        assertTrue(prompt.contains("If trace_effect says nothing decisive changed, keep the previous verdict."));
+
+        String noCaller = SourceOriginHunt.noCallerRevisionPrompt("build/demo/Sarissa.js", "none", "");
+        assertTrue(noCaller.contains(FinalVerdictFormat.ORDER_RULE));
+    }
+
+    @Test
+    void executedCodePromptsJudgeTheCodeString() {
+        String user = SourceOriginHunt.userPrompt(null, meta(VulnerabilityFamily.COMMAND_INJECTION),
+                "unknown", "UNCERTAIN", "", Slot.EXECUTED_CODE);
+        String revision = SourceOriginHunt.revisionPrompt("UNCERTAIN", "unknown", "Origin found: yes\n", Slot.EXECUTED_CODE);
+        assertTrue(user.contains("The sink executes code"));
+        assertTrue(revision.contains("For this code-execution sink"));
+        assertFalse(SourceOriginHunt.revisionPrompt("UNCERTAIN", "unknown", "Origin found: yes\n")
+                .contains("code-execution sink"));
+    }
+
+    @Test
+    void regexPatternFromUnknownSourceIsHunted() {
+        SastRuleMetadata regex = meta(VulnerabilityFamily.REGEX_DOS);
+        assertTrue(SourceOriginHunt.shouldHunt(regex, Slot.VALUE, "unknown", "UNCERTAIN"));
+        assertFalse(SourceOriginHunt.shouldHunt(regex, Slot.VALUE, "http_request", "TRUE_POSITIVE"));
+        assertTrue(SourceOriginHunt.userPrompt(null, regex, "unknown", "UNCERTAIN", "").contains("re.escape"));
     }
 
     @Test
     void openRedirectDomReadIsHunted() {
-        assertTrue(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.OPEN_REDIRECT), false, "dom_content", "TRUE_POSITIVE"));
+        assertTrue(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.OPEN_REDIRECT), Slot.VALUE, "dom_content", "TRUE_POSITIVE"));
     }
 
     @Test
     void frameworkSettingStillNeedsTheConfigFileAndItsWriter() {
         String settings = "subprocess.call(settings.PRE_CONSUME_SCRIPT, shell=True)";
         assertTrue(SourceOriginHunt.shouldHunt(
-                meta(VulnerabilityFamily.COMMAND_INJECTION), false, "config_file", "FALSE_POSITIVE", settings));
+                meta(VulnerabilityFamily.COMMAND_INJECTION), Slot.VALUE, "config_file", "FALSE_POSITIVE", settings));
         assertTrue(SourceOriginHunt.configIndirection("config_file", settings));
         assertTrue(SourceOriginHunt.userPrompt(null, meta(VulnerabilityFamily.COMMAND_INJECTION),
-                "config_file", "FALSE_POSITIVE", settings).contains("application.yml"));
+                "config_file", "FALSE_POSITIVE", settings).contains("find_files (application*.yml"));
     }
 
     @Test
     void valueBindingStillNeedsTheConfigFileAndItsWriter() {
         String value = "@Value(\"${script.path}\") String scriptPath";
         assertTrue(SourceOriginHunt.shouldHunt(
-                meta(VulnerabilityFamily.COMMAND_INJECTION), false, "environment_variable", "UNCERTAIN", value));
+                meta(VulnerabilityFamily.COMMAND_INJECTION), Slot.VALUE, "environment_variable", "UNCERTAIN", value));
         assertTrue(SourceOriginHunt.configIndirection("environment_variable", value));
     }
 
@@ -68,17 +153,17 @@ class SourceOriginHuntTest {
     void namedConfigFileReadIsAlreadyASource() {
         String direct = "new FileInputStream(\"/etc/app/server.conf\")";
         assertFalse(SourceOriginHunt.shouldHunt(
-                meta(VulnerabilityFamily.PATH_TRAVERSAL), false, "config_file", "FALSE_POSITIVE", direct));
+                meta(VulnerabilityFamily.PATH_TRAVERSAL), Slot.VALUE, "config_file", "FALSE_POSITIVE", direct));
         assertFalse(SourceOriginHunt.shouldHunt(
-                meta(VulnerabilityFamily.COMMAND_INJECTION), false, "config_file", "FALSE_POSITIVE"));
+                meta(VulnerabilityFamily.COMMAND_INJECTION), Slot.VALUE, "config_file", "FALSE_POSITIVE"));
         assertFalse(SourceOriginHunt.configIndirection("http_request", "settings.PRE_CONSUME_SCRIPT"));
     }
 
     @Test
     void editorDialogIsNotAFinishedXssSource() {
-        assertTrue(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.XSS), false, "gui_input", "TRUE_POSITIVE"));
-        assertTrue(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.OPEN_REDIRECT), false, "gui_input", "TRUE_POSITIVE"));
-        assertFalse(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.SQL_INJECTION), false, "gui_input", "TRUE_POSITIVE"));
+        assertTrue(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.XSS), Slot.VALUE, "gui_input", "TRUE_POSITIVE"));
+        assertTrue(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.OPEN_REDIRECT), Slot.VALUE, "gui_input", "TRUE_POSITIVE"));
+        assertFalse(SourceOriginHunt.shouldHunt(meta(VulnerabilityFamily.SQL_INJECTION), Slot.VALUE, "gui_input", "TRUE_POSITIVE"));
     }
 
     @Test
