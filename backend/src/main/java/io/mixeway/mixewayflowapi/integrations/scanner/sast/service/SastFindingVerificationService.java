@@ -2381,8 +2381,8 @@ public class SastFindingVerificationService {
         if (!remediationValid && !correctedRemediation.isBlank() && "TRUE_POSITIVE".equals(item.getAiVerdict())) {
             String currentRec = item.getAiRecommendation();
             if (currentRec != null && !currentRec.isBlank()) {
-                item.setAiRecommendation(currentRec + "\n\n### Corrected remediation code\n```\n"
-                        + correctedRemediation + "\n```");
+                item.setAiRecommendation(formatRecommendation(
+                        stripRemediationCodeSection(currentRec), stripCodeFences(correctedRemediation)));
                 remediationFixes = 1;
                 log.debug("[SastVerification] Validation corrected remediation for {}", itemRef);
             }
@@ -7021,10 +7021,30 @@ public class SastFindingVerificationService {
             return trimmedRecommendation;
         }
         if (trimmedCode.startsWith("Cannot provide a safe code snippet:")) {
-            return trimmedRecommendation + "\n\n###### Remediation code\n\n" + trimmedCode;
+            return trimmedRecommendation + REMEDIATION_CODE_HEADING + "\n\n" + trimmedCode;
         }
-        return trimmedRecommendation + "\n\n###### Remediation code\n\n" + AI_REMEDIATION_CODE_NOTE
+        return trimmedRecommendation + REMEDIATION_CODE_HEADING + "\n\n" + AI_REMEDIATION_CODE_NOTE
                 + "\n\n```\n" + trimmedCode + "\n```";
+    }
+
+    private static final String REMEDIATION_CODE_HEADING = "\n\n###### Remediation code";
+
+    private String stripRemediationCodeSection(String recommendation) {
+        String rec = recommendation == null ? "" : recommendation;
+        int idx = rec.indexOf(REMEDIATION_CODE_HEADING);
+        return idx >= 0 ? rec.substring(0, idx) : rec;
+    }
+
+    private String stripCodeFences(String code) {
+        String trimmed = code == null ? "" : code.trim();
+        if (trimmed.startsWith("```")) {
+            int firstNewline = trimmed.indexOf('\n');
+            trimmed = firstNewline >= 0 ? trimmed.substring(firstNewline + 1) : "";
+        }
+        if (trimmed.endsWith("```")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 3);
+        }
+        return trimmed.trim();
     }
 
     private String extractJson(String content) {
