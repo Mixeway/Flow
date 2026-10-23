@@ -1695,6 +1695,7 @@ public class SastFindingVerificationService {
                     + FinalVerdictFormat.ORDER_RULE + " "
                     + "Return only valid JSON.";
         }
+        stageTwoInstruction += " Investigation is closed: do not request search_repo, read_file, or find_files.";
         stageTwoMessages.add(Map.of("role", "user", "content", stageTwoInstruction));
 
         LlmApiClient.LlmResponse stageTwoResponse = llmApiClient.chatCompletion(stageTwoMessages, true);
@@ -1763,7 +1764,7 @@ public class SastFindingVerificationService {
                         + FinalVerdictFormat.STAGE_TWO_FIELDS + ". "
                         + "If execution_context or input_source is uncertain, set it explicitly to \"unknown\". "
                         + "Also expand `reasoning` to 3-6 sentences and explicitly describe source -> transformations/calls -> sink "
-                        + "with concrete code evidence. Return only valid JSON."));
+                        + "with concrete code evidence. Do not request any tool. Return only valid JSON."));
 
         LlmApiClient.LlmResponse repairResponse = llmApiClient.chatCompletion(repairMessages, true);
         if (repairResponse.isEmpty()) {
@@ -3097,8 +3098,9 @@ public class SastFindingVerificationService {
         }
 
         String action = textValue(node, "action");
-        if (!"final".equals(action)) {
-            log.warn("[SastVerification] LLM response for {} did not contain action=final", item.getTitle());
+        if (!action.isBlank() && !"final".equalsIgnoreCase(action)) {
+            log.warn("[SastVerification] LLM response for {} did not contain action=final (action={}): {}",
+                    item.getTitle(), action, truncateForLog(content, 300));
             return VerificationResult.failed(ParseFailureReason.MISSING_ACTION);
         }
 
