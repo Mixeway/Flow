@@ -884,5 +884,17 @@ ALTER TABLE settings ADD COLUMN IF NOT EXISTS iac_llm_severities VARCHAR(100) NO
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS secrets_llm_severities VARCHAR(100) NOT NULL DEFAULT 'CRITICAL,HIGH';
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS dast_llm_severities VARCHAR(100) NOT NULL DEFAULT 'CRITICAL,HIGH';
 
+--changeset majaberej:settings-llm-reasoning-controls
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sast_llm_reasoning_effort VARCHAR(20) DEFAULT 'medium';
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sast_llm_disable_thinking BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sca_llm_reasoning_effort VARCHAR(20) DEFAULT 'medium';
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sca_llm_disable_thinking BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS iac_llm_reasoning_effort VARCHAR(20) DEFAULT 'medium';
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS iac_llm_disable_thinking BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS secrets_llm_reasoning_effort VARCHAR(20) DEFAULT 'medium';
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS secrets_llm_disable_thinking BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS dast_llm_reasoning_effort VARCHAR(20) DEFAULT 'medium';
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS dast_llm_disable_thinking BOOLEAN NOT NULL DEFAULT TRUE;
+
 --changeset majaberej:comment-user-optional
 ALTER TABLE comment ALTER COLUMN user_id DROP NOT NULL;

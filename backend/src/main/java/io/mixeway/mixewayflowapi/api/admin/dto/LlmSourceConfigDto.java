@@ -18,4 +18,6 @@ public class LlmSourceConfigDto {
     private Integer contextWindow;
     private Integer scanConcurrency;
     private List<String> severities;
+    private String reasoningEffort;
+    private Boolean disableThinking;
 }

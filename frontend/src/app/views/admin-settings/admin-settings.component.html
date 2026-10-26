@@ -624,6 +624,20 @@
                                             Only findings of the selected severities are sent to the LLM
                                         </small>
                                     </div>
+                                    <div class="mb-3">
+                                        <label cLabel [for]="'llmReasoningEffort-' + llm.source">Reduced reasoning effort</label>
+                                        <input cFormControl [id]="'llmReasoningEffort-' + llm.source" type="text"
+                                               maxlength="20"
+                                               [(ngModel)]="llm.reasoningEffort"
+                                               placeholder="e.g. low, medium, high" />
+                                    </div>
+                                    <div class="mb-3">
+                                        <c-form-check [switch]="true">
+                                            <input cFormCheckInput [id]="'llmDisableThinking-' + llm.source" type="checkbox"
+                                                   [(ngModel)]="llm.disableThinking" />
+                                            <label cFormCheckLabel [for]="'llmDisableThinking-' + llm.source" class="ms-2">Disable thinking on retry</label>
+                                        </c-form-check>
+                                    </div>
                                 </div>
                             </div>
                             <button cButton color="primary" (click)="saveLlmConfiguration()">Save LLM Configurations</button>

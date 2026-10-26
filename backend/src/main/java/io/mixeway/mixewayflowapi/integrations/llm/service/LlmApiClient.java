@@ -123,7 +123,9 @@ public class LlmApiClient {
                 settings.sourceLlmApiUrl(source),
                 settings.sourceLlmApiKey(source),
                 settings.sourceLlmModel(source),
-                sanitizeMaxTokens(settings.sourceLlmContextWindow(source))
+                sanitizeMaxTokens(settings.sourceLlmContextWindow(source)),
+                settings.sourceLlmReasoningEffort(source),
+                settings.sourceLlmDisableThinking(source)
         );
     }
 
@@ -159,8 +161,12 @@ public class LlmApiClient {
         }
         if (reducedReasoning) {
             // OpenAI-style servers read reasoning_effort; Qwen-family chat templates (vLLM/SGLang) read enable_thinking.
-            requestBody.put("reasoning_effort", "low");
-            requestBody.put("chat_template_kwargs", Map.of("enable_thinking", false));
+            if (credentials.reasoningEffort != null) {
+                requestBody.put("reasoning_effort", credentials.reasoningEffort);
+            }
+            if (credentials.disableThinking) {
+                requestBody.put("chat_template_kwargs", Map.of("enable_thinking", false));
+            }
         }
 
         long callId = CALL_SEQ.incrementAndGet();
@@ -495,7 +501,8 @@ public class LlmApiClient {
         }
     }
 
-    private record LlmCredentials(Finding.Source source, String url, String apiKey, String model, int contextWindow) {
+    private record LlmCredentials(Finding.Source source, String url, String apiKey, String model, int contextWindow,
+                                  String reasoningEffort, boolean disableThinking) {
     }
 
     public record LlmResponse(String content, int promptTokens, int completionTokens) {

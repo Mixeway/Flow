@@ -124,6 +124,10 @@ public class Settings {
     private int sastLlmScanConcurrency = 2;
     @Column(name = "sast_llm_severities", nullable = false, length = 100)
     private String sastLlmSeverities = "CRITICAL,HIGH";
+    @Column(name = "sast_llm_reasoning_effort", length = 20)
+    private String sastLlmReasoningEffort = "medium";
+    @Column(name = "sast_llm_disable_thinking", nullable = false)
+    private boolean sastLlmDisableThinking = true;
 
     @Column(name = "sca_llm_enabled", nullable = false)
     private boolean scaLlmEnabled = false;
@@ -140,6 +144,10 @@ public class Settings {
     private int scaLlmScanConcurrency = 2;
     @Column(name = "sca_llm_severities", nullable = false, length = 100)
     private String scaLlmSeverities = "CRITICAL,HIGH";
+    @Column(name = "sca_llm_reasoning_effort", length = 20)
+    private String scaLlmReasoningEffort = "medium";
+    @Column(name = "sca_llm_disable_thinking", nullable = false)
+    private boolean scaLlmDisableThinking = true;
 
     @Column(name = "iac_llm_enabled", nullable = false)
     private boolean iacLlmEnabled = false;
@@ -156,6 +164,10 @@ public class Settings {
     private int iacLlmScanConcurrency = 2;
     @Column(name = "iac_llm_severities", nullable = false, length = 100)
     private String iacLlmSeverities = "CRITICAL,HIGH";
+    @Column(name = "iac_llm_reasoning_effort", length = 20)
+    private String iacLlmReasoningEffort = "medium";
+    @Column(name = "iac_llm_disable_thinking", nullable = false)
+    private boolean iacLlmDisableThinking = true;
 
     @Column(name = "secrets_llm_enabled", nullable = false)
     private boolean secretsLlmEnabled = false;
@@ -172,6 +184,10 @@ public class Settings {
     private int secretsLlmScanConcurrency = 2;
     @Column(name = "secrets_llm_severities", nullable = false, length = 100)
     private String secretsLlmSeverities = "CRITICAL,HIGH";
+    @Column(name = "secrets_llm_reasoning_effort", length = 20)
+    private String secretsLlmReasoningEffort = "medium";
+    @Column(name = "secrets_llm_disable_thinking", nullable = false)
+    private boolean secretsLlmDisableThinking = true;
 
     @Column(name = "dast_llm_enabled", nullable = false)
     private boolean dastLlmEnabled = false;
@@ -188,6 +204,10 @@ public class Settings {
     private int dastLlmScanConcurrency = 2;
     @Column(name = "dast_llm_severities", nullable = false, length = 100)
     private String dastLlmSeverities = "CRITICAL,HIGH";
+    @Column(name = "dast_llm_reasoning_effort", length = 20)
+    private String dastLlmReasoningEffort = "medium";
+    @Column(name = "dast_llm_disable_thinking", nullable = false)
+    private boolean dastLlmDisableThinking = true;
 
     /**
      * One LLM endpoint per scanner source, read from columns on this settings row.
@@ -205,7 +225,9 @@ public class Settings {
                     hasText(fields.apiKey),
                     fields.contextWindow,
                     fields.scanConcurrency,
-                    severityNames(fields.severities)
+                    severityNames(fields.severities),
+                    fields.reasoningEffort,
+                    fields.disableThinking
             ));
         }
         return views;
@@ -247,8 +269,21 @@ public class Settings {
         return parseSeverities(llmFields(source).severities);
     }
 
+    /** {@code null} means the {@code reasoning_effort} parameter is not sent. */
+    @JsonIgnore
+    public String sourceLlmReasoningEffort(Finding.Source source) {
+        String value = llmFields(source).reasoningEffort;
+        return hasText(value) ? value : null;
+    }
+
+    @JsonIgnore
+    public boolean sourceLlmDisableThinking(Finding.Source source) {
+        return llmFields(source).disableThinking;
+    }
+
     public void upsertLlmSource(Finding.Source source, boolean enabled, String apiUrl, String apiKey, String model,
-                                int contextWindow, int scanConcurrency, String severities) {
+                                int contextWindow, int scanConcurrency, String severities,
+                                String reasoningEffort, boolean disableThinking) {
         switch (source) {
             case SAST -> {
                 this.sastLlmEnabled = enabled;
@@ -258,6 +293,8 @@ public class Settings {
                 this.sastLlmContextWindow = contextWindow;
                 this.sastLlmScanConcurrency = scanConcurrency;
                 this.sastLlmSeverities = severities;
+                this.sastLlmReasoningEffort = reasoningEffort;
+                this.sastLlmDisableThinking = disableThinking;
             }
             case SCA -> {
                 this.scaLlmEnabled = enabled;
@@ -267,6 +304,8 @@ public class Settings {
                 this.scaLlmContextWindow = contextWindow;
                 this.scaLlmScanConcurrency = scanConcurrency;
                 this.scaLlmSeverities = severities;
+                this.scaLlmReasoningEffort = reasoningEffort;
+                this.scaLlmDisableThinking = disableThinking;
             }
             case IAC -> {
                 this.iacLlmEnabled = enabled;
@@ -276,6 +315,8 @@ public class Settings {
                 this.iacLlmContextWindow = contextWindow;
                 this.iacLlmScanConcurrency = scanConcurrency;
                 this.iacLlmSeverities = severities;
+                this.iacLlmReasoningEffort = reasoningEffort;
+                this.iacLlmDisableThinking = disableThinking;
             }
             case SECRETS -> {
                 this.secretsLlmEnabled = enabled;
@@ -285,6 +326,8 @@ public class Settings {
                 this.secretsLlmContextWindow = contextWindow;
                 this.secretsLlmScanConcurrency = scanConcurrency;
                 this.secretsLlmSeverities = severities;
+                this.secretsLlmReasoningEffort = reasoningEffort;
+                this.secretsLlmDisableThinking = disableThinking;
             }
             case DAST -> {
                 this.dastLlmEnabled = enabled;
@@ -294,6 +337,8 @@ public class Settings {
                 this.dastLlmContextWindow = contextWindow;
                 this.dastLlmScanConcurrency = scanConcurrency;
                 this.dastLlmSeverities = severities;
+                this.dastLlmReasoningEffort = reasoningEffort;
+                this.dastLlmDisableThinking = disableThinking;
             }
             default -> throw new IllegalArgumentException("LLM settings are not stored for " + source);
         }
@@ -301,12 +346,12 @@ public class Settings {
 
     private LlmFields llmFields(Finding.Source source) {
         return switch (source) {
-            case SAST -> new LlmFields(sastLlmEnabled, sastLlmApiUrl, sastLlmApiKey, sastLlmModel, sastLlmContextWindow, sastLlmScanConcurrency, sastLlmSeverities);
-            case SCA -> new LlmFields(scaLlmEnabled, scaLlmApiUrl, scaLlmApiKey, scaLlmModel, scaLlmContextWindow, scaLlmScanConcurrency, scaLlmSeverities);
-            case IAC -> new LlmFields(iacLlmEnabled, iacLlmApiUrl, iacLlmApiKey, iacLlmModel, iacLlmContextWindow, iacLlmScanConcurrency, iacLlmSeverities);
-            case SECRETS -> new LlmFields(secretsLlmEnabled, secretsLlmApiUrl, secretsLlmApiKey, secretsLlmModel, secretsLlmContextWindow, secretsLlmScanConcurrency, secretsLlmSeverities);
-            case DAST -> new LlmFields(dastLlmEnabled, dastLlmApiUrl, dastLlmApiKey, dastLlmModel, dastLlmContextWindow, dastLlmScanConcurrency, dastLlmSeverities);
-            default -> new LlmFields(false, null, null, null, 8192, 2, "CRITICAL,HIGH");
+            case SAST -> new LlmFields(sastLlmEnabled, sastLlmApiUrl, sastLlmApiKey, sastLlmModel, sastLlmContextWindow, sastLlmScanConcurrency, sastLlmSeverities, sastLlmReasoningEffort, sastLlmDisableThinking);
+            case SCA -> new LlmFields(scaLlmEnabled, scaLlmApiUrl, scaLlmApiKey, scaLlmModel, scaLlmContextWindow, scaLlmScanConcurrency, scaLlmSeverities, scaLlmReasoningEffort, scaLlmDisableThinking);
+            case IAC -> new LlmFields(iacLlmEnabled, iacLlmApiUrl, iacLlmApiKey, iacLlmModel, iacLlmContextWindow, iacLlmScanConcurrency, iacLlmSeverities, iacLlmReasoningEffort, iacLlmDisableThinking);
+            case SECRETS -> new LlmFields(secretsLlmEnabled, secretsLlmApiUrl, secretsLlmApiKey, secretsLlmModel, secretsLlmContextWindow, secretsLlmScanConcurrency, secretsLlmSeverities, secretsLlmReasoningEffort, secretsLlmDisableThinking);
+            case DAST -> new LlmFields(dastLlmEnabled, dastLlmApiUrl, dastLlmApiKey, dastLlmModel, dastLlmContextWindow, dastLlmScanConcurrency, dastLlmSeverities, dastLlmReasoningEffort, dastLlmDisableThinking);
+            default -> new LlmFields(false, null, null, null, 8192, 2, "CRITICAL,HIGH", "medium", true);
         };
     }
 
@@ -339,7 +384,8 @@ public class Settings {
         return value != null && !value.isBlank();
     }
 
-    private record LlmFields(boolean enabled, String apiUrl, String apiKey, String model, int contextWindow, int scanConcurrency, String severities) {
+    private record LlmFields(boolean enabled, String apiUrl, String apiKey, String model, int contextWindow, int scanConcurrency, String severities,
+                             String reasoningEffort, boolean disableThinking) {
     }
 
     @Getter
@@ -352,9 +398,12 @@ public class Settings {
         private final int contextWindow;
         private final int scanConcurrency;
         private final List<String> severities;
+        private final String reasoningEffort;
+        private final boolean disableThinking;
 
         public LlmSourceView(String source, boolean enabled, String apiUrl, String model, boolean apiKeyConfigured,
-                             int contextWindow, int scanConcurrency, List<String> severities) {
+                             int contextWindow, int scanConcurrency, List<String> severities,
+                             String reasoningEffort, boolean disableThinking) {
             this.source = source;
             this.enabled = enabled;
             this.apiUrl = apiUrl;
@@ -363,6 +412,8 @@ public class Settings {
             this.contextWindow = contextWindow;
             this.scanConcurrency = scanConcurrency;
             this.severities = severities;
+            this.reasoningEffort = reasoningEffort == null ? "" : reasoningEffort;
+            this.disableThinking = disableThinking;
         }
     }
 

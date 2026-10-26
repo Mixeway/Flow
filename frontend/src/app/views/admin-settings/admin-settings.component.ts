@@ -182,12 +182,14 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
         contextWindow: number;
         scanConcurrency: number;
         severities: string[];
+        reasoningEffort: string;
+        disableThinking: boolean;
     }> = [
-        { source: 'SAST', label: 'SAST', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 16384, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'] },
-        { source: 'SCA', label: 'SCA', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'] },
-        { source: 'IAC', label: 'IaC', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'] },
-        { source: 'SECRETS', label: 'Secrets', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'] },
-        { source: 'DAST', label: 'DAST', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'] },
+        { source: 'SAST', label: 'SAST', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 16384, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'], reasoningEffort: 'medium', disableThinking: true },
+        { source: 'SCA', label: 'SCA', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'], reasoningEffort: 'medium', disableThinking: true },
+        { source: 'IAC', label: 'IaC', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'], reasoningEffort: 'medium', disableThinking: true },
+        { source: 'SECRETS', label: 'Secrets', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'], reasoningEffort: 'medium', disableThinking: true },
+        { source: 'DAST', label: 'DAST', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'], reasoningEffort: 'medium', disableThinking: true },
     ];
     repoTokenSearchTerm: string = '';
     repoTokenValue: string = '';
@@ -672,7 +674,9 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
                 scanConcurrency: row.scanConcurrency || 2,
                 severities: Array.isArray(row.severities) && row.severities.length
                     ? row.severities
-                    : [...this.defaultLlmSeverities]
+                    : [...this.defaultLlmSeverities],
+                reasoningEffort: row.reasoningEffort ?? 'medium',
+                disableThinking: row.disableThinking ?? true
             };
         });
     }
@@ -720,7 +724,9 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
                 model: section.model,
                 contextWindow: section.contextWindow,
                 scanConcurrency: section.scanConcurrency,
-                severities: section.severities
+                severities: section.severities,
+                reasoningEffort: section.reasoningEffort,
+                disableThinking: section.disableThinking
             }))
         ).subscribe({
             next: () => {

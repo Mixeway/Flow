@@ -29,6 +29,8 @@ public class UpdateSettingsService {
     private static final int MIN_CONTEXT_WINDOW = 256;
     private static final int MAX_CONTEXT_WINDOW = 200000;
     private static final int MAX_SCAN_CONCURRENCY = 16;
+    private static final String DEFAULT_REASONING_EFFORT = "medium";
+    private static final int MAX_REASONING_EFFORT_LENGTH = 20;
 
     private final SettingsRepository settingsRepository;
     private final FindSettingsService findSettingsService;
@@ -156,16 +158,20 @@ public class UpdateSettingsService {
             int contextWindow = normalizeContextWindow(dto.getContextWindow(), source, dto.isEnabled());
             int scanConcurrency = normalizeScanConcurrency(dto.getScanConcurrency(), source, dto.isEnabled());
             String severities = normalizeSeverities(dto.getSeverities(), source, dto.isEnabled());
+            String reasoningEffort = normalizeReasoningEffort(dto.getReasoningEffort(), source);
+            boolean disableThinking = dto.getDisableThinking() == null || dto.getDisableThinking();
             if (dto.isEnabled()) {
                 String apiKey = resolveLlmApiKey(storedLlmApiKey(settings, source), dto.getApiKey());
                 if (!hasText(dto.getApiUrl()) || !hasText(apiKey) || !hasText(dto.getModel())) {
                     log.warn("[Settings] Error enabling LLM for {} - API URL, API key and model are required", source);
                     throw new SettingsException("API URL, API key and model are required when enabling LLM for " + source);
                 }
-                settings.upsertLlmSource(source, true, dto.getApiUrl().trim(), apiKey, dto.getModel().trim(), contextWindow, scanConcurrency, severities);
+                settings.upsertLlmSource(source, true, dto.getApiUrl().trim(), apiKey, dto.getModel().trim(), contextWindow,
+                        scanConcurrency, severities, reasoningEffort, disableThinking);
                 log.info("[Settings] LLM enabled for {} with URL: {}", source, dto.getApiUrl());
             } else {
-                settings.upsertLlmSource(source, false, null, null, null, contextWindow, scanConcurrency, severities);
+                settings.upsertLlmSource(source, false, null, null, null, contextWindow, scanConcurrency, severities,
+                        reasoningEffort, disableThinking);
                 log.info("[Settings] LLM disabled for {}", source);
             }
         }
@@ -239,6 +245,22 @@ public class UpdateSettingsService {
             throw new SettingsException("Scan concurrency for " + source + " must be between 1 and " + MAX_SCAN_CONCURRENCY);
         }
         return value;
+    }
+
+    /** A blank value is stored as {@code null}, which means the parameter is not sent. */
+    private String normalizeReasoningEffort(String value, Finding.Source source) throws SettingsException {
+        if (value == null) {
+            return DEFAULT_REASONING_EFFORT;
+        }
+        if (value.isBlank()) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.length() > MAX_REASONING_EFFORT_LENGTH) {
+            throw new SettingsException("Reasoning effort for " + source + " must be at most "
+                    + MAX_REASONING_EFFORT_LENGTH + " characters");
+        }
+        return trimmed;
     }
 
     private boolean hasText(String value) {

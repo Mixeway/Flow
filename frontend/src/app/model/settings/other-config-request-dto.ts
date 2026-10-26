@@ -7,6 +7,8 @@ export interface LlmSourceConfigRequest {
     contextWindow: number;
     scanConcurrency: number;
     severities: string[];
+    reasoningEffort: string;
+    disableThinking: boolean;
 }
 
 export interface OtherConfigRequestDTO {
