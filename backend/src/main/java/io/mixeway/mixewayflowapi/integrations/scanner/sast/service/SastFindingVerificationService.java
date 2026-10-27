@@ -99,10 +99,14 @@ public class SastFindingVerificationService {
             "ruby_rails_insecure_http_password"
     );
 
-    private static final int MAX_TOOL_ROUNDS = 4;
+    // Ceilings, not mandates: the ReAct loop stops as soon as the model returns a final verdict, so
+    // easy findings that resolve in a couple of rounds are unaffected by these limits. Raising them
+    // only gives genuinely hard/cross-file findings (the ones currently hitting forcedFinal with a
+    // premature, under-researched verdict) more room to finish the investigation.
+    private static final int MAX_TOOL_ROUNDS = 6;
     private static final int MAX_TOOL_CALLS_PER_FINDING = 6;
     private static final int MAX_TOOL_CALLS_PATH_TRAVERSAL = 10;
-    private static final int MAX_TOOL_CALLS_TAINT = 8;
+    private static final int MAX_TOOL_CALLS_TAINT = 12;
     private static final int MAX_JSON_REPAIR_ATTEMPTS = 1;
     private static final int MAX_WEAK_REASONING_REPAIR_ATTEMPTS = 1;
     private static final int MAX_MISSING_VERDICT_RETRIES = 1;
@@ -698,7 +702,8 @@ public class SastFindingVerificationService {
         VerificationResult result = outcome.result();
         if (result.verified()) {
             try {
-                result = huntSourceIfUnresolved(item, repoDir, outcome, result, metadata, itemRef);
+                result = huntSourceIfUnresolved(item, repoDir, outcome, result, metadata, itemRef,
+                        context.fileImports());
             } catch (Throwable t) {
                 log.error("[SastVerification] Source-origin hunt threw for {}, keeping ReAct verdict {}: {}",
                         itemRef, item.getAiVerdict(), t.getMessage(), t);
@@ -1031,7 +1036,7 @@ public class SastFindingVerificationService {
      */
     private VerificationResult huntSourceIfUnresolved(Item item, String repoDir, ReactOutcome outcome,
                                                       VerificationResult result, SastRuleMetadata metadata,
-                                                      String itemRef) {
+                                                      String itemRef, String findingFileImports) {
         if (result == null || !result.verified() || repoDir == null || repoDir.isBlank()) {
             return result;
         }
@@ -1061,6 +1066,7 @@ public class SastFindingVerificationService {
         String neutralizer = "";
         String callers = "";
         boolean originFound = false;
+        boolean callerVerified = false;
 
         for (int round = 0; round <= SourceOriginHunt.MAX_TOOL_CALLS; round++) {
             boolean last = round == SourceOriginHunt.MAX_TOOL_CALLS || tools >= SourceOriginHunt.MAX_TOOL_CALLS;
@@ -1099,6 +1105,7 @@ public class SastFindingVerificationService {
                 writer = textValue(node, "writer");
                 neutralizer = textValue(node, "neutralizer_on_path");
                 callers = textValue(node, "in_repo_callers");
+                callerVerified = node.path("caller_verified").asBoolean(false);
                 trace = textValue(node, "trace");
                 if (trace.isBlank()) {
                     trace = textValue(node, "reasoning");
@@ -1107,14 +1114,29 @@ public class SastFindingVerificationService {
             break;
         }
 
-        if (!SourceOriginHunt.traceIsUseful(originFound, trace, writer, productive)) {
+        if (!SourceOriginHunt.traceIsUseful(originFound, trace, writer, productive, callerVerified,
+                item.getFilename(), findingFileImports)) {
             if (SourceOriginHunt.shouldReviseWithoutCaller(item.getAiVerdict(), originFound, writer, tools,
                     item.getFilename())) {
                 huntLlm += reviseWithoutCaller(item, outcome, metadata, callers, trace, itemRef);
                 return addLlmRequests(result, huntLlm);
             }
-            log.info("[SastVerification] Source-origin hunt for {} found no additional writer; keeping verdict {}",
-                    itemRef, item.getAiVerdict());
+            boolean hasNamedWriter = !writer.isBlank() && !"none".equalsIgnoreCase(writer.trim())
+                    && !"unknown".equalsIgnoreCase(writer.trim());
+            boolean hasImportData = findingFileImports != null && !findingFileImports.isBlank();
+            if (hasNamedWriter && hasImportData) {
+                log.info("[SastVerification] Source-origin hunt for {} found writer '{}' but the finding's imports "
+                                + "do not reference that file (deterministic check); rejecting self-reported "
+                                + "caller_verified={}, keeping verdict {}",
+                        itemRef, writer, callerVerified, item.getAiVerdict());
+            } else if (hasNamedWriter) {
+                log.info("[SastVerification] Source-origin hunt for {} found writer '{}' in an unconnected file "
+                                + "(no import data available, caller_verified={}); not treating as proof, keeping verdict {}",
+                        itemRef, writer, callerVerified, item.getAiVerdict());
+            } else {
+                log.info("[SastVerification] Source-origin hunt for {} found no additional writer; keeping verdict {}",
+                        itemRef, item.getAiVerdict());
+            }
             return addLlmRequests(result, huntLlm);
         }
 
@@ -1383,7 +1405,7 @@ public class SastFindingVerificationService {
                     || metadata.family() == VulnerabilityFamily.XSS
                     || metadata.family() == VulnerabilityFamily.COMMAND_INJECTION) {
                 return category == CodeContextExtractor.EvidenceCategory.DEAD_END
-                    ? Math.max(MAX_TOOL_CALLS_TAINT, 10)
+                    ? Math.max(MAX_TOOL_CALLS_TAINT, 16)
                     : MAX_TOOL_CALLS_TAINT;
             }
         }
@@ -1402,16 +1424,16 @@ public class SastFindingVerificationService {
         // More rounds for Path Traversal to trace through object fields
         if (metadata != null && metadata.family() == VulnerabilityFamily.PATH_TRAVERSAL) {
             return category == CodeContextExtractor.EvidenceCategory.DEAD_END 
-                ? Math.max(MAX_TOOL_ROUNDS, 8)
-                : Math.max(MAX_TOOL_ROUNDS, 6);
+                ? Math.max(MAX_TOOL_ROUNDS, 9)
+                : Math.max(MAX_TOOL_ROUNDS, 7);
         }
         
         if (category == null) {
             return MAX_TOOL_ROUNDS;
         }
         return switch (category) {
-            case DEAD_END -> Math.max(MAX_TOOL_ROUNDS, 7);
-            case AMBIGUOUS -> Math.max(MAX_TOOL_ROUNDS, 6);
+            case DEAD_END -> Math.max(MAX_TOOL_ROUNDS, 9);
+            case AMBIGUOUS -> Math.max(MAX_TOOL_ROUNDS, 8);
             default -> MAX_TOOL_ROUNDS;
         };
     }
@@ -2351,7 +2373,7 @@ public class SastFindingVerificationService {
             }
 
             overrides = 1;
-            log.debug("[SastVerification] Validation OVERRODE verdict for {}: {} ({}) -> {} ({}) | {}",
+            log.info("[SastVerification] Validation OVERRODE verdict for {}: {} ({}) -> {} ({}) | {}",
                     itemRef, previousVerdict,
                     String.format(Locale.ROOT, "%.2f", previousConfidence),
                     validatorVerdict,

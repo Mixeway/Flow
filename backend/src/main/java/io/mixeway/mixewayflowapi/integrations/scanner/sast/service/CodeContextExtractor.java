@@ -261,8 +261,29 @@ public class CodeContextExtractor {
                     + "|^\\s*(?:(?:final|synchronized|native|abstract|default)\\s+)*"
                     + "(?:void|[A-Za-z_][\\w$.<>,\\[\\]?]*)\\s+[A-Za-z_]\\w*\\s*\\([^;]*\\)\\s*(?:\\{|throws\\b)",
             Pattern.MULTILINE);
+    /** Import/include statements that start the line, across the languages this scanner supports. */
     private static final Pattern IMPORT_PATTERN = Pattern.compile(
-            "^\\s*(import |from |require\\(|#include |using |package )", Pattern.MULTILINE);
+            "^\\s*(import\\s|from\\s|require\\s*\\(|require_relative\\s|#include\\s|using\\s|package\\s|"
+                    + "use\\s+(?!strict\\b)[\\w\\\\:]|extern\\s+crate\\s)",
+            Pattern.CASE_INSENSITIVE);
+    /**
+     * Module references that do NOT start the line: CommonJS {@code const x = require('y')},
+     * dynamic {@code import('y')}, Ruby {@code require 'y'}, PHP {@code require_once('y')}/
+     * {@code include('y')}. Matched anywhere in the line since the left-hand side varies too much
+     * to anchor (destructuring, multiple assignment, etc.).
+     */
+    private static final Pattern INLINE_MODULE_REF_PATTERN = Pattern.compile(
+            "\\brequire(?:_once|_relative)?\\s*\\(\\s*[\"']"
+                    + "|\\brequire\\s+[\"']"
+                    + "|\\binclude(?:_once)?\\s*\\(\\s*[\"']"
+                    + "|\\bimport\\s*\\(\\s*[\"']",
+            Pattern.CASE_INSENSITIVE);
+    /** Go's {@code import (} block header; the member lines inside it do not match {@link #IMPORT_PATTERN} alone. */
+    private static final Pattern GO_IMPORT_BLOCK_START = Pattern.compile("^\\s*import\\s*\\(\\s*$");
+    /** Opening of a Python module docstring, optionally prefixed by a string-literal flag (r/b/u). */
+    private static final Pattern DOCSTRING_OPEN = Pattern.compile("^[a-zA-Z]{0,2}(\"\"\"|''')");
+    private static final int MAX_IMPORT_SCAN_LINES = 400;
+    private static final int MAX_IMPORT_LINES = 60;
     private static final Pattern IDENTIFIER_PATTERN = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*");
     private static final Pattern FUNC_NAME_KEYWORD = Pattern.compile(
             "(?:async\\s+)?(?:def|function|fn|func|sub)\\s+([A-Za-z_][A-Za-z0-9_]*)");
@@ -2653,31 +2674,87 @@ public class CodeContextExtractor {
         return sb.toString().trim();
     }
 
+    /**
+     * Collects import/require/include statements anywhere in the file's header area. Does NOT
+     * assume imports form one unbroken prefix block: a module docstring, a {@code 'use strict'}
+     * directive, a license comment without {@code //}/{@code *} markers, or any other statement
+     * placed between or before import groups must not discard the real imports that follow — a
+     * single stray line used to zero out this entire field (see regression tests). Only comments,
+     * Python docstrings, and Go {@code import (...)} blocks get special multi-line handling;
+     * everything else that is not an import line is simply skipped, not treated as a terminator.
+     */
     private String extractImports(List<String> lines) {
         StringBuilder sb = new StringBuilder();
-        boolean foundNonImport = false;
-        int blankLineCount = 0;
+        int collected = 0;
+        boolean inDocstring = false;
+        boolean inBlockComment = false;
+        boolean inGoImportBlock = false;
+        String docstringDelim = "";
+        int scanLimit = Math.min(lines.size(), MAX_IMPORT_SCAN_LINES);
 
-        for (String line : lines) {
+        for (int i = 0; i < scanLimit && collected < MAX_IMPORT_LINES; i++) {
+            String line = lines.get(i);
             String trimmed = line.trim();
-            if (trimmed.isEmpty()) {
-                blankLineCount++;
-                if (foundNonImport || blankLineCount > 2) break;
-                continue;
-            }
 
-            if (IMPORT_PATTERN.matcher(line).find()) {
-                sb.append(line).append('\n');
-                blankLineCount = 0;
-            } else if (trimmed.startsWith("//") || trimmed.startsWith("#") || trimmed.startsWith("/*") || trimmed.startsWith("*")) {
+            if (inDocstring) {
+                if (trimmed.contains(docstringDelim)) {
+                    inDocstring = false;
+                }
                 continue;
-            } else if (trimmed.startsWith("package ")) {
-                sb.append(line).append('\n');
-            } else {
-                foundNonImport = true;
-                if (sb.isEmpty()) continue;
-                break;
             }
+            if (inBlockComment) {
+                if (trimmed.contains("*/")) {
+                    inBlockComment = false;
+                }
+                continue;
+            }
+            if (inGoImportBlock) {
+                if (trimmed.equals(")")) {
+                    inGoImportBlock = false;
+                } else if (!trimmed.isEmpty()) {
+                    sb.append(line).append('\n');
+                    collected++;
+                }
+                continue;
+            }
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            if (trimmed.startsWith("//") || trimmed.startsWith("#")) {
+                continue;
+            }
+            if (trimmed.startsWith("/*")) {
+                if (!trimmed.contains("*/")) {
+                    inBlockComment = true;
+                }
+                continue;
+            }
+            if (trimmed.startsWith("*")) {
+                // Continuation line of a /** ... */ block comment.
+                continue;
+            }
+            var docOpen = DOCSTRING_OPEN.matcher(trimmed);
+            if (docOpen.find()) {
+                String delim = docOpen.group(1);
+                int firstEnd = trimmed.indexOf(delim, docOpen.end());
+                if (firstEnd < 0) {
+                    inDocstring = true;
+                    docstringDelim = delim;
+                }
+                continue;
+            }
+            if (GO_IMPORT_BLOCK_START.matcher(line).find()) {
+                sb.append(line).append('\n');
+                collected++;
+                inGoImportBlock = true;
+                continue;
+            }
+            if (IMPORT_PATTERN.matcher(line).find() || INLINE_MODULE_REF_PATTERN.matcher(line).find()) {
+                sb.append(line).append('\n');
+                collected++;
+            }
+            // Any other line (constant, directive, blank-separated code) is skipped rather than
+            // treated as the end of the import section, so later import groups are still found.
         }
         return sb.toString().trim();
     }
@@ -2828,15 +2905,83 @@ public class CodeContextExtractor {
     }
 
     private boolean isImportedBy(String imports, String filename) {
-        if (imports == null || imports.isBlank() || filename == null) return false;
-        String baseName = Path.of(filename).getFileName().toString();
-        int dotIdx = baseName.lastIndexOf('.');
-        String moduleName = dotIdx > 0 ? baseName.substring(0, dotIdx) : baseName;
-        String pathBased = filename.replace('/', '.').replace('\\', '.');
-        if (dotIdx > 0) {
-            pathBased = pathBased.substring(0, pathBased.lastIndexOf('.'));
+        return isImportedByStatic(imports, filename);
+    }
+
+    /**
+     * Pure, deterministic check for whether {@code imports} (a file's extracted import block)
+     * textually references {@code filename} by module name or dotted path. Static so other
+     * verification stages (e.g. {@link SourceOriginHunt}) can corroborate a model-reported writer
+     * file against real import statements instead of trusting the model's self-report alone.
+     * {@code filename} may come from untrusted/free-text LLM output, so this never throws.
+     */
+    /**
+     * File basenames too generic to be distinctive on their own ({@code index.ts}, {@code utils.py},
+     * {@code config.js} ...). A bare match on one of these proves nothing — large repos routinely
+     * have many unrelated files sharing the name. These only count as evidence via the fuller
+     * dotted/slashed {@code pathBased} form, not the bare module name.
+     */
+    private static final Set<String> GENERIC_MODULE_NAMES = Set.of(
+            "index", "utils", "util", "helpers", "helper", "types", "type", "config",
+            "configuration", "constants", "constant", "common", "base", "client",
+            "service", "services", "model", "models", "api", "main", "app", "core",
+            "lib", "mod", "init", "handler", "handlers", "controller", "controllers",
+            "views", "view", "routes", "route");
+
+    static boolean isImportedByStatic(String imports, String filename) {
+        if (imports == null || imports.isBlank() || filename == null || filename.isBlank()) {
+            return false;
         }
-        return imports.contains(moduleName) || imports.contains(pathBased);
+        try {
+            String baseName = Path.of(filename).getFileName().toString();
+            int dotIdx = baseName.lastIndexOf('.');
+            String moduleName = dotIdx > 0 ? baseName.substring(0, dotIdx) : baseName;
+            if (moduleName.isBlank()) {
+                return false;
+            }
+            String pathBased = filename.replace('/', '.').replace('\\', '.');
+            if (dotIdx > 0) {
+                pathBased = pathBased.substring(0, pathBased.lastIndexOf('.'));
+            }
+            if (containsAsWord(imports, pathBased)) {
+                return true;
+            }
+            boolean tooGeneric = moduleName.length() < 4
+                    || GENERIC_MODULE_NAMES.contains(moduleName.toLowerCase(Locale.ROOT));
+            if (tooGeneric) {
+                return false;
+            }
+            return containsAsWord(imports, moduleName);
+        } catch (RuntimeException e) {
+            // Malformed/unparseable path from free-text model output: no evidence either way.
+            return false;
+        }
+    }
+
+    /**
+     * {@code needle} found in {@code haystack} with non-identifier characters (or the string edge)
+     * on both sides, so a short module name like {@code "utils"} does not match inside an unrelated
+     * identifier such as {@code "dateUtils"} or {@code "utilsFoo"}.
+     */
+    private static boolean containsAsWord(String haystack, String needle) {
+        if (needle == null || needle.isBlank()) {
+            return false;
+        }
+        int idx = 0;
+        while ((idx = haystack.indexOf(needle, idx)) >= 0) {
+            boolean leftOk = idx == 0 || !isIdentifierChar(haystack.charAt(idx - 1));
+            int afterPos = idx + needle.length();
+            boolean rightOk = afterPos >= haystack.length() || !isIdentifierChar(haystack.charAt(afterPos));
+            if (leftOk && rightOk) {
+                return true;
+            }
+            idx++;
+        }
+        return false;
+    }
+
+    private static boolean isIdentifierChar(char c) {
+        return Character.isLetterOrDigit(c) || c == '_';
     }
 
     /**

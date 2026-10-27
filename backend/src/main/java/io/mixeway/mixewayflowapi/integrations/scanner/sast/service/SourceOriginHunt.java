@@ -170,11 +170,78 @@ final class SourceOriginHunt {
     }
 
     static boolean traceIsUseful(boolean originFound, String trace, String writer, int productiveObservations) {
+        return traceIsUseful(originFound, trace, writer, productiveObservations, true, null, null);
+    }
+
+    /**
+     * Guards against a writer that merely shares a name with something found elsewhere in the
+     * repo. A same-named config key or variable in an unrelated file is not proof that THIS
+     * finding's value originates from it.
+     *
+     * <p>Evidence hierarchy for a writer in a different file than the sink, strongest first:
+     * <ol>
+     *   <li>{@code findingFileImports} (deterministically extracted from the finding's own file,
+     *       computed once per finding at no extra LLM cost) textually references the writer's file
+     *       — treated as proof regardless of {@code callerVerified}.</li>
+     *   <li>Import data is unavailable ({@code null}/blank) — fall back to the model's self-reported
+     *       {@code callerVerified}. This is the weaker, trust-based path, used only when the
+     *       stronger deterministic check could not run.</li>
+     *   <li>Import data IS available but does not reference the writer's file — the trace is
+     *       rejected even if the model claims {@code callerVerified=true}: a self-report that
+     *       contradicts the actual source is not trusted.</li>
+     * </ol>
+     */
+    static boolean traceIsUseful(boolean originFound, String trace, String writer, int productiveObservations,
+                                 boolean callerVerified, String findingFile, String findingFileImports) {
         boolean hasTrace = trace != null && !trace.isBlank();
         boolean hasWriter = writer != null && !writer.isBlank()
                 && !"none".equalsIgnoreCase(writer.trim())
                 && !"unknown".equalsIgnoreCase(writer.trim());
-        return hasWriter && hasTrace && (originFound || productiveObservations > 0);
+        if (!hasWriter || !hasTrace || !(originFound || productiveObservations > 0)) {
+            return false;
+        }
+        if (sameFile(writer, findingFile)) {
+            return true;
+        }
+        boolean hasImportData = findingFileImports != null && !findingFileImports.isBlank();
+        if (hasImportData) {
+            return CodeContextExtractor.isImportedByStatic(findingFileImports, writerFilePath(writer));
+        }
+        return callerVerified;
+    }
+
+    private static boolean sameFile(String writer, String findingFile) {
+        String writerPath = normalizePath(writer);
+        String findingPath = normalizePath(findingFile);
+        return !writerPath.isBlank() && writerPath.equals(findingPath);
+    }
+
+    /** Strips the trailing ":line symbol..." suffix from a {@code writer} field, keeping the path. */
+    private static String writerFilePath(String writer) {
+        if (writer == null) {
+            return "";
+        }
+        String p = writer.trim().replace('\\', '/');
+        int colon = p.indexOf(':');
+        if (colon > 1) {
+            p = p.substring(0, colon);
+        }
+        return p;
+    }
+
+    private static String normalizePath(String path) {
+        if (path == null) {
+            return "";
+        }
+        String p = path.trim().replace('\\', '/');
+        int colon = p.indexOf(':');
+        if (colon > 1) {
+            p = p.substring(0, colon);
+        }
+        while (p.startsWith("./")) {
+            p = p.substring(2);
+        }
+        return p.toLowerCase(Locale.ROOT);
     }
 
     /**
@@ -362,6 +429,10 @@ final class SourceOriginHunt {
         sb.append("{\"action\":\"final\",\"origin_found\":true,\"input_source\":\"http_request|database|file_untrusted|")
                 .append("gui_input|dom_content|url_fragment|internal_call|config_file|environment_variable|unknown\",")
                 .append(writerFields)
+                .append("\"caller_verified\":true|false (true ONLY if you read or cite a specific import, require, ")
+                .append("or call statement — path:line — that actually connects the sink's file to the writer's file; ")
+                .append("a same-named variable, key, or file found elsewhere in the repo without that connection does ")
+                .append("NOT count; when the writer is in the same file as the sink this is always true),")
                 .append("\"in_repo_callers\":\"none, or path:line of each caller ")
                 .append("of the enclosing function\",\"trace\":\"2-4 sentences ").append(traceSubject).append(". ")
                 .append("No review machinery.\"}\n");
