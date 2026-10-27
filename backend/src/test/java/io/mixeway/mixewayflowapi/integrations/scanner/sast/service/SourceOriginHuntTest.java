@@ -176,6 +176,49 @@ class SourceOriginHuntTest {
     }
 
     @Test
+    void crossFileWriterWithoutImportDataFallsBackToSelfReport() {
+        // No import data available for the finding's file: fall back to the model's self-reported
+        // caller_verified, the weaker trust-based signal.
+        assertFalse(SourceOriginHunt.traceIsUseful(true,
+                "tracker.js reads trackerKey from process.env.REACT_APP_TRACKER_KEY",
+                "packages/widgets/assets/tracker.js:12 trackerKey", 1,
+                false, "packages/ui/components/externals/WidgetTracker/WidgetTracker.tsx", null));
+
+        assertTrue(SourceOriginHunt.traceIsUseful(true,
+                "WidgetTracker.tsx imports trackerKey from tracker.js, which reads process.env",
+                "packages/widgets/assets/tracker.js:12 trackerKey", 1,
+                true, "packages/ui/components/externals/WidgetTracker/WidgetTracker.tsx", ""));
+
+        // Writer in the same file as the sink never needs caller_verified or import data.
+        assertTrue(SourceOriginHunt.traceIsUseful(true, "dialog.js assigns link.url from the url field",
+                "dialog.js:40", 0, false, "dialog.js", null));
+    }
+
+    @Test
+    void crossFileWriterWithImportDataIsCheckedDeterministically() {
+        // Regression for a WidgetTracker.tsx XSS finding: the hunt found trackerKey written from
+        // process.env in an unrelated file (tracker.js) but the finding file's actual imports never
+        // reference that file. The deterministic check must reject the trace EVEN THOUGH the model
+        // self-reported caller_verified=true — a self-report that contradicts the real source is not
+        // trusted once we have hard evidence to check it against.
+        String widgetTrackerImports = "import React from 'react';\nimport { TrackerConfig } from './types';\n";
+        assertFalse(SourceOriginHunt.traceIsUseful(true,
+                "process.env.REACT_APP_TRACKER_KEY is read in tracker.js",
+                "packages/widgets/assets/tracker.js:12 trackerKey", 1,
+                true, "packages/ui/components/externals/WidgetTracker/WidgetTracker.tsx",
+                widgetTrackerImports));
+
+        // When the finding file's imports DO reference the writer's file, the trace is confirmed
+        // deterministically — regardless of what the model claims for caller_verified.
+        String importsTracker = "import { trackerKey } from '../../../widgets/assets/tracker';\n";
+        assertTrue(SourceOriginHunt.traceIsUseful(true,
+                "trackerKey is imported from tracker.js",
+                "packages/widgets/assets/tracker.js:12 trackerKey", 1,
+                false, "packages/ui/components/externals/WidgetTracker/WidgetTracker.tsx",
+                importsTracker));
+    }
+
+    @Test
     void emptyAndErrorObservationsAreNotProductive() {
         assertFalse(SourceOriginHunt.productiveObservation("No matches found for pattern: href"));
         assertFalse(SourceOriginHunt.productiveObservation("File not found: missing.js"));
