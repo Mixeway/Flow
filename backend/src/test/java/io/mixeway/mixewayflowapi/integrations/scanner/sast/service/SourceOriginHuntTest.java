@@ -4,6 +4,7 @@ import io.mixeway.mixewayflowapi.integrations.scanner.sast.service.SourceOriginH
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -81,6 +82,47 @@ class SourceOriginHuntTest {
         assertTrue(user.contains("Do not search for the VALUE origin"));
         assertTrue(user.contains("2nd argument of setattr"));
         assertFalse(user.contains("assignments of the sink identifier"));
+    }
+
+    @Test
+    void analyzerResultsAreHandedToTheHuntWithoutDuplicates() {
+        List<Map<String, Object>> analyzer = List.of(
+                Map.of("role", "system", "content", "TOOL RESULT (read_file):\nnot a tool message"),
+                Map.of("role", "user", "content", "Analyze this finding"),
+                Map.of("role", "assistant", "content", "{\"action\":\"read_file\"}"),
+                Map.of("role", "user", "content", "TOOL RESULT (read_file):\ndocs/custom.js (lines 1-2):\n1| a\n2| b\n"),
+                Map.of("role", "user", "content", "TOOL RESULT (read_file):\nDuplicate action skipped (already executed)."));
+
+        String section = SourceOriginHunt.analyzerResultsSection(analyzer);
+
+        assertTrue(section.contains("docs/custom.js (lines 1-2):\n1| a\n2| b"));
+        assertFalse(section.contains("Duplicate action skipped"));
+        assertFalse(section.contains("not a tool message"));
+        assertEquals("", SourceOriginHunt.analyzerResultsSection(List.of(Map.of("role", "user", "content", "x"))));
+    }
+
+    @Test
+    void analyzerResultsOverTheBudgetAreListedByHeader() {
+        String big = "TOOL RESULT (read_file):\nbig.js (lines 1-9000):\n" + "1| x\n".repeat(3_000);
+        String section = SourceOriginHunt.analyzerResultsSection(List.of(
+                Map.of("role", "user", "content", big),
+                Map.of("role", "user", "content", "TOOL RESULT (search_repo):\nMatches (1):\na.js:3: foo")));
+
+        assertTrue(section.contains("a.js:3: foo"));
+        assertTrue(section.contains("- TOOL RESULT (read_file): big.js (lines 1-9000):"));
+        assertTrue(section.length() < big.length());
+    }
+
+    @Test
+    void firstReadOfTheFindingFileIsOptionalOnlyWhenAnalyzerResultsAreShown() {
+        SastRuleMetadata xss = meta(VulnerabilityFamily.XSS);
+        String without = SourceOriginHunt.userPrompt(null, xss, "dom_content", "FALSE_POSITIVE", "", Slot.VALUE);
+        String with = SourceOriginHunt.userPrompt(null, xss, "dom_content", "FALSE_POSITIVE", "", Slot.VALUE,
+                "Repository results the first review already obtained:\nTOOL RESULT (read_file):\na.js (lines 1-1):\n1| x\n\n");
+
+        assertTrue(without.contains("1. read_file on the finding file around the flagged line.\n"));
+        assertTrue(with.contains("unless the first review's results above already show it"));
+        assertTrue(with.indexOf("1| x") < with.indexOf("Search in this order"));
     }
 
     @Test

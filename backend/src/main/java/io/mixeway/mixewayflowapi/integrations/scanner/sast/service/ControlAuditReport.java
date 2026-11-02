@@ -48,6 +48,19 @@ public record ControlAuditReport(
                     .append(": ").append(result.classification())
                     .append(" / ").append(result.verdict());
             sb.append('\n');
+            if (result.bypassClasses() != null && !result.bypassClasses().isEmpty()) {
+                sb.append("  Bypass classes: ").append(String.join(", ", result.bypassClasses())).append('\n');
+            }
+            if (result.residualPayloadSketch() != null && !result.residualPayloadSketch().isBlank()) {
+                sb.append("  Payload that still passes: ").append(result.residualPayloadSketch().trim()).append('\n');
+            }
+            if (result.citedBody() != null && !result.citedBody().isBlank()) {
+                String body = result.citedBody().trim();
+                if (body.length() > 1200) {
+                    body = body.substring(0, 1200) + "…";
+                }
+                sb.append("  Cited body:\n```\n").append(body).append("\n```\n");
+            }
             if (result.reasoning() != null && !result.reasoning().isBlank()) {
                 sb.append("  ").append(result.reasoning().trim()).append('\n');
             }

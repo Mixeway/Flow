@@ -47,10 +47,7 @@ public class SastCwePromptGuidanceService {
 
     private static String guidanceHeader() {
         return "## CWE-specific review guidance\n"
-                + "Apply the checklist for every CWE attached to this finding before deciding the verdict.\n"
-                + "Remediation (all CWEs): when TRUE_POSITIVE, remediation_code must rewrite the flagged code extract "
-                + "and nearby local context — same identifiers, call site, and sink. Do not invent a standalone textbook "
-                + "example with placeholder names (expected/actual/userInput) unless those exact names appear in the finding.\n";
+                + "Apply the checklist for every CWE attached to this finding before deciding the verdict.\n";
     }
 
     private static String renderGuidance(String label, List<String> checks) {
@@ -190,24 +187,13 @@ public class SastCwePromptGuidanceService {
                         + "visible sanitizer call, or CSP protection."));
         guidance.put("89", List.of(
                 "Identify the exact SQL value, source, type, and query construction sink.",
-                "TRUE_POSITIVE is mandatory when the SQL value is not a hardcoded/literal/constant origin AND the shown code clearly concatenates or interpolates that string into dynamic SQL without parameterization or a complete allowlist.",
-                "A complete allowlist is a closed map/enum of identifiers (default deny) or bound placeholders. A keyword/metacharacter denylist (union, quotes, comments, negative lookahead), quote-doubling then concat, or a regex that still allows SELECT/parentheses/commas is NOT an allowlist → TRUE_POSITIVE.",
+                SqlInjectionDecisionOrder.checklistItem(),
+                "Concatenation/interpolation means any language form: +, ., f-string, template literal, sprintf, #{}, $var.",
                 "When SQL is built from several fragments, judge EACH interpolated fragment. A SOUND column catalog does not neutralize a sibling computed/SQL-expression concatenated into the same query.",
-                "Unknown input_source / unknown callers do NOT justify UNCERTAIN when the shown code clearly concatenates/interpolates a non-literal string into SQL (any language: +, ., f-string, template literal, sprintf, #{}, $var, etc.): that case is TRUE_POSITIVE.",
-                "A SQL string held in a variable is not automatically TRUE_POSITIVE: if the query text is a literal, constant, or framework-parameterized builder and only values are bound, prefer FALSE_POSITIVE.",
-                "Numeric typed or parsed values (int/Integer/long/number/parseInt/Integer.parseInt/int()/strconv.Atoi) cannot inject SQL syntax through that parameter; confirm FALSE_POSITIVE when proven.",
                 "Desktop GUI input is still user-controlled; desktop context alone does not make raw string SQL concatenation/interpolation safe.",
-                "ORM lookups that bind values are generally safe; treat raw SQL / extra() / RawSQL / cursor.execute "
-                        + "and equivalent raw builders as risky only when the SQL string or interpolated fragment is user-controlled.",
-                "Prefer UNCERTAIN over FALSE_POSITIVE only when both (a) origin is unproven AND (b) the query is not clearly built by concatenating/interpolating a non-literal string. Do not assume config loaders (getSqlString/getQuery/etc.) are trusted without tracing where their values come from.",
+                "ORM lookups that bind values are generally safe; raw SQL / extra() / RawSQL / cursor.execute and equivalent raw builders go through the decision order.",
                 "DDL/identifier concatenation (CREATE INDEX/TABLE, quoted table/column names built with +/append) is still SQL injection when field/tableName/nativeName/json values are non-literal. Double-quoting identifiers is NOT a neutralizer; require allowlist validation.",
                 "origin-tag all-callsites-pass-literal-arg applies only when the sink SQL argument itself is the call-site literal. If the method builds SQL locally from this.field / getters / JSON / resource names, call-site ctor literals do NOT justify FALSE_POSITIVE.",
-                "RISKY SCHEME (SQL only): proven application-safe / known-trusted source (literals/constants/literal call sites/internal_call/config) + SQL *text* still built by string concatenation/interpolation => TRUE_POSITIVE with confidence 0.50-0.60 (~0.55). "
-                        + "RISKY SCHEME does NOT apply when the query text is a literal/constant and remaining arguments are bound parameters "
-                        + "(PreparedStatement / placeholders such as ? or $1). "
-                        + "A wrapper that packs a literal SQL string plus bound args into the same exec/query call "
-                        + "is parameterization → FALSE_POSITIVE, not RISKY SCHEME. "
-                        + "Raise above 0.60 only with a current untrusted source; pure literal SQL with no concat / numeric / parameterized => FALSE_POSITIVE.",
                 "When TRUE_POSITIVE, remediation_code must rewrite the flagged SQL construction site (same variables/sink). Never invent an unrelated query (e.g. SELECT username/password). Bind VALUES; allowlist/validate identifiers or SQL fragments that placeholders cannot bind."));
         guidance.put("90", guidance.get("89"));
         guidance.put("113", List.of(
@@ -856,7 +842,7 @@ public class SastCwePromptGuidanceService {
         return List.of(
                 "database/sql, xorm, gorm: Engine.Exec(query, args...) with a string-literal query and `?`/`$1` is "
                         + "parameterization. Wrappers that do args := []any{sql}; append(ids); Exec(args...) are FALSE_POSITIVE.",
-                "RISKY SCHEME does not apply to bound parameters. int64 ids / strconv.Atoi cannot inject SQL.",
+                "int64 ids and strconv.Atoi results are numeric (step 2 of the decision order).",
                 "TRUE_POSITIVE: fmt.Sprintf / string concat into the query text itself. Cite 'parameterized Exec with literal SQL' "
                         + "when FP.");
     }
@@ -1024,8 +1010,8 @@ public class SastCwePromptGuidanceService {
 
     private static List<String> jsSqlChecks() {
         return List.of(
-                "knex.raw / sequelize.query / mysql.query with string concat/template interpolation of user data "
-                        + "is TRUE_POSITIVE. Bound replacements (`?`, named binds) with a literal query are FALSE_POSITIVE.",
+                "knex.raw / sequelize.query / mysql.query with string concat/template interpolation of non-numeric "
+                        + "user data is TRUE_POSITIVE. Bound replacements (`?`, named binds) with a literal query are FALSE_POSITIVE.",
                 "ORM findAll/where objects that bind values are generally safe.",
                 "A regex/denylist on a computed SQL expression concatenated into db.prepare(sql) is TRUE_POSITIVE. "
                         + "An identifier catalog for column names does not cover that sibling fragment.");
@@ -1169,7 +1155,8 @@ public class SastCwePromptGuidanceService {
         return List.of(
                 "Django filter/exclude/get and SQLAlchemy filter bind values and are generally safe. "
                         + "raw()/extra()/RawSQL/cursor.execute with concatenated/interpolated SQL is the risk.",
-                "f-strings / % / .format into SQL text are TRUE_POSITIVE when the fragment is non-literal.",
+                "f-strings / % / .format into SQL text go through the decision order: a value wrapped in int()/float() "
+                        + "before interpolation is numeric (step 2); a non-literal str fragment is TRUE_POSITIVE.",
                 "assert_* / regex denylist on a computed SQL expression that is then concatenated is NOT parameterization. "
                         + "Cite 'denylist is not an allowlist' and keep TRUE_POSITIVE.");
     }
@@ -1280,8 +1267,7 @@ public class SastCwePromptGuidanceService {
     private static List<String> javaSqlChecks() {
         return List.of(
                 "PreparedStatement / JPA named parameters with a literal query and bound values are FALSE_POSITIVE. "
-                        + "Statement.execute with string concat/StringBuilder SQL is TRUE_POSITIVE.",
-                "RISKY SCHEME does not apply to bound PreparedStatement parameters.");
+                        + "Statement.execute with string concat/StringBuilder SQL of String values is TRUE_POSITIVE.");
     }
 
     private static List<String> javaCleartextChecks() {

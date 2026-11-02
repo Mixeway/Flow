@@ -12,11 +12,14 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Discovers custom validators/sanitizers by LLM semantics (not name regex) and audits
@@ -31,6 +34,18 @@ public class CustomControlSoundnessService {
     private static final int MAX_AUDIT_TOOLS = 6;
     private static final int MAX_TOOL_RESULT_CHARS = 4000;
     private static final int MAX_CONTEXT_CHARS = 8000;
+    private static final int MAX_OBSERVATIONS = 6;
+    private static final int MAX_OBSERVATION_HEAD_CHARS = 1200;
+    private static final int MAX_OBSERVATION_WINDOW_CHARS = 4000;
+    private static final int DEFINITION_WINDOW_BEFORE = 3;
+    private static final int DEFINITION_WINDOW_AFTER = 60;
+    private static final int MENTION_WINDOW_LINES = 15;
+    private static final int MIN_NEEDLE_LENGTH = 4;
+    private static final Set<String> BUILTIN_CALLABLES = Set.of(
+            "int", "str", "float", "bool", "long", "bytes", "list", "dict", "tuple", "len", "abs", "round",
+            "number", "string", "parseint", "parsefloat", "valueof", "tostring", "atoi", "integer", "uuid");
+    private static final Pattern WHITESPACE = Pattern.compile("\\s+");
+    private static final Pattern CALL_SITE = Pattern.compile("([A-Za-z_$][\\w$]*)\\s*\\(");
 
     private static final String DISCOVERY_SYSTEM_PROMPT =
             "You identify CUSTOM application security controls on a source-to-sink path. "
@@ -146,10 +161,10 @@ public class CustomControlSoundnessService {
                                   String itemRef,
                                   Runnable beforeLlmCall) {
         int llmRequests = 0;
-        if (calleeBodyAlreadyInContext(candidates, context, analyzerMessages)) {
+        if (calleeBodyAlreadyInContext(candidates, context, analyzerMessages, item.getCodeExtract())) {
             beforeLlm(beforeLlmCall);
             String singleShot = requestJson(AUDIT_SYSTEM_PROMPT,
-                    buildAuditPrompt(item, context, metadata, candidates)
+                    buildAuditPrompt(item, context, metadata, candidates, analyzerMessages)
                             + "The callee body is already in the context/tool observations above. "
                             + "Return action=final JSON now. Do not request tools.\n");
             llmRequests++;
@@ -167,7 +182,8 @@ public class CustomControlSoundnessService {
 
         List<Map<String, Object>> messages = new ArrayList<>();
         messages.add(Map.of("role", "system", "content", AUDIT_SYSTEM_PROMPT));
-        messages.add(Map.of("role", "user", "content", buildAuditPrompt(item, context, metadata, candidates)));
+        messages.add(Map.of("role", "user", "content",
+                buildAuditPrompt(item, context, metadata, candidates, analyzerMessages)));
 
         int toolBudget = MAX_AUDIT_TOOLS;
         Set<String> seenActions = new HashSet<>();
@@ -181,7 +197,7 @@ public class CustomControlSoundnessService {
                                 + "Do not request tools."));
             }
             beforeLlm(beforeLlmCall);
-            LlmApiClient.LlmResponse response = llmApiClient.chatCompletion(requestMessages, false);
+            LlmApiClient.LlmResponse response = llmApiClient.chatCompletion(requestMessages, true);
             llmRequests++;
             if (response.isEmpty()) {
                 log.warn("[ControlSoundness] Empty audit response for {} round {} — treating as inconclusive, not missing body",
@@ -225,26 +241,146 @@ public class CustomControlSoundnessService {
         return fallback;
     }
 
-    private boolean calleeBodyAlreadyInContext(List<SecurityControl> candidates,
-                                               CodeContextExtractor.CodeContext context,
-                                               List<Map<String, Object>> analyzerMessages) {
-        String haystack = (codeContextBlock(context, null) + toolResultsBlock(analyzerMessages)).toLowerCase(Locale.ROOT);
-        if (haystack.isBlank()) {
+    /**
+     * True only when every candidate's body is visible in what the single-shot audit prompt shows.
+     * A mentioned file name or a call site is not a body: {@code path_hint} often names the caller's file.
+     * An inline coercion/guard additionally needs the bodies of the sink-side callees the analyzer read,
+     * because whether the coerced value is what reaches the sink is decided inside them.
+     */
+    boolean calleeBodyAlreadyInContext(List<SecurityControl> candidates,
+                                       CodeContextExtractor.CodeContext context,
+                                       List<Map<String, Object>> analyzerMessages,
+                                       String flaggedCode) {
+        if (candidates == null || candidates.isEmpty()) {
             return false;
         }
+        Set<String> sinkCallees = sinkCallees(flaggedCode, analyzerMessages);
+        String haystack = codeContextBlock(context, null)
+                + toolResultsBlock(analyzerMessages, candidates, sinkCallees);
         for (SecurityControl candidate : candidates) {
-            String id = candidate.label() == null ? "" : candidate.label().toLowerCase(Locale.ROOT);
-            if (!id.isBlank() && haystack.contains(id) && haystack.length() > 400) {
-                return true;
+            if (!bodyVisible(candidate, haystack, sinkCallees)) {
+                return false;
             }
-            String path = candidate.pathHint() == null ? "" : candidate.pathHint().replace('\\', '/');
-            int slash = path.lastIndexOf('/');
-            String file = slash >= 0 ? path.substring(slash + 1) : path;
-            if (!file.isBlank() && haystack.contains(file.toLowerCase(Locale.ROOT))) {
+        }
+        return true;
+    }
+
+    private static boolean bodyVisible(SecurityControl candidate, String haystack, Set<String> sinkCallees) {
+        if (isInlineControl(candidate)) {
+            String evidence = normalizeWhitespace(candidate.evidence());
+            if (evidence.isBlank() || !normalizeWhitespace(haystack).contains(evidence)) {
+                return false;
+            }
+            for (String callee : sinkCallees) {
+                if (!definitionPattern(callee).matcher(haystack).find()) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        for (String needle : needles(List.of(candidate))) {
+            if (definitionPattern(needle).matcher(haystack).find()) {
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * Functions called in the flagged code whose definition the analyzer already read. Only those are
+     * known to have a repository body; library calls such as {@code cursor.execute} never match.
+     */
+    static Set<String> sinkCallees(String flaggedCode, List<Map<String, Object>> analyzerMessages) {
+        Set<String> callees = new LinkedHashSet<>();
+        if (flaggedCode == null || flaggedCode.isBlank() || analyzerMessages == null || analyzerMessages.isEmpty()) {
+            return callees;
+        }
+        StringBuilder observations = new StringBuilder();
+        for (Map<String, Object> message : analyzerMessages) {
+            Object content = message.get("content");
+            if ("user".equals(message.get("role")) && content != null && content.toString().startsWith("TOOL RESULT")) {
+                observations.append(content).append('\n');
+            }
+        }
+        if (observations.isEmpty()) {
+            return callees;
+        }
+        Matcher call = CALL_SITE.matcher(flaggedCode);
+        while (call.find()) {
+            String name = call.group(1);
+            if (name.length() >= MIN_NEEDLE_LENGTH && !BUILTIN_CALLABLES.contains(name.toLowerCase(Locale.ROOT))
+                    && definitionPattern(name).matcher(observations).find()) {
+                callees.add(name);
+            }
+        }
+        return callees;
+    }
+
+    private static Set<String> auditNeedles(List<SecurityControl> candidates, Set<String> sinkCallees) {
+        Set<String> needles = needles(candidates);
+        if (sinkCallees != null && !sinkCallees.isEmpty() && candidates != null
+                && candidates.stream().anyMatch(c -> c != null && isInlineControl(c))) {
+            needles.addAll(sinkCallees);
+        }
+        return needles;
+    }
+
+    /** Coercions and inline guards have no callee: the cited expression is the whole control. */
+    private static boolean isInlineControl(SecurityControl candidate) {
+        return candidate.kind() == SecurityControl.Kind.TYPE_COERCION
+                || candidate.kind() == SecurityControl.Kind.INLINE_GUARD;
+    }
+
+    /**
+     * Callable names to look for: the model writes identifiers as {@code int()}, {@code Guard.check(q)}
+     * or {@code check}, so arguments and qualifiers are stripped. Builtins never have a repository body.
+     */
+    static Set<String> needles(List<SecurityControl> candidates) {
+        Set<String> needles = new LinkedHashSet<>();
+        if (candidates == null) {
+            return needles;
+        }
+        for (SecurityControl candidate : candidates) {
+            if (candidate == null) {
+                continue;
+            }
+            for (String raw : new String[]{candidate.identifier(), candidate.calleeHint()}) {
+                String name = callableName(raw);
+                if (name.length() >= MIN_NEEDLE_LENGTH && !BUILTIN_CALLABLES.contains(name.toLowerCase(Locale.ROOT))) {
+                    needles.add(name);
+                }
+            }
+        }
+        return needles;
+    }
+
+    static String callableName(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        String name = raw.trim();
+        int paren = name.indexOf('(');
+        if (paren >= 0) {
+            name = name.substring(0, paren);
+        }
+        int qualifier = Math.max(name.lastIndexOf('.'), Math.max(name.lastIndexOf(':'), name.lastIndexOf('>')));
+        if (qualifier >= 0) {
+            name = name.substring(qualifier + 1);
+        }
+        name = name.trim();
+        return name.matches("[A-Za-z_$][\\w$]*") ? name : "";
+    }
+
+    private static Pattern definitionPattern(String needle) {
+        String q = Pattern.quote(needle);
+        return Pattern.compile(
+                "\\b(?:def|function|func|fn|fun|sub)\\s+" + q + "\\b"
+                        + "|\\b" + q + "\\s*\\([^)\\n]*\\)\\s*(?::\\s*[\\w.<>\\[\\], ]+\\s*)?(?:throws\\s+[\\w.,\\s]+)?\\{"
+                        + "|\\b" + q + "\\s*[:=]\\s*(?:async\\s+)?(?:function\\b|lambda\\b|\\([^)\\n]*\\)\\s*=>)");
+    }
+
+    private static String normalizeWhitespace(String value) {
+        return value == null ? "" : WHITESPACE.matcher(value).replaceAll("").toLowerCase(Locale.ROOT);
     }
 
     private boolean shouldCache(ControlSoundness result) {
@@ -278,13 +414,16 @@ public class CustomControlSoundnessService {
         sb.append("html/template auto-escape, htmlspecialchars/html.escape defaults, DOMPurify.sanitize with tight defaults, ");
         sb.append("ORM bind APIs, ordinary getters, loggers.\n\n");
         sb.append(codeContextBlock(context, item));
-        sb.append(toolResultsBlock(analyzerMessages));
+        sb.append(toolResultsBlock(analyzerMessages, List.of()));
         sb.append("Return JSON:\n");
         sb.append("{\"controls\":[{\"kind\":\"REJECTOR|TRANSFORMER|ALLOWLIST|ENCODER|TYPE_COERCION|INLINE_GUARD|UNKNOWN\",");
         sb.append("\"origin\":\"CUSTOM_APPLICATION|CONFIGURED_LIBRARY\",");
-        sb.append("\"identifier\":\"name or anonymous\",\"evidence\":\"short code citation\",");
-        sb.append("\"rationale\":\"why this is a custom control\",\"callee_hint\":\"function to inspect\",");
-        sb.append("\"path_hint\":\"repo-relative path or empty\",\"start_line\":0,\"end_line\":0,");
+        sb.append("\"identifier\":\"bare function/method name without arguments, or anonymous\",");
+        sb.append("\"evidence\":\"short code citation, verbatim from the code\",");
+        sb.append("\"rationale\":\"why this is a custom control\",");
+        sb.append("\"callee_hint\":\"name of the function whose BODY must be read; required for REJECTOR/TRANSFORMER/ALLOWLIST/ENCODER\",");
+        sb.append("\"path_hint\":\"repo-relative path of the file that DEFINES the callee, or empty\",");
+        sb.append("\"start_line\":0,\"end_line\":0,");
         sb.append("\"on_sink_variable\":true,\"claimed_cwe_intent\":\"SQL_INJECTION|COMMAND_INJECTION|XSS|PATH_TRAVERSAL|");
         sb.append("SSRF|OPEN_REDIRECT|UNCLEAR\"}]}\n");
         sb.append("If none, return {\"controls\":[]}.\n");
@@ -294,7 +433,8 @@ public class CustomControlSoundnessService {
     private String buildAuditPrompt(Item item,
                                     CodeContextExtractor.CodeContext context,
                                     SastRuleMetadata metadata,
-                                    List<SecurityControl> candidates) {
+                                    List<SecurityControl> candidates,
+                                    List<Map<String, Object>> analyzerMessages) {
         StringBuilder sb = new StringBuilder();
         sb.append("Audit each CUSTOM candidate control for ").append(CweBypassCatalog.familyLabel(metadata)).append(".\n");
         sb.append("Do not spend tools on framework-native APIs. If a candidate turns out to be stock framework, ");
@@ -326,6 +466,8 @@ public class CustomControlSoundnessService {
         }
         sb.append('\n');
         sb.append(codeContextBlock(context, item));
+        sb.append(toolResultsBlock(analyzerMessages, candidates,
+                sinkCallees(item.getCodeExtract(), analyzerMessages)));
         sb.append("Use read_file / search_repo to open the callee BODY of each candidate. ");
         sb.append("Search for the identifier already listed above — never search for Validator/Sanitizer/isValid as a pattern.\n");
         sb.append("Available actions:\n");
@@ -519,7 +661,9 @@ public class CustomControlSoundnessService {
     }
 
     private String requestJson(String systemPrompt, String userPrompt) {
-        LlmApiClient.LlmResponse response = llmApiClient.chatCompletion(systemPrompt, userPrompt);
+        LlmApiClient.LlmResponse response = llmApiClient.chatCompletion(List.of(
+                Map.of("role", "system", "content", systemPrompt),
+                Map.of("role", "user", "content", userPrompt)), true);
         return response == null ? "" : response.content();
     }
 
@@ -546,15 +690,25 @@ public class CustomControlSoundnessService {
         sb.append("```\n").append(snippet).append("\n```\n\n");
     }
 
-    private String toolResultsBlock(List<Map<String, Object>> analyzerMessages) {
+    /**
+     * With candidates, each observation is cut to the lines around the candidates' names, because a helper
+     * definition is rarely in the first lines of a file read. Without candidates (discovery) the head is kept.
+     */
+    String toolResultsBlock(List<Map<String, Object>> analyzerMessages, List<SecurityControl> candidates) {
+        return toolResultsBlock(analyzerMessages, candidates, Set.of());
+    }
+
+    String toolResultsBlock(List<Map<String, Object>> analyzerMessages, List<SecurityControl> candidates,
+                            Set<String> sinkCallees) {
         if (analyzerMessages == null || analyzerMessages.isEmpty()) {
             return "";
         }
+        Set<String> needles = auditNeedles(candidates, sinkCallees);
         StringBuilder sb = new StringBuilder();
         sb.append("## Analyzer tool observations (may already include callee snippets)\n");
         int count = 0;
         for (Map<String, Object> message : analyzerMessages) {
-            if (count >= 6) {
+            if (count >= MAX_OBSERVATIONS) {
                 break;
             }
             Object role = message.get("role");
@@ -567,9 +721,62 @@ public class CustomControlSoundnessService {
                 continue;
             }
             count++;
-            sb.append(truncate(text, 1200)).append("\n\n");
+            String excerpt = needles.isEmpty() ? null : windowsAround(text, needles);
+            sb.append(excerpt == null ? truncate(text, MAX_OBSERVATION_HEAD_CHARS) : excerpt).append("\n\n");
         }
         return sb.toString();
+    }
+
+    /**
+     * Header line plus a window around each line that defines a needle (body follows the definition),
+     * or around each mention when nothing is defined there. Null when no line names a needle.
+     */
+    static String windowsAround(String observation, Set<String> needles) {
+        String[] lines = observation.split("\n", -1);
+        List<Pattern> definitions = new ArrayList<>();
+        List<Pattern> mentions = new ArrayList<>();
+        for (String needle : needles) {
+            definitions.add(definitionPattern(needle));
+            mentions.add(Pattern.compile("\\b" + Pattern.quote(needle) + "\\b"));
+        }
+        boolean[] keep = new boolean[lines.length];
+        if (!markWindows(lines, definitions, keep, DEFINITION_WINDOW_BEFORE, DEFINITION_WINDOW_AFTER)
+                && !markWindows(lines, mentions, keep, MENTION_WINDOW_LINES, MENTION_WINDOW_LINES)) {
+            return null;
+        }
+        keep[0] = true;
+        StringBuilder sb = new StringBuilder();
+        boolean gap = false;
+        for (int i = 0; i < lines.length; i++) {
+            if (!keep[i]) {
+                gap = true;
+                continue;
+            }
+            if (gap && !sb.isEmpty()) {
+                sb.append("...\n");
+            }
+            gap = false;
+            sb.append(lines[i]).append('\n');
+        }
+        return truncate(sb.toString().stripTrailing(), MAX_OBSERVATION_WINDOW_CHARS);
+    }
+
+    private static boolean markWindows(String[] lines, List<Pattern> patterns, boolean[] keep, int before, int after) {
+        boolean matched = false;
+        for (int i = 0; i < lines.length; i++) {
+            for (Pattern pattern : patterns) {
+                if (pattern.matcher(lines[i]).find()) {
+                    matched = true;
+                    int from = Math.max(0, i - before);
+                    int to = Math.min(lines.length - 1, i + after);
+                    for (int j = from; j <= to; j++) {
+                        keep[j] = true;
+                    }
+                    break;
+                }
+            }
+        }
+        return matched;
     }
 
     private JsonNode tryParseJson(String content) {

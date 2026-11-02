@@ -21,6 +21,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
@@ -108,10 +109,11 @@ public class SastFindingVerificationService {
     private static final int MAX_TOOL_CALLS_PATH_TRAVERSAL = 10;
     private static final int MAX_TOOL_CALLS_TAINT = 12;
     private static final int MAX_JSON_REPAIR_ATTEMPTS = 1;
-    private static final int MAX_WEAK_REASONING_REPAIR_ATTEMPTS = 1;
     private static final int MAX_MISSING_VERDICT_RETRIES = 1;
     private static final int MAX_MISSING_CONFIDENCE_RETRIES = 1;
     private static final int MAX_MISSING_CONTEXT_RETRIES = 1;
+    private static final int MAX_PEER_REVIEW_ATTEMPTS = 2;
+    private static final double MAX_CONFIDENCE_WITHOUT_PEER_REVIEW = 0.69d;
     private static final Pattern SQL_NUMERIC_PARAMETER_EVIDENCE_PATTERN = Pattern.compile(
             "\\b(?:byte|short|int|integer|long|float|double|decimal|number|biginteger|bigdecimal|"
                     + "uint(?:8|16|32|64)?|int(?:8|16|32|64)?|float(?:32|64)?)\\s+"
@@ -220,6 +222,22 @@ public class SastFindingVerificationService {
                     + "|\\.httponly\\s*=\\s*true|\\.secure\\s*=\\s*true|samesitemode\\.(?:strict|lax|none)",
             Pattern.CASE_INSENSITIVE);
 
+    static final String TRUSTED_INPUT_DEFINITION =
+            "Trusted vs untrusted input (applies to every language, framework, and CWE): " +
+            "a value is TRUSTED when its content is fixed by the people who develop, build, or operate the application " +
+            "and nobody else can change it at runtime. Trusted: literals and named constants; files committed to the " +
+            "repository and artifacts built from them (static HTML/Markdown/documentation pages, code samples, bundled " +
+            "templates, static JSON/YAML, i18n bundles); build-time generated data; the page's own static markup read " +
+            "back from the DOM when nothing at runtime (request, URL, storage, messages, user edits, fetched data) wrote " +
+            "into it; operator-set configuration files and environment variables; values computed by internal code " +
+            "only from these. UNTRUSTED: anything a remote user or third party can influence at runtime — HTTP request " +
+            "parts (query, path, body, headers, cookies), URL/location/hash/referrer, postMessage/WebSocket/IPC messages, " +
+            "browser storage, uploaded files and their names, database/cache rows written from user actions, " +
+            "CMS or rich-text content edited at runtime, and responses from external services. " +
+            "UNKNOWN: the shown code does not reveal which of the two it is — unknown is neither trusted nor untrusted. " +
+            "A public function or parameter is not untrusted input just because a hypothetical future caller could " +
+            "pass attacker data; judge the callers that exist in the shown code. ";
+
     private static final String VALIDATOR_SYSTEM_PROMPT =
             "You are an independent security peer reviewer. You receive a completed SAST finding analysis " +
             "(code snippets, structured evidence, CWE-specific guidance, investigation tool results, and a proposed verdict). " +
@@ -230,6 +248,7 @@ public class SastFindingVerificationService {
             "If exploitability, source, sink, execution context, or neutralization remains unproven, prefer UNCERTAIN over " +
             "FALSE_POSITIVE. Do not treat reviewer guesses that a value 'likely came from HTTP' as taint. " +
             "Proposed remediation code is not applied code and must never be cited as evidence that the current finding is already fixed. " +
+            TRUSTED_INPUT_DEFINITION +
             SastDeveloperFacingReasoning.PROMPT_RULE;
 
     private static final String SYSTEM_PROMPT =
@@ -345,12 +364,17 @@ public class SastFindingVerificationService {
             summary.add(verifyItems(scanSecurity.getLow(), repoDir, scanDataflow, true, onItemVerified, progress, repoId, consistencyScope));
         }
 
-        log.debug("[SastVerification] Completed LLM evaluation. Total findings: {}, LLM requests: {}, valid verdicts: {}, not verified: {}, cache hits: {}, normalized verdicts: {}, json repairs attempted: {}, json repairs succeeded: {}, duplicate actions skipped: {}, query expansions used: {}, validation overrides: {}, remediation corrections: {}, rejection reasons: {}",
+        log.debug("[SastVerification] Completed LLM evaluation. Total findings: {}, LLM requests: {}, valid verdicts: {}, not verified: {}, cache hits: {}, normalized verdicts: {}, json repairs attempted: {}, json repairs succeeded: {}, duplicate actions skipped: {}, query expansions used: {}, validation overrides: {}, remediation corrections: {}, peer reviews skipped: {}, rejection reasons: {}",
                 summary.totalFindings, summary.llmRequests, summary.validVerdicts, summary.notVerified,
                 summary.cacheHits, summary.normalizedVerdicts, summary.jsonRepairAttempts,
                 summary.jsonRepairSuccesses, summary.duplicateActionsSkipped,
                 summary.queryExpansionsUsed, summary.validationOverrides,
-                summary.remediationCorrections, summary.formatFailureReasons());
+                summary.remediationCorrections, summary.peerReviewsSkipped, summary.formatFailureReasons());
+        if (summary.peerReviewsSkipped > 0) {
+            log.warn("[SastVerification] {} verdict(s) were kept without an independent peer review; "
+                            + "their confidence was capped below the HIGH band",
+                    summary.peerReviewsSkipped);
+        }
     }
 
     private VerificationSummary verifyItems(List<Item> items, String repoDir, BearerScanDataflow dataflow, boolean useDataflow) {
@@ -421,6 +445,9 @@ public class SastFindingVerificationService {
                     summary.queryExpansionsUsed.addAndGet(result.queryExpansionsUsed());
                     summary.validationOverrides.addAndGet(result.validationOverrides());
                     summary.remediationCorrections.addAndGet(result.remediationCorrections());
+                    if (result.peerReviewSkipped()) {
+                        summary.peerReviewsSkipped.incrementAndGet();
+                    }
                     
                     if (result.verified()) {
                         summary.validVerdicts.incrementAndGet();
@@ -498,11 +525,10 @@ public class SastFindingVerificationService {
                     .append("require a sanitizer because VALUE origin is unclear.");
         }
         if (isSqlPrompt(metadata, item)) {
-            sb.append(" Exception for SQL injection: proven trusted/literal/constant/internal source plus SQL built by ")
-                    .append("string concatenation/interpolation is a RISKY SCHEME — keep TRUE_POSITIVE with confidence 0.50-0.60 (~0.55); ")
-                    .append("do not downgrade to UNCERTAIN or FALSE_POSITIVE merely because the current source is trusted or call-site ")
-                    .append("origin is not attacker-controlled. Exception: knex identifier placeholders (??) with a bindings array are ")
-                    .append("parameterization → FALSE_POSITIVE, not a RISKY SCHEME.");
+            sb.append(' ').append(SqlInjectionDecisionOrder.SUMMARY)
+                    .append(" A trusted current source does not turn string-built SQL into FALSE_POSITIVE unless an earlier ")
+                    .append("step (parameterized, numeric, allowlist) matched. knex identifier placeholders (??) with a ")
+                    .append("bindings array are parameterization (step 1).");
         }
         if (isXssPrompt(metadata, item)) {
             sb.append(" Exception for CWE-79 CMS HTML: CMS / content-API / content-component rich text reaching innerHTML / ")
@@ -700,10 +726,13 @@ public class SastFindingVerificationService {
         ReactOutcome outcome = runReactVerification(item, repoDir, userPrompt.toString(), itemRef,
                 context.category(), metadata);
         VerificationResult result = outcome.result();
+        SourceOriginHunt.Report sourceReport = SourceOriginHunt.Report.none();
         if (result.verified()) {
             try {
-                result = huntSourceIfUnresolved(item, repoDir, outcome, result, metadata, itemRef,
+                HuntRevision hunt = huntSourceIfUnresolved(item, repoDir, outcome, result, metadata, itemRef,
                         context.fileImports());
+                result = hunt.result();
+                sourceReport = hunt.report();
             } catch (Throwable t) {
                 log.error("[SastVerification] Source-origin hunt threw for {}, keeping ReAct verdict {}: {}",
                         itemRef, item.getAiVerdict(), t.getMessage(), t);
@@ -734,20 +763,17 @@ public class SastFindingVerificationService {
             }
         }
 
-        // Verdict validation: independent peer review (adds 1 LLM request)
+        // Verdict validation: independent peer review (1 LLM request, 2 when the first answer is empty)
         if (result.verified()) {
             rateLimitPause();
-            int[] validationMetrics = validateVerdict(outcome.messages(), item, itemRef, context, metadata,
-                    controlAudit);
+            ValidationOutcome validation = validateVerdict(outcome.messages(), item, itemRef, context, metadata,
+                    controlAudit, sourceReport);
             result = new VerificationResult(result.verified(), result.failureReason(), result.normalized(),
-                    result.llmRequests() + 1, result.jsonRepairAttempts(), result.jsonRepairSuccesses(),
-                    result.duplicateActionsSkipped(), result.queryExpansionsUsed(),
-                    validationMetrics[0], validationMetrics[1]);
+                    result.llmRequests() + validation.llmRequests(), result.jsonRepairAttempts(),
+                    result.jsonRepairSuccesses(), result.duplicateActionsSkipped(), result.queryExpansionsUsed(),
+                    validation.overrides(), validation.remediationCorrections(), validation.skipped());
             if (applyControlSoundnessGate(item, controlAudit, itemRef) && !result.normalized()) {
-                result = new VerificationResult(result.verified(), result.failureReason(), true,
-                        result.llmRequests(), result.jsonRepairAttempts(), result.jsonRepairSuccesses(),
-                        result.duplicateActionsSkipped(), result.queryExpansionsUsed(),
-                        result.validationOverrides(), result.remediationCorrections());
+                result = result.asNormalized();
             }
         }
         if (result.verified()) {
@@ -755,14 +781,26 @@ public class SastFindingVerificationService {
                 boolean deterministicNormalized = applyDeterministicContextNormalizations(item, context,
                         outcome.messages(), itemRef, metadata, structuredEvidence);
                 if (deterministicNormalized) {
-                    result = new VerificationResult(result.verified(), result.failureReason(), true,
-                            result.llmRequests(), result.jsonRepairAttempts(), result.jsonRepairSuccesses(),
-                            result.duplicateActionsSkipped(), result.queryExpansionsUsed(),
-                            result.validationOverrides(), result.remediationCorrections());
+                    result = result.asNormalized();
                 }
             } catch (Throwable t) {
                 log.error("[SastVerification] Deterministic normalization threw for {}, keeping validator verdict {}: {}",
                         itemRef, item.getAiVerdict(), t.getMessage(), t);
+            }
+        }
+        if (result.verified() && "TRUE_POSITIVE".equals(item.getAiVerdict())) {
+            try {
+                int remediationCalls = writeRemediation(item, context, metadata, sourceReport, controlAudit,
+                        outcome.messages(), itemRef);
+                if (remediationCalls > 0) {
+                    result = addLlmRequests(result, remediationCalls);
+                }
+            } catch (Throwable t) {
+                log.error("[SastVerification] Remediation call threw for {}, keeping verdict {}: {}",
+                        itemRef, item.getAiVerdict(), t.getMessage(), t);
+                if (item.getAiRecommendation() == null || item.getAiRecommendation().isBlank()) {
+                    item.setAiRecommendation(defaultTruePositiveRecommendation(item, item.getAiReasoning()));
+                }
             }
         }
         if (result.verified()) {
@@ -814,7 +852,6 @@ public class SastFindingVerificationService {
         int jsonRepairSuccesses = 0;
         int duplicateActionsSkipped = 0;
         int queryExpansionsUsed = 0;
-        int weakReasoningRepairs = 0;
         boolean pendingReadAfterSearch = false;
         int readEnforcementPrompts = 0;
         Set<String> seenActions = new HashSet<>();
@@ -990,25 +1027,6 @@ public class SastFindingVerificationService {
                         duplicateActionsSkipped, queryExpansionsUsed);
             }
 
-            boolean stage2ResolvedUncertain = result.verified()
-                    && stageOne.verdict() != null
-                    && "UNCERTAIN".equals(stageOne.verdict().verdict())
-                    && !"UNCERTAIN".equals(item.getAiVerdict());
-
-            if (result.verified()
-                    && !stage2ResolvedUncertain
-                    && weakReasoningRepairs < MAX_WEAK_REASONING_REPAIR_ATTEMPTS
-                    && shouldRepairWeakReasoning(item.getAiReasoning())) {
-                weakReasoningRepairs++;
-                VerificationResult repairedReasoning = retryWeakReasoningRepair(messages, response.content(), item,
-                        itemRef, metadata);
-                llmRequests += repairedReasoning.llmRequests();
-                if (repairedReasoning.verified()) {
-                    result = repairedReasoning.withMetrics(llmRequests, jsonRepairAttempts, jsonRepairSuccesses,
-                            duplicateActionsSkipped, queryExpansionsUsed);
-                }
-            }
-
             if (result.verified()) {
                 log.debug("[SastVerification] ReAct verification succeeded for {} after {} ms ({} tool call(s)). Verdict: {}, confidence: {} ({})",
                         itemRef, elapsedMs, resolveToolBudget(category, metadata) - toolBudget,
@@ -1034,11 +1052,11 @@ public class SastFindingVerificationService {
      * {@code @Value}) labeled {@code config_file} or {@code environment_variable} is not
      * left alone: the file and the writer of that key are still unresolved.
      */
-    private VerificationResult huntSourceIfUnresolved(Item item, String repoDir, ReactOutcome outcome,
-                                                      VerificationResult result, SastRuleMetadata metadata,
-                                                      String itemRef, String findingFileImports) {
+    private HuntRevision huntSourceIfUnresolved(Item item, String repoDir, ReactOutcome outcome,
+                                                 VerificationResult result, SastRuleMetadata metadata,
+                                                 String itemRef, String findingFileImports) {
         if (result == null || !result.verified() || repoDir == null || repoDir.isBlank()) {
-            return result;
+            return new HuntRevision(result, SourceOriginHunt.Report.none());
         }
         String inputSource = latestInputSource(outcome.messages());
         String codeContext = (item.getCodeExtract() == null ? "" : item.getCodeExtract())
@@ -1047,15 +1065,18 @@ public class SastFindingVerificationService {
         SourceOriginHunt.Slot slot = SourceOriginHunt.Slot.of(codeInjection,
                 codeInjection && CodeInjectionSinkEvidence.hasRealExecutionSink(item));
         if (!SourceOriginHunt.shouldHunt(metadata, slot, inputSource, item.getAiVerdict(), codeContext)) {
-            return result;
+            return new HuntRevision(result, SourceOriginHunt.Report.none());
         }
         log.info("[SastVerification] Source-origin hunt for {} after ReAct (slot={}, input_source={}, verdict={}, forcedFinal={})",
                 itemRef, slot, inputSource.isBlank() ? "unknown" : inputSource, item.getAiVerdict(), outcome.forcedFinal());
 
+        String analyzerResults = SourceOriginHunt.analyzerResultsSection(outcome.messages());
+        Set<String> shownLines = new HashSet<>();
+        rememberNumberedLines(analyzerResults, shownLines);
         List<Map<String, Object>> huntMessages = new ArrayList<>();
         huntMessages.add(Map.of("role", "system", "content", SourceOriginHunt.systemPrompt(slot)));
         huntMessages.add(Map.of("role", "user", "content", SourceOriginHunt.userPrompt(
-                item, metadata, inputSource, item.getAiVerdict(), item.getAiReasoning(), slot)));
+                item, metadata, inputSource, item.getAiVerdict(), item.getAiReasoning(), slot, analyzerResults)));
 
         int huntLlm = 0;
         int productive = 0;
@@ -1067,6 +1088,7 @@ public class SastFindingVerificationService {
         String callers = "";
         boolean originFound = false;
         boolean callerVerified = false;
+        SourceOriginHunt.Report report = SourceOriginHunt.Report.of(false, "", "", "", inputSource);
 
         for (int round = 0; round <= SourceOriginHunt.MAX_TOOL_CALLS; round++) {
             boolean last = round == SourceOriginHunt.MAX_TOOL_CALLS || tools >= SourceOriginHunt.MAX_TOOL_CALLS;
@@ -1095,8 +1117,16 @@ public class SastFindingVerificationService {
                 if (SourceOriginHunt.productiveObservation(execution.observation())) {
                     productive++;
                 }
+                String observation = execution.observation();
+                if ("read_file".equals(action)) {
+                    String shown = alreadyShownReadObservation(observation, shownLines);
+                    if (shown != null) {
+                        observation = shown;
+                    }
+                }
+                rememberNumberedLines(execution.observation(), shownLines);
                 huntMessages.add(Map.of("role", "user", "content",
-                        "TOOL RESULT (" + action + "):\n" + execution.observation()));
+                        "TOOL RESULT (" + action + "):\n" + observation));
                 tools++;
                 continue;
             }
@@ -1110,6 +1140,9 @@ public class SastFindingVerificationService {
                 if (trace.isBlank()) {
                     trace = textValue(node, "reasoning");
                 }
+                String huntedSource = textValue(node, "input_source");
+                report = SourceOriginHunt.Report.of(originFound, writer, neutralizer, trace,
+                        huntedSource.isBlank() ? inputSource : huntedSource);
             }
             break;
         }
@@ -1119,7 +1152,7 @@ public class SastFindingVerificationService {
             if (SourceOriginHunt.shouldReviseWithoutCaller(item.getAiVerdict(), originFound, writer, tools,
                     item.getFilename())) {
                 huntLlm += reviseWithoutCaller(item, outcome, metadata, callers, trace, itemRef);
-                return addLlmRequests(result, huntLlm);
+                return new HuntRevision(addLlmRequests(result, huntLlm), report);
             }
             boolean hasNamedWriter = !writer.isBlank() && !"none".equalsIgnoreCase(writer.trim())
                     && !"unknown".equalsIgnoreCase(writer.trim());
@@ -1137,7 +1170,7 @@ public class SastFindingVerificationService {
                 log.info("[SastVerification] Source-origin hunt for {} found no additional writer; keeping verdict {}",
                         itemRef, item.getAiVerdict());
             }
-            return addLlmRequests(result, huntLlm);
+            return new HuntRevision(addLlmRequests(result, huntLlm), report);
         }
 
         String previous = item.getAiVerdict();
@@ -1148,18 +1181,18 @@ public class SastFindingVerificationService {
         huntLlm++;
         if (revised.isEmpty()) {
             log.warn("[SastVerification] Source-origin revision returned empty for {}; keeping {}", itemRef, previous);
-            return addLlmRequests(result, huntLlm);
+            return new HuntRevision(addLlmRequests(result, huntLlm), report);
         }
         VerificationResult parsed = parseSingleResponse(revised.content(), item, metadata);
         if (!parsed.verified()) {
             log.warn("[SastVerification] Source-origin revision unusable for {} ({}); keeping {}",
                     itemRef, parsed.failureReason(), previous);
-            return addLlmRequests(result, huntLlm);
+            return new HuntRevision(addLlmRequests(result, huntLlm), report);
         }
         log.info("[SastVerification] Source-origin hunt revised {} from {} to {} (confidence {})",
                 itemRef, previous, item.getAiVerdict(), item.getAiConfidence());
         VerificationResult cost = addLlmRequests(result, huntLlm);
-        return new VerificationResult(
+        return new HuntRevision(new VerificationResult(
                 true,
                 null,
                 cost.normalized() || parsed.normalized(),
@@ -1169,7 +1202,10 @@ public class SastFindingVerificationService {
                 cost.duplicateActionsSkipped(),
                 cost.queryExpansionsUsed(),
                 cost.validationOverrides(),
-                cost.remediationCorrections());
+                cost.remediationCorrections()), report);
+    }
+
+    private record HuntRevision(VerificationResult result, SourceOriginHunt.Report report) {
     }
 
     /**
@@ -1296,6 +1332,47 @@ public class SastFindingVerificationService {
             log.warn("[SastVerification] ReAct action '{}' failed for {}: {}", action, itemRef, e.getMessage());
             return ActionExecution.of("Tool execution error: " + e.getMessage(), false);
         }
+    }
+
+    private static final Pattern NUMBERED_LINE = Pattern.compile("^\\d+\\| .*");
+
+    static void rememberNumberedLines(String text, Set<String> shownLines) {
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        for (String line : text.split("\n", -1)) {
+            if (NUMBERED_LINE.matcher(line).matches()) {
+                shownLines.add(line);
+            }
+        }
+    }
+
+    /**
+     * Returns a short notice when every numbered line of a {@code read_file} result already appears
+     * verbatim (same number, same text) earlier in the conversation, otherwise {@code null}.
+     */
+    static String alreadyShownReadObservation(String observation, Set<String> shownLines) {
+        if (observation == null || observation.isBlank() || shownLines.isEmpty()) {
+            return null;
+        }
+        String[] lines = observation.split("\n");
+        if (lines.length < 2 || NUMBERED_LINE.matcher(lines[0]).matches()) {
+            return null;
+        }
+        int numbered = 0;
+        for (int i = 1; i < lines.length; i++) {
+            String line = lines[i];
+            if (!NUMBERED_LINE.matcher(line).matches() || !shownLines.contains(line)) {
+                return null;
+            }
+            numbered++;
+        }
+        if (numbered == 0) {
+            return null;
+        }
+        String header = lines[0].endsWith(":") ? lines[0].substring(0, lines[0].length() - 1) : lines[0];
+        return header + " is already shown verbatim above in this conversation. "
+                + "Use those numbered lines; request a different range or file if you need more.";
     }
 
     private String buildActionKey(String action, JsonNode node) {
@@ -1436,36 +1513,6 @@ public class SastFindingVerificationService {
             case AMBIGUOUS -> Math.max(MAX_TOOL_ROUNDS, 8);
             default -> MAX_TOOL_ROUNDS;
         };
-    }
-
-    private boolean shouldRepairWeakReasoning(String reasoning) {
-        if (reasoning == null || reasoning.isBlank()) {
-            return false;
-        }
-        int sentenceCount = countSentences(reasoning);
-        String lower = reasoning.toLowerCase(Locale.ROOT);
-        boolean hasFlowWords = lower.contains("source") && (lower.contains("sink") || lower.contains("logger"));
-        boolean hasFlowArrow = reasoning.contains("->");
-        return sentenceCount < 3 || (!hasFlowWords && !hasFlowArrow);
-    }
-
-    private int countSentences(String text) {
-        int count = 0;
-        boolean inSentence = false;
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (!Character.isWhitespace(c)) {
-                inSentence = true;
-            }
-            if ((c == '.' || c == '!' || c == '?') && inSentence) {
-                count++;
-                inSentence = false;
-            }
-        }
-        if (count == 0 && !text.isBlank()) {
-            return 1;
-        }
-        return count;
     }
 
     private VerificationResult retryJsonRepair(List<Map<String, Object>> messages, String rawResponse,
@@ -1620,7 +1667,8 @@ public class SastFindingVerificationService {
         if (!analysis.isBlank()) {
             log.debug("[SastVerification] Stage-1 analysis ({}): {}", view.verdict(), analysis);
         }
-        return new StageOneParse(new MinimalVerdict(view.verdict(), view.confidence(), view.reasoning()), null);
+        return new StageOneParse(new MinimalVerdict(view.verdict(), view.confidence(), view.reasoning(),
+                SafetyBasis.fromResponse(node)), null);
     }
 
     private VerificationResult requestStageTwoDetails(List<Map<String, Object>> messages,
@@ -1631,6 +1679,16 @@ public class SastFindingVerificationService {
                                                       SastRuleMetadata metadata) {
         boolean uncertainResolution = "UNCERTAIN".equals(stageOneVerdict.verdict());
 
+        if (!uncertainResolution && !isMisconfigurationProfile(metadata)
+                && hasCompleteStageTwoFields(stageOneRawResponse)) {
+            VerificationResult direct = parseSingleResponse(stageOneRawResponse, item, metadata);
+            if (direct.verified()) {
+                log.debug("[SastVerification] Stage-1 response for {} already complete; skipping Stage-2", itemRef);
+                rememberFinalAnswer(messages, stageOneRawResponse);
+                return direct.withMetrics(0, 0, 0, 0, 0);
+            }
+        }
+
         List<Map<String, Object>> stageTwoMessages = new ArrayList<>(messages);
         stageTwoMessages.add(Map.of("role", "assistant", "content", stageOneRawResponse));
 
@@ -1639,7 +1697,7 @@ public class SastFindingVerificationService {
             StringBuilder s2 = new StringBuilder();
             s2.append("Stage 2 now: return final JSON with `action` as \"final\". ")
                     .append("Add required fields: execution_context, input_source, analysis, reasoning (3-6 sentences), ")
-                    .append("recommendation, remediation_code, false_positive_evidence. ")
+                    .append("false_positive_evidence. Do not include recommendation or remediation_code. ")
                     .append(FinalVerdictFormat.ORDER_RULE).append(' ')
                     .append("This is a MISCONFIGURATION/API-usage finding, not a classic source-to-sink taint finding. ")
                     .append("Do NOT change to FALSE_POSITIVE or UNCERTAIN merely because host/user/input origin is config_file, ")
@@ -1658,7 +1716,8 @@ public class SastFindingVerificationService {
             StringBuilder s2 = new StringBuilder();
             s2.append("Stage 2 now: return final JSON with `action` as \"final\". ")
                     .append("Add required fields: execution_context, input_source, analysis, reasoning (3-6 sentences, ")
-                    .append("source -> transformations -> sink), recommendation, remediation_code, false_positive_evidence. ")
+                    .append("source -> transformations -> sink), false_positive_evidence. ")
+                    .append("Do not include recommendation or remediation_code. ")
                     .append(FinalVerdictFormat.ORDER_RULE).append(' ')
                     .append("IMPORTANT: now that you have classified execution_context and input_source, ")
                     .append("RE-EVALUATE your verdict. ");
@@ -1677,12 +1736,10 @@ public class SastFindingVerificationService {
                         .append("or a complete neutralizer is proven (parameterization with proven-safe SQL text, literal SQL, sanitizer), ")
                         .append("change verdict to FALSE_POSITIVE. ");
                 if (isSqlPrompt(metadata, item)) {
-                    s2.append("EXCEPT for SQL injection: trusted/literal/constant/")
-                            .append("internal_call/config source + SQL still built by string concatenation/interpolation is a ")
-                            .append("RISKY SCHEME => TRUE_POSITIVE with confidence 0.50-0.60 (~0.55), NOT FALSE_POSITIVE and NOT ")
-                            .append("UNCERTAIN merely because the current source is trusted. ")
-                            .append("Unknown input_source + clear non-literal string concatenation/interpolation into SQL ")
-                            .append("without parameterization/allowlist MUST be TRUE_POSITIVE — do not keep UNCERTAIN for unknown origin. ");
+                    s2.append("EXCEPT for SQL injection, where input_source does not decide alone: ")
+                            .append(SqlInjectionDecisionOrder.SUMMARY).append(' ')
+                            .append("A trusted input_source lands in step 4 (TRUE_POSITIVE ~0.55), not FALSE_POSITIVE, unless ")
+                            .append("step 1-3 matched; an unknown input_source with a non-literal string fragment lands in step 5. ");
                 }
             }
             if (hasCwe(metadata, item, "502")) {
@@ -1713,7 +1770,8 @@ public class SastFindingVerificationService {
                     + String.format(Locale.ROOT, "%.2f", stageOneVerdict.confidence()) + "). "
                     + "Keep `action` as \"final\". "
                     + "Add required fields: execution_context, input_source, analysis, reasoning (3-6 sentences, "
-                    + "source -> transformations -> sink), recommendation, remediation_code, false_positive_evidence. "
+                    + "source -> transformations -> sink), false_positive_evidence. "
+                    + "Do not include recommendation or remediation_code. "
                     + FinalVerdictFormat.ORDER_RULE + " "
                     + "Return only valid JSON.";
         }
@@ -1736,7 +1794,7 @@ public class SastFindingVerificationService {
             log.debug("[SastVerification] Stage-2 resolved UNCERTAIN for {} -> {} (confidence: {})",
                     itemRef, item.getAiVerdict(),
                     String.format(Locale.ROOT, "%.2f", item.getAiConfidence()));
-            rememberFinalAnswers(messages, stageOneRawResponse, stageTwoResponse.content());
+            rememberFinalAnswer(messages, stageTwoResponse.content());
             return parsed.withMetrics(1, 0, 0, 0, 0);
         }
 
@@ -1751,55 +1809,36 @@ public class SastFindingVerificationService {
                     String.format(Locale.ROOT, "%.2f", item.getAiConfidence()));
             return VerificationResult.failed(ParseFailureReason.INVALID_STAGE2_MISMATCH, 1, 0, 0, 0, 0);
         }
-        rememberFinalAnswers(messages, stageOneRawResponse, stageTwoResponse.content());
+        rememberFinalAnswer(messages, stageTwoResponse.content());
         return parsed.withMetrics(1, 0, 0, 0, 0);
     }
 
-    private void rememberFinalAnswers(List<Map<String, Object>> messages, String stageOneRaw, String stageTwoRaw) {
-        if (messages == null) {
+    private boolean hasCompleteStageTwoFields(String stageOneRaw) {
+        JsonNode node = tryParseJson(stageOneRaw);
+        if (node == null || !node.isObject()) {
+            return false;
+        }
+        if (textValue(node, "execution_context").isBlank() || textValue(node, "input_source").isBlank()
+                || textValue(node, "reasoning").isBlank()) {
+            return false;
+        }
+        return true;
+    }
+
+    /** Stage 2 restates Stage 1's verdict with every field, so Stage 1 would only be a duplicate turn. */
+    static void rememberFinalAnswer(List<Map<String, Object>> messages, String stageTwoRaw) {
+        if (messages == null || stageTwoRaw == null || stageTwoRaw.isBlank()) {
             return;
         }
-        if (stageOneRaw != null && !stageOneRaw.isBlank()) {
-            messages.add(Map.of("role", "assistant", "content", stageOneRaw));
-        }
-        if (stageTwoRaw != null && !stageTwoRaw.isBlank()) {
-            messages.add(Map.of("role", "assistant", "content", stageTwoRaw));
-        }
+        messages.add(Map.of("role", "assistant", "content", stageTwoRaw));
     }
 
     private void applyMinimalVerdict(MinimalVerdict minimalVerdict, Item item) {
         item.setAiVerdict(minimalVerdict.verdict());
         item.setAiConfidence(minimalVerdict.confidence());
         item.setAiReasoning(minimalVerdict.reasoning());
-        item.setAiRecommendation("TRUE_POSITIVE".equals(minimalVerdict.verdict())
-                ? defaultTruePositiveRecommendation(item, minimalVerdict.reasoning())
-                : null);
-    }
-
-    private VerificationResult retryWeakReasoningRepair(List<Map<String, Object>> messages, String rawResponse,
-                                                        Item item, String itemRef, SastRuleMetadata metadata) {
-        List<Map<String, Object>> repairMessages = new ArrayList<>(messages);
-        repairMessages.add(Map.of("role", "assistant", "content", rawResponse));
-        repairMessages.add(Map.of("role", "user", "content",
-                "Rewrite the final JSON response now. Keep the same verdict unless evidence forces a change, "
-                        + "keep `action` as \"final\", and include required fields in this order: "
-                        + FinalVerdictFormat.STAGE_TWO_FIELDS + ". "
-                        + "If execution_context or input_source is uncertain, set it explicitly to \"unknown\". "
-                        + "Also expand `reasoning` to 3-6 sentences and explicitly describe source -> transformations/calls -> sink "
-                        + "with concrete code evidence. Do not request any tool. Return only valid JSON."));
-
-        LlmApiClient.LlmResponse repairResponse = llmApiClient.chatCompletion(repairMessages, true);
-        if (repairResponse.isEmpty()) {
-            log.warn("[SastVerification] Weak reasoning repair returned empty response for {}", itemRef);
-            return VerificationResult.failed(ParseFailureReason.EMPTY_RESPONSE, 1, 0, 0, 0, 0);
-        }
-
-        VerificationResult repaired = parseSingleResponse(repairResponse.content(), item, metadata);
-        if (!repaired.verified()) {
-            log.warn("[SastVerification] Weak reasoning repair still unusable for {}: {}",
-                    itemRef, repaired.failureReason());
-        }
-        return repaired.withMetrics(1, 0, 0, 0, 0);
+        item.setAiSafetyBasis(minimalVerdict.safetyBasis());
+        item.setAiRecommendation(null);
     }
 
     private VerificationResult retryMissingContextFields(List<Map<String, Object>> messages, String rawResponse,
@@ -1833,30 +1872,57 @@ public class SastFindingVerificationService {
      * Performs an independent LLM peer review of the completed analysis. Builds a fresh
      * context from the code snippets and tool call evidence (without the analyzer's system
      * prompt or calibration rules) and asks a critical reviewer to verify or override
-     * the verdict and remediation.
+     * the verdict. Remediation is written later, after this review.
      *
-     * @return a two-element int array: [validationOverrides, remediationCorrections]
+     * @return {@link ValidationOutcome}; {@code skipped} means no reviewer answer was obtained,
+     *         which must not be read as agreement
      */
-    private int[] validateVerdict(List<Map<String, Object>> reactMessages, Item item, String itemRef,
-                                  CodeContextExtractor.CodeContext context, SastRuleMetadata metadata,
-                                  ControlAuditReport controlAudit) {
-        String validatorPrompt = buildValidatorPrompt(reactMessages, item, context, metadata, controlAudit);
+    ValidationOutcome validateVerdict(List<Map<String, Object>> reactMessages, Item item, String itemRef,
+                                      CodeContextExtractor.CodeContext context, SastRuleMetadata metadata,
+                                      ControlAuditReport controlAudit, SourceOriginHunt.Report sourceReport) {
+        String validatorPrompt = buildValidatorPrompt(reactMessages, item, context, metadata, controlAudit, sourceReport);
         List<Map<String, Object>> validatorMessages = new ArrayList<>();
         validatorMessages.add(Map.of("role", "system", "content", validatorSystemPromptFor(metadata, item)));
         validatorMessages.add(Map.of("role", "user", "content", validatorPrompt));
 
-        LlmApiClient.LlmResponse response = llmApiClient.chatCompletion(validatorMessages, true);
+        int llmRequests = 0;
+        LlmApiClient.LlmResponse response = new LlmApiClient.LlmResponse("", 0, 0);
+        for (int attempt = 0; attempt < MAX_PEER_REVIEW_ATTEMPTS && response.isEmpty(); attempt++) {
+            if (attempt > 0) {
+                rateLimitPause();
+            }
+            response = llmApiClient.chatCompletion(validatorMessages, true);
+            llmRequests++;
+        }
         if (response.isEmpty()) {
-            log.warn("[SastVerification] Validation returned empty response for {}", itemRef);
-            return new int[]{0, 0};
+            Double capped = capConfidenceWithoutPeerReview(item.getAiConfidence());
+            log.warn("[SastVerification] Peer review returned no answer for {} after {} attempt(s); keeping {} "
+                            + "but capping confidence {} -> {}",
+                    itemRef, llmRequests, item.getAiVerdict(),
+                    String.format(Locale.ROOT, "%.2f", item.getAiConfidence()),
+                    String.format(Locale.ROOT, "%.2f", capped));
+            item.setAiConfidence(capped);
+            return ValidationOutcome.skipped(llmRequests);
         }
 
-        return applyValidationResult(response.content(), item, itemRef, context, metadata);
+        int[] applied = applyValidationResult(response.content(), item, itemRef, context, metadata);
+        return new ValidationOutcome(applied[0], applied[1], false, llmRequests);
+    }
+
+    /** An unreviewed verdict stays below the HIGH band, so it is not reported as strongly confirmed. */
+    static Double capConfidenceWithoutPeerReview(Double confidence) {
+        return confidence == null ? null : Math.min(confidence, MAX_CONFIDENCE_WITHOUT_PEER_REVIEW);
+    }
+
+    record ValidationOutcome(int overrides, int remediationCorrections, boolean skipped, int llmRequests) {
+        private static ValidationOutcome skipped(int llmRequests) {
+            return new ValidationOutcome(0, 0, true, llmRequests);
+        }
     }
 
     private String buildValidatorPrompt(List<Map<String, Object>> reactMessages, Item item,
                                         CodeContextExtractor.CodeContext context, SastRuleMetadata metadata,
-                                        ControlAuditReport controlAudit) {
+                                        ControlAuditReport controlAudit, SourceOriginHunt.Report sourceReport) {
         StringBuilder sb = new StringBuilder();
 
         // Section 1: Finding details
@@ -1894,6 +1960,9 @@ public class SastFindingVerificationService {
         if (controlAudit != null) {
             sb.append(controlAudit.toPromptSection());
         }
+        if (sourceReport != null) {
+            sb.append(sourceReport.toPromptSection());
+        }
 
         // Section 4: The verdict to review
         sb.append("## Verdict to review\n");
@@ -1904,13 +1973,6 @@ public class SastFindingVerificationService {
         sb.append("  \"reasoning\": ").append(jsonStringValue(item.getAiReasoning())).append("\n");
         sb.append("}\n");
         sb.append("```\n\n");
-        if (item.getAiRecommendation() != null && !item.getAiRecommendation().isBlank()) {
-            sb.append("## Proposed remediation (NOT applied code)\n");
-            sb.append("The following recommendation/remediation was generated by the analyzer. ");
-            sb.append("It is NOT part of the scanned repository and MUST NOT be used as evidence that ");
-            sb.append("a sanitizer, escaping, allowlist, or other neutralizer already exists in the code.\n");
-            sb.append("```\n").append(item.getAiRecommendation()).append("\n```\n\n");
-        }
 
         // Section 5: Hard evidence constraints (must override validator freedom if present)
         if (controlAudit != null && controlAudit.results() != null && !controlAudit.results().isEmpty()) {
@@ -2031,11 +2093,12 @@ public class SastFindingVerificationService {
         sb.append("  \"original_verdict_correct\": true/false,\n");
         sb.append("  \"verdict\": \"TRUE_POSITIVE\" | \"FALSE_POSITIVE\" | \"UNCERTAIN\",\n");
         sb.append("  \"confidence\": 0.0-1.0,\n");
+        sb.append("  \"safety_basis\": \"").append(SafetyBasis.PROMPT_VALUES)
+                .append(" — for FALSE_POSITIVE, what safety rests on (custom_control when it depends on an ")
+                .append("application-authored validator/sanitizer/allowlist/guard); none otherwise\",\n");
         sb.append("  \"explanation\": \"3-6 sentences: cite specific code/tool evidence for a developer. ");
         sb.append("If you disagree, explain exactly which evidence or assumption is wrong. ");
-        sb.append("Do not mention evidence categories, confidence bands, prompt profiles, or internal enum labels.\",\n");
-        sb.append("  \"remediation_valid\": true | false | null,\n");
-        sb.append("  \"corrected_remediation_code\": \"corrected code if remediation was invalid, or null\"\n");
+        sb.append("Do not mention evidence categories, confidence bands, prompt profiles, or internal enum labels.\"\n");
         sb.append("}\n");
         sb.append("```\n");
         sb.append("Rules:\n");
@@ -2047,20 +2110,22 @@ public class SastFindingVerificationService {
         sb.append("If the custom control soundness audit marked a cited helper UNSOUND/INCOMPLETE/MISAPPLIED/WRONG_CWE, ");
         sb.append("you MUST keep or return TRUE_POSITIVE. BODY_UNAVAILABLE => UNCERTAIN. ");
         sb.append("AUDIT_INCONCLUSIVE must not by itself change the analyzer verdict.\n");
-        sb.append("- If an untrusted source was missed, change to TRUE_POSITIVE.\n");
-        sb.append("- If remediation_code exists in the proposed remediation, verify whether the proposed fix is correct ");
-        sb.append("for THIS finding's code (same sink/variables/SQL shape). Mark remediation_valid=false and provide ");
-        sb.append("corrected_remediation_code when the proposal is a generic unrelated example ");
-        sb.append("(e.g. SELECT username/password, MessageDigest.isEqual(expected, actual) with invented names, ");
-        sb.append("or a different-language API) or ignores the flagged sink/variables. ");
-        if (isJwtPrompt(metadata, item)) {
-            sb.append("For JWT verification bypass, mark remediation_valid=false when the proposal only removes ");
-            sb.append("verify_signature=False / options bypass without the language-idiomatic verifying API ");
-            sb.append("(key/secret + algorithms + explicit verify-on: Python verify_signature=True, Ruby 3rd-arg true, ");
-            sb.append("JS jwt.verify, Java parseClaimsJws, C# RequireSignedTokens=true, etc.). ");
+        sb.append("- If an untrusted source was missed, change to TRUE_POSITIVE and name it (file:line and expression).\n");
+        if (metadata != null && metadata.requiresTaint()) {
+            sb.append("- This is a source-to-sink finding. To return TRUE_POSITIVE (including overriding FALSE_POSITIVE ");
+            sb.append("or UNCERTAIN) you must cite in `explanation` a concrete UNTRUSTED source shown in the code or tool ");
+            sb.append("results (file:line and expression) that reaches the sink. None of these is a source: the dangerous ");
+            sb.append("sink on its own; the application itself building markup/queries/commands from trusted values ");
+            sb.append("(e.g. joining lines with `<br>`); missing escaping on trusted values; a public function or ");
+            sb.append("parameter that a hypothetical caller could misuse.\n");
+            sb.append("- If every value reaching the sink is TRUSTED as defined in your instructions, the finding is not ");
+            sb.append("exploitable today: return FALSE_POSITIVE with safety_basis=trusted_source, unless a HARD EVIDENCE ");
+            sb.append("CONSTRAINT or the CWE-specific guidance above explicitly keeps this trusted-source pattern ");
+            sb.append("TRUE_POSITIVE. If the origin is UNKNOWN, return UNCERTAIN, not TRUE_POSITIVE.\n");
+            sb.append("- When the analyzer verdict is FALSE_POSITIVE based on a trusted source, override it only by showing ");
+            sb.append("that the cited source is actually untrusted or that another untrusted value reaches the sink.\n");
         }
-        sb.append("Corrected remediation must rewrite the flagged extract. ");
-        sb.append("NEVER treat proposed remediation code as already-applied code or as false-positive evidence.\n");
+        sb.append("- Do not return recommendation or remediation code. A later step writes the fix from the final verdict.\n");
         sb.append("- Apply the structured evidence and CWE-specific guidance included above; do not duplicate or ignore it.\n");
         sb.append("- FALSE_POSITIVE requires positive safety evidence appropriate to the CWE. ");
         sb.append("If a key fact (source/sink/neutralizer/secret vs non-secret) is genuinely missing, return UNCERTAIN. ");
@@ -2142,7 +2207,6 @@ public class SastFindingVerificationService {
     private int[] applyValidationResult(String rawResponse, Item item, String itemRef,
                                         CodeContextExtractor.CodeContext context, SastRuleMetadata metadata) {
         int overrides = 0;
-        int remediationFixes = 0;
 
         JsonNode node = tryParseJson(rawResponse);
         if (node == null) {
@@ -2154,6 +2218,7 @@ public class SastFindingVerificationService {
         String validatorVerdict = textValue(node, "verdict");
         double validatorConfidence = node.path("confidence").asDouble(-1);
         String explanation = textValue(node, "explanation");
+        String validatorSafetyBasis = SafetyBasis.fromResponse(node);
 
         if (!originalCorrect && isValidVerdict(validatorVerdict) && validatorConfidence >= 0) {
             String previousVerdict = item.getAiVerdict();
@@ -2170,6 +2235,7 @@ public class SastFindingVerificationService {
                         validatorVerdict, itemRef);
                 validatorVerdict = "FALSE_POSITIVE";
                 validatorConfidence = Math.max(validatorConfidence, 0.85d);
+                validatorSafetyBasis = SafetyBasis.NUMERIC_COERCION.name();
                 explanation = appendNormalizationReason(explanation,
                         "SQL injection requires attacker-controlled SQL syntax. The query parameter is proven "
                                 + "numeric/parsed as a number, so it cannot inject SQL text through that parameter.");
@@ -2360,16 +2426,13 @@ public class SastFindingVerificationService {
 
             item.setAiVerdict(validatorVerdict);
             item.setAiConfidence(Math.max(0.0, Math.min(1.0, validatorConfidence)));
+            item.setAiSafetyBasis(validatorSafetyBasis);
             if (!explanation.isBlank()) {
                 item.setAiReasoning(explanation);
             }
 
-            // If verdict changed from TP to FP, clear recommendation; if FP to TP, note no remediation
             if ("FALSE_POSITIVE".equals(validatorVerdict) || "UNCERTAIN".equals(validatorVerdict)) {
                 item.setAiRecommendation(null);
-            } else if ("TRUE_POSITIVE".equals(validatorVerdict)
-                    && (item.getAiRecommendation() == null || item.getAiRecommendation().isBlank())) {
-                item.setAiRecommendation(defaultTruePositiveRecommendation(item, explanation));
             }
 
             overrides = 1;
@@ -2390,27 +2453,12 @@ public class SastFindingVerificationService {
             log.debug("[SastVerification] Validation CONFIRMED verdict for {}: {} ({})",
                     itemRef, item.getAiVerdict(),
                     String.format(Locale.ROOT, "%.2f", item.getAiConfidence()));
-        }
-
-        if ("TRUE_POSITIVE".equals(item.getAiVerdict())
-                && (item.getAiRecommendation() == null || item.getAiRecommendation().isBlank())) {
-            item.setAiRecommendation(defaultTruePositiveRecommendation(item, item.getAiReasoning()));
-        }
-
-        // Check remediation correction
-        String correctedRemediation = textValue(node, "corrected_remediation_code");
-        boolean remediationValid = node.path("remediation_valid").asBoolean(true);
-        if (!remediationValid && !correctedRemediation.isBlank() && "TRUE_POSITIVE".equals(item.getAiVerdict())) {
-            String currentRec = item.getAiRecommendation();
-            if (currentRec != null && !currentRec.isBlank()) {
-                item.setAiRecommendation(formatRecommendation(
-                        stripRemediationCodeSection(currentRec), stripCodeFences(correctedRemediation)));
-                remediationFixes = 1;
-                log.debug("[SastVerification] Validation corrected remediation for {}", itemRef);
+            if (SafetyBasis.parse(item.getAiSafetyBasis()).isEmpty() && validatorSafetyBasis != null) {
+                item.setAiSafetyBasis(validatorSafetyBasis);
             }
         }
 
-        return new int[]{overrides, remediationFixes};
+        return new int[]{overrides, 0};
     }
 
     // ── End of Verdict Validation ───────────────────────────────────────────────
@@ -2434,6 +2482,9 @@ public class SastFindingVerificationService {
         }
         if (isSqlInjectionFinding(item)) {
             return sqlInjectionRecommendation(item);
+        }
+        if (isXssFinding(item)) {
+            return xssRecommendation();
         }
         return "Review and remediate this finding; the validator confirmed it as exploitable.";
     }
@@ -2460,6 +2511,9 @@ public class SastFindingVerificationService {
         if (isJwtVerificationBypassFinding(item, null)) {
             return jwtVerificationRemediationCode(item);
         }
+        if (isXssFinding(item)) {
+            return xssRemediationCode(item);
+        }
         String extract = flaggedCodeExtract(item);
         if (!extract.isBlank()) {
             return wrapWithFlaggedExtract(item,
@@ -2470,9 +2524,194 @@ public class SastFindingVerificationService {
                 + "enough code context to generate a precise remediation.";
     }
 
+    private static final Pattern XSS_INNER_HTML_ASSIGNMENT = Pattern.compile(
+            "^\\s*([\\w$.\\[\\]'\"]+?)\\.(innerHTML|outerHTML)\\s*\\+?=\\s*(.+?);?\\s*$", Pattern.DOTALL);
+    private static final Pattern XSS_INSERT_ADJACENT_HTML = Pattern.compile(
+            "^\\s*([\\w$.\\[\\]'\"]+?)\\.insertAdjacentHTML\\s*\\(\\s*([^,]+?)\\s*,\\s*(.+?)\\s*\\)\\s*;?\\s*$",
+            Pattern.DOTALL);
+    private static final Pattern XSS_JQUERY_HTML = Pattern.compile(
+            "^(.*?)\\.html\\s*\\(\\s*(.+?)\\s*\\)\\s*;?\\s*$", Pattern.DOTALL);
+    private static final Pattern XSS_DANGEROUSLY_SET_INNER_HTML = Pattern.compile(
+            "dangerouslySetInnerHTML\\s*=\\s*\\{\\s*\\{\\s*__html\\s*:\\s*(.+?)\\s*}\\s*}", Pattern.DOTALL);
+    private static final Pattern XSS_VUE_V_HTML = Pattern.compile("v-html\\s*=\\s*\"([^\"]+)\"");
+    private static final Pattern TEMPLATE_INTERPOLATION = Pattern.compile("\\$\\{([^}]*)}");
+    private static final Pattern XSS_HTML_SINK_LINE = Pattern.compile(
+            "\\.(innerHTML|outerHTML)\\s*\\+?=|insertAdjacentHTML\\s*\\(|document\\.write(ln)?\\s*\\(|"
+                    + "dangerouslySetInnerHTML|v-html|\\.html\\s*\\(\\s*[^)\\s]");
+    private static final Pattern XSS_SANITIZED_LINE = Pattern.compile(
+            "DOMPurify\\.sanitize\\s*\\(|sanitizeHtml\\s*\\(|sanitize\\s*\\(|escapeHtml\\s*\\(|"
+                    + "\\.(innerHTML|outerHTML)\\s*=\\s*(''|\"\"|``)\\s*;?\\s*$");
+
+    private boolean isXssFinding(Item item) {
+        if (item == null) {
+            return false;
+        }
+        if (isXssPrompt(null, item)) {
+            return true;
+        }
+        String text = (Optional.ofNullable(item.getId()).orElse("") + " "
+                + Optional.ofNullable(item.getTitle()).orElse("")).toLowerCase(Locale.ROOT);
+        return text.contains("xss") || text.contains("cross-site scripting") || text.contains("insert_html");
+    }
+
+    private static String xssRecommendation() {
+        return "Do not build HTML by interpolating data into markup strings. Insert data as text "
+                + "(`textContent`, `createTextNode`, `append`, or framework auto-escaping), set attributes with "
+                + "`setAttribute`, and if the value must keep markup, pass it through a vetted sanitizer such as "
+                + "DOMPurify with its default allowlist before it reaches the HTML sink.";
+    }
+
+    private String xssRemediationCode(Item item) {
+        String language = inferFindingLanguage(item);
+        String extract = flaggedCodeExtract(item);
+        boolean browserCode = switch (language) {
+            case "javascript", "typescript", "vue", "jsx", "tsx", "html", "unknown" -> true;
+            default -> false;
+        };
+        String fix = browserCode ? xssBrowserRewrite(extract) : null;
+        if (fix == null) {
+            fix = xssServerSideFix(language);
+        }
+        return wrapWithFlaggedExtract(item, fix);
+    }
+
+    /** Rewrites a single flagged browser HTML-sink statement, or returns null when its shape is not recognized. */
+    static String xssBrowserRewrite(String extract) {
+        if (extract == null || extract.isBlank()) {
+            return null;
+        }
+        String code = extract.trim();
+        Matcher m = XSS_INNER_HTML_ASSIGNMENT.matcher(code);
+        if (m.matches()) {
+            String target = m.group(1);
+            String value = m.group(3).trim();
+            if (value.startsWith("`") && value.endsWith("`") && value.length() >= 2) {
+                String domBuild = xssTemplateLiteralToDom(target, value.substring(1, value.length() - 1),
+                        "outerHTML".equals(m.group(2)));
+                if (domBuild != null) {
+                    return domBuild;
+                }
+            }
+            if ("outerHTML".equals(m.group(2))) {
+                return target + ".replaceWith(document.createTextNode(" + value + "));";
+            }
+            return target + ".textContent = " + value + ";\n"
+                    + "// If markup is required: " + target + ".innerHTML = DOMPurify.sanitize(" + value + ");";
+        }
+        m = XSS_INSERT_ADJACENT_HTML.matcher(code);
+        if (m.matches()) {
+            return m.group(1) + ".insertAdjacentText(" + m.group(2) + ", " + m.group(3) + ");";
+        }
+        m = XSS_DANGEROUSLY_SET_INNER_HTML.matcher(code);
+        if (m.find()) {
+            String value = m.group(1).trim();
+            Matcher tag = Pattern.compile("<([A-Za-z][\\w.]*)").matcher(code);
+            String tagName = tag.find() ? tag.group(1) : "div";
+            return "// Render the value as a child so React escapes it:\n"
+                    + "<" + tagName + ">{" + value + "}</" + tagName + ">\n"
+                    + "// If markup is required: dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(" + value + ") }}";
+        }
+        m = XSS_VUE_V_HTML.matcher(code);
+        if (m.find()) {
+            return code.substring(0, m.start()) + "v-text=\"" + m.group(1) + "\"" + code.substring(m.end()) + "\n"
+                    + "<!-- If markup is required, bind a DOMPurify.sanitize(...) result instead of the raw value -->";
+        }
+        m = XSS_JQUERY_HTML.matcher(code);
+        if (m.matches() && !m.group(2).isBlank()) {
+            return m.group(1) + ".text(" + m.group(2) + ");";
+        }
+        return null;
+    }
+
+    /**
+     * Converts {@code target.innerHTML = `<tag attrs>${text}</tag>`} into DOM calls: interpolations inside the
+     * opening tag become attributes, the rest become text nodes. Returns null for multi-element templates.
+     */
+    private static String xssTemplateLiteralToDom(String target, String template, boolean replaceTarget) {
+        Matcher open = Pattern.compile("^\\s*<([a-zA-Z][\\w-]*)([^>]*)>(.*)</\\1>\\s*$", Pattern.DOTALL)
+                .matcher(template);
+        if (!open.matches() || open.group(3).contains("<")) {
+            return null;
+        }
+        String tag = open.group(1);
+        String attrs = open.group(2);
+        String body = open.group(3);
+        StringBuilder sb = new StringBuilder();
+        sb.append("const el = document.createElement('").append(tag).append("');\n");
+        Matcher attrExpr = TEMPLATE_INTERPOLATION.matcher(attrs);
+        while (attrExpr.find()) {
+            sb.append("// ").append(attrExpr.group(1).trim())
+                    .append(" built an attribute string; set each attribute instead:\n")
+                    .append("// el.setAttribute(name, value);\n");
+        }
+        List<String> parts = new ArrayList<>();
+        Matcher textExpr = TEMPLATE_INTERPOLATION.matcher(body);
+        int last = 0;
+        while (textExpr.find()) {
+            String literal = body.substring(last, textExpr.start());
+            if (!literal.isEmpty()) {
+                parts.add("'" + literal.replace("\\", "\\\\").replace("'", "\\'") + "'");
+            }
+            parts.add(textExpr.group(1).trim());
+            last = textExpr.end();
+        }
+        if (last < body.length()) {
+            parts.add("'" + body.substring(last).replace("\\", "\\\\").replace("'", "\\'") + "'");
+        }
+        if (!parts.isEmpty()) {
+            sb.append("el.append(").append(String.join(", ", parts)).append(");\n");
+        }
+        sb.append(replaceTarget ? target + ".replaceWith(el);" : target + ".replaceChildren(el);");
+        if (!parts.isEmpty()) {
+            sb.append("\n// If a value must keep markup (e.g. <br>), use el.innerHTML = DOMPurify.sanitize(value) "
+                    + "instead of append.");
+        }
+        return sb.toString();
+    }
+
+    private static String xssServerSideFix(String language) {
+        return switch (language) {
+            case "python" -> "from markupsafe import escape  # or html.escape(value, quote=True)\n"
+                    + "safe_value = escape(value)\n"
+                    + "# Prefer template auto-escaping (Jinja2 autoescape=True, Django templates) over manual HTML strings.";
+            case "java", "kotlin" -> "import org.owasp.encoder.Encode;\n"
+                    + "String safeValue = Encode.forHtml(value); // Encode.forHtmlAttribute / forJavaScript per context";
+            case "php" -> "$safeValue = htmlspecialchars($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');";
+            case "csharp" -> "var safeValue = System.Text.Encodings.Web.HtmlEncoder.Default.Encode(value);";
+            case "go" -> "// Render with html/template (contextual auto-escaping) instead of text/template or string concatenation.\n"
+                    + "safeValue := template.HTMLEscapeString(value)";
+            case "ruby" -> "safe_value = ERB::Util.html_escape(value) # never call .html_safe / raw on untrusted data";
+            default -> "Encode the value for its exact output context (HTML body, attribute, JavaScript, URL) "
+                    + "with the framework's encoder, or rely on template auto-escaping.";
+        };
+    }
+
+    /** True when remediation code still writes unsanitized data to the flagged sink. */
+    private boolean keepsFlaggedSink(String remediationCode, Item item) {
+        String normalizedCode = remediationCode.replaceAll("\\s+", " ");
+        String normalizedExtract = flaggedCodeExtract(item).replaceAll("\\s+", " ");
+        if (!normalizedExtract.isBlank() && normalizedCode.contains(normalizedExtract)) {
+            return true;
+        }
+        if (!isXssFinding(item)) {
+            return false;
+        }
+        for (String line : remediationCode.split("\\R")) {
+            String trimmed = line.trim();
+            if (trimmed.startsWith("//") || trimmed.startsWith("#") || trimmed.startsWith("<!--")
+                    || trimmed.startsWith("*")) {
+                continue;
+            }
+            if (XSS_HTML_SINK_LINE.matcher(trimmed).find() && !XSS_SANITIZED_LINE.matcher(trimmed).find()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private boolean applyControlSoundnessGate(Item item, ControlAuditReport report, String itemRef) {
         ControlSoundnessGate.Decision decision = ControlSoundnessGate.decide(
-                report, item.getAiVerdict(), item.getAiReasoning()).orElse(null);
+                report, item.getAiVerdict(), item.getAiReasoning(), item.getAiSafetyBasis()).orElse(null);
         if (decision == null) {
             return false;
         }
@@ -2986,10 +3225,8 @@ public class SastFindingVerificationService {
                     + "Do not use UNCERTAIN because VALUE origin is unclear.\n");
         }
         if (isSqlPrompt(metadata, item)) {
-            sb.append("- For SQL injection: if the value is not hardcoded/literal/constant AND the shown code clearly "
-                    + "concatenates/interpolates that string into SQL (any language idiom: +, ., f-string, template "
-                    + "literal, sprintf, etc.) without parameterization or a complete allowlist, "
-                    + "verdict MUST be TRUE_POSITIVE.\n");
+            sb.append("- ").append(SqlInjectionDecisionOrder.SUMMARY)
+                    .append(" It takes precedence over the general source-to-sink rule above.\n");
         }
         if (hasCwe(metadata, item, "502")) {
             sb.append("- For CWE-502 deserialization: path-from-env/config is usually fine for the PATH. Decide on "
@@ -3033,37 +3270,7 @@ public class SastFindingVerificationService {
                 "- Reserve VERY_HIGH (>= %.2f) for cases where the relevant source/configuration, sink/impact, and missing or sufficient protection are explicit in the shown code.\n",
                 ConfidenceLevel.VERY_HIGH.lowerBound()));
 
-        sb.append("\nRemediation rules for TRUE_POSITIVE (apply to EVERY CWE, not only SQL):\n");
-        sb.append("- recommendation is required. remediation_code is required (or a 'Cannot provide a safe code snippet:' message).\n");
-        sb.append("- Prefer framework-native safe APIs over generic sanitization.\n");
-        sb.append("- CRITICAL: remediation_code must rewrite the flagged code extract and shown local context ");
-        sb.append("(same variables, expressions, sink/call site, SQL shape). Start from that snippet and show the fixed version.\n");
-        sb.append("- Do NOT invent unrelated textbook examples with placeholder names ");
-        sb.append("(`expected`/`actual`, `SELECT ... WHERE username = ? AND password = ?`, `res.cookie('name', value, ...)`) ");
-        sb.append("unless those exact names/queries appear in the finding.\n");
-        sb.append("- Language must match the finding file (JS→crypto.timingSafeEqual, Java→MessageDigest.isEqual, ");
-        sb.append("Python→hmac.compare_digest, etc.).\n");
-        if (isSqlPrompt(metadata, item)) {
-            sb.append("- For concatenated SQL / identifiers / DDL fragments: placeholders often cannot bind those parts — ");
-            sb.append("recommend allowlisting/validation at the shown construction site (same variables and sink).\n");
-        }
-        if (isJwtPrompt(metadata, item)) {
-            sb.append("- For JWT verification bypass (verify_signature=False / unsigned decode): remediation_code must ");
-            sb.append("use the language-idiomatic verifying API with project key/secret, algorithms allowlist, ");
-            sb.append("and verification explicitly enabled ");
-            sb.append("(Python: options={\"verify_signature\": True}; Ruby: JWT.decode(..., true, ...); ");
-            sb.append("JS/TS: jwt.verify; Java: parseClaimsJws; C#: RequireSignedTokens=true; ");
-            sb.append("PHP: JWT::decode+Key; Go: jwt.Parse + token.Valid). ");
-            sb.append("Bare jwt.decode(token) / only deleting verify_signature=False is INVALID. ");
-            sb.append("Do not invent a hardcoded secret; reuse the project's JWT secret/config symbol when visible, ");
-            sb.append("otherwise use a named placeholder and state where the key must come from. ");
-            sb.append("If the helper is claim-peek-only and a verified decode already gates auth, prefer FALSE_POSITIVE.\n");
-        }
-        sb.append("- If a `Scanner-suggested remediation` section is provided above, treat it as a reference only: ");
-        sb.append("produce your OWN remediation_code adapted to the actual code shown (correct variable names, call site, imports, and framework idioms), not a verbatim copy of the scanner text.\n");
-        sb.append("- The scanner guidance is often generic; if it is inaccurate, incomplete, or wrong for this context, improve or replace it and base your fix on the real code and data flow shown.\n");
-        sb.append("- Keep remediation_code focused and COMPLETE: show only the minimal changed function/lines with correct, closed syntax. ");
-        sb.append("Do not emit a truncated or unbalanced snippet; if a full fix would be long, show just the key corrected line(s).\n");
+        sb.append("\nDo not include recommendation or remediation_code. The fix is written in a later step, after the verdict is final.\n");
         sb.append("\n## Response protocol\n");
         sb.append("Respond with ONLY a single valid JSON object. No markdown, no prose, no text outside the JSON. ");
         sb.append("Use valid JSON escaping. Do not escape single quotes or dollar signs.\n");
@@ -3079,15 +3286,7 @@ public class SastFindingVerificationService {
         sb.append("{\"thought\": \"why you need this\", \"action\": \"find_files\", \"glob\": \"filename or path glob\"}\n");
         sb.append("After each investigation step you will receive a `TOOL RESULT` message; then send your next response.\n\n");
 
-        sb.append("B) Stage 1 final verdict (minimal):\n");
-        sb.append("{");
-        sb.append("\"action\": \"final\", ");
-        sb.append(FinalVerdictFormat.ANALYSIS_SHAPE).append(", ");
-        sb.append("\"reasoning\": \"3-6 sentences describing source -> transformations/call chain -> sink with concrete code evidence. Developer-facing: no evidence categories, confidence bands, prompt profiles, or internal enum labels\", ");
-        sb.append("\"verdict\": \"TRUE_POSITIVE|FALSE_POSITIVE|UNCERTAIN\", ");
-        sb.append("\"confidence\": 0.0-1.0");
-        sb.append("}\n\n");
-        sb.append("C) Stage 2 details (only when requested after Stage 1):\n");
+        sb.append("B) Final verdict (fill every field; also the shape to use if Stage 2 details are requested):\n");
         sb.append("{");
         sb.append("\"action\": \"final\", ");
         sb.append("\"execution_context\": \"web_server|web_client|desktop_gui|cli_developer_tool|test|library|unknown\", ");
@@ -3096,9 +3295,7 @@ public class SastFindingVerificationService {
         sb.append("\"reasoning\": \"3-6 sentences describing source -> transformations/call chain -> sink with concrete code evidence. Developer-facing: no evidence categories, confidence bands, prompt profiles, or internal enum labels\", ");
         sb.append("\"false_positive_evidence\": \"for FALSE_POSITIVE: short verbatim citation of the existing sanitizer/escaping/text-only sink/allowlist/framework guarantee/trusted source/local-only non-sensitive exposure/same-origin or relative-only redirect construction, empty otherwise\", ");
         sb.append("\"verdict\": \"TRUE_POSITIVE|FALSE_POSITIVE|UNCERTAIN\", ");
-        sb.append("\"confidence\": 0.0-1.0, ");
-        sb.append("\"recommendation\": \"required for TRUE_POSITIVE, empty string otherwise\", ");
-        sb.append("\"remediation_code\": \"required for TRUE_POSITIVE, empty string otherwise\"");
+        sb.append("\"confidence\": 0.0-1.0");
         sb.append("}\n");
         sb.append("Fill `analysis` before `verdict` and derive the verdict from it; `analysis` is internal and is not shown to developers.\n");
         return sb.toString();
@@ -3636,6 +3833,8 @@ public class SastFindingVerificationService {
                 remediationCode,
                 falsePositiveEvidence
         ), item);
+        item.setAiSafetyBasis(SafetyBasis.fromResponse(node));
+        clearEarlyRemediation(item);
         return VerificationResult.verified(normalized);
     }
 
@@ -4243,20 +4442,207 @@ public class SastFindingVerificationService {
     }
 
     /** Anchor a fix snippet to the finding's flagged extract whenever available. */
+    /** Drops a fix produced during verdict parsing. The remediation call writes the one that is shown. */
+    private void clearEarlyRemediation(Item item) {
+        if (item == null) {
+            return;
+        }
+        item.setAiRecommendation(null);
+        if (item.getFingerprint() != null) {
+            fingerprintCache.computeIfPresent(item.getFingerprint(), (key, cached) ->
+                    new CachedVerdict(cached.verdict(), cached.confidence(), cached.reasoning(), null));
+        }
+    }
+
+    /**
+     * One call after the verdict is final. Sees the hunt report, the control audit, and the code
+     * the analyzer already read. Returns the number of LLM requests made.
+     */
+    private int writeRemediation(Item item, CodeContextExtractor.CodeContext context, SastRuleMetadata metadata,
+                                 SourceOriginHunt.Report sourceReport, ControlAuditReport controlAudit,
+                                 List<Map<String, Object>> reactMessages, String itemRef) {
+        rateLimitPause();
+        List<Map<String, Object>> messages = new ArrayList<>();
+        messages.add(Map.of("role", "system", "content",
+                "You write a fix for one confirmed true-positive SAST finding. "
+                        + "Respond with ONLY one JSON object. No markdown, no prose outside the JSON."));
+        messages.add(Map.of("role", "user", "content",
+                buildRemediationPrompt(item, context, metadata, sourceReport, controlAudit, reactMessages)));
+        LlmApiClient.LlmResponse response = llmApiClient.chatCompletion(messages, true);
+        if (response.isEmpty()) {
+            log.warn("[SastVerification] Remediation call returned empty for {}", itemRef);
+            keepFallbackRemediation(item);
+            return 1;
+        }
+        JsonNode node = tryParseJson(response.content());
+        if (node == null || !node.isObject()) {
+            log.warn("[SastVerification] Remediation call for {} was not JSON", itemRef);
+            keepFallbackRemediation(item);
+            return 1;
+        }
+        String recommendation = textValue(node, "recommendation");
+        String remediationCode = correctedCodeOnly(stripCodeFences(textValue(node, "remediation_code")));
+        if ("Cannot provide a safe code snippet:".equals(remediationCode)
+                || remediationCode.startsWith("Cannot provide a safe code snippet:")) {
+            item.setAiRecommendation(formatRecommendation(recommendation, remediationCode));
+            return 1;
+        }
+        if (recommendation.isBlank()) {
+            recommendation = defaultTruePositiveRecommendationText(item, item.getAiReasoning());
+        }
+        if (remediationCode.isBlank()) {
+            remediationCode = defaultTruePositiveRemediationCode(item, item.getAiReasoning());
+        }
+        if (isSqlInjectionFinding(item)
+                && (looksLikeGenericSqlRemediation(remediationCode) || looksLikeProseRemediation(remediationCode))) {
+            remediationCode = sqlInjectionRemediationCode(item);
+            if (looksLikeGenericSqlRecommendation(recommendation)) {
+                recommendation = sqlInjectionRecommendation(item);
+            }
+        } else if (isTimingSideChannelFinding(item, null)
+                && looksLikeGenericUnanchoredRemediation(remediationCode, item)) {
+            remediationCode = timingRemediationCode(item);
+            if (recommendation.isBlank()) {
+                recommendation = timingRecommendation(item);
+            }
+        } else if (isCookieSecurityFinding(item)
+                && looksLikeGenericUnanchoredRemediation(remediationCode, item)) {
+            remediationCode = cookieRemediationCode(item);
+        } else if (isDeserializationFamily(null, item)
+                && looksLikeGenericUnanchoredRemediation(remediationCode, item)) {
+            remediationCode = deserializationRemediationCode(item);
+        } else if (isJwtVerificationBypassFinding(item, metadata)
+                && (looksLikeWeakJwtRemediation(remediationCode)
+                || looksLikeGenericUnanchoredRemediation(remediationCode, item)
+                || looksLikeProseRemediation(remediationCode))) {
+            remediationCode = jwtVerificationRemediationCode(item);
+            if (recommendation.isBlank() || looksLikeWeakJwtRecommendation(recommendation)) {
+                recommendation = jwtVerificationRecommendation(item);
+            }
+        }
+        remediationCode = wrapWithFlaggedExtract(item, remediationCode);
+        if (keepsFlaggedSink(remediationCode, item)) {
+            log.debug("[SastVerification] Remediation for {} still contains the flagged sink; using the template", itemRef);
+            keepFallbackRemediation(item);
+            return 1;
+        }
+        item.setAiRecommendation(formatRecommendation(recommendation, remediationCode));
+        log.debug("[SastVerification] Wrote remediation for {}", itemRef);
+        return 1;
+    }
+
+    private void keepFallbackRemediation(Item item) {
+        String current = item.getAiRecommendation();
+        if (current != null && current.contains("###### Remediation code")) {
+            return;
+        }
+        item.setAiRecommendation(defaultTruePositiveRecommendation(item, item.getAiReasoning()));
+    }
+
+    private String buildRemediationPrompt(Item item, CodeContextExtractor.CodeContext context,
+                                          SastRuleMetadata metadata, SourceOriginHunt.Report sourceReport,
+                                          ControlAuditReport controlAudit, List<Map<String, Object>> reactMessages) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Write the fix for this confirmed TRUE_POSITIVE. ");
+        sb.append("Verdict: TRUE_POSITIVE");
+        if (item.getAiConfidence() != null) {
+            sb.append(" (confidence ").append(String.format(Locale.ROOT, "%.2f", item.getAiConfidence())).append(')');
+        }
+        sb.append(".\n\n");
+        if (item.getAiReasoning() != null && !item.getAiReasoning().isBlank()) {
+            sb.append("## Why it is vulnerable\n").append(item.getAiReasoning().trim()).append("\n\n");
+        }
+        sb.append(buildFindingSection(item, context == null ? "" : context.language()));
+        sb.append(buildDescriptionSection(item));
+        if (context != null) {
+            sb.append(buildCodeContextSection(context));
+        }
+        sb.append(sastCwePromptGuidanceService.buildGuidance(metadata, context == null ? null : context.language()));
+        if (sourceReport != null) {
+            sb.append(sourceReport.toPromptSection());
+        }
+        if (controlAudit != null) {
+            sb.append(controlAudit.toPromptSection());
+        }
+        sb.append(toolEvidenceSection(reactMessages));
+        sb.append("## Fix rules\n");
+        sb.append("- recommendation: one short paragraph telling a developer what to change.\n");
+        sb.append("- remediation_code: ONLY the corrected code. Do not include the original unsafe lines.\n");
+        sb.append("- The first line of remediation_code must be a comment marking the fix: `");
+        sb.append(codeCommentPrefix(inferFindingLanguage(item))).append(" Fixed`.\n");
+        sb.append("- Rewrite the flagged extract: same variables, same call site, same language. ");
+        sb.append("Do not invent a textbook example with placeholder names.\n");
+        sb.append("- Prefer a framework-native safe API. Keep the snippet complete and syntactically closed.\n");
+        sb.append("- Scanner-suggested remediation above is a reference only. Use real names from the shown code.\n");
+        if (isSqlPrompt(metadata, item)) {
+            sb.append("- For SQL fragments that a placeholder cannot bind, allowlist them at the shown construction site.\n");
+        }
+        if (isJwtPrompt(metadata, item)) {
+            sb.append("- For JWT verification bypass, use the language-idiomatic verifying API with the project key ")
+                    .append("and an algorithms allowlist. Only deleting verify_signature=False is invalid.\n");
+        }
+        sb.append("\nReturn ONLY this JSON object:\n");
+        sb.append("{\"recommendation\": \"...\", \"remediation_code\": \"")
+                .append(codeCommentPrefix(inferFindingLanguage(item)))
+                .append(" Fixed\\n...corrected code...\"}\n");
+        return sb.toString();
+    }
+
+    private String toolEvidenceSection(List<Map<String, Object>> reactMessages) {
+        if (reactMessages == null || reactMessages.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("## Code read during the review\n");
+        int shown = 0;
+        for (Map<String, Object> message : reactMessages) {
+            if (message == null || !"user".equals(message.get("role")) || !(message.get("content") instanceof String content)) {
+                continue;
+            }
+            if (!content.startsWith("TOOL RESULT")) {
+                continue;
+            }
+            shown++;
+            String clipped = content.length() > 1500 ? content.substring(0, 1500) + "…" : content;
+            sb.append("### Tool result #").append(shown).append("\n```\n").append(clipped).append("\n```\n\n");
+            if (sb.length() > 8000) {
+                break;
+            }
+        }
+        if (shown == 0) {
+            return "";
+        }
+        return sb.toString();
+    }
+
     private String wrapWithFlaggedExtract(Item item, String fixSnippet) {
-        String fix = fixSnippet == null ? "" : fixSnippet.trim();
-        String extract = flaggedCodeExtract(item);
-        if (extract.isBlank()) {
+        String fix = correctedCodeOnly(fixSnippet);
+        if (fix.isBlank()) {
             return fix;
         }
-        if (fix.toLowerCase(Locale.ROOT).contains("flagged (unsafe)")) {
+        String comment = codeCommentPrefix(inferFindingLanguage(item)) + " Fixed";
+        String firstLine = fix.lines().findFirst().orElse("").trim();
+        if (firstLine.startsWith(codeCommentPrefix(inferFindingLanguage(item)))
+                && firstLine.toLowerCase(Locale.ROOT).contains("fixed")) {
             return fix;
         }
-        String c = codeCommentPrefix(inferFindingLanguage(item));
-        return c + " Flagged (unsafe):\n"
-                + extract + "\n"
-                + c + " Fix (adapt to this call site — same variables/sink):\n"
-                + fix;
+        return comment + "\n" + fix;
+    }
+
+    /** Drops a leading "flagged (unsafe)" copy so the snippet is only the corrected code. */
+    private String correctedCodeOnly(String snippet) {
+        String fix = snippet == null ? "" : snippet.trim();
+        String lower = fix.toLowerCase(Locale.ROOT);
+        int unsafe = lower.indexOf("flagged (unsafe)");
+        if (unsafe < 0) {
+            return fix;
+        }
+        int fixMark = lower.indexOf("fix (", unsafe);
+        if (fixMark < 0) {
+            return fix;
+        }
+        int newline = fix.indexOf('\n', fixMark);
+        return newline >= 0 ? fix.substring(newline + 1).trim() : "";
     }
 
     private String flaggedCodeExtract(Item item) {
@@ -7157,6 +7543,7 @@ public class SastFindingVerificationService {
         private final AtomicInteger queryExpansionsUsed = new AtomicInteger();
         private final AtomicInteger validationOverrides = new AtomicInteger();
         private final AtomicInteger remediationCorrections = new AtomicInteger();
+        private final AtomicInteger peerReviewsSkipped = new AtomicInteger();
         private final ConcurrentHashMap<ParseFailureReason, AtomicInteger> failureReasons = new ConcurrentHashMap<>();
 
         private synchronized void addFailure(ParseFailureReason reason) {
@@ -7179,6 +7566,7 @@ public class SastFindingVerificationService {
             summary.queryExpansionsUsed = queryExpansionsUsed.get();
             summary.validationOverrides = validationOverrides.get();
             summary.remediationCorrections = remediationCorrections.get();
+            summary.peerReviewsSkipped = peerReviewsSkipped.get();
             failureReasons.forEach((reason, count) -> 
                 summary.failureReasons.put(reason, count.get()));
             return summary;
@@ -7198,6 +7586,7 @@ public class SastFindingVerificationService {
         private int queryExpansionsUsed;
         private int validationOverrides;
         private int remediationCorrections;
+        private int peerReviewsSkipped;
         private final Map<ParseFailureReason, Integer> failureReasons = new EnumMap<>(ParseFailureReason.class);
 
         private void add(VerificationSummary other) {
@@ -7213,6 +7602,7 @@ public class SastFindingVerificationService {
             this.queryExpansionsUsed += other.queryExpansionsUsed;
             this.validationOverrides += other.validationOverrides;
             this.remediationCorrections += other.remediationCorrections;
+            this.peerReviewsSkipped += other.peerReviewsSkipped;
             other.failureReasons.forEach((reason, count) ->
                     this.failureReasons.merge(reason, count, Integer::sum));
         }
@@ -7264,7 +7654,28 @@ public class SastFindingVerificationService {
                                       int duplicateActionsSkipped,
                                       int queryExpansionsUsed,
                                       int validationOverrides,
-                                      int remediationCorrections) {
+                                      int remediationCorrections,
+                                      boolean peerReviewSkipped) {
+        private VerificationResult(boolean verified,
+                                   ParseFailureReason failureReason,
+                                   boolean normalized,
+                                   int llmRequests,
+                                   int jsonRepairAttempts,
+                                   int jsonRepairSuccesses,
+                                   int duplicateActionsSkipped,
+                                   int queryExpansionsUsed,
+                                   int validationOverrides,
+                                   int remediationCorrections) {
+            this(verified, failureReason, normalized, llmRequests, jsonRepairAttempts, jsonRepairSuccesses,
+                    duplicateActionsSkipped, queryExpansionsUsed, validationOverrides, remediationCorrections, false);
+        }
+
+        private VerificationResult asNormalized() {
+            return new VerificationResult(verified, failureReason, true, llmRequests, jsonRepairAttempts,
+                    jsonRepairSuccesses, duplicateActionsSkipped, queryExpansionsUsed,
+                    validationOverrides, remediationCorrections, peerReviewSkipped);
+        }
+
         private static VerificationResult verified(boolean normalized) {
             return new VerificationResult(true, null, normalized, 0, 0, 0, 0, 0, 0, 0);
         }
@@ -7300,13 +7711,13 @@ public class SastFindingVerificationService {
                                                int queryExpansionsUsed) {
             return new VerificationResult(verified, failureReason, normalized, llmRequests, jsonRepairAttempts,
                     jsonRepairSuccesses, duplicateActionsSkipped, queryExpansionsUsed,
-                    validationOverrides, remediationCorrections);
+                    validationOverrides, remediationCorrections, peerReviewSkipped);
         }
 
         private VerificationResult withValidation(int validationOverrides, int remediationCorrections) {
             return new VerificationResult(verified, failureReason, normalized, llmRequests, jsonRepairAttempts,
                     jsonRepairSuccesses, duplicateActionsSkipped, queryExpansionsUsed,
-                    validationOverrides, remediationCorrections);
+                    validationOverrides, remediationCorrections, peerReviewSkipped);
         }
     }
 
@@ -7321,7 +7732,7 @@ public class SastFindingVerificationService {
             String falsePositiveEvidence
     ) {}
 
-    private record MinimalVerdict(String verdict, double confidence, String reasoning) {}
+    private record MinimalVerdict(String verdict, double confidence, String reasoning, String safetyBasis) {}
 
     private record ValidatorVerdict(String verdict, double confidence, String explanation) {}
 

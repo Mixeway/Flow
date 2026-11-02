@@ -16,10 +16,13 @@ final class FinalVerdictFormat {
             + "\"source\": \"who supplies the deciding value and whether an attacker controls it\", "
             + "\"sink\": \"the dangerous call with path:line\", "
             + "\"neutralizer_on_path\": \"none, or the function and whether THIS path calls it\", "
-            + "\"deciding_fact\": \"the single fact that decides the verdict\"}";
+            + "\"deciding_fact\": \"the single fact that decides the verdict\", "
+            + "\"safety_basis\": \"" + SafetyBasis.PROMPT_VALUES + " — for FALSE_POSITIVE, what safety rests on: "
+            + "custom_control when it depends on an application-authored validator/sanitizer/allowlist/guard; "
+            + "none for TRUE_POSITIVE/UNCERTAIN\"}";
 
     static final String EVIDENCE_THEN_VERDICT_FIELDS = "analysis, reasoning, false_positive_evidence, "
-            + "verdict, confidence, recommendation, remediation_code";
+            + "verdict, confidence";
 
     static final String STAGE_TWO_FIELDS = "execution_context, input_source, " + EVIDENCE_THEN_VERDICT_FIELDS;
 

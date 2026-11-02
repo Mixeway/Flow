@@ -24,17 +24,37 @@ public final class ControlSoundnessGate {
     }
 
     public static Optional<Decision> decide(ControlAuditReport report, String currentVerdict, String reasoning) {
+        return decide(report, currentVerdict, reasoning, null);
+    }
+
+    /**
+     * {@code safetyBasis} is the model's declared {@code analysis.safety_basis}. When present it decides
+     * whether the false positive rests on a custom control; phrase matching on {@code reasoning} is only
+     * the fallback for responses without it.
+     */
+    public static Optional<Decision> decide(ControlAuditReport report, String currentVerdict, String reasoning,
+                                            String safetyBasis) {
         if (report == null || !report.applicable() || report.results() == null || report.results().isEmpty()) {
             return Optional.empty();
         }
         if (!"FALSE_POSITIVE".equals(currentVerdict)) {
             return Optional.empty();
         }
-        if (hasIndependentSafetyEvidence(reasoning)) {
-            return Optional.empty();
-        }
-        if (!looksLikeControlBasedFalsePositive(reasoning, report)) {
-            return Optional.empty();
+        Optional<SafetyBasis> basis = SafetyBasis.parse(safetyBasis);
+        if (basis.isPresent()) {
+            // A declared independent basis cannot hide a leaky fragment control the reasoning itself describes.
+            boolean leakyFragment = reasoning != null
+                    && mentionsLeakySqlFragmentControl(reasoning.toLowerCase(Locale.ROOT));
+            if (basis.get().independentOfCustomControls() && !leakyFragment) {
+                return Optional.empty();
+            }
+        } else {
+            if (hasIndependentSafetyEvidence(reasoning)) {
+                return Optional.empty();
+            }
+            if (!looksLikeControlBasedFalsePositive(reasoning, report)) {
+                return Optional.empty();
+            }
         }
 
         List<ControlSoundness> relevant = relevantResults(report);
