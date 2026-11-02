@@ -47,6 +47,7 @@ public class SCAGrypeService {
     private final UpdateCodeRepoService updateCodeRepoService;
     private final CodeRepoRepository codeRepoRepository;
     private final GetOrCreateComponentService getOrCreateComponentService;
+    private final SbomSanitizer sbomSanitizer;
 
     /** Max number of stderr lines kept for diagnostics when grype fails. */
     private static final int MAX_ERROR_LINES = 50;
@@ -83,6 +84,8 @@ public class SCAGrypeService {
                 throw new ScanException("[GrypeService] SBOM file not found after cdxgen generation.");
             }
         }
+
+        sbomSanitizer.removeUnversionedComponents(sbomFile);
 
         log.info("[GrypeService] Starting Grype scan for repository: {} branch: {}", codeRepo.getName(), codeRepoBranch.getName());
         File grypeReportFile = new File(repoDir, "grype_report.json");
