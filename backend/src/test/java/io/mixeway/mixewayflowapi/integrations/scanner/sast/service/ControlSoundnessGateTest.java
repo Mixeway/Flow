@@ -210,6 +210,86 @@ class ControlSoundnessGateTest {
                 "toSafe() rewrites the query before execute"));
     }
 
+    @Test
+    void declaredNumericCoercionSkipsGateWhateverTheWording() {
+        ControlAuditReport report = report(soundness(
+                ControlSoundness.Classification.CUSTOM_APPLICATION,
+                ControlSoundness.Verdict.UNSOUND,
+                List.of("MIXED_FRAGMENT"),
+                true,
+                true,
+                "int()"));
+        String reasoning = "entity_ids are validated by int() so the interpolated fragment is guaranteed "
+                + "to be a pure numeric string.";
+
+        assertTrue(ControlSoundnessGate.decide(report, "FALSE_POSITIVE", reasoning).isPresent());
+        assertTrue(ControlSoundnessGate.decide(report, "FALSE_POSITIVE", reasoning, "numeric_coercion").isEmpty());
+    }
+
+    @Test
+    void declaredCustomControlRunsGateWithoutControlWording() {
+        ControlAuditReport report = report(soundness(
+                ControlSoundness.Classification.CUSTOM_APPLICATION,
+                ControlSoundness.Verdict.UNSOUND,
+                List.of("QUOTE_BLACKLIST"),
+                true,
+                true));
+        String reasoning = "Uses bound parameters for the filter; the ORDER BY name goes through validateSql.";
+
+        assertTrue(ControlSoundnessGate.decide(report, "FALSE_POSITIVE", reasoning).isEmpty());
+        Optional<ControlSoundnessGate.Decision> decision =
+                ControlSoundnessGate.decide(report, "FALSE_POSITIVE", reasoning, "custom_control");
+        assertTrue(decision.isPresent());
+        assertEquals("TRUE_POSITIVE", decision.get().verdict());
+    }
+
+    @Test
+    void declaredParameterizationDoesNotHideLeakyFragmentControl() {
+        ControlAuditReport report = report(soundness(
+                ControlSoundness.Classification.CUSTOM_APPLICATION,
+                ControlSoundness.Verdict.UNSOUND,
+                List.of("DENYLIST_AS_ALLOWLIST"),
+                true,
+                true,
+                "assert_computed_expression"));
+
+        Optional<ControlSoundnessGate.Decision> decision = ControlSoundnessGate.decide(report, "FALSE_POSITIVE",
+                "Filters use bound parameters. Computed expressions are regex-validated before concat.",
+                "parameterized");
+
+        assertTrue(decision.isPresent());
+        assertEquals("TRUE_POSITIVE", decision.get().verdict());
+    }
+
+    @Test
+    void unknownOrNoneSafetyBasisFallsBackToReasoning() {
+        ControlAuditReport report = report(soundness(
+                ControlSoundness.Classification.CUSTOM_APPLICATION,
+                ControlSoundness.Verdict.UNSOUND,
+                List.of("QUOTE_BLACKLIST"),
+                true,
+                true));
+        String reasoning = "FALSE_POSITIVE because validateSql sanitizes quotes.";
+
+        assertTrue(ControlSoundnessGate.decide(report, "FALSE_POSITIVE", reasoning, "none").isPresent());
+        assertTrue(ControlSoundnessGate.decide(report, "FALSE_POSITIVE", reasoning, "something_else").isPresent());
+        assertTrue(ControlSoundnessGate.decide(report, "FALSE_POSITIVE",
+                "The query uses a PreparedStatement with bound parameters.", "none").isEmpty());
+    }
+
+    @Test
+    void safetyBasisIsReadFromAnalysisOrTopLevel() throws Exception {
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+
+        assertEquals("numeric_coercion", SafetyBasis.fromResponse(mapper.readTree(
+                "{\"analysis\":{\"safety_basis\":\"numeric_coercion\"},\"verdict\":\"FALSE_POSITIVE\"}")));
+        assertEquals("custom_control", SafetyBasis.fromResponse(mapper.readTree(
+                "{\"safety_basis\":\"custom_control\",\"verdict\":\"FALSE_POSITIVE\"}")));
+        assertEquals(null, SafetyBasis.fromResponse(mapper.readTree("{\"verdict\":\"FALSE_POSITIVE\"}")));
+        assertEquals(Optional.of(SafetyBasis.LITERAL_OR_CONSTANT), SafetyBasis.parse("Literal-Or-Constant"));
+        assertTrue(SafetyBasis.parse("none").isEmpty());
+    }
+
     private static ControlAuditReport report(ControlSoundness... results) {
         List<SecurityControl> candidates = new java.util.ArrayList<>();
         for (ControlSoundness result : results) {

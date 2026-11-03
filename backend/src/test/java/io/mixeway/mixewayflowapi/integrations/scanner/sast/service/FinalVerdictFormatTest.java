@@ -58,6 +58,6 @@ class FinalVerdictFormatTest {
         assertTrue(order.indexOf("analysis") < order.indexOf("verdict"));
         assertTrue(order.indexOf("reasoning") < order.indexOf("verdict"));
         assertTrue(order.indexOf("false_positive_evidence") < order.indexOf("verdict"));
-        assertTrue(order.indexOf("verdict") < order.indexOf("remediation_code"));
+        assertTrue(order.endsWith("confidence"));
     }
 }

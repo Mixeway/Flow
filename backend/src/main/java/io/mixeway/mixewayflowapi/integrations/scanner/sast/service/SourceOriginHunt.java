@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -38,6 +39,8 @@ final class SourceOriginHunt {
 
     private static final int MAX_PRIOR_REASONING = 900;
     private static final int MAX_SYMBOLS = 8;
+    private static final int MAX_ANALYZER_RESULTS_CHARS = 12_000;
+    private static final String TOOL_RESULT_PREFIX = "TOOL RESULT (";
 
     private static final Set<VulnerabilityFamily> FAMILIES = Set.of(
             VulnerabilityFamily.XSS,
@@ -327,8 +330,15 @@ final class SourceOriginHunt {
 
     static String userPrompt(Item item, SastRuleMetadata metadata, String inputSource, String verdict, String reasoning,
                              Slot slot) {
+        return userPrompt(item, metadata, inputSource, verdict, reasoning, slot, "");
+    }
+
+    /** {@code analyzerResults} is the block built by {@link #analyzerResultsSection}; empty when there is none. */
+    static String userPrompt(Item item, SastRuleMetadata metadata, String inputSource, String verdict, String reasoning,
+                             Slot slot, String analyzerResults) {
+        String prior = analyzerResults == null ? "" : analyzerResults;
         if (slot == Slot.ATTRIBUTE_NAME) {
-            return attributeNameUserPrompt(item, inputSource, verdict, reasoning);
+            return attributeNameUserPrompt(item, inputSource, verdict, reasoning, prior);
         }
         String source = inputSource == null || inputSource.isBlank() ? "unknown" : inputSource.trim();
         String family = metadata != null && metadata.family() != null ? metadata.family().name() : "unknown";
@@ -338,8 +348,12 @@ final class SourceOriginHunt {
         sb.append("Prior verdict: ").append(verdict == null ? "unknown" : verdict).append('\n');
         sb.append("Family: ").append(family).append("\n\n");
         appendFinding(sb, item, reasoning);
+        sb.append(prior);
         sb.append("Search in this order:\n");
-        sb.append("1. read_file on the finding file around the flagged line.\n");
+        sb.append(prior.isEmpty()
+                ? "1. read_file on the finding file around the flagged line.\n"
+                : "1. read_file on the finding file around the flagged line, unless the first review's results "
+                        + "above already show it.\n");
         sb.append("2. search_repo for assignments of the sink identifier (`name =`, `.name =`, `name:`).\n");
         sb.append("3. search_repo for callers of the enclosing function.\n");
         if (metadata != null && (metadata.family() == VulnerabilityFamily.XSS
@@ -373,7 +387,8 @@ final class SourceOriginHunt {
         return sb.toString();
     }
 
-    private static String attributeNameUserPrompt(Item item, String inputSource, String verdict, String reasoning) {
+    private static String attributeNameUserPrompt(Item item, String inputSource, String verdict, String reasoning,
+                                                  String prior) {
         String source = inputSource == null || inputSource.isBlank() ? "unknown" : inputSource.trim();
         StringBuilder sb = new StringBuilder();
         sb.append("The first review did not establish who controls the attribute NAME at this sink.\n");
@@ -383,8 +398,13 @@ final class SourceOriginHunt {
         appendFinding(sb, item, reasoning);
         sb.append("Only the attribute NAME decides this finding. The assigned VALUE may come from HTTP, GraphQL, ")
                 .append("or the database and still be safe. Do not search for the VALUE origin.\n\n");
+        sb.append(prior);
         sb.append("Search in this order:\n");
-        sb.append("1. read_file on the finding file around the flagged line and find the NAME argument ")
+        sb.append(prior.isEmpty()
+                        ? "1. read_file on the finding file around the flagged line"
+                        : "1. read_file on the finding file around the flagged line (skip if the first review's "
+                                + "results above already show it)")
+                .append(" and find the NAME argument ")
                 .append("(2nd argument of setattr, the field name given to contribute_to_class or __set__, ")
                 .append("the property key of Object.defineProperty).\n");
         sb.append("2. If NAME is a variable, search its assignment in the enclosing function ")
@@ -397,6 +417,48 @@ final class SourceOriginHunt {
         sb.append("Prefer the finding's directory before a repo-wide search.\n\n");
         appendResponseFormat(sb, "\"writer\":\"path:line where NAME is set, or empty\",\"neutralizer_on_path\":\"none, "
                 + "or the allowlist check and whether this path calls it\",", "naming who sets NAME and the sink");
+        return sb.toString();
+    }
+
+    /**
+     * Repository reads and searches the first review already ran, so this pass does not repeat them.
+     * Results are kept whole and in order until {@link #MAX_ANALYZER_RESULTS_CHARS}; the rest are listed by header.
+     */
+    static String analyzerResultsSection(List<Map<String, Object>> analyzerMessages) {
+        if (analyzerMessages == null || analyzerMessages.isEmpty()) {
+            return "";
+        }
+        StringBuilder body = new StringBuilder();
+        List<String> omitted = new ArrayList<>();
+        for (Map<String, Object> message : analyzerMessages) {
+            Object content = message.get("content");
+            if (!"user".equals(message.get("role")) || content == null) {
+                continue;
+            }
+            String text = content.toString();
+            if (!text.startsWith(TOOL_RESULT_PREFIX) || text.contains("\nDuplicate action skipped")) {
+                continue;
+            }
+            if (body.length() + text.length() > MAX_ANALYZER_RESULTS_CHARS) {
+                int headerEnd = text.indexOf('\n', text.indexOf('\n') + 1);
+                omitted.add(headerEnd > 0 ? text.substring(0, headerEnd).replace('\n', ' ') : text);
+                continue;
+            }
+            body.append(text.strip()).append("\n\n");
+        }
+        if (body.isEmpty() && omitted.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("Repository results the first review already obtained (do not repeat these reads or searches):\n");
+        sb.append(body);
+        if (!omitted.isEmpty()) {
+            sb.append("Also already run, output not repeated here:\n");
+            for (String header : omitted) {
+                sb.append("- ").append(header).append('\n');
+            }
+            sb.append('\n');
+        }
         return sb.toString();
     }
 
@@ -436,6 +498,62 @@ final class SourceOriginHunt {
                 .append("\"in_repo_callers\":\"none, or path:line of each caller ")
                 .append("of the enclosing function\",\"trace\":\"2-4 sentences ").append(traceSubject).append(". ")
                 .append("No review machinery.\"}\n");
+    }
+
+    /**
+     * What the follow-up search established. Empty ({@link #none()}) when the hunt did not run.
+     * Passed to the verdict reviewer and to the remediation call that runs after the verdict is final.
+     */
+    static final class Report {
+        private final boolean ran;
+        private final boolean originFound;
+        private final String writer;
+        private final String neutralizer;
+        private final String trace;
+        private final String inputSource;
+
+        private Report(boolean ran, boolean originFound, String writer, String neutralizer,
+                       String trace, String inputSource) {
+            this.ran = ran;
+            this.originFound = originFound;
+            this.writer = writer == null ? "" : writer;
+            this.neutralizer = neutralizer == null ? "" : neutralizer;
+            this.trace = trace == null ? "" : trace;
+            this.inputSource = inputSource == null ? "" : inputSource;
+        }
+
+        static Report none() {
+            return new Report(false, false, "", "", "", "");
+        }
+
+        static Report of(boolean originFound, String writer, String neutralizer, String trace, String inputSource) {
+            return new Report(true, originFound, writer, neutralizer, trace, inputSource);
+        }
+
+        String toPromptSection() {
+            if (!ran) {
+                return "";
+            }
+            StringBuilder sb = new StringBuilder();
+            sb.append("## Source-origin hunt\n");
+            sb.append("A follow-up search looked for who writes the value that reaches this sink, ")
+                    .append("after the first review left the origin unresolved.\n");
+            sb.append("- Origin found: ").append(originFound ? "yes" : "no").append('\n');
+            if (!inputSource.isBlank()) {
+                sb.append("- input_source: ").append(inputSource.trim()).append('\n');
+            }
+            if (!writer.isBlank()) {
+                sb.append("- Writer: ").append(writer.trim()).append('\n');
+            }
+            if (!neutralizer.isBlank()) {
+                sb.append("- Neutralizer on this path: ").append(neutralizer.trim()).append('\n');
+            }
+            if (!trace.isBlank()) {
+                sb.append("- Trace: ").append(trace.trim()).append('\n');
+            }
+            sb.append('\n');
+            return sb.toString();
+        }
     }
 
     static String formatReport(boolean originFound, String writer, String neutralizer, String trace) {

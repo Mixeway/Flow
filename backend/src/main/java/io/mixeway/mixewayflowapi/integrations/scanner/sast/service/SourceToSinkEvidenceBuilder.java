@@ -26,7 +26,8 @@ public class SourceToSinkEvidenceBuilder implements SastEvidenceBuilder {
         String language = detectLanguage(item, context);
         String source = detectSource(combined, metadata.family());
         String sink = detectSink(metadata.family(), codeExtract, combined, item);
-        List<String> sanitizers = detectSanitizers(combined);
+        // Rule descriptions ship example fixes (e.g. sanitizeHtml); only scanned code may count as a sanitizer.
+        List<String> sanitizers = detectSanitizers(codeOnlyText(item, context));
         List<String> gaps = new ArrayList<>();
         if ("unknown".equals(source) && !"attribute_assignment".equals(sink)) {
             gaps.add("no attacker-controlled source found in supplied context");
@@ -67,21 +68,7 @@ public class SourceToSinkEvidenceBuilder implements SastEvidenceBuilder {
                 "If source or sink is missing from context, prefer UNCERTAIN unless surrounding code proves safety."));
         
         if (metadata.family() == VulnerabilityFamily.SQL_INJECTION) {
-            policyNotes.add("SQL injection CRITICAL RULE: If ALL concatenated values in the SQL query are primitive numeric types "
-                    + "(int, Integer, long, Long, short, double, float, etc.) as proven by function signature or variable declaration, "
-                    + "mark FALSE_POSITIVE with high confidence (>=0.85). Numeric primitives cannot inject SQL syntax. "
-                    + "If ANY String/Object is concatenated, evaluate normally for sanitization/parameterization.");
-            policyNotes.add("A variable containing SQL is not automatically exploitable. Prefer FALSE_POSITIVE when the SQL text "
-                    + "is a string literal/constant or is built only from parameterized binders/ORM APIs. Prefer UNCERTAIN when "
-                    + "the SQL argument origin is not proven by call sites or definitions.");
-            policyNotes.add("Config/query loaders (getSqlString/getQuery/etc.) are not automatically trusted — trace where "
-                    + "their SQL text originates before marking FALSE_POSITIVE.");
-            policyNotes.add("If SQL/DDL is built locally via concatenation of instance fields, getters, JSON, or resource "
-                    + "names (e.g. CREATE INDEX \" + field), call-site literals of the constructor/enclosing function "
-                    + "do not prove safety — chase those operands, not only call sites.");
-            policyNotes.add("RISKY SCHEME: trusted/literal/constant operands + string-concatenated SQL => "
-                    + "TRUE_POSITIVE with confidence ~0.55 (not FALSE_POSITIVE). High-confidence TRUE_POSITIVE "
-                    + "only when operands are untrusted/unknown non-literals.");
+            policyNotes.add(SqlInjectionDecisionOrder.SUMMARY + " The general UNCERTAIN rule above does not override it.");
         }
         if (metadata.family() == VulnerabilityFamily.COMMAND_INJECTION
                 && "attribute_assignment".equals(sink)) {
@@ -589,6 +576,13 @@ public class SourceToSinkEvidenceBuilder implements SastEvidenceBuilder {
     }
 
     private String combinedText(Item item, CodeContextExtractor.CodeContext context) {
+        return String.join("\n",
+                item == null || item.getTitle() == null ? "" : item.getTitle(),
+                item == null || item.getDescription() == null ? "" : item.getDescription(),
+                codeOnlyText(item, context));
+    }
+
+    private String codeOnlyText(Item item, CodeContextExtractor.CodeContext context) {
         String related = "";
         if (context != null && context.relatedFiles() != null && !context.relatedFiles().isEmpty()) {
             StringBuilder rb = new StringBuilder();
@@ -600,8 +594,6 @@ public class SourceToSinkEvidenceBuilder implements SastEvidenceBuilder {
             related = rb.toString();
         }
         return String.join("\n",
-                item == null || item.getTitle() == null ? "" : item.getTitle(),
-                item == null || item.getDescription() == null ? "" : item.getDescription(),
                 item == null || item.getCodeExtract() == null ? "" : item.getCodeExtract(),
                 context == null || context.functionBody() == null ? "" : context.functionBody(),
                 context == null || context.localSnippet() == null ? "" : context.localSnippet(),

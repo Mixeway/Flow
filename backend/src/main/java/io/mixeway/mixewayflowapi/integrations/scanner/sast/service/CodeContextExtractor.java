@@ -2789,16 +2789,17 @@ public class CodeContextExtractor {
             return fallbackContext(lines, targetIdx);
         }
 
+        int defLine = funcStart;
         while (funcStart > 0 && lines.get(funcStart - 1).trim().startsWith("@")) {
             funcStart--;
         }
 
         int funcEnd = lines.size() - 1;
-        for (int i = funcStart + 1; i < lines.size(); i++) {
+        for (int i = defLine + 1; i < lines.size(); i++) {
             String line = lines.get(i);
             if (line.trim().isEmpty()) continue;
             int indent = leadingSpaces(line);
-            if (indent <= funcIndent && !line.trim().startsWith("#") && !line.trim().startsWith("@")) {
+            if (indent <= funcIndent && !line.trim().startsWith("#")) {
                 funcEnd = i - 1;
                 break;
             }
@@ -2928,6 +2929,41 @@ public class CodeContextExtractor {
             "lib", "mod", "init", "handler", "handlers", "controller", "controllers",
             "views", "view", "routes", "route");
 
+    /**
+     * Python and Node standard-library module names. A repo file sharing one of these basenames
+     * (e.g. {@code fastapi/security/http.py}) is not imported by {@code from http.server import ...}
+     * or {@code require('http')}.
+     */
+    private static final Set<String> STDLIB_MODULE_NAMES = Set.of(
+            "argparse", "array", "ast", "asyncio", "base64", "binascii", "bisect", "calendar", "cgi",
+            "codecs", "collections", "concurrent", "configparser", "contextlib", "copy", "csv", "ctypes",
+            "dataclasses", "datetime", "decimal", "difflib", "email", "enum", "errno", "fnmatch",
+            "fractions", "ftplib", "functools", "getpass", "gettext", "glob", "gzip", "hashlib", "heapq",
+            "hmac", "html", "http", "imaplib", "importlib", "inspect", "ipaddress", "itertools", "json",
+            "locale", "logging", "lzma", "mailbox", "marshal", "math", "mimetypes", "mmap",
+            "multiprocessing", "numbers", "operator", "pathlib", "pickle", "pkgutil", "platform",
+            "plistlib", "pprint", "queue", "random", "sched", "secrets", "select", "selectors", "shelve",
+            "shlex", "shutil", "signal", "smtplib", "socket", "socketserver", "sqlite3", "stat",
+            "statistics", "string", "struct", "subprocess", "sys", "sysconfig", "tarfile", "tempfile",
+            "textwrap", "threading", "time", "timeit", "tkinter", "token", "tokenize", "traceback",
+            "types", "typing", "unicodedata", "unittest", "urllib", "uuid", "venv", "warnings", "wave",
+            "weakref", "webbrowser", "xml", "xmlrpc", "zipfile", "zipimport", "zlib", "zoneinfo",
+            "assert", "buffer", "child_process", "cluster", "console", "crypto", "dgram", "dns",
+            "events", "http2", "https", "net", "path", "process", "punycode", "querystring", "readline",
+            "repl", "stream", "string_decoder", "timers", "tls", "tty", "url", "util", "v8", "vm",
+            "worker_threads");
+
+    /**
+     * Drops lines importing the stdlib module itself: a JS/TS line with the bare specifier
+     * {@code 'NAME'} / {@code 'node:NAME'}, and the root of {@code import NAME} / {@code from NAME.x import}.
+     */
+    private static String withoutStdlibImports(String imports, String moduleName) {
+        String name = Pattern.quote(moduleName);
+        return imports
+                .replaceAll("(?m)^.*(['\"])(?:node:)?" + name + "\\1.*$", "")
+                .replaceAll("(?m)^(\\s*(?:import|from)\\s+)" + name + "(?=[.\\s,;]|$)", "$1");
+    }
+
     static boolean isImportedByStatic(String imports, String filename) {
         if (imports == null || imports.isBlank() || filename == null || filename.isBlank()) {
             return false;
@@ -2950,6 +2986,9 @@ public class CodeContextExtractor {
                     || GENERIC_MODULE_NAMES.contains(moduleName.toLowerCase(Locale.ROOT));
             if (tooGeneric) {
                 return false;
+            }
+            if (STDLIB_MODULE_NAMES.contains(moduleName)) {
+                return containsAsWord(withoutStdlibImports(imports, moduleName), moduleName);
             }
             return containsAsWord(imports, moduleName);
         } catch (RuntimeException e) {

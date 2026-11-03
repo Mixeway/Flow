@@ -543,7 +543,8 @@ export class ShowRepoComponent implements OnInit, AfterViewInit, OnDestroy {
         }
         this.repoService.getSastLlmProgress(+this.repoId).subscribe({
             next: (response) => {
-                this.llmProgress = response?.active
+                const active = !!response?.active;
+                this.llmProgress = active
                     ? { phase: response.phase, analyzed: response.analyzed, total: response.total }
                     : null;
             },

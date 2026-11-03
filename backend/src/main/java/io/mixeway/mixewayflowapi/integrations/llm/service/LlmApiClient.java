@@ -43,6 +43,7 @@ public class LlmApiClient {
     private final FindSettingsService findSettingsService;
     private final WebClient llmWebClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
+
     /** Set after a server rejects {@code response_format=json_object}, so later calls stay on the prompt fallback. */
     private volatile boolean jsonObjectFormatRejected;
 
@@ -180,8 +181,9 @@ public class LlmApiClient {
         while (System.currentTimeMillis() <= deadline) {
             attempt++;
             long startedAt = System.currentTimeMillis();
+            String responseJson = null;
             try {
-                String responseJson = llmWebClient.post()
+                responseJson = llmWebClient.post()
                         .uri(url)
                         .header("Authorization", "Bearer " + credentials.apiKey)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -208,8 +210,9 @@ public class LlmApiClient {
                 JsonNode choices = root.path("choices");
                 JsonNode message = choices.isArray() && !choices.isEmpty() ? choices.get(0).path("message") : null;
                 JsonNode contentNode = message == null ? null : message.get("content");
-                String content = messageText(contentNode);
+                String rawContent = messageText(contentNode);
                 String reasoningText = extraFieldText(message, "reasoning_content", "reasoning");
+                String content = rawContent;
                 if (!containsJsonObject(content) && containsJsonObject(reasoningText)) {
                     content = reasoningText;
                 } else if (content.isBlank() && !reasoningText.isBlank()) {
@@ -223,18 +226,25 @@ public class LlmApiClient {
                 if (choices.isArray() && !choices.isEmpty()) {
                     int promptTokens = root.path("usage").path("prompt_tokens").asInt(0);
                     int completionTokens = root.path("usage").path("completion_tokens").asInt(0);
-                    if (content.isBlank()) {
-                        String reason = finishReason(root);
-                        log.warn("[LlmApiClient] req#{} HTTP 200 but empty message.content (finish_reason={}, usage={}, content_node={}, reasoning_len={})",
-                                callId, reason, usageSummary(root), contentNodeType(contentNode),
-                                extraFieldLen(message, "reasoning_content", "reasoning"));
-                        if ("length".equals(reason) && !reducedReasoning) {
-                            log.warn("[LlmApiClient] req#{} output budget exhausted before content; retrying with reduced reasoning",
-                                    callId);
+                    boolean canReduce = canReduceReasoning(credentials.reasoningEffort, credentials.disableThinking);
+                    if (truncatedBeforeAnswer(finishReason(root), rawContent)) {
+                        log.warn("[LlmApiClient] req#{} output budget exhausted inside reasoning before any content "
+                                        + "(usage={}, reasoning_len={}, reduced_reasoning={}, can_reduce={})",
+                                callId, usageSummary(root), reasoningText.length(), reducedReasoning, canReduce);
+                        if (!reducedReasoning && canReduce) {
                             return doPost(url, credentials, messages, true, requestJsonObject);
                         }
+                        if (reducedReasoning) {
+                            // Truncated thinking is not an answer; passing it on would put it into the conversation history.
+                            return LlmResponse.empty();
+                        }
                     }
-                    if (shouldRetryProseOnly(requestJsonObject, reducedReasoning, content)) {
+                    if (content.isBlank()) {
+                        log.warn("[LlmApiClient] req#{} HTTP 200 but empty message.content (finish_reason={}, usage={}, content_node={}, reasoning_len={})",
+                                callId, finishReason(root), usageSummary(root), contentNodeType(contentNode),
+                                extraFieldLen(message, "reasoning_content", "reasoning"));
+                    }
+                    if (canReduce && shouldRetryProseOnly(requestJsonObject, reducedReasoning, content)) {
                         log.warn("[LlmApiClient] req#{} JSON requested but content has no JSON object (finish_reason={}, content_len={}); "
                                         + "retrying with reduced reasoning",
                                 callId, finishReason(root), content.length());
@@ -297,6 +307,7 @@ public class LlmApiClient {
         }
         return configured;
     }
+
 
     private int totalPromptChars(List<Map<String, Object>> messages) {
         int total = 0;
@@ -408,6 +419,19 @@ public class LlmApiClient {
     static boolean shouldRetryProseOnly(boolean requestJsonObject, boolean reducedReasoning, String content) {
         return requestJsonObject && !reducedReasoning && content != null && !content.isBlank()
                 && !containsParsableJsonObject(content);
+    }
+
+    /**
+     * Judged on the raw {@code content} field: thinking models put a long, cut-off reasoning trace
+     * in a separate field, which would otherwise mask the empty answer.
+     */
+    static boolean truncatedBeforeAnswer(String finishReason, String rawContent) {
+        return "length".equals(finishReason) && (rawContent == null || rawContent.isBlank());
+    }
+
+    /** Without one of these settings a "reduced reasoning" retry would resend the identical request. */
+    static boolean canReduceReasoning(String reasoningEffort, boolean disableThinking) {
+        return disableThinking || (reasoningEffort != null && !reasoningEffort.isBlank());
     }
 
     private static boolean containsParsableJsonObject(String value) {

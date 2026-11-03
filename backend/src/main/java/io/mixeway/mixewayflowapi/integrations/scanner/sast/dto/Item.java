@@ -42,6 +42,9 @@ public class Item {
     private transient String aiReasoning;
     @JsonIgnore
     private transient String aiRecommendation;
+    /** What a FALSE_POSITIVE rests on, as declared by the model ({@code analysis.safety_basis}); null when absent. */
+    @JsonIgnore
+    private transient String aiSafetyBasis;
 }
 
 
