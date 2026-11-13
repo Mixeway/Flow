@@ -16,13 +16,12 @@ import io.mixeway.mixewayflowapi.domain.finding.FindFindingService;
 import io.mixeway.mixewayflowapi.domain.team.FindTeamService;
 import io.mixeway.mixewayflowapi.integrations.repo.service.GitService;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.service.SastLlmProgress;
+import io.mixeway.mixewayflowapi.exceptions.AccessTokenVerificationException;
 import io.mixeway.mixewayflowapi.exceptions.CodeRepoNotFoundException;
-import io.mixeway.mixewayflowapi.exceptions.ScanThrottledException;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
 import io.mixeway.mixewayflowapi.exceptions.UnauthorizedException;
 import io.mixeway.mixewayflowapi.scanmanager.service.ScanManagerService;
 import io.mixeway.mixewayflowapi.utils.PermissionFactory;
-import com.fasterxml.jackson.core.JacksonException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.data.domain.Page;
@@ -31,11 +30,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.security.Principal;
-import java.util.Comparator;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -44,7 +40,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CodeRepoApiService {
 
-    private static final long MAX_SBOM_UPLOAD_BYTES = 50L * 1024 * 1024;
+    private static final long TOKEN_CHECK_TIMEOUT_SECONDS = 30;
 
     private final FindCodeRepoService findCodeRepoService;
     private final ScanManagerService scanManagerService;
@@ -166,53 +162,20 @@ public class CodeRepoApiService {
      */
     public void runScanFromUploadedSbom(Long repoId, MultipartFile file, String branchName, Principal principal)
             throws IOException {
-        if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("SBOM file is required.");
-        }
-        if (file.getSize() > MAX_SBOM_UPLOAD_BYTES) {
-            throw new IllegalArgumentException("SBOM file exceeds maximum allowed size (50 MB).");
-        }
-
-        CodeRepo repo = findCodeRepoService.findById(repoId, principal);
-        CodeRepoBranch branch;
-        if (branchName != null && !branchName.isBlank()) {
-            branch = getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(branchName.trim(), repo);
-        } else {
-            branch = repo.getDefaultBranch();
-        }
-
-        Path workDir = Files.createTempDirectory("flow-sbom-upload-");
-        Path target = workDir.resolve("sbom.json");
+        Path workDir = UploadedSbom.store(file, objectMapper);
         try {
-            try (var in = file.getInputStream()) {
-                Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+            CodeRepo repo = findCodeRepoService.findById(repoId, principal);
+            CodeRepoBranch branch;
+            if (branchName != null && !branchName.isBlank()) {
+                branch = getOrCreateCodeRepoBranchService.getOrCreateCodeRepoBranch(branchName.trim(), repo);
+            } else {
+                branch = repo.getDefaultBranch();
             }
-            objectMapper.readTree(target.toFile());
             scanManagerService.scanRepositoryFromUploadedSbom(repo, branch, workDir);
-        } catch (ScanThrottledException e) {
-            deleteSbomWorkDirQuietly(workDir);
+        } catch (RuntimeException e) {
+            // Throttled, repository not found, ...: no scan took the directory over.
+            UploadedSbom.deleteQuietly(workDir);
             throw e;
-        } catch (JacksonException e) {
-            deleteSbomWorkDirQuietly(workDir);
-            throw new IllegalArgumentException("Invalid JSON SBOM: " + e.getMessage(), e);
-        }
-    }
-
-    private void deleteSbomWorkDirQuietly(Path workDir) {
-        try {
-            if (Files.isDirectory(workDir)) {
-                try (var walk = Files.walk(workDir)) {
-                    walk.sorted(Comparator.reverseOrder()).forEach(p -> {
-                        try {
-                            Files.deleteIfExists(p);
-                        } catch (IOException ignored) {
-                            // best effort
-                        }
-                    });
-                }
-            }
-        } catch (IOException e) {
-            log.warn("[CodeRepo] Failed to delete SBOM work directory {}: {}", workDir, e.getMessage());
         }
     }
 
@@ -290,11 +253,33 @@ public class CodeRepoApiService {
         return "'" + team.getName() + "' (id=" + team.getId() + ")";
     }
 
+    /**
+     * Replaces the access token of a repository. The new token is first tried against the repository:
+     * one that does not grant access is rejected and the stored token stays in place.
+     */
     public void changeAccessToken(Long repoId, String accessToken, Principal principal) {
         CodeRepo repo = findCodeRepoService.findById(repoId)
                 .orElseThrow(() -> new CodeRepoNotFoundException("Repository not found"));
         permissionFactory.canUserManageTeam(repo.getTeam(), principal);
-        updateCodeRepoService.changeAccessToken(repo, accessToken);
+        String newToken = accessToken == null ? "" : accessToken.trim();
+        if (!newToken.isEmpty()) {
+            verifyAccessToken(repo, newToken);
+        }
+        updateCodeRepoService.changeAccessToken(repo, newToken);
+    }
+
+    private void verifyAccessToken(CodeRepo repo, String accessToken) {
+        GitService.RemoteAccessStatus status = gitService.checkRemoteAccess(
+                repo.getRepourl(), accessToken, repo.getType(), TOKEN_CHECK_TIMEOUT_SECONDS);
+        if (status == GitService.RemoteAccessStatus.VALID) {
+            return;
+        }
+        log.warn("[CodeRepo] New access token for repository {} failed verification: {}", describeRepo(repo), status);
+        throw new AccessTokenVerificationException(switch (status) {
+            case UNAUTHORIZED -> "The repository server rejected this token. The token was not saved.";
+            case NOT_FOUND -> "This token does not give access to the repository. The token was not saved.";
+            default -> "Could not reach the repository to test the token. The token was not saved.";
+        });
     }
 
     public void bulkChangeAccessToken(List<Long> repositoryIds, String accessToken, Principal principal) {

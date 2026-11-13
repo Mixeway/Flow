@@ -12,10 +12,10 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.net.URLEncoder;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +25,8 @@ public class JiraApiClientService {
     private final FindingRepository findingRepository;
 
     private static final int MAX_TICKETS_PER_BATCH = 30;
+    /** Footer of every ticket description Flow writes; tells Flow's tickets from the ones people created. */
+    private static final String CREATED_BY_FLOW_MARKER = "Ticket created automatically by Flow";
 
     /**
      * Creates a single JIRA ticket for one finding.
@@ -209,21 +211,121 @@ public class JiraApiClientService {
     }
 
     /**
-     * Closes a JIRA ticket by transitioning it to Done/Closed and adding a comment.
+     * Closes a JIRA ticket by walking its workflow until a closed status is reached, then leaves one
+     * comment saying why Flow acted and what became of the ticket - including when it could not be
+     * closed and has to be finished by hand.
+     *
+     * @param reasonText what happened to the finding, shown at the top of the comment
+     * @return whether the ticket is closed now
      */
-    public void closeTicket(JiraConfiguration config, String ticketKey, String comment) {
+    public boolean closeTicket(JiraConfiguration config, String ticketKey, String reasonText, JiraTicketCloser.Reason reason) {
+        JiraTicketCloser.Outcome outcome;
+        try {
+            outcome = JiraTicketCloser.close(new WorkflowGateway(config), ticketKey, reason);
+        } catch (Exception e) {
+            log.error("[JIRA] Error closing ticket {}: {}", ticketKey, describeError(e));
+            return false;
+        }
+        if (outcome.closed()) {
+            log.info("[JIRA] Ticket {} is closed. Workflow path: {}", ticketKey, String.join(" -> ", outcome.path()));
+        } else {
+            log.warn("[JIRA] Could not close ticket {}, left in status '{}' (path: {}): {}",
+                    ticketKey, outcome.finalStatus(), String.join(" -> ", outcome.path()), outcome.obstacle());
+        }
+        addTicketComment(config, ticketKey, JiraTicketCloser.comment(reasonText, outcome));
+        return outcome.closed();
+    }
+
+    /** Adds a comment to a ticket. A failure is logged and otherwise ignored. */
+    public void addTicketComment(JiraConfiguration config, String ticketKey, String comment) {
         try {
             addComment(config, ticketKey, comment);
-            String transitionId = findCloseTransitionId(config, ticketKey);
-            if (transitionId != null) {
-                transitionIssue(config, ticketKey, transitionId);
-                log.info("[JIRA] Closed ticket {} with comment", ticketKey);
-            } else {
-                log.warn("[JIRA] Could not find close/done transition for ticket {}", ticketKey);
-            }
         } catch (Exception e) {
-            log.error("[JIRA] Error closing ticket {}: {}", ticketKey, e.getMessage());
+            log.error("[JIRA] Error commenting on ticket {}: {}", ticketKey, describeError(e));
         }
+    }
+
+    /**
+     * Strikes through, in the description of a ticket covering several findings, the findings that no
+     * longer need attention. The ticket stays usable when this fails, so a failure is only logged.
+     */
+    @SuppressWarnings("unchecked")
+    public void strikeClosedFindingsInDescription(JiraConfiguration config, String ticketKey,
+                                                  List<JiraGroupTicketText.ClosedFinding> closed) {
+        if (closed.isEmpty()) {
+            return;
+        }
+        try {
+            Map<String, Object> issue = webClient.get()
+                    .uri(config.getJiraUrl() + "/rest/api/2/issue/{key}?fields=description", ticketKey)
+                    .headers(h -> buildAuthHeaders(h, config))
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .block();
+            Map<String, Object> fields = issue != null ? (Map<String, Object>) issue.get("fields") : null;
+            if (fields == null || !(fields.get("description") instanceof String description)) {
+                return;
+            }
+            String updated = JiraGroupTicketText.strikeClosedFindings(description, closed);
+            if (updated.equals(description)) {
+                return;
+            }
+            webClient.put()
+                    .uri(config.getJiraUrl() + "/rest/api/2/issue/{key}", ticketKey)
+                    .headers(h -> buildAuthHeaders(h, config))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(Map.of("fields", Map.of("description", updated)))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+            log.info("[JIRA] Marked closed findings in the description of ticket {}", ticketKey);
+        } catch (Exception e) {
+            log.warn("[JIRA] Could not mark closed findings in the description of ticket {}: {}", ticketKey, describeError(e));
+        }
+    }
+
+    /**
+     * With sub-tasks enabled the findings sit on the sub-tasks and the parent task only groups them.
+     * Once its last sub-task is closed, the parent - if it is one Flow created - is closed too.
+     */
+    @SuppressWarnings("unchecked")
+    public void closeParentIfAllSubtasksClosed(JiraConfiguration config, String subtaskKey, JiraTicketCloser.Reason reason) {
+        try {
+            Map<String, Object> subtaskFields = fetchIssueFields(config, subtaskKey, "parent");
+            if (subtaskFields == null || !(subtaskFields.get("parent") instanceof Map<?, ?> parent) || parent.get("key") == null) {
+                return;
+            }
+            String parentKey = String.valueOf(parent.get("key"));
+            Map<String, Object> parentFields = fetchIssueFields(config, parentKey, "subtasks,description");
+            if (parentFields == null
+                    || !(parentFields.get("description") instanceof String description)
+                    || !description.contains(CREATED_BY_FLOW_MARKER)
+                    || !(parentFields.get("subtasks") instanceof List<?> subtasks)
+                    || subtasks.isEmpty()) {
+                return;
+            }
+            for (Object subtask : subtasks) {
+                Map<String, Object> fields = subtask instanceof Map<?, ?> map ? (Map<String, Object>) map.get("fields") : null;
+                JiraTicketCloser.Status status = fields != null ? toStatus((Map<String, Object>) fields.get("status")) : null;
+                if (status == null || !status.isClosed()) {
+                    return;
+                }
+            }
+            closeTicket(config, parentKey, "All " + subtasks.size() + " sub-tasks of this ticket are closed.", reason);
+        } catch (Exception e) {
+            log.warn("[JIRA] Could not check the parent of ticket {}: {}", subtaskKey, describeError(e));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> fetchIssueFields(JiraConfiguration config, String ticketKey, String fieldNames) {
+        Map<String, Object> issue = webClient.get()
+                .uri(config.getJiraUrl() + "/rest/api/2/issue/{key}?fields={fields}", ticketKey, fieldNames)
+                .headers(h -> buildAuthHeaders(h, config))
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block();
+        return issue != null ? (Map<String, Object>) issue.get("fields") : null;
     }
 
     /**
@@ -552,45 +654,131 @@ public class JiraApiClientService {
                 .block();
     }
 
-    @SuppressWarnings("unchecked")
-    private String findCloseTransitionId(JiraConfiguration config, String ticketKey) {
-        try {
-            Map<String, Object> response = webClient.get()
-                    .uri(config.getJiraUrl() + "/rest/api/2/issue/" + ticketKey + "/transitions")
+    /** Reads and moves a ticket through its workflow on behalf of {@link JiraTicketCloser}. */
+    private final class WorkflowGateway implements JiraTicketCloser.Gateway {
+        private final JiraConfiguration config;
+
+        private WorkflowGateway(JiraConfiguration config) {
+            this.config = config;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public JiraTicketCloser.Status currentStatus(String ticketKey) {
+            Map<String, Object> issue = webClient.get()
+                    .uri(config.getJiraUrl() + "/rest/api/2/issue/{key}?fields=status", ticketKey)
                     .headers(h -> buildAuthHeaders(h, config))
                     .retrieve()
                     .bodyToMono(Map.class)
                     .block();
-
-            if (response != null && response.containsKey("transitions")) {
-                List<Map<String, Object>> transitions = (List<Map<String, Object>>) response.get("transitions");
-                for (Map<String, Object> transition : transitions) {
-                    String name = (String) transition.get("name");
-                    if (name != null && (name.equalsIgnoreCase("Done") || name.equalsIgnoreCase("Close")
-                            || name.equalsIgnoreCase("Closed") || name.equalsIgnoreCase("Resolve"))) {
-                        return (String) transition.get("id");
-                    }
-                }
-                if (!transitions.isEmpty()) {
-                    return (String) transitions.get(transitions.size() - 1).get("id");
-                }
+            Map<String, Object> fields = issue != null ? (Map<String, Object>) issue.get("fields") : null;
+            JiraTicketCloser.Status status = fields != null ? toStatus((Map<String, Object>) fields.get("status")) : null;
+            if (status == null) {
+                throw new IllegalStateException("JIRA did not return the status of ticket " + ticketKey);
             }
-        } catch (Exception e) {
-            log.error("[JIRA] Error finding transitions for {}: {}", ticketKey, e.getMessage());
+            return status;
         }
-        return null;
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public List<JiraTicketCloser.Transition> availableTransitions(String ticketKey) {
+            Map<String, Object> response = webClient.get()
+                    .uri(config.getJiraUrl() + "/rest/api/2/issue/{key}/transitions?expand=transitions.fields", ticketKey)
+                    .headers(h -> buildAuthHeaders(h, config))
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .block();
+            List<JiraTicketCloser.Transition> transitions = new ArrayList<>();
+            if (response == null || !(response.get("transitions") instanceof List<?> raw)) {
+                return transitions;
+            }
+            for (Object item : raw) {
+                Map<String, Object> transition = (Map<String, Object>) item;
+                JiraTicketCloser.Status to = toStatus((Map<String, Object>) transition.get("to"));
+                if (to == null) {
+                    continue;
+                }
+                transitions.add(new JiraTicketCloser.Transition(
+                        String.valueOf(transition.get("id")),
+                        String.valueOf(transition.get("name")),
+                        to,
+                        toTransitionFields((Map<String, Object>) transition.get("fields"))));
+            }
+            return transitions;
+        }
+
+        @Override
+        public void transition(String ticketKey, JiraTicketCloser.Transition transition, Map<String, Object> fields) {
+            Map<String, Object> body = new HashMap<>();
+            body.put("transition", Map.of("id", transition.id()));
+            if (!fields.isEmpty()) {
+                body.put("fields", fields);
+            }
+            try {
+                webClient.post()
+                        .uri(config.getJiraUrl() + "/rest/api/2/issue/{key}/transitions", ticketKey)
+                        .headers(h -> buildAuthHeaders(h, config))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(body)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            } catch (WebClientResponseException e) {
+                throw new IllegalStateException(describeError(e), e);
+            }
+        }
     }
 
-    private void transitionIssue(JiraConfiguration config, String ticketKey, String transitionId) {
-        Map<String, Object> body = Map.of("transition", Map.of("id", transitionId));
-        webClient.post()
-                .uri(config.getJiraUrl() + "/rest/api/2/issue/" + ticketKey + "/transitions")
-                .headers(h -> buildAuthHeaders(h, config))
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(body)
-                .retrieve()
-                .bodyToMono(String.class)
-                .block();
+    @SuppressWarnings("unchecked")
+    private static JiraTicketCloser.Status toStatus(Map<String, Object> status) {
+        if (status == null || status.get("id") == null) {
+            return null;
+        }
+        Map<String, Object> category = (Map<String, Object>) status.get("statusCategory");
+        return new JiraTicketCloser.Status(
+                String.valueOf(status.get("id")),
+                String.valueOf(status.get("name")),
+                category != null && category.get("key") != null ? String.valueOf(category.get("key")) : "");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<JiraTicketCloser.TransitionField> toTransitionFields(Map<String, Object> fields) {
+        List<JiraTicketCloser.TransitionField> result = new ArrayList<>();
+        if (fields == null) {
+            return result;
+        }
+        for (Map.Entry<String, Object> entry : fields.entrySet()) {
+            if (!(entry.getValue() instanceof Map<?, ?>)) {
+                continue;
+            }
+            Map<String, Object> field = (Map<String, Object>) entry.getValue();
+            List<JiraTicketCloser.AllowedValue> allowedValues = new ArrayList<>();
+            if (field.get("allowedValues") instanceof List<?> rawValues) {
+                for (Object rawValue : rawValues) {
+                    if (rawValue instanceof Map<?, ?> value && value.get("id") != null) {
+                        allowedValues.add(new JiraTicketCloser.AllowedValue(
+                                String.valueOf(value.get("id")),
+                                value.get("name") != null ? String.valueOf(value.get("name")) : null));
+                    }
+                }
+            }
+            result.add(new JiraTicketCloser.TransitionField(
+                    entry.getKey(),
+                    field.get("name") != null ? String.valueOf(field.get("name")) : entry.getKey(),
+                    Boolean.TRUE.equals(field.get("required")),
+                    Boolean.TRUE.equals(field.get("hasDefaultValue")),
+                    allowedValues));
+        }
+        return result;
+    }
+
+    /** The HTTP status together with what JIRA said in the response body, which names the actual problem. */
+    private String describeError(Exception e) {
+        if (e instanceof WebClientResponseException response) {
+            String body = response.getResponseBodyAsString();
+            return response.getStatusCode() + (body.isBlank() ? "" : " - " + truncate(body, 500));
+        }
+        return e.getMessage();
     }
 
     private void buildAuthHeaders(HttpHeaders headers, JiraConfiguration config) {
@@ -701,7 +889,7 @@ public class JiraApiClientService {
             sb.append("{noformat}").append(truncate(finding.getExplanation(), 3000)).append("{noformat}\n");
         }
 
-        sb.append("\n----\n_Ticket created automatically by Flow_\n");
+        sb.append("\n----\n_" + CREATED_BY_FLOW_MARKER + "_\n");
         return sb.toString();
     }
 
@@ -783,7 +971,7 @@ public class JiraApiClientService {
             sb.append(first.getVulnerability().getRecommendation()).append("\n");
         }
 
-        sb.append("\n----\n_Ticket created automatically by Flow_\n");
+        sb.append("\n----\n_" + CREATED_BY_FLOW_MARKER + "_\n");
         return sb.toString();
     }
 
@@ -862,40 +1050,73 @@ public class JiraApiClientService {
         return "customfield_10014";
     }
 
+    /** Issue search on Jira Server / Data Center. Atlassian Cloud removed it (410 Gone). */
+    private static final String SEARCH_API_SERVER = "/rest/api/2/search";
+    /** Issue search on Atlassian Cloud. Does not exist on Server / Data Center (404). */
+    private static final String SEARCH_API_CLOUD = "/rest/api/3/search/jql";
+
     /**
      * Fetches epics from the configured JIRA project.
+     * Cloud and Server / Data Center expose issue search under different endpoints, so the one
+     * matching the URL is tried first and the other one only if the first does not exist.
      */
-    @SuppressWarnings("unchecked")
     public List<Map<String, String>> fetchEpics(String jiraUrl, String jiraUsername, String jiraToken,
                                                  String projectKey, String authType) {
         String normalizedUrl = jiraUrl.endsWith("/") ? jiraUrl.substring(0, jiraUrl.length() - 1) : jiraUrl;
-        String jql = "project=" + projectKey + " AND issuetype=Epic AND resolution=Unresolved ORDER BY created DESC";
+        boolean isCloud = normalizedUrl.contains(".atlassian.net");
+        String quotedProjectKey = "\"" + projectKey.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+        String jql = "project = " + quotedProjectKey + " AND issuetype = Epic AND resolution = Unresolved ORDER BY created DESC";
 
-        try {
-            String raw = webClient.get()
-                    .uri(normalizedUrl + "/rest/api/2/search?jql=" + URLEncoder.encode(jql, java.nio.charset.StandardCharsets.UTF_8) + "&maxResults=100&fields=summary,key")
-                    .headers(h -> buildTempAuthHeaders(h, jiraUsername, jiraToken, authType))
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+        List<String> searchApis = isCloud
+                ? List.of(SEARCH_API_CLOUD, SEARCH_API_SERVER)
+                : List.of(SEARCH_API_SERVER, SEARCH_API_CLOUD);
 
-            if (raw != null) {
-                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                Map<String, Object> parsed = mapper.readValue(raw, Map.class);
-                List<Map<String, Object>> issues = (List<Map<String, Object>>) parsed.get("issues");
-                if (issues != null) {
-                    return issues.stream().map(issue -> {
-                        String key = (String) issue.get("key");
-                        Map<String, Object> issueFields = (Map<String, Object>) issue.get("fields");
-                        String summary = issueFields != null ? (String) issueFields.get("summary") : "";
-                        return Map.of("key", key, "name", summary != null ? summary : "");
-                    }).collect(Collectors.toList());
+        for (String searchApi : searchApis) {
+            try {
+                return searchEpics(normalizedUrl + searchApi, jql, jiraUsername, jiraToken, authType);
+            } catch (WebClientResponseException e) {
+                log.warn("[JIRA] Error fetching epics for project {} via {}: {} - response: {}",
+                        projectKey, searchApi, e.getMessage(), truncate(e.getResponseBodyAsString(), 1000));
+                int status = e.getStatusCode().value();
+                if (status != 404 && status != 410) {
+                    // The endpoint exists and rejected the request; the other one would not do better.
+                    break;
                 }
+            } catch (Exception e) {
+                log.warn("[JIRA] Error fetching epics for project {} via {}: {}", projectKey, searchApi, e.getMessage());
+                break;
             }
-        } catch (Exception e) {
-            log.warn("[JIRA] Error fetching epics for project {}: {}", projectKey, e.getMessage());
         }
         return List.of();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, String>> searchEpics(String searchUrl, String jql, String jiraUsername,
+                                                  String jiraToken, String authType) throws Exception {
+        // The JQL goes in as a URI template variable: WebClient encodes it once. Encoding it here
+        // as well would be applied twice ("%3D" -> "%253D") and JIRA would reject the query.
+        String raw = webClient.get()
+                .uri(searchUrl + "?jql={jql}&maxResults=100&fields=summary", jql)
+                .headers(h -> buildTempAuthHeaders(h, jiraUsername, jiraToken, authType))
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+
+        if (raw == null) {
+            return List.of();
+        }
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        Map<String, Object> parsed = mapper.readValue(raw, Map.class);
+        List<Map<String, Object>> issues = (List<Map<String, Object>>) parsed.get("issues");
+        if (issues == null) {
+            return List.of();
+        }
+        return issues.stream().map(issue -> {
+            String key = (String) issue.get("key");
+            Map<String, Object> issueFields = (Map<String, Object>) issue.get("fields");
+            String summary = issueFields != null ? (String) issueFields.get("summary") : "";
+            return Map.of("key", key, "name", summary != null ? summary : "");
+        }).collect(Collectors.toList());
     }
 
     /**

@@ -240,7 +240,13 @@ public class FindingsByTeamService {
             for (Long findingId : findingIds) {
                 Optional<Finding> finding = findFindingService.findById(findingId);
                 if (finding.isPresent() && codeRepos.contains(finding.get().getCodeRepo())) {
-                    updateFindingService.suppressFinding(finding.get(), Finding.SuppressedReason.FALSE_POSITIVE.toString(), suppressedUntil);
+                    // Same reach as suppressing a single finding: every branch of the repository.
+                    updateFindingService.suppressFindingAcrossBranches(finding.get(),
+                            finding.get().getCodeRepo().getId(),
+                            finding.get().getLocation(),
+                            finding.get().getVulnerability().getId(),
+                            Finding.SuppressedReason.FALSE_POSITIVE.toString(),
+                            suppressedUntil);
                 }
             }
             return new StatusDTO("OK");
@@ -275,7 +281,7 @@ public class FindingsByTeamService {
             List<CodeRepo> codeRepos = findCodeRepoService.findByTeam(team);
             Optional<Finding> finding = findFindingService.findById(findingId);
             if (finding.isPresent() && codeRepos.contains(finding.get().getCodeRepo())) {
-                updateFindingService.reactivate(finding.get());
+                updateFindingService.reactivateAcrossBranches(finding.get());
             }
 
             return new StatusDTO("OK");
