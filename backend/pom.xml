@@ -28,6 +28,9 @@
     </scm>
     <properties>
         <java.version>22</java.version>
+        <!-- Docker Engine 29 (GitHub's ubuntu-26.04 runners, current Docker Desktop) no longer accepts
+             the Docker API version spoken by the Testcontainers that Spring Boot 3.3 manages (1.19.x). -->
+        <testcontainers.version>1.21.4</testcontainers.version>
     </properties>
     <dependencies>
         <dependency>
