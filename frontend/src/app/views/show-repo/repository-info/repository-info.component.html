@@ -267,14 +267,18 @@
     </c-modal-header>
     <c-modal-body>
         <label class="form-label">New access token</label>
-        <input cFormControl type="password" [(ngModel)]="tokenForm.accessToken" />
+        <input cFormControl type="password" autocomplete="off" [(ngModel)]="tokenForm.accessToken"
+               [disabled]="tokenSaving" (keyup.enter)="confirmTokenChange()" />
+        <div class="form-text">
+            The token is tested against this repository first. It is saved only if the test passes.
+        </div>
         <div *ngIf="tokenError" class="text-danger mt-2">{{ tokenError }}</div>
     </c-modal-body>
     <c-modal-footer>
         <button cButton color="secondary" variant="ghost" (click)="tokenModalVisible=false">Cancel</button>
         <button cButton color="dark" [disabled]="tokenSaving" (click)="confirmTokenChange()">
             <c-spinner size="sm" *ngIf="tokenSaving" class="me-2"></c-spinner>
-            Save
+            {{ tokenSaving ? 'Testing token…' : 'Test and save' }}
         </button>
     </c-modal-footer>
 </c-modal>

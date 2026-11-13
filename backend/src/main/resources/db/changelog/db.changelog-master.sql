@@ -898,3 +898,6 @@ ALTER TABLE settings ADD COLUMN IF NOT EXISTS dast_llm_disable_thinking BOOLEAN 
 
 --changeset majaberej:comment-user-optional
 ALTER TABLE comment ALTER COLUMN user_id DROP NOT NULL;
+
+--changeset siewer:finding-fingerprint
+ALTER TABLE finding ADD COLUMN IF NOT EXISTS fingerprint VARCHAR(64);

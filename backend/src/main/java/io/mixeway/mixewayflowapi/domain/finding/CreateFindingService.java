@@ -1,6 +1,7 @@
 package io.mixeway.mixewayflowapi.domain.finding;
 
 import io.mixeway.mixewayflowapi.db.entity.*;
+import io.mixeway.mixewayflowapi.db.projection.SuppressedFindingProjection;
 import io.mixeway.mixewayflowapi.db.repository.CodeRepoRepository;
 import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
 import io.mixeway.mixewayflowapi.domain.coderepo.UpdateCodeRepoService;
@@ -24,10 +25,14 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -56,26 +61,51 @@ public class CreateFindingService {
         } else {
             existingFindings = findingRepository.findBySourceAndCodeRepoBranchAndCodeRepo(source, repoWhereFindingWasFound, repoInWhichFindingWasFound);
         }
+        for (Finding newFinding : newFindings) {
+            if (newFinding.getFingerprint() == null) {
+                newFinding.identifyBy(FindingFingerprint.of(newFinding));
+            }
+        }
         // Create a map for quick lookup of existing findings by key (vulnerability, severity, location)
         var existingFindingsMap = existingFindings.stream()
                 .collect(Collectors.toMap(this::findingKey, finding -> finding));
+        // Edits elsewhere in a file move a finding to another line; it is still the same finding.
+        Map<Finding, Finding> movedFindings = findMovedFindings(newFindings, existingFindingsMap);
+
+        // A suppression is a decision about a vulnerability at a location in the repository, not about
+        // one branch: whatever was reviewed on a feature branch has to stay suppressed after the merge.
+        RepoSuppressions repoSuppressions = loadRepoSuppressions(repoInWhichFindingWasFound);
+        Map<String, Long> scannedPerIdentity = newFindings.stream()
+                .map(this::identityKey)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.groupingBy(identity -> identity, Collectors.counting()));
+        int inheritedSuppressions = 0;
+        int relocatedFindings = 0;
 
         // Update or create new findings
         List<Finding> findingsForJira = new ArrayList<>();
         for (Finding newFinding : newFindings) {
-            String key = findingKey(newFinding);
-            if (existingFindingsMap.containsKey(key)) {
-                Finding existingFinding = existingFindingsMap.get(key);
-                if (existingFinding.getStatus() == Finding.Status.REMOVED) {
-                    existingFinding.updateStatus(Finding.Status.EXISTING, existingFinding.getSuppressedReason());
-                } else if (existingFinding.getStatus() != Finding.Status.SUPRESSED) {
-                    existingFinding.updateStatus(Finding.Status.EXISTING, existingFinding.getSuppressedReason());
+            Finding existingFinding = existingFindingsMap.remove(findingKey(newFinding));
+            if (existingFinding == null && movedFindings.containsKey(newFinding)) {
+                existingFinding = movedFindings.get(newFinding);
+                existingFindingsMap.remove(findingKey(existingFinding));
+                existingFinding.relocate(newFinding.getLocation(), newFinding.getExplanation());
+                relocatedFindings++;
+            }
+            if (existingFinding != null) {
+                existingFinding.identifyBy(newFinding.getFingerprint());
+                if (existingFinding.getStatus() != Finding.Status.SUPRESSED) {
+                    existingFinding.updateStatus(Finding.Status.EXISTING, null);
+                    // The finding was already known on this branch when the same one got suppressed on another.
+                    if (inheritSuppressionAtSameLocation(existingFinding, repoSuppressions)) {
+                        inheritedSuppressions++;
+                        jiraTicketLifecycleService.onFindingSuppressed(existingFinding);
+                    }
                 }
                 existingFinding.copyAiVerificationFrom(newFinding);
                 applyAiFalsePositive(existingFinding);
                 existingFinding.noteFindingDetected();  // Ensure updatedDate is always updated
                 findingRepository.saveAndFlush(existingFinding);
-                existingFindingsMap.remove(key);
                 // Include existing findings without a JIRA ticket (e.g. JIRA integration enabled after scans started)
                 if (existingFinding.getStatus() == Finding.Status.EXISTING
                         && (existingFinding.getJiraTicketKey() == null || existingFinding.getJiraTicketKey().isBlank())) {
@@ -83,20 +113,10 @@ public class CreateFindingService {
                 }
             } else {
                 // Auto-suppress across branches: if (repo, vuln, location) is already SUPRESSED in any branch, inherit that state
-                if (repoInWhichFindingWasFound != null) {
-                    Finding exemplar = findingRepository.findFirstByCodeRepoAndVulnerabilityAndLocationAndStatus(
-                            repoInWhichFindingWasFound,
-                            newFinding.getVulnerability(),
-                            newFinding.getLocation(),
-                            Finding.Status.SUPRESSED
-                    );
-                    if (exemplar != null) {
-                        newFinding.updateStatus(Finding.Status.SUPRESSED, exemplar.getSuppressedReason(), exemplar.getSuppressedUntil());
-                    } else {
-                        newFinding.updateStatus(Finding.Status.NEW, null);
-                    }
-                } else {
-                    newFinding.updateStatus(Finding.Status.NEW, null);
+                newFinding.updateStatus(Finding.Status.NEW, null);
+                if (inheritSuppressionAtSameLocation(newFinding, repoSuppressions)
+                        || inheritSuppressionOfMovedCode(newFinding, repoInWhichFindingWasFound, repoSuppressions, scannedPerIdentity)) {
+                    inheritedSuppressions++;
                 }
                 applyAiFalsePositive(newFinding);
                 Finding savedFinding = findingRepository.saveAndFlush(newFinding);
@@ -126,10 +146,141 @@ public class CreateFindingService {
         }
         if (repoInWhichFindingWasFound != null) {
             log.info("[Finding Service] Saved {} findings for {}. Source: {}", newFindings.size(), repoInWhichFindingWasFound.getName(), source.toString());
+            if (relocatedFindings > 0) {
+                log.info("[Finding Service] {} finding(s) in {} recognised at a new line of the same file. Source: {}",
+                        relocatedFindings, repoInWhichFindingWasFound.getName(), source);
+            }
+            if (inheritedSuppressions > 0) {
+                log.info("[Finding Service] {} finding(s) in {} inherited a suppression made on another branch. Source: {}",
+                        inheritedSuppressions, repoInWhichFindingWasFound.getName(), source);
+            }
         } else {
             log.info("[Finding Service] Saved {} findings. Source: {}", newFindings.size(), source.toString());
         }
 
+    }
+
+    /**
+     * Pairs findings the scan reports at a location where the branch had none with the known finding
+     * they are: same vulnerability, severity and fingerprint, and no longer reported where it used to be.
+     * A pair is made only when it is the single possibility on both sides; identical code flagged twice
+     * in a file cannot be told apart, and guessing could hand a suppression to the wrong occurrence.
+     */
+    private Map<Finding, Finding> findMovedFindings(List<Finding> scanned, Map<String, Finding> knownByKey) {
+        Set<String> scannedKeys = scanned.stream().map(this::findingKey).collect(Collectors.toSet());
+        Map<String, List<Finding>> appeared = scanned.stream()
+                .filter(finding -> !knownByKey.containsKey(findingKey(finding)) && movedKey(finding) != null)
+                .collect(Collectors.groupingBy(this::movedKey));
+        Map<String, List<Finding>> disappeared = knownByKey.values().stream()
+                .filter(finding -> !scannedKeys.contains(findingKey(finding)) && movedKey(finding) != null)
+                .collect(Collectors.groupingBy(this::movedKey));
+
+        // Scanned findings have no id yet and would all be equal to each other.
+        Map<Finding, Finding> moved = new IdentityHashMap<>();
+        appeared.forEach((identity, findings) -> {
+            if (findings.size() != 1) {
+                return;
+            }
+            List<Finding> candidates = disappeared.getOrDefault(identity, List.of());
+            // A finding removed long ago may have left a row behind; the one still alive is the one that moved.
+            List<Finding> alive = candidates.stream().filter(finding -> finding.getStatus() != Finding.Status.REMOVED).toList();
+            if (alive.size() == 1) {
+                moved.put(findings.get(0), alive.get(0));
+            } else if (alive.isEmpty() && candidates.size() == 1) {
+                moved.put(findings.get(0), candidates.get(0));
+            }
+        });
+        return moved;
+    }
+
+    private String movedKey(Finding finding) {
+        String fingerprint = FindingFingerprint.of(finding);
+        if (fingerprint == null || finding.getVulnerability() == null) {
+            return null;
+        }
+        return finding.getVulnerability().getId() + "|" + finding.getSeverity() + "|" + fingerprint;
+    }
+
+    /** Suppressions in force in the repository: by vulnerability and location, and by vulnerability and fingerprint. */
+    private record RepoSuppressions(Map<String, SuppressedFindingProjection> byLocation,
+                                    Map<String, SuppressedFindingProjection> byFingerprint) {
+    }
+
+    private RepoSuppressions loadRepoSuppressions(CodeRepo codeRepo) {
+        RepoSuppressions suppressions = new RepoSuppressions(new HashMap<>(), new HashMap<>());
+        if (codeRepo == null) {
+            return suppressions;
+        }
+        LocalDate today = LocalDate.now();
+        for (SuppressedFindingProjection suppressed : findingRepository.findSuppressedInRepo(codeRepo)) {
+            if (isInForce(suppressed.getSuppressedReason(), suppressed.getSuppressedUntil(), today)) {
+                suppressions.byLocation().putIfAbsent(suppressed.getVulnerabilityId() + "|" + suppressed.getLocation(), suppressed);
+                if (suppressed.getFingerprint() != null) {
+                    suppressions.byFingerprint().putIfAbsent(suppressed.getVulnerabilityId() + "|" + suppressed.getFingerprint(), suppressed);
+                }
+            }
+        }
+        return suppressions;
+    }
+
+    private boolean inheritSuppressionAtSameLocation(Finding finding, RepoSuppressions repoSuppressions) {
+        if (finding.getVulnerability() == null) {
+            return false;
+        }
+        SuppressedFindingProjection suppressed = repoSuppressions.byLocation()
+                .get(finding.getVulnerability().getId() + "|" + finding.getLocation());
+        if (suppressed == null) {
+            return false;
+        }
+        finding.updateStatus(Finding.Status.SUPRESSED, suppressed.getSuppressedReason(), suppressed.getSuppressedUntil());
+        return true;
+    }
+
+    /**
+     * A merge usually shifts line numbers, so the finding reviewed on the feature branch shows up on the
+     * target branch at another line of the same file. It is recognised by its fingerprint - the flagged
+     * content being identical. When the scan reports that content more than once in the file there is no
+     * telling which occurrence was reviewed, so none of them inherits the suppression.
+     */
+    private boolean inheritSuppressionOfMovedCode(Finding finding, CodeRepo codeRepo, RepoSuppressions repoSuppressions,
+                                                  Map<String, Long> scannedPerIdentity) {
+        String identity = identityKey(finding);
+        if (codeRepo == null || identity == null || scannedPerIdentity.getOrDefault(identity, 0L) != 1L) {
+            return false;
+        }
+        SuppressedFindingProjection sameFingerprint = repoSuppressions.byFingerprint().get(identity);
+        if (sameFingerprint != null) {
+            finding.updateStatus(Finding.Status.SUPRESSED, sameFingerprint.getSuppressedReason(), sameFingerprint.getSuppressedUntil());
+            return true;
+        }
+        if (!FindingFingerprint.LINE_BASED_SOURCES.contains(finding.getSource())) {
+            return false;
+        }
+        // Findings suppressed before fingerprints were stored are recognised by their explanation.
+        String file = FindingFingerprint.fileOf(finding.getLocation());
+        LocalDate today = LocalDate.now();
+        for (Finding suppressed : findingRepository.findSuppressedWithSameExplanation(
+                codeRepo, finding.getVulnerability(), finding.getSource(), finding.getExplanation())) {
+            if (file != null && file.equals(FindingFingerprint.fileOf(suppressed.getLocation()))
+                    && isInForce(suppressed.getSuppressedReason(), suppressed.getSuppressedUntil(), today)) {
+                finding.updateStatus(Finding.Status.SUPRESSED, suppressed.getSuppressedReason(), suppressed.getSuppressedUntil());
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** A temporary suppression expires on its end date, when the scheduler re-activates the finding. */
+    private static boolean isInForce(Finding.SuppressedReason reason, LocalDate suppressedUntil, LocalDate today) {
+        return reason != null && (suppressedUntil == null || suppressedUntil.isAfter(today));
+    }
+
+    /** What a finding is regardless of its line: vulnerability and fingerprint. Null without a fingerprint. */
+    private String identityKey(Finding finding) {
+        if (finding.getFingerprint() == null || finding.getVulnerability() == null) {
+            return null;
+        }
+        return finding.getVulnerability().getId() + "|" + finding.getFingerprint();
     }
 
     /**
@@ -198,7 +349,7 @@ public class CreateFindingService {
     public List<Finding> mapSecretsToFindings(List<Secret> secrets, CodeRepoBranch codeRepoBranch, CodeRepo codeRepo) {
         return secrets.stream().map(secret -> {
             Vulnerability vulnerability = getOrCreateVulnerabilityService.getOrCreate(secret.getDescription(), null, null, null, null, null, null, null);
-            return new Finding(
+            Finding finding = new Finding(
                     vulnerability,
                     null,
                     codeRepoBranch,
@@ -209,6 +360,8 @@ public class CreateFindingService {
                     Finding.Severity.CRITICAL,
                     Finding.Source.SECRETS
             );
+            finding.identifyBy(FindingFingerprint.ofSecret(secret.getFile(), secret.getRuleId(), secret.getSecret()));
+            return finding;
         }).collect(Collectors.toList());
     }
 

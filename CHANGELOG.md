@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.14] - 2026-11-13
+
+### Introduced
+- Pipeline SBOM flow: `POST /api/v1/cicd/scan` starts a scan and returns at once, `POST /api/v1/cicd/sbom` takes the SBOM built by the pipeline and returns the result of both; with `sbomFromPipeline` the scan does not generate its own SBOM and holds its verdict (Bitbucket build status, pull request comment) until the SBOM is uploaded. See `examples/pipeline-sbom`
+- Bitbucket build status follows the review in Flow: suppressing or re-activating findings re-posts the status of the last scanned commit, so a failed build turns green without an empty commit
+- Changing the Git access token of a single repository from the repository settings; the token is tested against the Git server before it is saved
+- Findings are recognised by what was flagged rather than by line number: a finding that moves within its file after an edit keeps its status, suppression, comments, AI verdict and Jira ticket instead of coming back as new
+- Jira tickets are closed through multi-step workflows (e.g. Open → Triage → Accepted Risk → Closed): Flow walks the available transitions, fills required resolutions and leaves a comment describing the path taken or the step it could not pass
+- Group Jira tickets stay open until every finding they cover is suppressed or removed; each finding closed on the way is commented on and struck through in the ticket description
+
+### Changed
+- A suppression applies to the whole repository: findings suppressed on a feature branch stay suppressed on the target branch after merge, and re-activating a finding re-activates it on every branch
+- An SBOM uploaded by a pipeline is not subject to the scan throttle; it waits its turn behind the running scan of the repository
+- `POST /api/v1/cicd/check` answers `423` while an SBOM uploaded by a pipeline is still waiting to be scanned
+- Version of the backend artifact follows the release version
+
+### Fixed
+- Loading Jira epics failed because the JQL query was URL-encoded twice; epics now load on both Jira Cloud (`/rest/api/3/search/jql`) and Jira Server / Data Center (`/rest/api/2/search`)
+- Suppressed findings showing up as active on the main branch after a merge
+- Suppressed findings coming back as new after the file they are in was edited
+- Jira tickets left open when the Jira workflow does not allow closing a ticket directly from its current status
+
 ## [1.2.13] - 2026-08-05
 
 ### Introduced

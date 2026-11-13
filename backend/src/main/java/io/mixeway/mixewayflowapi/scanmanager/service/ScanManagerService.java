@@ -115,6 +115,18 @@ public class ScanManagerService {
     private final GitLabScannerService gitLabScannerService;
     private final SCAGrypeService sCAGrypeService;
 
+    /** The commit and merge request of a scan that left the dependencies to an SBOM from the pipeline. */
+    private record AwaitedSbom(String commit, Long pullRequestId) {
+    }
+
+    /** Number of SBOMs uploaded by pipelines that are queued or being scanned, by repository id. */
+    private final ConcurrentHashMap<Long, Integer> pipelineSbomScans = new ConcurrentHashMap<>();
+
+    /** Scans whose SBOM the pipeline has yet to upload, by branch id. */
+    private final Cache<Long, AwaitedSbom> awaitedSboms = Caffeine.newBuilder()
+            .expireAfterWrite(6, TimeUnit.HOURS)
+            .build();
+
 
     /**
      * Initiates a scan for a given repository and branch.
@@ -127,6 +139,28 @@ public class ScanManagerService {
      * @return {@code true} when the scan waits behind another scan or AI analysis of the same repository
      */
     public boolean scanRepository(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId, Long iid) {
+        return requestScan(codeRepo, codeRepoBranch, commitId, iid, false) == ScanRequest.QUEUED;
+    }
+
+    /** What became of a request to scan a repository. */
+    public enum ScanRequest {
+        /** The scan is running. */
+        STARTED,
+        /** The scan waits behind another scan or AI analysis of the same repository. */
+        QUEUED,
+        /** Ignored: the repository is being scanned or was scanned a moment ago. */
+        THROTTLED
+    }
+
+    /**
+     * Like {@link #scanRepository}, and tells a throttled request apart from a started one.
+     *
+     * @param sbomFromPipeline the repository's pipeline builds the SBOM itself and uploads it with
+     *                         {@link #scanRepositoryFromPipelineSbom}: the scan leaves the dependencies
+     *                         alone and its verdict is held back until that SBOM has been scanned
+     */
+    public ScanRequest requestScan(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId, Long iid,
+                                   boolean sbomFromPipeline) {
         // Get or create a lock object for the repository
         Object repoLock = repoLocks.computeIfAbsent(codeRepo.getId(), k -> new Object());
 
@@ -146,7 +180,7 @@ public class ScanManagerService {
                     log.warn("[ScanManagerService] Unable to create throttled ScanInfo snapshot: {}", e.getMessage());
                 }
 
-                return false;
+                return ScanRequest.THROTTLED;
             }
 
             // Add repository to the throttler cache
@@ -178,7 +212,8 @@ public class ScanManagerService {
                     // Run scans in parallel
                     Future<Void> secretScanFuture = runSecretScan(repoDir, codeRepo, codeRepoBranch);
 //                    Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo, codeRepoBranch, scaScanPerformed); Dependency Track version
-                    Future<Void> scaScanFuture = runSCAScan(repoDir, codeRepo, codeRepoBranch);
+                    // With the SBOM coming from the pipeline the dependencies are scanned when it arrives.
+                    Future<Void> scaScanFuture = sbomFromPipeline ? null : runSCAScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> sastScanFuture = runSASTScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> iacScanFuture = runIACScan(repoDir, codeRepo, codeRepoBranch);
                     Future<Void> gitlabScanFuture = null;
@@ -188,8 +223,11 @@ public class ScanManagerService {
                     Future<Void> zapScanFuture = runZAPScan(repoDir, codeRepo, codeRepoBranch);
 
                     List<Future<Void>> scanFutures = new ArrayList<>(Arrays.asList(
-                            secretScanFuture, scaScanFuture, sastScanFuture, iacScanFuture, zapScanFuture
+                            secretScanFuture, sastScanFuture, iacScanFuture, zapScanFuture
                     ));
+                    if (scaScanFuture != null) {
+                        scanFutures.add(scaScanFuture);
+                    }
                     if (gitlabScanFuture != null) {
                         scanFutures.add(gitlabScanFuture);
                     }
@@ -241,7 +279,16 @@ public class ScanManagerService {
                         log.error("[ScanManagerService] Failed to clean up repository directory {}: {}", repoDir, cleanupEx.getMessage());
                     }
 
-                    if (CodeRepo.RepoType.BITBUCKET.equals(codeRepo.getType())) {
+                    if (sbomFromPipeline) {
+                        // The verdict (build status, merge request comment) waits for the SBOM.
+                        awaitedSboms.put(codeRepoBranch.getId(), new AwaitedSbom(commit, iid));
+                        try {
+                            bitbucketScanReportService.publishAwaitingSbom(codeRepo, codeRepoBranch, commit);
+                        } catch (Exception e) {
+                            log.error("[Scan Service] Bitbucket publish while waiting for the SBOM failed for {}: {}",
+                                    codeRepo.getName(), e.getMessage(), e);
+                        }
+                    } else if (CodeRepo.RepoType.BITBUCKET.equals(codeRepo.getType())) {
                         try {
                             bitbucketScanReportService.publishAfterScan(codeRepo, codeRepoBranch, commit, iid);
                         } catch (Exception e) {
@@ -264,7 +311,15 @@ public class ScanManagerService {
             log.info("[ScanManagerService] Scan for repo {} added to queue, waiting for the running scan or AI analysis of this repo",
                     codeRepo.getName());
         }
-        return queued;
+        return queued ? ScanRequest.QUEUED : ScanRequest.STARTED;
+    }
+
+    /**
+     * Whether an SBOM uploaded by the repository's pipeline is still waiting to be scanned or being
+     * scanned - until it is, the findings of the repository are not the result of the pipeline's scan.
+     */
+    public boolean isPipelineSbomScanPending(Long repoId) {
+        return pipelineSbomScans.containsKey(repoId);
     }
 
     public void scanRepositorySync(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commitId, Long iid) {
@@ -949,36 +1004,116 @@ public class ScanManagerService {
 
         repoScanQueue.submit(codeRepo.getId(), executorService, () -> {
             try {
-                updateCodeRepoService.setScaScanRunning(codeRepo);
-                validateInputs(codeRepo, codeRepoBranch);
-                try {
-                    sCAGrypeService.runGrype(workDirPath, codeRepo, codeRepoBranch);
-                } catch (Exception e) {
-                    if (Thread.currentThread().isInterrupted()) {
-                        log.warn("[ScanManagerService] Uploaded SBOM SCA scan interrupted for {}.", codeRepo.getRepourl());
-                        Thread.currentThread().interrupt();
-                    } else {
-                        log.error("[ScanManagerService] Uploaded SBOM SCA scan failed for {}: {}",
-                                codeRepo.getRepourl(), e.getMessage(), e);
-                    }
-                } finally {
-                    try {
-                        updateCodeRepoService.updateCodeRepoStatus(codeRepo, codeRepoBranch, "");
-                    } catch (Exception updateEx) {
-                        log.error("[ScanManagerService] Failed to update CodeRepo status after SBOM upload for {}: {}",
-                                codeRepo.getName(), updateEx.getMessage(), updateEx);
-                    }
-                    try {
-                        cleanUp(workDirPath);
-                    } catch (IOException cleanupEx) {
-                        log.error("[ScanManagerService] Failed to clean up SBOM work directory {}: {}",
-                                workDirPath, cleanupEx.getMessage());
-                    }
-                }
+                scanSbom(codeRepo, codeRepoBranch, workDirPath, "");
             } finally {
                 repoLocks.remove(codeRepo.getId());
             }
         });
+    }
+
+    /**
+     * Scans the dependencies from an SBOM built and uploaded by the repository's own pipeline, then
+     * reports the verdict for the commit: Bitbucket build status, merge request comment.
+     *
+     * <p>Unlike a manual upload this is not throttled - it is the other half of a scan the pipeline has
+     * just requested - and waits its turn behind that scan instead.</p>
+     *
+     * @param workDir  directory containing {@code sbom.json}; deleted after the scan attempt
+     * @param commitId the commit the SBOM was built from; when missing, the commit of the scan waiting
+     *                 for this SBOM is used
+     * @param iid      merge request to comment on; when missing, the one of the scan waiting for this SBOM
+     * @return completes once the SBOM has been scanned and reported, exceptionally when the scan failed
+     */
+    public CompletableFuture<Void> scanRepositoryFromPipelineSbom(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch,
+                                                                  Path workDir, String commitId, Long iid) {
+        String workDirPath = workDir.toAbsolutePath().toString();
+        CompletableFuture<Void> done = new CompletableFuture<>();
+        Long repoId = codeRepo.getId();
+        pipelineSbomScans.merge(repoId, 1, Integer::sum);
+        done.whenComplete((result, error) ->
+                pipelineSbomScans.computeIfPresent(repoId, (id, count) -> count > 1 ? count - 1 : null));
+
+        repoScanQueue.submit(codeRepo.getId(), executorService, () -> {
+            try {
+                // Read only now: the scan this SBOM belongs to has finished by the time it is our turn.
+                AwaitedSbom awaited = awaitedSboms.asMap().remove(codeRepoBranch.getId());
+                String commit = commitId != null && !commitId.isBlank() ? commitId.trim()
+                        : awaited != null && awaited.commit() != null ? awaited.commit() : "";
+                Long pullRequestId = iid != null ? iid : awaited != null ? awaited.pullRequestId() : null;
+
+                Exception failure = scanSbom(codeRepo, codeRepoBranch, workDirPath, commit);
+                reportPipelineSbomScan(codeRepo, codeRepoBranch, commit, pullRequestId, failure == null);
+
+                if (failure == null) {
+                    done.complete(null);
+                } else {
+                    done.completeExceptionally(failure);
+                }
+            } catch (RuntimeException e) {
+                done.completeExceptionally(e);
+                throw e;
+            }
+        });
+        return done;
+    }
+
+    /**
+     * Scans {@code sbom.json} in {@code workDirPath}, records the result for the commit and removes the
+     * directory.
+     *
+     * @return what made the scan fail, or null when the SBOM was scanned
+     */
+    private Exception scanSbom(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String workDirPath, String commit) {
+        Exception failure = null;
+        try {
+            updateCodeRepoService.setScaScanRunning(codeRepo);
+            validateInputs(codeRepo, codeRepoBranch);
+            sCAGrypeService.runGrype(workDirPath, codeRepo, codeRepoBranch);
+        } catch (Exception e) {
+            failure = e;
+            if (Thread.currentThread().isInterrupted() || e instanceof InterruptedException) {
+                log.warn("[ScanManagerService] Uploaded SBOM SCA scan interrupted for {}.", codeRepo.getRepourl());
+                Thread.currentThread().interrupt();
+            } else {
+                log.error("[ScanManagerService] Uploaded SBOM SCA scan failed for {}: {}",
+                        codeRepo.getRepourl(), e.getMessage(), e);
+            }
+        } finally {
+            try {
+                updateCodeRepoService.updateCodeRepoStatus(codeRepo, codeRepoBranch, commit);
+            } catch (Exception updateEx) {
+                log.error("[ScanManagerService] Failed to update CodeRepo status after SBOM upload for {}: {}",
+                        codeRepo.getName(), updateEx.getMessage(), updateEx);
+            }
+            try {
+                cleanUp(workDirPath);
+            } catch (IOException cleanupEx) {
+                log.error("[ScanManagerService] Failed to clean up SBOM work directory {}: {}",
+                        workDirPath, cleanupEx.getMessage());
+            }
+        }
+        return failure;
+    }
+
+    private void reportPipelineSbomScan(CodeRepo codeRepo, CodeRepoBranch codeRepoBranch, String commit,
+                                        Long pullRequestId, boolean scanned) {
+        try {
+            if (CodeRepo.RepoType.BITBUCKET.equals(codeRepo.getType())) {
+                if (!scanned) {
+                    bitbucketScanReportService.publishSbomScanFailed(codeRepo, codeRepoBranch, commit);
+                } else if (commit.isBlank()) {
+                    // The pipeline did not say which commit: report on the one last scanned on the branch.
+                    bitbucketScanReportService.refreshBuildStatus(codeRepo.getId(), codeRepoBranch.getId());
+                } else {
+                    bitbucketScanReportService.publishAfterScan(codeRepo, codeRepoBranch, commit, pullRequestId);
+                }
+            } else if (scanned && pullRequestId != null && pullRequestId > 0) {
+                gitCommentService.processMergeComment(codeRepo, codeRepoBranch, pullRequestId);
+            }
+        } catch (Exception e) {
+            log.error("[ScanManagerService] Failed to report the pipeline SBOM scan of {}: {}",
+                    codeRepo.getName(), e.getMessage(), e);
+        }
     }
 
     private Future<Void> runZAPScan(String repoDir, CodeRepo codeRepo, CodeRepoBranch codeRepoBranch) {

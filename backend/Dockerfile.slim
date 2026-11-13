@@ -38,7 +38,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install -r requirements.txt --break-system-packages
 
-COPY --from=maven_build /app/target/MixewayFlowAPI-0.0.1-SNAPSHOT.jar flowapi.jar
+COPY --from=maven_build /app/target/MixewayFlowAPI-*.jar flowapi.jar
 COPY gitleaks.default.toml .gitleaks.default.toml
 COPY gitleaks.toml .gitleaks.toml
 COPY src/main/java/io/mixeway/mixewayflowapi/integrations/scanner/secrets/service/secrets_filtering_service.py .

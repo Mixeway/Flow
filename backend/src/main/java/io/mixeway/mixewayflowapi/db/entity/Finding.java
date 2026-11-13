@@ -73,11 +73,18 @@ public final class Finding {
     private final CloudSubscription cloudSubscription;
 
     @Column(columnDefinition = "TEXT")
-    private final String explanation;
+    private String explanation;
 
     @Column(length = 200, nullable = false)
     @ToString.Include
-    private final String location;
+    private String location;
+
+    /**
+     * Identifies what was flagged independently of the line it is on, so the finding is still
+     * recognised after it moves within its file. Null when the source gives nothing to identify it by.
+     */
+    @Column(length = 64)
+    private String fingerprint;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -212,6 +219,20 @@ public final class Finding {
             this.suppressedUntil = suppressedUntil;
         }
     }
+    public void identifyBy(String fingerprint) {
+        if (fingerprint != null) {
+            this.fingerprint = fingerprint;
+        }
+    }
+
+    /** The finding is the same, the code it flags has moved to another line of the file. */
+    public void relocate(String location, String explanation) {
+        this.location = location;
+        if (explanation != null) {
+            this.explanation = explanation;
+        }
+    }
+
     public void noteFindingDetected() {
         this.updatedDate = LocalDateTime.now();
     }
