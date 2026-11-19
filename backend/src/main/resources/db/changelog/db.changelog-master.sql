@@ -898,3 +898,10 @@ ALTER TABLE settings ADD COLUMN IF NOT EXISTS dast_llm_disable_thinking BOOLEAN 
 
 --changeset majaberej:comment-user-optional
 ALTER TABLE comment ALTER COLUMN user_id DROP NOT NULL;
+
+--changeset majaberej:settings-llm-batch-timeout
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sast_llm_batch_timeout_minutes INTEGER NOT NULL DEFAULT 30;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS sca_llm_batch_timeout_minutes INTEGER NOT NULL DEFAULT 30;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS iac_llm_batch_timeout_minutes INTEGER NOT NULL DEFAULT 30;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS secrets_llm_batch_timeout_minutes INTEGER NOT NULL DEFAULT 30;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS dast_llm_batch_timeout_minutes INTEGER NOT NULL DEFAULT 30;

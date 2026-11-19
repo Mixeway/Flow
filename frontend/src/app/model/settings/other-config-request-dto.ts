@@ -6,6 +6,7 @@ export interface LlmSourceConfigRequest {
     model: string;
     contextWindow: number;
     scanConcurrency: number;
+    batchTimeoutMinutes: number;
     severities: string[];
     reasoningEffort: string;
     disableThinking: boolean;

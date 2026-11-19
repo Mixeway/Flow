@@ -26,9 +26,12 @@ import java.util.Set;
 public class UpdateSettingsService {
     private static final int DEFAULT_CONTEXT_WINDOW = 8192;
     private static final int DEFAULT_SCAN_CONCURRENCY = 2;
+    private static final int DEFAULT_BATCH_TIMEOUT_MINUTES = 30;
     private static final int MIN_CONTEXT_WINDOW = 256;
     private static final int MAX_CONTEXT_WINDOW = 200000;
     private static final int MAX_SCAN_CONCURRENCY = 16;
+    private static final int MIN_BATCH_TIMEOUT_MINUTES = 1;
+    private static final int MAX_BATCH_TIMEOUT_MINUTES = 1440;
     private static final String DEFAULT_REASONING_EFFORT = "medium";
     private static final int MAX_REASONING_EFFORT_LENGTH = 20;
 
@@ -157,6 +160,7 @@ public class UpdateSettingsService {
 
             int contextWindow = normalizeContextWindow(dto.getContextWindow(), source, dto.isEnabled());
             int scanConcurrency = normalizeScanConcurrency(dto.getScanConcurrency(), source, dto.isEnabled());
+            int batchTimeoutMinutes = normalizeBatchTimeoutMinutes(dto.getBatchTimeoutMinutes(), source, dto.isEnabled());
             String severities = normalizeSeverities(dto.getSeverities(), source, dto.isEnabled());
             String reasoningEffort = normalizeReasoningEffort(dto.getReasoningEffort(), source);
             boolean disableThinking = dto.getDisableThinking() == null || dto.getDisableThinking();
@@ -167,11 +171,11 @@ public class UpdateSettingsService {
                     throw new SettingsException("API URL, API key and model are required when enabling LLM for " + source);
                 }
                 settings.upsertLlmSource(source, true, dto.getApiUrl().trim(), apiKey, dto.getModel().trim(), contextWindow,
-                        scanConcurrency, severities, reasoningEffort, disableThinking);
+                        scanConcurrency, batchTimeoutMinutes, severities, reasoningEffort, disableThinking);
                 log.info("[Settings] LLM enabled for {} with URL: {}", source, dto.getApiUrl());
             } else {
-                settings.upsertLlmSource(source, false, null, null, null, contextWindow, scanConcurrency, severities,
-                        reasoningEffort, disableThinking);
+                settings.upsertLlmSource(source, false, null, null, null, contextWindow, scanConcurrency, batchTimeoutMinutes,
+                        severities, reasoningEffort, disableThinking);
                 log.info("[Settings] LLM disabled for {}", source);
             }
         }
@@ -243,6 +247,20 @@ public class UpdateSettingsService {
         }
         if (value < 1 || value > MAX_SCAN_CONCURRENCY) {
             throw new SettingsException("Scan concurrency for " + source + " must be between 1 and " + MAX_SCAN_CONCURRENCY);
+        }
+        return value;
+    }
+
+    private int normalizeBatchTimeoutMinutes(Integer value, Finding.Source source, boolean required) throws SettingsException {
+        if (value == null) {
+            if (required) {
+                throw new SettingsException("Batch timeout is required when enabling LLM for " + source);
+            }
+            return DEFAULT_BATCH_TIMEOUT_MINUTES;
+        }
+        if (value < MIN_BATCH_TIMEOUT_MINUTES || value > MAX_BATCH_TIMEOUT_MINUTES) {
+            throw new SettingsException("Batch timeout for " + source + " must be between "
+                    + MIN_BATCH_TIMEOUT_MINUTES + " and " + MAX_BATCH_TIMEOUT_MINUTES + " minutes");
         }
         return value;
     }

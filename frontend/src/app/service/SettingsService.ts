@@ -33,6 +33,14 @@ export class SettingsService {
         return this.http.post<any>(`${this.loginUrl}/api/v1/admin/settings/llmconfig`, llmSources, { withCredentials: true });
     }
 
+    testLlmConnectivity(llmSource: LlmSourceConfigRequest): Observable<LlmConnectivityResult> {
+        return this.http.post<LlmConnectivityResult>(
+            `${this.loginUrl}/api/v1/admin/settings/llmconfig/test`,
+            llmSource,
+            { withCredentials: true }
+        );
+    }
+
     isWizEnabled(): Observable<boolean> {
         return this.http.get<any>(`${this.loginUrl}/api/v1/admin/settings`, { withCredentials: true }).pipe(
             map(settings => settings.wizConfig?.enabled ?? false)
@@ -59,4 +67,11 @@ export interface SlaConfig {
     highDays: number | null;
     mediumDays: number | null;
     lowDays: number | null;
+}
+
+export interface LlmConnectivityResult {
+    ok: boolean;
+    message: string;
+    httpStatus?: number | null;
+    elapsedMs?: number | null;
 }
