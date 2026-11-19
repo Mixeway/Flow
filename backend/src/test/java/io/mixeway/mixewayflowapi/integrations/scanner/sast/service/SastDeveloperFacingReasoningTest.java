@@ -2,6 +2,7 @@ package io.mixeway.mixewayflowapi.integrations.scanner.sast.service;
 
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -9,62 +10,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SastDeveloperFacingReasoningTest {
 
     @Test
-    void stripsScoringTaxonomyAndKeepsCodeFacts() {
-        String raw = "Evidence category is PROVEN_SOURCE_UNTRUSTED — HTTP source is visible. "
-                + "Execution context is web_server with input_source http_request. "
-                + "RISKY SCHEME: SQL is concatenated from literals. TRUE_POSITIVE with mid confidence (~0.55). "
-                + "origin-tag: all-callsites-pass-literal-arg=true. "
-                + "The query is built with userName + \"' AND 1=1\".";
-
-        String cleaned = SastDeveloperFacingReasoning.sanitize(raw);
-
-        assertFalse(cleaned.contains("PROVEN_SOURCE_UNTRUSTED"), cleaned);
-        assertFalse(cleaned.contains("execution_context"), cleaned);
-        assertFalse(cleaned.contains("input_source"), cleaned);
-        assertFalse(cleaned.contains("http_request"), cleaned);
-        assertFalse(cleaned.contains("RISKY SCHEME"), cleaned);
-        assertFalse(cleaned.contains("mid confidence"), cleaned);
-        assertFalse(cleaned.contains("0.55"), cleaned);
-        assertFalse(cleaned.contains("origin-tag"), cleaned);
-        assertTrue(cleaned.contains("web server") || cleaned.contains("HTTP"), cleaned);
-        assertTrue(cleaned.contains("userName"), cleaned);
+    void promptRuleRequiresPlainLanguageAndInternalScratchFields() {
+        String rule = SastDeveloperFacingReasoning.PROMPT_RULE;
+        assertTrue(rule.contains("analysis") || rule.contains("review_notes"), rule);
+        assertTrue(rule.contains("http_request") && rule.contains("never"), rule);
+        assertTrue(rule.toLowerCase().contains("ordinary words")
+                || rule.toLowerCase().contains("web request"), rule);
     }
 
     @Test
-    void mapsTrustedCliContextToPlainLanguage() {
-        String cleaned = SastDeveloperFacingReasoning.sanitize(
-                "Execution context is cli_developer_tool with input_source internal_call; untrusted input is not proven.");
-
-        assertFalse(cleaned.contains("cli_developer_tool"), cleaned);
-        assertFalse(cleaned.contains("internal_call"), cleaned);
-        assertTrue(cleaned.toLowerCase().contains("developer command-line")
-                || cleaned.toLowerCase().contains("internal application"), cleaned);
-    }
-
-    @Test
-    void doesNotRewriteCodeIdentifiers() {
-        String raw = "The handler reads config_file and copies http_request into dest. "
-                + "internal_call() builds the path from file.filepath.";
-
-        String cleaned = SastDeveloperFacingReasoning.sanitize(raw);
-
-        assertTrue(cleaned.contains("config_file"), cleaned);
-        assertTrue(cleaned.contains("http_request"), cleaned);
-        assertTrue(cleaned.contains("internal_call()"), cleaned);
-        assertTrue(cleaned.contains("file.filepath"), cleaned);
-    }
-
-    @Test
-    void dropsConsistencyWarningFromTheExplanation() {
-        String raw = "wrapInLink sets href to linkData.url from the image dialog, and link.js is not called. "
-                + "Consistency warning: a structurally similar finding was previously classified as FALSE_POSITIVE. "
-                + "Re-check whether the same source/sink/primitive case is being judged differently.";
-
-        String cleaned = SastDeveloperFacingReasoning.sanitize(raw);
-
-        assertFalse(cleaned.contains("Consistency warning"), cleaned);
-        assertFalse(cleaned.contains("FALSE_POSITIVE"), cleaned);
-        assertTrue(cleaned.contains("linkData.url"), cleaned);
+    void sanitizeDoesNotRewriteContent() {
+        String raw = "Execution context is web_server with input_source http_request. "
+                + "The query is built with userName.";
+        assertEquals(raw, SastDeveloperFacingReasoning.sanitize(raw));
     }
 
     @Test
@@ -102,6 +60,30 @@ class SastDeveloperFacingReasoningTest {
         assertTrue(shown.contains("`innerHTML`"), shown);
         assertTrue(shown.contains("`editor.config.image2_alignClasses`"), shown);
         assertFalse(shown.contains("``innerHTML``"), shown);
+    }
+
+    @Test
+    void escapesBareHtmlTagsSoTheMarkdownViewerCannotSwallowTheRest() {
+        String raw = "The escaping happens before the span tags are inserted, so any <script> or other "
+                + "markup in the JSON data is neutralized. The output is rendered via dangerouslySetInnerHTML.";
+
+        String shown = SastDeveloperFacingReasoning.forDisplay(raw);
+
+        assertTrue(shown.contains("`<script>`"), shown);
+        assertTrue(shown.contains("neutralized"), shown);
+        assertTrue(shown.contains("dangerouslySetInnerHTML"), shown);
+    }
+
+    @Test
+    void escapesClosingHtmlTagsToo() {
+        String raw = "wrapInLink builds </script><img src=x onerror=alert(1)> from untrusted linkData.url.";
+
+        String shown = SastDeveloperFacingReasoning.forDisplay(raw);
+
+        assertTrue(shown.contains("`</script>`"), shown);
+        assertTrue(shown.contains("`<img src=x onerror=alert(1)>`")
+                || shown.contains("`<img src=x onerror=alert(1)"), shown);
+        assertTrue(shown.contains("linkData.url"), shown);
     }
 
     @Test

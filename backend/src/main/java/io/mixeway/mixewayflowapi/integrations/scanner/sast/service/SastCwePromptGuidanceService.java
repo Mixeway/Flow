@@ -126,6 +126,10 @@ public class SastCwePromptGuidanceService {
                 "UNCERTAIN when settings.X reaches subprocess but the setting's value origin is not found — do not invent trust from the settings. prefix alone."));
         guidance.put("79", List.of(
                 "Identify source, HTML/JS/URL/attribute/header sink context, and escaping applied for that exact context.",
+                "TEMPLATE-FIRST: for server XSS, locate the template/view (Resolved template section or find_files) and "
+                        + "cite the exact escaping construct before TRUE/FALSE. If the template is already in the prompt, "
+                        + "quote it — never claim the view is missing. Nested object fields: chase field writers, then "
+                        + "object construction, then request/DB/constant origin.",
                 "TRUE_POSITIVE requires attacker-controlled content reaching an executable/browser-interpreted sink or an HTTP header/response-line sink without context-appropriate neutralization.",
                 "AJAX/fetch responses, backend JSON fields, message events, URL fragments, uploaded filenames, and database rich text are not automatically trusted.",
                 "FALSE_POSITIVE when STRONG evidence of safety (cite the specific evidence):",
@@ -192,8 +196,9 @@ public class SastCwePromptGuidanceService {
                 "When SQL is built from several fragments, judge EACH interpolated fragment. A SOUND column catalog does not neutralize a sibling computed/SQL-expression concatenated into the same query.",
                 "Desktop GUI input is still user-controlled; desktop context alone does not make raw string SQL concatenation/interpolation safe.",
                 "ORM lookups that bind values are generally safe; raw SQL / extra() / RawSQL / cursor.execute and equivalent raw builders go through the decision order.",
+                "Using a parameterized query builder, PreparedStatement, or ORM API somewhere in a function does NOT by itself make the whole query safe: EVERY value that ends up in the SQL text must be individually bound. Judge each interpolated/concatenated value separately, especially inside loops, varargs, and IN-list/whereIn/array branches — it is common for a builder to bind most filters correctly while one branch (e.g. a multi-value IN clause) passes the raw collection or a raw element straight into the SQL builder without wrapping each element in a bind/placeholder call. If even one reachable value is unbound, this is TRUE_POSITIVE for that value regardless of how safe the rest of the function looks.",
                 "DDL/identifier concatenation (CREATE INDEX/TABLE, quoted table/column names built with +/append) is still SQL injection when field/tableName/nativeName/json values are non-literal. Double-quoting identifiers is NOT a neutralizer; require allowlist validation.",
-                "origin-tag all-callsites-pass-literal-arg applies only when the sink SQL argument itself is the call-site literal. If the method builds SQL locally from this.field / getters / JSON / resource names, call-site ctor literals do NOT justify FALSE_POSITIVE.",
+                "origin-tag all-callsites-pass-literal-arg applies only when the tainted value is a PARAMETER filled by literal call sites. It does NOT apply when local code reads HTTP directly (query/body/cookie/header/files, $_GET/$_COOKIE, req.headers/cookies, getHeader, @RequestHeader/@CookieValue, …). Local SQL built from this.field / getters / JSON / resource names also means call-site ctor literals do NOT justify FALSE_POSITIVE.",
                 "When TRUE_POSITIVE, remediation_code must rewrite the flagged SQL construction site (same variables/sink). Never invent an unrelated query (e.g. SELECT username/password). Bind VALUES; allowlist/validate identifiers or SQL fragments that placeholders cannot bind."));
         guidance.put("90", guidance.get("89"));
         guidance.put("113", List.of(
@@ -411,10 +416,14 @@ public class SastCwePromptGuidanceService {
         guidance.put("306", missingAuthenticationGuidance());
         guidance.put("313", guidance.get("259"));
         guidance.put("319", List.of(
-                "Identify whether the connection uses TLS/SSL or cleartext.",
-                "TRUE_POSITIVE when production code opens a network connection without TLS and no framework wrapper enforces it.",
-                "FALSE_POSITIVE when TLS is proven (SSL socket factory, HTTPS client, or framework-enforced TLS), "
-                        + "or when the flagged API is a normal cleartext server constructor that is not itself a vulnerability."));
+                "Identify whether this listener/connection uses TLS/SSL or plain cleartext.",
+                "For a server-configuration rule (e.g. a web server created without HTTPS), the unsafe primitive is "
+                        + "the plain-HTTP server itself: TRUE_POSITIVE when the server is created over cleartext HTTP and "
+                        + "no TLS/HTTPS is configured for it in the shown code.",
+                "TRUE_POSITIVE when production code opens a network connection or server without TLS and no framework "
+                        + "wrapper enforces it.",
+                "FALSE_POSITIVE only when TLS is proven in the shown code (SSL socket factory, HTTPS client, "
+                        + "HTTPS server, or framework-enforced TLS for this listener)."));
         guidance.put("329", List.of(
                 "Identify IV/nonce generation and whether it is unique and unpredictable where required.",
                 "TRUE_POSITIVE requires reused, static, predictable, or attacker-controlled IV/nonce in security-sensitive crypto.",
@@ -849,10 +858,13 @@ public class SastCwePromptGuidanceService {
 
     private static List<String> goXssChecks() {
         return List.of(
+                "TEMPLATE-FIRST: for ParseFiles/ExecuteTemplate, locate the .html/.tmpl and cite whether values go "
+                        + "through html/template (escaped) vs template.HTML / text/template BEFORE TRUE/FALSE.",
                 "html/template escapes strings. template.HTML is a trust marker — FP if the format string is a literal and "
                         + "args go through htmlutil.HTMLFormat/HTMLPrintf (those escape non-HTML args).",
                 "Markup (markdown/org/chroma) after bluemonday / NeedPostProcess is FP at the renderer. Do not treat "
                         + "template.HTML(highlightedLines) as XSS when chroma produced the HTML.",
+                "Nested struct fields: chase where the field is set and whether it is request/DB/constant before UNCERTAIN.",
                 "Locale/i18n strings and allowlisted emoji/provider icons are not user HTML. Cite 'html/template auto-escape' "
                         + "or 'markup sanitizer post-process' when FP.");
     }
@@ -962,7 +974,11 @@ public class SastCwePromptGuidanceService {
 
     private static List<String> jsXssChecks() {
         return List.of(
-                "Sinks: innerHTML / insertAdjacentHTML / jQuery.html()/replaceWith / dangerouslySetInnerHTML / v-html.",
+                "SINK-FIRST: confirm the HTML write in the flagged file (innerHTML / insertAdjacentHTML / "
+                        + "jQuery.html()/replaceWith / dangerouslySetInnerHTML / v-html / document.write). For "
+                        + "res.render(\"view\"), locate the template and cite escaping before TRUE/FALSE.",
+                "Sinks: innerHTML / insertAdjacentHTML / jQuery.html()/replaceWith / dangerouslySetInnerHTML / v-html / "
+                        + "document.write.",
                 "Visible sanitizer: DOMPurify.sanitize() with no ADD_TAGS/ADD_ATTR; sanitize-html with a tight allowlist. "
                         + "Cite 'visible sanitizer call'. Relaxed signals: allowedAttributes false/all, allowVulnerableTags, "
                         + "parseStyleAttributes false, extra tags such as style/link/meta/iframe/svg.",
@@ -976,6 +992,8 @@ public class SastCwePromptGuidanceService {
                         + "attacker-controlled HTML (URL/postMessage/user edit).",
                 "Do not mark UNCERTAIN only because a wrapper helper is unfamiliar when the payload origin is visible "
                         + "in the same line (e.g. document.body.innerHTML passed through translate).",
+                "Nested fields (obj.html, data.content, props.dangerouslySetInnerHTML.__html): chase where the FIELD "
+                        + "and owning object are assigned before UNCERTAIN.",
                 "JSON HTTP: res.json / NextResponse.json / Response.json, or res.send/res.end/write after "
                         + "Content-Type application/json. res.send(string) without a JSON content type "
                         + "(Express often defaults to text/html) remains an XSS candidate.",
@@ -1071,9 +1089,14 @@ public class SastCwePromptGuidanceService {
 
     private static List<String> jsCleartextChecks() {
         return List.of(
-                "http.createServer is the normal Node HTTP server constructor — FALSE_POSITIVE by itself. "
-                        + "Java Socket rules do not apply. TRUE_POSITIVE only for outbound http.request/http.get "
-                        + "to sensitive endpoints without TLS, or an explicit cleartext credential channel.");
+                "This rule is about a missing secure (HTTPS/TLS) server configuration, NOT about an outbound "
+                        + "request or a cleartext credential channel. Decide only whether the inbound server is "
+                        + "created with TLS.",
+                "TRUE_POSITIVE: an Express/Node HTTP server created with `http.createServer(app)` (or "
+                        + "`app.listen(...)` over plain HTTP) with no TLS. The server must serve traffic over HTTPS, "
+                        + "so a plain-HTTP server constructor is the vulnerability itself.",
+                "FALSE_POSITIVE only when TLS is proven in the shown code: `https.createServer(...)`, an `https` "
+                        + "server wrapping the app, or a framework/config that enforces TLS for this listener.");
     }
 
     private static List<String> jsTimingChecks() {
@@ -1130,9 +1153,18 @@ public class SastCwePromptGuidanceService {
 
     private static List<String> pythonXssChecks() {
         return List.of(
+                "TEMPLATE-FIRST: if the handler calls render(request, \"news/edit.html\", …) or render_template(\"…\"), "
+                        + "locate that template (Resolved template section, or find_files + read_file) and cite the "
+                        + "exact line (`{{ title }}` vs `{{ title|safe }}` / `{% autoescape off %}`) BEFORE TRUE/FALSE. "
+                        + "If the template is already in the prompt, quote it — do not guess escaping.",
                 "bleach.clean() / html.escape / Django auto-escape are sanitizers. |safe / mark_safe / Markup() "
                         + "skip escaping — TRUE_POSITIVE if that value is untrusted.",
-                "Jinja2 autoescape is on by default in Flask; |safe / Markup on user data is the usual XSS path.");
+                "Jinja2 autoescape is on by default in Flask; |safe / Markup on user data is the usual XSS path.",
+                "Nested fields (form.field, obj.attr, serializer data keys): (1) find where the FIELD is set, "
+                        + "(2) where the OBJECT is built, (3) whether it is request/DB/constant. Do not UNCERTAIN "
+                        + "without those searches when the identifiers appear in the shown code.",
+                "JSON HttpResponse / JsonResponse is not an HTML XSS sink. text/html + template/|safe remains a candidate.",
+                "A helper named escape*/sanitize*/clean* is never enough — follow the SAME sink variable through its body.");
     }
 
     private static List<String> pythonPathChecks() {
@@ -1244,10 +1276,17 @@ public class SastCwePromptGuidanceService {
 
     private static List<String> javaXssChecks() {
         return List.of(
+                "TEMPLATE-FIRST: Spring handlers that addAttribute/addObject and return a view NAME must be judged "
+                        + "from the Resolved template/JSP/Thymeleaf snippet (or find_files on the view). Cite th:text / "
+                        + "th:utext / c:out / ${…} / <%= %> on the exact attribute. modelAttribute=\"form\" may alias "
+                        + "articleForm — treat the binding name as the handler attr.",
                 "JSoup Safelist.basic or tighter / OWASP Encoder.forHtml are tight sanitizers. "
                         + "Safelist.relaxed plus addAttributes is not automatic FALSE_POSITIVE.",
-                "Thymeleaf th:text / JSP c:out auto-escape. th:utext / skipXmlEscape / HtmlUtils with untrusted data "
-                        + "is TRUE_POSITIVE without a sanitizer.");
+                "Thymeleaf th:text / [[..]] / JSP c:out auto-escape. th:utext / [(..)] / skipXmlEscape / raw ${…} EL "
+                        + "/ <%= %> with untrusted data is TRUE_POSITIVE without a sanitizer.",
+                "Nested fields (fileViewVo.name, dictsForm.dictionary[i].value): chase setName/setValue and where the "
+                        + "object is populated from @ModelAttribute / request / DB before UNCERTAIN.",
+                "Do not claim 'the view is missing' when a Resolved template section is present — quote its lines.");
     }
 
     private static List<String> javaPathChecks() {
@@ -1325,8 +1364,13 @@ public class SastCwePromptGuidanceService {
         List<String> checks = new ArrayList<>();
         if (isFamilyOrCwe(metadata, VulnerabilityFamily.XSS, "79", "80")) {
             checks.addAll(List.of(
-                    "htmlspecialchars / htmlentities / Twig auto-escape are sanitizers. |raw / {!! !!} on untrusted data "
-                            + "is TRUE_POSITIVE."));
+                    "TEMPLATE-FIRST: for view('news/edit') / View::make / $this->render / Twig render, locate the "
+                            + "template and cite `{{ x }}` (escaped) vs `|raw` / `{!! x !!}` BEFORE TRUE/FALSE.",
+                    "htmlspecialchars / htmlentities / Twig/Blade auto-escape are sanitizers. |raw / {!! !!} on "
+                            + "untrusted data is TRUE_POSITIVE.",
+                    "Nested fields: chase where the field and owning object are set (request/DB/constant) before UNCERTAIN.",
+                    "echo/print of unsanitized request data into HTML is TRUE_POSITIVE unless htmlspecialchars is on "
+                            + "the SAME variable."));
         } else if (isFamilyOrCwe(metadata, VulnerabilityFamily.PATH_TRAVERSAL, "22", "73", "98")) {
             checks.addAll(List.of(
                     "Sinks: fopen/file_get_contents/unlink/include. Canonicalization: realpath + prefix under a fixed base."));
@@ -1350,7 +1394,11 @@ public class SastCwePromptGuidanceService {
         List<String> checks = new ArrayList<>();
         if (isFamilyOrCwe(metadata, VulnerabilityFamily.XSS, "79", "80")) {
             checks.addAll(List.of(
-                    "Rails sanitize() / ERB auto-escape are sanitizers. html_safe / raw on untrusted data is TRUE_POSITIVE."));
+                    "TEMPLATE-FIRST: for render \"news/edit\" / render template: / render partial:, locate the ERB/Haml "
+                            + "view and cite `<%= %>` (escaped) vs `raw` / `html_safe` / `<%== %>` BEFORE TRUE/FALSE.",
+                    "Rails sanitize() / ERB auto-escape are sanitizers. html_safe / raw on untrusted data is TRUE_POSITIVE.",
+                    "Nested fields: chase attribute writers and where the object is built from params/DB before UNCERTAIN.",
+                    "content_tag / tag helpers that mark html_safe on user strings are XSS sinks."));
         } else if (isFamilyOrCwe(metadata, VulnerabilityFamily.PATH_TRAVERSAL, "22", "73", "98")) {
             checks.addAll(List.of(
                     "Sinks: File/FileUtils/IO.read. Canonicalization: File.expand_path/realpath + prefix under a fixed base."));
@@ -1372,7 +1420,10 @@ public class SastCwePromptGuidanceService {
         List<String> checks = new ArrayList<>();
         if (isFamilyOrCwe(metadata, VulnerabilityFamily.XSS, "79", "80")) {
             checks.addAll(List.of(
-                    "Razor @ encoding / AntiXssEncoder. Html.Raw / IHtmlContent from untrusted data is TRUE_POSITIVE."));
+                    "TEMPLATE-FIRST: for return View(\"Name\") / PartialView, locate the .cshtml and cite `@Model.X` "
+                            + "(escaped) vs `Html.Raw` / `IHtmlContent` BEFORE TRUE/FALSE.",
+                    "Razor @ encoding / AntiXssEncoder. Html.Raw / IHtmlContent from untrusted data is TRUE_POSITIVE.",
+                    "Nested fields: chase property setters and where the view model is bound from the request before UNCERTAIN."));
         } else if (isFamilyOrCwe(metadata, VulnerabilityFamily.PATH_TRAVERSAL, "22", "73", "98")) {
             checks.addAll(List.of(
                     "Sinks: File/Path. Canonicalization: Path.GetFullPath + prefix under a fixed base."));

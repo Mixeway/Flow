@@ -34,8 +34,17 @@ public class CodeContextExtractor {
     private static final int MAX_TAINT_HOPS = 5;
     private static final int MAX_TRACKED_IDENTIFIERS = 12;
     private static final int MAX_CALLEE_BODIES = 3;
+    /**
+     * Cap on how many call sites are RENDERED into the prompt (token budget), not on how many are
+     * ANALYZED. Every call site found in the file is always collected and judged when deciding the
+     * origin-tag below, so the tag never lies about callers that were scanned but not shown.
+     */
     private static final int MAX_CALLER_SITES = 3;
     private static final int CALLER_WINDOW_LINES = 9;
+    /**
+     * Cap on how many cross-file call sites are RENDERED into the prompt (token budget), not on how
+     * many are ANALYZED — see {@link #MAX_CALLER_SITES}.
+     */
     private static final int MAX_REPO_CALLER_SITES = 12;
     /** Max files scanned in the broader repo fallback pass (after same-package and import passes). */
     private static final int MAX_REPO_CALLER_FILES = 400;
@@ -45,21 +54,81 @@ public class CodeContextExtractor {
     private static final int MAX_TEMPLATE_LINES = 40;
     private static final int MAX_FRAMEWORK_HINTS = 12;
 
-    private static final Pattern SAFE_SINK_PATTERN = Pattern.compile(
-            "mark_safe|innerHTML|dangerouslySetInnerHTML|v-html|bypassSecurityTrustHtml|SafeHtml",
-            Pattern.CASE_INSENSITIVE);
+    /** Legacy "safe HTML" sinks — also covered by {@link XssSinkMarkers}; kept for mark_safe-style wrapping. */
+    private static final Pattern SAFE_SINK_PATTERN = XssSinkMarkers.ANY_XSS_SINK;
     private static final Pattern RENDER_PATTERN = Pattern.compile(
-            "render_to_string|render_template|template\\.render|HtmlRenderer|\\.render\\(",
+            "render_to_string|render_template|template\\.render|HtmlRenderer|\\.render\\("
+                    + "|\\bres\\.render\\s*\\(|\\bResponse\\.Write\\b|\\bView\\s*\\(|\\bPartialView\\s*\\("
+                    + "|\\bview\\s*\\(|View::make|->render\\s*\\(|ParseFiles|ExecuteTemplate",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern TEMPLATE_LITERAL_PATTERN = Pattern.compile(
-            "(?:template|form_template|template_name|cell_template_name)\\s*=\\s*[\"']([^\"']+)[\"']",
+            "(?:template|form_template|template_name|cell_template_name|view_name|viewName|partial)\\s*=\\s*[\"']([^\"']+)[\"']",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern RENDER_TO_STRING_LITERAL = Pattern.compile(
             "render_to_string\\s*\\(\\s*[\"']([^\"']+)[\"']",
             Pattern.CASE_INSENSITIVE);
+    /** Django {@code render(request, "news/edit.html", ...)} / Flask {@code render_template("...")}. */
     private static final Pattern RENDER_LITERAL = Pattern.compile(
-            "render\\s*\\(\\s*[\"']([^\"']+)[\"']",
+            "render(?:_template(?:_string)?)?\\s*\\(\\s*(?:[A-Za-z_][\\w.]*\\s*,\\s*)?[\"']([^\"']+)[\"']",
             Pattern.CASE_INSENSITIVE);
+    /** Express {@code res.render("view")} / {@code response.render('view')}. */
+    private static final Pattern EXPRESS_RENDER_LITERAL = Pattern.compile(
+            "(?:res|response|ctx)\\.render\\s*\\(\\s*[\"']([^\"']+)[\"']",
+            Pattern.CASE_INSENSITIVE);
+    /** Rails {@code render "x"} / {@code render template: "x"} / {@code render partial: "x"}. */
+    private static final Pattern RAILS_RENDER_LITERAL = Pattern.compile(
+            "\\brender\\s+(?:(?:template|partial|action|file):\\s*)?[\"']([^\"']+)[\"']",
+            Pattern.CASE_INSENSITIVE);
+    /** PHP Twig/Blade/Laravel: {@code view('x')}, {@code View::make('x')}, {@code $this->render('x')}. */
+    private static final Pattern PHP_VIEW_LITERAL = Pattern.compile(
+            "(?:\\bview\\s*\\(|View::make\\s*\\(|->(?:render|twig->render)\\s*\\()\\s*[\"']([^\"']+)[\"']",
+            Pattern.CASE_INSENSITIVE);
+    /** ASP.NET MVC/Razor: {@code return View("Name")} / {@code PartialView("Name")}. */
+    private static final Pattern CSHARP_VIEW_LITERAL = Pattern.compile(
+            "\\b(?:Partial)?View\\s*\\(\\s*[\"']([^\"']+)[\"']",
+            Pattern.CASE_INSENSITIVE);
+    /** Go {@code template.ParseFiles("x.html")} / {@code ExecuteTemplate(w, "name", ...)}. */
+    private static final Pattern GO_TEMPLATE_LITERAL = Pattern.compile(
+            "(?:ParseFiles|ParseGlob|ExecuteTemplate)\\s*\\([^;\"']*[\"']([^\"']+\\.(?:html|tmpl|gohtml|qtpl))[\"']",
+            Pattern.CASE_INSENSITIVE);
+    /** Spring form / Thymeleaf binding aliases declared in the view. */
+    private static final Pattern VIEW_FORM_BINDING_ALIAS = Pattern.compile(
+            "(?:modelAttribute|commandName)\\s*=\\s*[\"']([A-Za-z_]\\w*)[\"']"
+                    + "|th:object\\s*=\\s*[\"']\\$\\{([A-Za-z_]\\w*)\\}[\"']",
+            Pattern.CASE_INSENSITIVE);
+
+    // ── Spring MVC implicit view resolution (controller returns a view NAME, not a path) ──────
+    /** Upper bound on files walked when indexing template/Tiles files for view resolution. */
+    private static final int MAX_VIEW_INDEX_FILES = 20_000;
+    /** How many resolved template files are rendered into the prompt per finding. */
+    private static final int MAX_RESOLVED_VIEWS = 3;
+    /** Per-view cap on template lines shown (lines referencing the handler's model attributes). */
+    private static final int MAX_VIEW_SNIPPET_LINES = 25;
+    private static final Set<String> VIEW_TEMPLATE_EXT = Set.of(
+            "jsp", "jspx", "html", "htm", "xhtml", "ftl", "ftlh", "vm", "tpl", "mustache", "hbs", "thtml",
+            "erb", "haml", "slim", "twig", "blade.php", "cshtml", "vbhtml", "ejs", "pug", "jade",
+            "jinja", "j2", "gohtml", "tmpl", "qtpl", "njk");
+    private static final Pattern SPRING_MODEL_SINK_PATTERN = Pattern.compile(
+            "\\baddAttribute\\s*\\(|\\baddObject\\s*\\(|\\bModelAndView\\b|\\b(?:Model|ModelMap)\\s+\\w+"
+                    + "|@ModelAttribute|\\bmodel\\.put\\s*\\(|\\baddAllAttributes\\s*\\(");
+    private static final Pattern SPRING_VIEW_LITERAL_PATTERN = Pattern.compile(
+            "\\breturn\\s+\"([^\"]+)\"\\s*;|new\\s+ModelAndView\\s*\\(\\s*\"([^\"]+)\"|setViewName\\s*\\(\\s*\"([^\"]+)\"");
+    private static final Pattern SPRING_NAMED_ATTR_PATTERN = Pattern.compile(
+            "\\b(?:addAttribute|addObject|put|addFlashAttribute)\\s*\\(\\s*\"([A-Za-z_]\\w*)\"");
+    private static final Pattern SPRING_MODEL_ATTRIBUTE_PARAM_PATTERN = Pattern.compile(
+            "@ModelAttribute(?:\\s*\\(\\s*(?:value\\s*=\\s*)?\"([A-Za-z_]\\w*)\"\\s*\\))?"
+                    + "\\s+(?:@\\w+(?:\\([^)]*\\))?\\s+)*(?:final\\s+)?([A-Z]\\w*)(?:<[^>]*>)?\\s+(\\w+)\\s*[,)]");
+    private static final Pattern TILES_DEFINITION_PATTERN = Pattern.compile(
+            "<definition\\b([^>]*?)(/?)>", Pattern.CASE_INSENSITIVE);
+    private static final Pattern TILES_PUT_ATTRIBUTE_PATTERN = Pattern.compile(
+            "<put-attribute\\b[^>]*\\bvalue\\s*=\\s*\"([^\"]+)\"", Pattern.CASE_INSENSITIVE);
+    private static final Pattern XML_ATTR_NAME = Pattern.compile("\\bname\\s*=\\s*\"([^\"]+)\"");
+    private static final Pattern XML_ATTR_TEMPLATE = Pattern.compile("\\btemplate\\s*=\\s*\"([^\"]+)\"");
+    private static final Pattern XML_ATTR_EXTENDS = Pattern.compile("\\bextends\\s*=\\s*\"([^\"]+)\"");
+    /** Lines that emit a value into HTML — shown when no handler attribute is referenced by name. */
+    private static final Pattern TEMPLATE_OUTPUT_EXPRESSION = Pattern.compile(
+            "\\$\\{|\\$!?\\w|<%=|th:utext|th:text|\\[\\[|\\[\\(|<c:out|escapeXml|\\{\\{"
+                    + "|\\|\\s*safe\\b|\\|\\s*raw\\b|\\{!!|Html\\.Raw|html_safe|mark_safe|@Html\\.|@Model\\.");
     private static final Pattern HTTP_SOURCE_PATTERN = Pattern.compile(
             // Python: Django / Flask / FastAPI
             "\\brequest\\.(GET|POST|FILES|COOKIES|META|headers|body|json|data|form|args|values|stream)\\b"
@@ -125,9 +194,7 @@ public class CodeContextExtractor {
                     + "|\\bthis\\.[a-zA-Z]+Targets\\b",
             Pattern.CASE_INSENSITIVE);
     /** LHS/write forms that are XSS sinks; nearby DOM APIs must not be treated as payload provenance. */
-    private static final Pattern XSS_SINK_WRITE_PATTERN = Pattern.compile(
-            "(?:\\.innerHTML|\\.outerHTML)\\s*=|\\.insertAdjacentHTML\\s*\\(",
-            Pattern.CASE_INSENSITIVE);
+    private static final Pattern XSS_SINK_WRITE_PATTERN = XssSinkMarkers.JS_HTML_WRITE;
     /** CodeMirror / editor extension registration: {@code Foo.defineExtension("openDialog", function...)}. */
     private static final Pattern JS_EXTENSION_FUNC_PATTERN = Pattern.compile(
             "\\.define(?:Doc)?Extension\\s*\\(\\s*[\"']([A-Za-z_][A-Za-z0-9_]*)[\"']");
@@ -1047,14 +1114,7 @@ public class CodeContextExtractor {
     }
 
     private boolean looksLikeXssSink(String lower) {
-        return lower.contains("innerhtml") || lower.contains("outerhtml")
-                || lower.contains("insertadjacenthtml") || lower.contains("dangerouslysetinnerhtml")
-                || lower.contains("document.write") || lower.contains("mark_safe")
-                || lower.contains("v-html") || lower.contains("bypasssecuritytrusthtml")
-                || lower.contains("html_safe") || lower.contains("html.raw")
-                || lower.contains("template.html") || lower.contains("|raw")
-                || lower.contains("content_tag") || lower.contains("writeline(")
-                || lower.contains("echo ") || lower.contains("response.write");
+        return XssSinkMarkers.looksLikeXssSink(lower);
     }
 
     private boolean looksLikeCommandSink(String lower) {
@@ -1124,12 +1184,26 @@ public class CodeContextExtractor {
                     primary != null ? Pattern.quote(primary) : "(html|markup|content|body|message)", glob));
             suggestions.add(String.format(
                     "XSS untrusted sources: search_repo pattern=\"\\b(%s|location\\.|innerHTML|textContent|"
-                            + "dataset|html_safe|Html\\.Raw|template\\.HTML|mark_safe)\" path_glob=\"%s\"",
+                            + "dataset|html_safe|Html\\.Raw|template\\.HTML|mark_safe|\\|safe|\\|raw|\\{!!)\" "
+                            + "path_glob=\"%s\"",
                     httpAccessors, glob));
             suggestions.add(String.format(
                     "Server XSS sinks: search_repo pattern=\"\\b(echo|print|Html\\.Raw|html_safe|raw\\(|"
-                            + "content_tag|template\\.HTML|Response\\.Write|\\|[ ]*raw)\" path_glob=\"%s\"",
+                            + "content_tag|template\\.HTML|Response\\.Write|mark_safe|dangerouslySetInnerHTML)|"
+                            + "\\|[ ]*(?:safe|raw)|\\{!!\" path_glob=\"%s\"",
                     ext));
+            suggestions.add(
+                    "XSS template-first: if the handler calls render/render_template/res.render/View()/render "
+                            + "\"name\", use find_files on that view (e.g. `**/news/edit*`) then read_file and cite "
+                            + "the exact escaping line (`{{ x }}` vs `|safe`, th:text vs th:utext, c:out, Html.Raw) "
+                            + "BEFORE TRUE/FALSE. If the Resolved template section is already in the prompt, quote it.");
+            appendObjectFieldChainSuggestions(suggestions, haystack, ext != null ? ext : glob);
+            suggestions.add(
+                    "XSS nested fields (e.g. dictsForm.dictionary[i].value, fileViewVo.name): "
+                            + "(1) search setValue(/setName(/`.value =` for the FIELD, "
+                            + "(2) search where the OBJECT is built/assigned, "
+                            + "(3) classify whether that object is request-bound / DB / constant — do not UNCERTAIN "
+                            + "without those searches.");
             suggestions.add(
                     "XSS: prefer input_source=http_request/dom_content/database when those reach the HTML sink; "
                             + "do not leave unknown if a concrete accessor is visible.");
@@ -1536,6 +1610,9 @@ public class CodeContextExtractor {
         return identifiers;
     }
 
+    /** One call site found in the same file: its line number and the argument window used to judge it. */
+    private record LocalCallSite(int lineIdx, String argsWindow) {}
+
     /**
      * Language-agnostic best-effort caller finder. Bearer's per-finding source is almost always the
      * sink line itself, so the origin of a value that arrives as a function parameter is not in the
@@ -1563,33 +1640,82 @@ public class CodeContextExtractor {
         List<String> searchSymbols = resolveCallerSearchSymbols(lines, funcStart, funcName, filename, language);
         List<Pattern> callPatterns = searchSymbols.stream().map(this::callSitePattern).toList();
 
-        StringBuilder sb = new StringBuilder();
-        List<String> callSiteArgs = new ArrayList<>();
-        int sites = 0;
-        for (int i = 0; i < lines.size() && sites < MAX_CALLER_SITES; i++) {
+        // Scan EVERY call site in the file — not capped — so the origin-tag below is judged against
+        // the true, complete set of callers. Only the rendered prompt text (below) is capped for
+        // token budget; the literal/non-literal decision must never be based on a truncated sample.
+        List<LocalCallSite> allSites = new ArrayList<>();
+        for (int i = 0; i < lines.size(); i++) {
             if (i == funcStart) continue;
             String line = lines.get(i);
             if (line.isBlank() || searchSymbols.stream().anyMatch(sym -> looksLikeDefinitionOf(line, sym))) {
                 continue;
             }
             if (callPatterns.stream().anyMatch(p -> p.matcher(line).find())) {
-                sb.append("// call site at line ").append(i + 1).append(":\n");
-                appendWindow(sb, lines, i);
-                sb.append('\n');
                 int from = Math.max(0, i - 1);
                 int to = Math.min(lines.size(), i + 3);
-                callSiteArgs.add(String.join("\n", lines.subList(from, to)));
-                sites++;
+                allSites.add(new LocalCallSite(i, String.join("\n", lines.subList(from, to))));
             }
         }
+
         String localCode = extractFunction(lines, item.getLineNumber(), language);
         if (item.getCodeExtract() != null) {
             localCode = localCode + "\n" + item.getCodeExtract();
         }
-        if (shouldEmitLiteralCallsiteOriginTag(callSiteArgs, localCode)) {
+
+        List<String> allArgs = allSites.stream().map(LocalCallSite::argsWindow).toList();
+        boolean allLiteral = shouldEmitLiteralCallsiteOriginTag(allArgs, localCode);
+
+        // Render a bounded sample for the prompt, prioritizing call sites whose argument does NOT
+        // look like a literal — those are the ones that matter most for a correct verdict, and must
+        // not be silently dropped in favor of earlier, safer-looking call sites in file order.
+        List<LocalCallSite> toRender = selectCallSitesToRender(allSites, MAX_CALLER_SITES);
+
+        StringBuilder sb = new StringBuilder();
+        for (LocalCallSite site : toRender) {
+            sb.append("// call site at line ").append(site.lineIdx() + 1).append(":\n");
+            appendWindow(sb, lines, site.lineIdx());
+            sb.append('\n');
+        }
+        if (allSites.size() > toRender.size()) {
+            sb.append("// ").append(allSites.size() - toRender.size())
+                    .append(" additional call site(s) in this file were analyzed for the origin-tag below ")
+                    .append("but omitted here for space; search_repo for more if needed.\n");
+        }
+        if (allLiteral) {
             sb.append("// [origin-tag: all-callsites-pass-literal-arg=true]\n");
         }
         return sb.toString().trim();
+    }
+
+    /**
+     * Picks which call sites to render into the prompt when there are more than {@code limit}.
+     * Non-literal-looking argument windows are prioritized (they are the evidence most likely to
+     * change the verdict); ties are broken by file order so the sample stays deterministic.
+     */
+    private List<LocalCallSite> selectCallSitesToRender(List<LocalCallSite> sites, int limit) {
+        if (sites.size() <= limit) {
+            return sites;
+        }
+        List<LocalCallSite> nonLiteral = new ArrayList<>();
+        List<LocalCallSite> literal = new ArrayList<>();
+        for (LocalCallSite site : sites) {
+            if (argumentLooksLikeLiteral(site.argsWindow())) {
+                literal.add(site);
+            } else {
+                nonLiteral.add(site);
+            }
+        }
+        List<LocalCallSite> selected = new ArrayList<>();
+        for (LocalCallSite site : nonLiteral) {
+            if (selected.size() >= limit) break;
+            selected.add(site);
+        }
+        for (LocalCallSite site : literal) {
+            if (selected.size() >= limit) break;
+            selected.add(site);
+        }
+        selected.sort(Comparator.comparingInt(LocalCallSite::lineIdx));
+        return selected;
     }
 
     /**
@@ -1717,44 +1843,94 @@ public class CodeContextExtractor {
         // priority 0 (imports) → 1 (same-package) → 2 (fallback)
         candidates.sort(Comparator.comparingInt(CandidateFile::priority));
 
-        StringBuilder sb = new StringBuilder();
-        int sites = 0;
-        // Track argument expressions at each call site to detect all-literals pattern
-        List<String> callSiteArgs = new ArrayList<>();
-
+        // Scan EVERY call site in every scanned candidate file — not capped — so the origin-tag
+        // below is judged against the true, complete set of discovered callers (the file-count caps
+        // on candidates above are a separate, pre-existing performance bound on which files get
+        // scanned, not on how many call sites within those files are analyzed). Only the rendered
+        // prompt text is capped at MAX_REPO_CALLER_SITES for token budget.
+        record CrossFileCallSite(String label, String rel, int lineIdx, String argsWindow) {}
+        List<CrossFileCallSite> allSites = new ArrayList<>();
         for (CandidateFile candidate : candidates) {
-            if (sites >= MAX_REPO_CALLER_SITES) break;
             List<String> cLines = candidate.candidateLines();
-            for (int i = 0; i < cLines.size() && sites < MAX_REPO_CALLER_SITES; i++) {
+            String label = candidate.priority() == 0 ? "[imports module] "
+                    : candidate.priority() == 1 ? "[same package] " : "";
+            for (int i = 0; i < cLines.size(); i++) {
                 String line = cLines.get(i);
                 if (line.isBlank() || searchSymbols.stream().anyMatch(sym -> looksLikeDefinitionOf(line, sym))) {
                     continue;
                 }
                 if (callPatterns.stream().anyMatch(p -> p.matcher(line).find())) {
-                    String label = candidate.priority() == 0 ? "[imports module] "
-                            : candidate.priority() == 1 ? "[same package] " : "";
-                    sb.append("// ").append(label).append("external call site in ")
-                      .append(candidate.rel()).append(" at line ").append(i + 1).append(":\n");
-                    appendWindow(sb, cLines, i);
-                    sb.append('\n');
                     // Include nearby lines so multi-line call arguments can still look literal/constant.
                     int from = Math.max(0, i - 1);
                     int to = Math.min(cLines.size(), i + 3);
-                    callSiteArgs.add(String.join("\n", cLines.subList(from, to)));
-                    sites++;
+                    allSites.add(new CrossFileCallSite(label, candidate.rel(), i,
+                            String.join("\n", cLines.subList(from, to))));
                 }
             }
+        }
+
+        String localCode = extractFunction(lines, item.getLineNumber(), language);
+        if (item.getCodeExtract() != null) {
+            localCode = localCode + "\n" + item.getCodeExtract();
+        }
+
+        List<String> allArgs = allSites.stream().map(CrossFileCallSite::argsWindow).toList();
+        boolean allLiteral = shouldEmitLiteralCallsiteOriginTag(allArgs, localCode);
+
+        // Render a bounded sample, prioritizing call sites whose argument does NOT look like a
+        // literal — those matter most for the verdict and must not be dropped just because they
+        // were discovered after MAX_REPO_CALLER_SITES literal-looking ones in file/priority order.
+        List<CrossFileCallSite> nonLiteral = new ArrayList<>();
+        List<CrossFileCallSite> literalSites = new ArrayList<>();
+        for (CrossFileCallSite site : allSites) {
+            if (argumentLooksLikeLiteral(site.argsWindow())) {
+                literalSites.add(site);
+            } else {
+                nonLiteral.add(site);
+            }
+        }
+        List<CrossFileCallSite> toRender = new ArrayList<>();
+        for (CrossFileCallSite site : nonLiteral) {
+            if (toRender.size() >= MAX_REPO_CALLER_SITES) break;
+            toRender.add(site);
+        }
+        for (CrossFileCallSite site : literalSites) {
+            if (toRender.size() >= MAX_REPO_CALLER_SITES) break;
+            toRender.add(site);
+        }
+        // Preserve priority order (imports → same-package → fallback), then line order within a file.
+        Map<String, Integer> candidateOrder = new HashMap<>();
+        for (int idx = 0; idx < candidates.size(); idx++) {
+            candidateOrder.putIfAbsent(candidates.get(idx).rel(), idx);
+        }
+        toRender.sort(Comparator
+                .comparingInt((CrossFileCallSite s) -> candidateOrder.getOrDefault(s.rel(), Integer.MAX_VALUE))
+                .thenComparingInt(CrossFileCallSite::lineIdx));
+
+        Map<String, List<String>> linesByRel = new HashMap<>();
+        for (CandidateFile candidate : candidates) {
+            linesByRel.putIfAbsent(candidate.rel(), candidate.candidateLines());
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (CrossFileCallSite site : toRender) {
+            List<String> cLines = linesByRel.get(site.rel());
+            sb.append("// ").append(site.label()).append("external call site in ")
+                    .append(site.rel()).append(" at line ").append(site.lineIdx() + 1).append(":\n");
+            appendWindow(sb, cLines, site.lineIdx());
+            sb.append('\n');
+        }
+        if (allSites.size() > toRender.size()) {
+            sb.append("// ").append(allSites.size() - toRender.size())
+                    .append(" additional external call site(s) were analyzed for the origin-tag below ")
+                    .append("but omitted here for space; search_repo for more if needed.\n");
         }
 
         // ── OriginTag: annotate when every discovered call site passes a string literal ──
         // This gives the LLM (and deterministic normalizer) a hard signal that the tainted
         // argument is config/code-backed, not attacker-controlled — but NOT when the sink SQL
         // is built locally from identifiers/fields (call-site ctor literals are then irrelevant).
-        String localCode = extractFunction(lines, item.getLineNumber(), language);
-        if (item.getCodeExtract() != null) {
-            localCode = localCode + "\n" + item.getCodeExtract();
-        }
-        if (shouldEmitLiteralCallsiteOriginTag(callSiteArgs, localCode)) {
+        if (allLiteral) {
             sb.append("// [origin-tag: all-callsites-pass-literal-arg=true]\n");
         }
 
@@ -1889,12 +2065,16 @@ public class CodeContextExtractor {
 
     /**
      * True when every discovered call site looks literal/constant. Suppresses the tag when local
-     * SQL/DDL is built from mutable/external operands (instance fields, JSON, resource names) —
-     * ctor literals are misleading there. Parameter + literal call sites still emit the tag so
+     * code already reads an HTTP source directly (query/body/cookie/header/…) — call-site literals
+     * are irrelevant then — or when local SQL/DDL is built from mutable/external operands
+     * (instance fields, JSON, resource names). Parameter + literal call sites still emit the tag so
      * SQLi verification can score trusted-source string concat as a mid-confidence risky scheme.
      */
     private boolean shouldEmitLiteralCallsiteOriginTag(List<String> callSiteArgs, String localCode) {
         if (callSiteArgs == null || callSiteArgs.isEmpty()) {
+            return false;
+        }
+        if (sinkArgumentParser.hasImmediateUntrustedSource(localCode)) {
             return false;
         }
         if (!callSiteArgs.stream().allMatch(this::argumentLooksLikeLiteral)) {
@@ -1907,6 +2087,10 @@ public class CodeContextExtractor {
     boolean sqlConcatUsesMutableOrExternalOperands(String code) {
         if (code == null || code.isBlank()) {
             return false;
+        }
+        // Direct HTTP/cookie/header/query reads are never "app-constant" SQL operands.
+        if (sinkArgumentParser.hasImmediateUntrustedSource(code)) {
+            return true;
         }
         String lower = code.toLowerCase(Locale.ROOT);
         // ResultSet/rs.getString is result reading, not a source into the SQL text.
@@ -3024,55 +3208,614 @@ public class CodeContextExtractor {
     }
 
     /**
-     * When a finding wraps rendered template output in a "safe" HTML sink ({@code mark_safe},
-     * {@code innerHTML}, etc.), auto-resolve the template/view file referenced in the same source
-     * file and include a capped snippet. Only injects when exactly one unambiguous match is found.
+     * Auto-resolve the template/view file referenced by this handler and include a capped snippet.
+     * For XSS findings, runs even when the method has no {@code mark_safe}/{@code innerHTML} — the
+     * XSS verdict depends on how the template escapes model data. For non-XSS "safe HTML wrap"
+     * findings, keeps the legacy gate (safe-sink + render call). Prefers an unambiguous match;
+     * when several resolve, renders up to {@link #MAX_RESOLVED_VIEWS}.
      */
     private String extractTemplateContext(String repoDir, String sourceFile, List<String> lines,
                                           Item item, String functionBody) {
         if (functionBody == null || functionBody.isBlank() || lines.isEmpty()) {
             return "";
         }
-        if (!SAFE_SINK_PATTERN.matcher(functionBody).find()) {
+        // Spring MVC / JVM web controllers resolve the view implicitly (ViewResolver / Tiles) AFTER the
+        // handler returns, so none of the explicit render-call patterns below ever match. Handle that
+        // stack first; the XSS verdict depends entirely on how the template renders the attribute.
+        String language = detectLanguage(sourceFile);
+        if ("java".equals(language) || "kotlin".equals(language)) {
+            String springView = extractSpringViewContext(repoDir, item, functionBody);
+            if (!springView.isBlank()) {
+                return springView;
+            }
+        }
+
+        boolean xss = isXssFinding(item);
+        if (!xss && !SAFE_SINK_PATTERN.matcher(functionBody).find()) {
             return "";
         }
 
-        String fileText = String.join("\n", lines);
-        if (!RENDER_PATTERN.matcher(fileText).find()) {
-            return "";
-        }
-
-        Set<String> templateRefs = collectTemplateReferences(fileText);
+        // Prefer refs in the enclosing function (the handler), then fall back to the whole file.
+        Set<String> templateRefs = collectTemplateReferences(functionBody);
         if (templateRefs.isEmpty()) {
-            return "";
+            String fileText = String.join("\n", lines);
+            if (!xss && !RENDER_PATTERN.matcher(fileText).find()) {
+                return "";
+            }
+            templateRefs = collectTemplateReferences(fileText);
         }
-
-        Set<String> resolvedPaths = new LinkedHashSet<>();
-        for (String templateRef : templateRefs) {
-            resolveTemplateFile(repoDir, sourceFile, templateRef).ifPresent(resolvedPaths::add);
-        }
-        if (resolvedPaths.size() != 1) {
-            if (resolvedPaths.size() > 1) {
-                log.debug("[CodeContextExtractor] Ambiguous template resolution for {}: {}", sourceFile, resolvedPaths);
+        if (templateRefs.isEmpty()) {
+            // Only nudge the model when a render/view call is present but the name is dynamic.
+            if (xss && RENDER_PATTERN.matcher(functionBody).find()) {
+                return "// no literal template/view name found in this handler — use find_files / "
+                        + "read_file on the view name from render()/render_template()/res.render()/View() "
+                        + "before judging escaping.\n";
             }
             return "";
         }
 
-        String relPath = resolvedPaths.iterator().next();
-        String snippet = readTemplateSnippet(repoDir, relPath);
-        if (snippet.isBlank()) {
+        Set<String> resolvedPaths = new LinkedHashSet<>();
+        List<String> unresolved = new ArrayList<>();
+        for (String templateRef : templateRefs) {
+            Optional<String> resolved = resolveTemplateFile(repoDir, sourceFile, templateRef);
+            if (resolved.isPresent()) {
+                resolvedPaths.add(resolved.get());
+            } else {
+                unresolved.add(templateRef);
+            }
+        }
+        if (resolvedPaths.isEmpty()) {
+            if (xss) {
+                StringBuilder miss = new StringBuilder();
+                miss.append("// template refs not located on disk: ")
+                        .append(String.join(", ", unresolved))
+                        .append(" — use find_files (e.g. `*")
+                        .append(lastSegment(unresolved.get(0)))
+                        .append(".*`) or read_file before judging escaping.\n");
+                return miss.toString();
+            }
             return "";
         }
 
-        log.info("[CodeContextExtractor] Auto-resolved template for {}: {}", sourceFile, relPath);
-        return relPath + ":\n" + snippet;
+        StringBuilder sb = new StringBuilder();
+        sb.append("Resolved template/view (deterministic lookup from render/view call):\n");
+        int rendered = 0;
+        for (String relPath : resolvedPaths) {
+            if (rendered >= MAX_RESOLVED_VIEWS) break;
+            String snippet = xss
+                    ? readViewSnippet(repoDir, relPath, Set.of())
+                    : readTemplateSnippet(repoDir, relPath);
+            if (snippet.isBlank()) continue;
+            sb.append("// template \"").append(relPath).append("\"\n");
+            sb.append(snippet).append('\n');
+            rendered++;
+        }
+        if (rendered == 0) {
+            return "";
+        }
+        if (!unresolved.isEmpty()) {
+            sb.append("// also referenced but not located: ").append(String.join(", ", unresolved)).append('\n');
+        }
+        sb.append(templateEscapingReference());
+        log.info("[CodeContextExtractor] Auto-resolved {} template(s) for {}", rendered, sourceFile);
+        return sb.toString().trim();
+    }
+
+    // ── Spring MVC implicit view resolution ─────────────────────────────────────────────────────
+
+    /**
+     * For an XSS finding inside a Spring MVC handler that populates the model and returns a view
+     * name, deterministically locate the template(s) that render it and surface the lines that
+     * reference the handler's model attributes. Resolution order: Tiles definitions (view name →
+     * {@code <definition name=..>} → template / put-attribute JSPs), then a repo-wide basename match
+     * ({@code viewName + template extension}, honouring sub-paths such as {@code admin/edit}).
+     * Returns "" when this is not an XSS finding, the method is not a view-rendering handler, or no
+     * template can be located — in which case the ReAct prompt tells the model to go and find it.
+     */
+    String extractSpringViewContext(String repoDir, Item item, String functionBody) {
+        if (repoDir == null || repoDir.isBlank() || !isXssFinding(item)) {
+            return "";
+        }
+        if (!SPRING_MODEL_SINK_PATTERN.matcher(functionBody).find()) {
+            return "";
+        }
+        if (functionBody.contains("@ResponseBody")) {
+            // Returned string is the HTTP body, not a view name.
+            return "";
+        }
+
+        List<String> viewNames = new ArrayList<>();
+        List<String> redirects = new ArrayList<>();
+        var viewMatcher = SPRING_VIEW_LITERAL_PATTERN.matcher(functionBody);
+        while (viewMatcher.find()) {
+            String view = firstNonNull(viewMatcher.group(1), viewMatcher.group(2), viewMatcher.group(3));
+            if (view == null) continue;
+            view = view.trim();
+            if (view.isEmpty() || view.contains(" ") || view.contains("${")) continue;
+            if (view.startsWith("redirect:") || view.startsWith("forward:")) {
+                if (!redirects.contains(view)) redirects.add(view);
+                continue;
+            }
+            if (!viewNames.contains(view)) viewNames.add(view);
+        }
+        if (viewNames.isEmpty() && redirects.isEmpty()) {
+            return "";
+        }
+
+        Set<String> attrs = collectModelAttributeNames(functionBody, item.getCodeExtract());
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Spring MVC implicit view resolution (deterministic lookup: the handler returns a view NAME; ")
+                .append("the ViewResolver / Tiles maps it to the template file below):\n");
+        sb.append("// model attributes set in this handler: ")
+                .append(attrs.isEmpty() ? "(none named in this method)" : String.join(", ", attrs)).append('\n');
+        if (!redirects.isEmpty()) {
+            sb.append("// redirect/forward outcomes: ").append(String.join(", ", redirects))
+                    .append(" — on those paths THIS handler renders no template (plain model attributes are dropped; ")
+                    .append("flash attributes survive the redirect and are rendered by the target handler's view)\n");
+        }
+        if (viewNames.isEmpty()) {
+            sb.append("// no literal view name is returned by this handler besides the redirect(s) above.\n");
+            return sb.toString().trim();
+        }
+
+        ViewIndex index = indexViewFiles(repoDir);
+        int rendered = 0;
+        for (String viewName : viewNames) {
+            if (rendered >= MAX_RESOLVED_VIEWS) break;
+            List<ResolvedView> resolved = resolveSpringView(repoDir, viewName, index);
+            if (resolved.isEmpty()) {
+                sb.append("// view \"").append(viewName).append("\": no template file located by name — ")
+                        .append("use find_files (e.g. `*").append(lastSegment(viewName)).append(".*`, `*tiles*.xml`) ")
+                        .append("or search_repo for the view-resolver prefix/suffix before judging escaping.\n");
+                continue;
+            }
+            for (ResolvedView view : resolved) {
+                if (rendered >= MAX_RESOLVED_VIEWS) break;
+                sb.append("// view \"").append(viewName).append("\" -> ").append(view.path());
+                if (view.via() != null) {
+                    sb.append("  (via ").append(view.via()).append(')');
+                }
+                sb.append('\n');
+                sb.append(readViewSnippet(repoDir, view.path(), attrs)).append('\n');
+                rendered++;
+            }
+        }
+        if (rendered > 0) {
+            sb.append(templateEscapingReference());
+            log.info("[CodeContextExtractor] Auto-resolved {} Spring view template(s) for {}",
+                    rendered, item.getFullFilename() != null ? item.getFullFilename() : item.getFilename());
+        }
+        return sb.toString().trim();
+    }
+
+    private static boolean isXssFinding(Item item) {
+        if (item == null) return false;
+        if (item.getCweIds() != null) {
+            for (String cwe : item.getCweIds()) {
+                if (cwe == null) continue;
+                String id = cwe.toUpperCase(Locale.ROOT).replace("CWE-", "").trim();
+                if ("79".equals(id) || "80".equals(id)) return true;
+            }
+        }
+        String id = item.getId() == null ? "" : item.getId().toLowerCase(Locale.ROOT);
+        String title = item.getTitle() == null ? "" : item.getTitle().toLowerCase(Locale.ROOT);
+        return id.contains("xss") || title.contains("xss") || title.contains("cross-site scripting")
+                || title.contains("cross site scripting");
+    }
+
+    /**
+     * Model attribute names visible in the handler: explicit {@code addAttribute("name", ..)} /
+     * {@code addObject} / {@code put} keys plus {@code @ModelAttribute} parameters (explicit name or
+     * Spring's default — the decapitalized simple class name). The flagged extract's own name is
+     * listed first so the template lookup prioritises it.
+     */
+    Set<String> collectModelAttributeNames(String functionBody, String codeExtract) {
+        Set<String> attrs = new LinkedHashSet<>();
+        if (codeExtract != null) {
+            var m = SPRING_NAMED_ATTR_PATTERN.matcher(codeExtract);
+            while (m.find()) attrs.add(m.group(1));
+        }
+        var m = SPRING_NAMED_ATTR_PATTERN.matcher(functionBody);
+        while (m.find()) attrs.add(m.group(1));
+        var p = SPRING_MODEL_ATTRIBUTE_PARAM_PATTERN.matcher(functionBody);
+        while (p.find()) {
+            if (p.group(1) != null) {
+                attrs.add(p.group(1));
+            } else if (p.group(2) != null) {
+                attrs.add(decapitalize(p.group(2)));
+            }
+        }
+        return attrs;
+    }
+
+    private static String decapitalize(String simpleName) {
+        if (simpleName == null || simpleName.isEmpty()) return simpleName;
+        // java.beans.Introspector semantics: "URLForm" stays "URLForm", "ArticleForm" -> "articleForm"
+        if (simpleName.length() > 1 && Character.isUpperCase(simpleName.charAt(0))
+                && Character.isUpperCase(simpleName.charAt(1))) {
+            return simpleName;
+        }
+        return Character.toLowerCase(simpleName.charAt(0)) + simpleName.substring(1);
+    }
+
+    private static String lastSegment(String viewName) {
+        int slash = viewName.lastIndexOf('/');
+        return slash >= 0 ? viewName.substring(slash + 1) : viewName;
+    }
+
+    record ViewIndex(List<String> templateFiles, List<String> tilesFiles) {}
+
+    record ResolvedView(String path, String via) {}
+
+    private ViewIndex indexViewFiles(String repoDir) {
+        List<String> templates = new ArrayList<>();
+        List<String> tiles = new ArrayList<>();
+        Path base = Path.of(repoDir);
+        int seen = 0;
+        try (Stream<Path> walk = Files.walk(base)) {
+            for (Path p : (Iterable<Path>) walk
+                    .filter(f -> !Files.isDirectory(f))
+                    .filter(f -> !isSkipped(base, f))::iterator) {
+                if (++seen > MAX_VIEW_INDEX_FILES) break;
+                String name = p.getFileName().toString();
+                String lower = name.toLowerCase(Locale.ROOT);
+                int dot = lower.lastIndexOf('.');
+                if (dot < 0) continue;
+                String ext = lower.endsWith(".blade.php") ? "blade.php" : lower.substring(dot + 1);
+                String rel = base.relativize(p).toString().replace('\\', '/');
+                if (VIEW_TEMPLATE_EXT.contains(ext)) {
+                    templates.add(rel);
+                } else if ("xml".equals(ext) && lower.contains("tiles")) {
+                    tiles.add(rel);
+                }
+            }
+        } catch (IOException e) {
+            log.debug("[CodeContextExtractor] Cannot index view files under {}: {}", repoDir, e.getMessage());
+        }
+        return new ViewIndex(templates, tiles);
+    }
+
+    List<ResolvedView> resolveSpringView(String repoDir, String viewName, ViewIndex index) {
+        List<ResolvedView> out = new ArrayList<>();
+        String normalized = viewName.replace('\\', '/').replaceAll("^/+", "");
+
+        // 1. Apache Tiles: view name is a definition name, the JSPs live in template/put-attribute.
+        for (String tilesFile : index.tilesFiles()) {
+            for (Map.Entry<String, String> tpl : tilesTemplatePaths(repoDir, tilesFile, normalized).entrySet()) {
+                for (String match : matchTemplateBySuffix(index.templateFiles(), tpl.getKey(), 2)) {
+                    String via = "Tiles definition \"" + tpl.getValue() + "\" in " + tilesFile;
+                    if (out.stream().noneMatch(r -> r.path().equals(match))) {
+                        out.add(new ResolvedView(match, via));
+                    }
+                }
+            }
+            if (out.size() >= MAX_RESOLVED_VIEWS) return out;
+        }
+        if (!out.isEmpty()) {
+            return out;
+        }
+
+        // 2. Plain ViewResolver (prefix + viewName + suffix): basename match on the template index.
+        List<String> direct = new ArrayList<>();
+        for (String ext : VIEW_TEMPLATE_EXT) {
+            direct.addAll(matchTemplateBySuffix(index.templateFiles(), normalized + "." + ext, MAX_RESOLVED_VIEWS));
+        }
+        // Prefer conventional view roots when the name is ambiguous across the repo.
+        direct.sort(Comparator.comparingInt((String path) -> {
+            String lower = path.toLowerCase(Locale.ROOT);
+            if (lower.contains("/web-inf/")) return 0;
+            if (lower.contains("/templates/") || lower.contains("/views/")) return 1;
+            if (lower.contains("/test/")) return 3;
+            return 2;
+        }).thenComparing(Comparator.naturalOrder()));
+        for (String path : direct) {
+            if (out.size() >= MAX_RESOLVED_VIEWS) break;
+            if (out.stream().noneMatch(r -> r.path().equals(path))) {
+                out.add(new ResolvedView(path, null));
+            }
+        }
+        return out;
+    }
+
+    /** Files whose repo-relative path equals {@code suffix} or ends with {@code "/" + suffix}. */
+    private static List<String> matchTemplateBySuffix(List<String> templateFiles, String suffix, int limit) {
+        String normalized = suffix.replace('\\', '/').replaceAll("^/+", "");
+        List<String> out = new ArrayList<>();
+        for (String rel : templateFiles) {
+            if (rel.equals(normalized) || rel.endsWith("/" + normalized)) {
+                out.add(rel);
+                if (out.size() >= limit) break;
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Template paths (e.g. {@code /WEB-INF/jsp/news/edit.jsp}) declared for the Tiles definition
+     * named {@code viewName}: its own {@code template=} plus every {@code <put-attribute value=".."/>}
+     * that points at a template file, following {@code extends=} up to three levels for the layout
+     * template. Wildcard definitions (e.g. name matching {@code *}{@code /edit} with {@code {1}}
+     * placeholders) are supported. Returned map: template path to definition name it came from.
+     */
+    Map<String, String> tilesTemplatePaths(String repoDir, String tilesFile, String viewName) {
+        Map<String, String> out = new LinkedHashMap<>();
+        String xml;
+        try {
+            Path p = Path.of(repoDir, tilesFile);
+            if (Files.size(p) > MAX_REPO_SOURCE_BYTES) return out;
+            xml = Files.readString(p, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            return out;
+        }
+
+        Map<String, String> definitions = new LinkedHashMap<>(); // name -> raw <definition ...>...</definition>
+        var m = TILES_DEFINITION_PATTERN.matcher(xml);
+        while (m.find()) {
+            String attrsText = m.group(1);
+            var nameMatcher = XML_ATTR_NAME.matcher(attrsText);
+            if (!nameMatcher.find()) continue;
+            String name = nameMatcher.group(1);
+            String body;
+            if ("/".equals(m.group(2))) {
+                body = m.group(0);
+            } else {
+                int close = xml.indexOf("</definition>", m.end());
+                body = close < 0 ? m.group(0) : xml.substring(m.start(), close);
+            }
+            definitions.putIfAbsent(name, body);
+        }
+        if (definitions.isEmpty()) return out;
+
+        String current = viewName;
+        String[] wildcardGroups = new String[0];
+        for (int depth = 0; depth < 3 && current != null; depth++) {
+            String body = definitions.get(current);
+            String matchedName = current;
+            if (body == null) {
+                // Wildcard definition lookup: "*/edit" or "WILDCARD:*" style names with {1} placeholders.
+                for (Map.Entry<String, String> def : definitions.entrySet()) {
+                    if (!def.getKey().contains("*")) continue;
+                    String regex = "^" + Pattern.quote(def.getKey()).replace("*", "\\E(.*?)\\Q") + "$";
+                    var wm = Pattern.compile(regex).matcher(current);
+                    if (wm.matches()) {
+                        body = def.getValue();
+                        matchedName = def.getKey();
+                        wildcardGroups = new String[wm.groupCount()];
+                        for (int g = 0; g < wm.groupCount(); g++) wildcardGroups[g] = wm.group(g + 1);
+                        break;
+                    }
+                }
+            }
+            if (body == null) break;
+
+            String header = body.substring(0, body.indexOf('>') + 1);
+            var tplMatcher = XML_ATTR_TEMPLATE.matcher(header);
+            if (tplMatcher.find()) {
+                String tpl = substituteTilesPlaceholders(tplMatcher.group(1), wildcardGroups);
+                if (looksLikeViewFile(tpl)) out.putIfAbsent(tpl, matchedName);
+            }
+            if (depth == 0) {
+                // Body parts belong to the requested definition; parents only contribute layout.
+                var putMatcher = TILES_PUT_ATTRIBUTE_PATTERN.matcher(body);
+                while (putMatcher.find()) {
+                    String value = substituteTilesPlaceholders(putMatcher.group(1), wildcardGroups);
+                    if (looksLikeViewFile(value)) out.putIfAbsent(value, matchedName);
+                }
+            }
+            var extendsMatcher = XML_ATTR_EXTENDS.matcher(header);
+            current = extendsMatcher.find() ? extendsMatcher.group(1) : null;
+        }
+        return out;
+    }
+
+    private static String substituteTilesPlaceholders(String value, String[] groups) {
+        String out = value;
+        for (int i = 0; i < groups.length; i++) {
+            out = out.replace("{" + (i + 1) + "}", groups[i] == null ? "" : groups[i]);
+        }
+        return out;
+    }
+
+    private static boolean looksLikeViewFile(String path) {
+        if (path == null || path.isBlank() || path.contains("{")) return false;
+        String lower = path.toLowerCase(Locale.ROOT);
+        if (lower.endsWith(".blade.php")) return true;
+        int dot = lower.lastIndexOf('.');
+        return dot > 0 && VIEW_TEMPLATE_EXT.contains(lower.substring(dot + 1));
+    }
+
+    /**
+     * Lines of the template that reference the handler's model attributes (EL {@code ${attr..}},
+     * {@code modelAttribute="attr"}, {@code th:object="${attr}"}, scriptlets, Velocity/FreeMarker
+     * forms). When the view binds a differently named attribute (e.g. {@code modelAttribute="form"}
+     * while the handler set {@code articleForm}), those binding names are treated as aliases so the
+     * form fields still surface. Falls back to generic output expressions when nothing matches.
+     */
+    String readViewSnippet(String repoDir, String relPath, Set<String> attrs) {
+        List<String> lines;
+        try {
+            lines = Files.readAllLines(Path.of(repoDir, relPath), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            log.debug("[CodeContextExtractor] Cannot read view {}: {}", relPath, e.getMessage());
+            return "// (template could not be read)";
+        }
+
+        Set<String> handlerAttrs = attrs == null ? Set.of() : attrs;
+        Set<String> effectiveAttrs = new LinkedHashSet<>(handlerAttrs);
+        Set<String> bindingAliases = collectFormBindingAliases(lines);
+        List<String> aliasNotes = new ArrayList<>();
+        if (!bindingAliases.isEmpty() && !handlerAttrs.isEmpty()) {
+            List<String> formLike = handlerAttrs.stream().filter(CodeContextExtractor::looksLikeFormModelAttr)
+                    .limit(3).toList();
+            for (String alias : bindingAliases) {
+                if (effectiveAttrs.contains(alias)) continue;
+                // Heuristic: short form/command binding aliases the handler's *Form/*Dto/*Vo/*Command attr.
+                if (looksLikeFormBindingAlias(alias) || !formLike.isEmpty()) {
+                    effectiveAttrs.add(alias);
+                    String mapped = formLike.isEmpty() ? String.join("/", handlerAttrs) : String.join("/", formLike);
+                    aliasNotes.add(alias + " ↔ " + mapped);
+                }
+            }
+        } else if (!bindingAliases.isEmpty() && effectiveAttrs.isEmpty()) {
+            effectiveAttrs.addAll(bindingAliases);
+        }
+
+        Pattern attrPattern = effectiveAttrs.isEmpty() ? null : attributeReferencePattern(effectiveAttrs);
+        StringBuilder sb = new StringBuilder();
+        for (String note : aliasNotes) {
+            sb.append("// form-binding alias in view: ").append(note)
+                    .append(" (modelAttribute/commandName/th:object — treat as the handler model attr)\n");
+        }
+        int shown = 0;
+        int lastShown = -2;
+        if (attrPattern != null) {
+            for (int i = 0; i < lines.size() && shown < MAX_VIEW_SNIPPET_LINES; i++) {
+                String line = lines.get(i);
+                if (!attrPattern.matcher(line).find()) continue;
+                // Pull in the opening tag when the match is a continuation line of a multi-line tag.
+                if (i > 0 && i - 1 != lastShown && !line.contains("<") && lines.get(i - 1).contains("<")) {
+                    appendTemplateLine(sb, i - 1, lines.get(i - 1));
+                    shown++;
+                }
+                appendTemplateLine(sb, i, line);
+                lastShown = i;
+                shown++;
+            }
+        }
+        if (shown == 0) {
+            if (attrPattern != null && aliasNotes.isEmpty()) {
+                sb.append("// none of the handler's attribute names (").append(String.join(", ", attrs))
+                        .append(") is referenced by name in this view");
+                if (!bindingAliases.isEmpty()) {
+                    sb.append(" — view binds ").append(String.join(", ", bindingAliases))
+                            .append(" via modelAttribute/commandName/th:object (treated as aliases below)");
+                    effectiveAttrs.addAll(bindingAliases);
+                    attrPattern = attributeReferencePattern(effectiveAttrs);
+                    sb.append(".\n");
+                    for (int i = 0; i < lines.size() && shown < MAX_VIEW_SNIPPET_LINES; i++) {
+                        String line = lines.get(i);
+                        if (!attrPattern.matcher(line).find()) continue;
+                        appendTemplateLine(sb, i, line);
+                        shown++;
+                    }
+                } else {
+                    sb.append(" — check modelAttribute=/commandName=/th:object= and @ModelAttribute default names. ")
+                            .append("Output expressions follow:\n");
+                }
+            } else if (shown == 0) {
+                sb.append("// output expressions in this view:\n");
+            }
+            if (shown == 0) {
+                for (int i = 0; i < lines.size() && shown < MAX_VIEW_SNIPPET_LINES; i++) {
+                    String line = lines.get(i);
+                    if (TEMPLATE_OUTPUT_EXPRESSION.matcher(line).find()
+                            || XssSinkMarkers.hasRawHtmlMarker(line)
+                            || XssSinkMarkers.hasFrameworkEscaping(line)) {
+                        appendTemplateLine(sb, i, line);
+                        shown++;
+                    }
+                }
+            }
+            if (shown == 0) {
+                sb.append("// (no output expressions found in ").append(lines.size()).append(" lines)\n");
+            }
+        }
+        if (shown >= MAX_VIEW_SNIPPET_LINES) {
+            sb.append("// ... more matching lines omitted; read_file ").append(relPath).append(" for the rest\n");
+        }
+        return sb.toString().stripTrailing();
+    }
+
+    /** Names bound by Spring form / Thymeleaf object attributes in the view. */
+    static Set<String> collectFormBindingAliases(List<String> lines) {
+        Set<String> aliases = new LinkedHashSet<>();
+        if (lines == null) return aliases;
+        for (String line : lines) {
+            var m = VIEW_FORM_BINDING_ALIAS.matcher(line);
+            while (m.find()) {
+                String name = m.group(1) != null ? m.group(1) : m.group(2);
+                if (name != null && !name.isBlank()) aliases.add(name);
+            }
+        }
+        return aliases;
+    }
+
+    private static boolean looksLikeFormModelAttr(String name) {
+        if (name == null || name.isBlank()) return false;
+        String lower = name.toLowerCase(Locale.ROOT);
+        return lower.endsWith("form") || lower.endsWith("dto") || lower.endsWith("vo")
+                || lower.endsWith("command") || lower.endsWith("model") || lower.endsWith("bean");
+    }
+
+    private static boolean looksLikeFormBindingAlias(String name) {
+        if (name == null || name.isBlank()) return false;
+        String lower = name.toLowerCase(Locale.ROOT);
+        return "form".equals(lower) || "command".equals(lower) || "model".equals(lower)
+                || "bean".equals(lower) || "dto".equals(lower) || "vo".equals(lower)
+                || "object".equals(lower) || "entity".equals(lower);
+    }
+
+    private static Pattern attributeReferencePattern(Set<String> attrs) {
+        StringBuilder alt = new StringBuilder();
+        for (String attr : attrs) {
+            if (alt.length() > 0) alt.append('|');
+            alt.append(Pattern.quote(attr));
+        }
+        String names = "(?:" + alt + ")";
+        return Pattern.compile(
+                // JSP/Thymeleaf/FreeMarker/Spring EL: ${attr...} / *{..} / #{..} / [[${attr}]]
+                "[$*#]\\{[^}]*\\b" + names + "\\b"
+                        // Velocity: $attr / $!attr / $!{attr}
+                        + "|\\$!?\\{?" + names + "\\b"
+                        // Spring form / Thymeleaf binding and JSP tag attributes
+                        + "|(?:modelAttribute|commandName|th:object|th:field|items|value|var|name|property)\\s*=\\s*[\"'][^\"']*\\b" + names + "\\b"
+                        // Scriptlets and request attribute reads
+                        + "|<%[=!]?[^%]*\\b" + names + "\\b"
+                        + "|getAttribute\\s*\\(\\s*[\"']" + names + "[\"']"
+                        // Mustache/Handlebars
+                        + "|\\{\\{\\{?\\s*#?" + names + "\\b");
+    }
+
+    private static void appendTemplateLine(StringBuilder sb, int idx, String line) {
+        String text = line.length() > 300 ? line.substring(0, 300) + "…" : line;
+        sb.append(idx + 1).append("| ").append(text).append('\n');
+    }
+
+    private static String templateEscapingReference() {
+        return "// Escaping reference (judge the exact construct around each attribute): JSP raw `${...}` EL output "
+                + "and `<%= %>` scriptlets are NOT HTML-escaped; `<c:out>` (escapeXml defaults to true), "
+                + "`fn:escapeXml()` and `<spring:escapeBody htmlEscape=\"true\">` escape; Spring `<form:*>` / "
+                + "`<spring:*>` tag escaping is governed by the tag's htmlEscape attribute, `<spring:htmlEscape>`, "
+                + "or the web.xml `defaultHtmlEscape` context-param — verify, do not assume. "
+                + "Thymeleaf th:text / [[..]] escape, th:utext / [(..)] do not. "
+                + "Django/Jinja `{{ x }}` auto-escapes; `|safe` / `mark_safe` / `{% autoescape off %}` do not. "
+                + "Rails ERB `<%= %>` escapes; `raw` / `html_safe` do not. Twig `{{ }}` escapes; `|raw` does not. "
+                + "Blade `{{ }}` escapes; `{!! !!}` does not. Razor `@x` escapes; `Html.Raw` does not. "
+                + "Go html/template escapes; `template.HTML` is a trust marker. "
+                + "FreeMarker/Velocity depend on auto-escaping configuration (output_format, ?no_esc, $esc).\n";
+    }
+
+    private static String firstNonNull(String... values) {
+        for (String v : values) {
+            if (v != null) return v;
+        }
+        return null;
     }
 
     private Set<String> collectTemplateReferences(String fileText) {
         Set<String> refs = new LinkedHashSet<>();
+        if (fileText == null || fileText.isBlank()) {
+            return refs;
+        }
         collectPatternMatches(TEMPLATE_LITERAL_PATTERN, fileText, refs);
         collectPatternMatches(RENDER_TO_STRING_LITERAL, fileText, refs);
         collectPatternMatches(RENDER_LITERAL, fileText, refs);
+        collectPatternMatches(EXPRESS_RENDER_LITERAL, fileText, refs);
+        collectPatternMatches(RAILS_RENDER_LITERAL, fileText, refs);
+        collectPatternMatches(PHP_VIEW_LITERAL, fileText, refs);
+        collectPatternMatches(CSHARP_VIEW_LITERAL, fileText, refs);
+        collectPatternMatches(GO_TEMPLATE_LITERAL, fileText, refs);
         return refs;
     }
 
@@ -3087,16 +3830,30 @@ public class CodeContextExtractor {
     }
 
     private boolean looksLikeTemplatePath(String ref) {
+        if (ref == null || ref.isBlank() || ref.contains(" ") || ref.contains("${")) {
+            return false;
+        }
         String lower = ref.toLowerCase(Locale.ROOT);
+        if (lower.startsWith("redirect:") || lower.startsWith("forward:") || lower.startsWith("http")) {
+            return false;
+        }
         return lower.endsWith(".html") || lower.endsWith(".htm") || lower.endsWith(".ejs")
-                || lower.endsWith(".erb") || lower.endsWith(".hbs") || lower.endsWith(".mustache")
+                || lower.endsWith(".erb") || lower.endsWith(".haml") || lower.endsWith(".slim")
+                || lower.endsWith(".hbs") || lower.endsWith(".mustache")
                 || lower.endsWith(".jinja") || lower.endsWith(".j2") || lower.endsWith(".twig")
-                || lower.endsWith(".tpl") || lower.contains("/");
+                || lower.endsWith(".blade.php") || lower.endsWith(".cshtml") || lower.endsWith(".vbhtml")
+                || lower.endsWith(".gohtml") || lower.endsWith(".tmpl") || lower.endsWith(".njk")
+                || lower.endsWith(".pug") || lower.endsWith(".jade") || lower.endsWith(".ftl")
+                || lower.endsWith(".jsp") || lower.endsWith(".tpl") || lower.contains("/")
+                // Django/Rails/Express often omit the extension: "news/edit", "users/show"
+                || lower.matches("[a-z0-9_.\\-]+(?:/[a-z0-9_.\\-]+)+")
+                || lower.matches("[a-z0-9_.\\-]{2,80}");
     }
 
     /**
      * Resolves a template reference relative to the source file using common template directory
-     * layouts ({@code templates/}, app-level template roots). Returns a repo-relative path.
+     * layouts ({@code templates/}, {@code views/}, app-level roots). Tries common extensions when
+     * the ref has none. Returns a repo-relative path.
      */
     private Optional<String> resolveTemplateFile(String repoDir, String sourceFile, String templateRef) {
         String normalizedRef = templateRef.replace('\\', '/').replaceAll("^/+", "");
@@ -3106,17 +3863,34 @@ public class CodeContextExtractor {
             sourceDir = Path.of("");
         }
 
+        List<String> refVariants = templateRefVariants(normalizedRef);
+        String[] roots = {
+                "templates", "views", "view", "resources/templates", "resources/views",
+                "WEB-INF/views", "WEB-INF/jsp", "WEB-INF/templates",
+                "app/views", "app/templates", "src/main/resources/templates",
+                "src/main/webapp/WEB-INF/views", "src/main/webapp/WEB-INF/jsp",
+                "templates/views", "content/templates", ""
+        };
+
         List<Path> candidates = new ArrayList<>();
         Path current = sourceDir;
-        for (int depth = 0; depth < 5; depth++) {
-            candidates.add(current.resolve("templates").resolve(normalizedRef));
-            candidates.add(current.resolve(normalizedRef));
+        for (int depth = 0; depth < 6; depth++) {
+            for (String root : roots) {
+                for (String variant : refVariants) {
+                    Path base = root.isEmpty() ? current : current.resolve(root);
+                    candidates.add(base.resolve(variant));
+                }
+            }
             if (current.getParent() == null || current.toString().isEmpty()) {
                 break;
             }
             current = current.getParent();
         }
-        candidates.add(Path.of("templates").resolve(normalizedRef));
+        for (String root : roots) {
+            for (String variant : refVariants) {
+                candidates.add(root.isEmpty() ? Path.of(variant) : Path.of(root, variant));
+            }
+        }
 
         Path repoRoot = Path.of(repoDir);
         Set<String> existing = new LinkedHashSet<>();
@@ -3132,7 +3906,67 @@ public class CodeContextExtractor {
         if (existing.size() == 1) {
             return Optional.of(existing.iterator().next());
         }
+        if (existing.size() > 1) {
+            // Prefer conventional template roots when ambiguous.
+            List<String> ranked = new ArrayList<>(existing);
+            ranked.sort(Comparator.comparingInt((String path) -> {
+                String lower = path.toLowerCase(Locale.ROOT);
+                if (lower.contains("/templates/") || lower.contains("/views/")) return 0;
+                if (lower.contains("/web-inf/")) return 1;
+                if (lower.contains("/test/")) return 3;
+                return 2;
+            }).thenComparing(Comparator.naturalOrder()));
+            return Optional.of(ranked.get(0));
+        }
+        // Last resort: basename match against the view index (Spring-style).
+        String basename = lastSegment(normalizedRef);
+        ViewIndex index = indexViewFiles(repoDir);
+        for (String variant : refVariants) {
+            List<String> hits = matchTemplateBySuffix(index.templateFiles(), variant, 2);
+            if (hits.size() == 1) {
+                return Optional.of(hits.get(0));
+            }
+        }
+        List<String> loose = new ArrayList<>();
+        for (String rel : index.templateFiles()) {
+            String name = Path.of(rel).getFileName().toString();
+            int dot = name.lastIndexOf('.');
+            String stem = dot > 0 ? name.substring(0, dot) : name;
+            if (stem.equalsIgnoreCase(basename) || name.equalsIgnoreCase(basename)) {
+                loose.add(rel);
+            }
+        }
+        if (loose.size() == 1) {
+            return Optional.of(loose.get(0));
+        }
         return Optional.empty();
+    }
+
+    /** Template ref plus common extensions when the call site omitted them. */
+    private static List<String> templateRefVariants(String normalizedRef) {
+        List<String> variants = new ArrayList<>();
+        variants.add(normalizedRef);
+        String lower = normalizedRef.toLowerCase(Locale.ROOT);
+        boolean hasExt = lower.contains(".") && !lower.endsWith(".");
+        if (!hasExt) {
+            for (String ext : List.of(
+                    ".html", ".htm", ".jsp", ".jspx", ".erb", ".haml", ".slim", ".twig",
+                    ".blade.php", ".cshtml", ".ejs", ".hbs", ".mustache", ".ftl", ".gohtml", ".tmpl", ".njk")) {
+                variants.add(normalizedRef + ext);
+            }
+            // Rails partials often live as _name.html.erb
+            String leaf = normalizedRef.contains("/")
+                    ? normalizedRef.substring(normalizedRef.lastIndexOf('/') + 1)
+                    : normalizedRef;
+            if (!leaf.startsWith("_")) {
+                String partial = normalizedRef.contains("/")
+                        ? normalizedRef.substring(0, normalizedRef.lastIndexOf('/') + 1) + "_" + leaf
+                        : "_" + leaf;
+                variants.add(partial + ".html.erb");
+                variants.add(partial + ".erb");
+            }
+        }
+        return variants;
     }
 
     private String readTemplateSnippet(String repoDir, String relPath) {

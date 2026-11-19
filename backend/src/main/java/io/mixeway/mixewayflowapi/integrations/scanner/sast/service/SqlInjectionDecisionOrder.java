@@ -5,16 +5,26 @@ import java.util.List;
 /**
  * The single ordering of SQL-injection verdict rules quoted by every prompt (CWE checklist, evidence notes,
  * system overlay, Stage 2, validator). The deterministic normalization in
- * {@code SastFindingVerificationService.applyDeterministicContextNormalizations} applies the same order:
- * parameterized, then numeric, then trusted-operand concatenation, then unneutralized string concatenation.
- * Change both together.
+ * {@code SastFindingVerificationService.applyDeterministicContextNormalizations} applies the same order for
+ * steps 2-5 (numeric, then trusted-operand concatenation, then unneutralized string concatenation). Step 1
+ * (parameterized/ORM-bound) is judged by the LLM only — there is deliberately no deterministic keyword
+ * override for it, because the mere presence of an ORM/PreparedStatement API anywhere in a function does not
+ * prove that the SPECIFIC flagged value is bound (e.g. a query builder can parameterize most filters correctly
+ * and still pass one IN-list/array value as an unbound literal). Change the LLM-judged steps and the
+ * deterministic steps together when both apply.
  */
 final class SqlInjectionDecisionOrder {
 
     static final List<String> STEPS = List.of(
-            "1. Parameterized: the SQL text is a literal/constant or a framework-parameterized builder and every value "
-                    + "is bound (placeholders such as ?, $1, :name; ORM binds; a wrapper that passes a literal SQL string "
-                    + "plus bound args; knex ?? identifiers with a bindings array) => FALSE_POSITIVE.",
+            "1. Parameterized: the SQL text is a literal/constant or a framework-parameterized builder AND EVERY "
+                    + "value that reaches the query is individually bound (placeholders such as ?, $1, :name; ORM "
+                    + "binds; a wrapper that passes a literal SQL string plus bound args; knex ?? identifiers with a "
+                    + "bindings array) => FALSE_POSITIVE. Judge this per value, not per API: using a parameterized "
+                    + "query builder, PreparedStatement, or ORM elsewhere in the same function does NOT make this step "
+                    + "match if the specific flagged value is concatenated, interpolated, or passed as a raw/unbound "
+                    + "literal into an IN-list, array, dynamic identifier, or any other part of the SQL — check each "
+                    + "interpolated value independently, especially inside loops, varargs, and IN/whereIn/array "
+                    + "branches where only some elements may be bound and others may not.",
             "2. Numeric: EVERY value concatenated/interpolated into the SQL text has a proven numeric type (declared "
                     + "int/long/number/Integer, or converted with int()/parseInt/Integer.parseInt/strconv.Atoi before it "
                     + "reaches the query) => FALSE_POSITIVE with confidence >= 0.85. If any interpolated value is a "

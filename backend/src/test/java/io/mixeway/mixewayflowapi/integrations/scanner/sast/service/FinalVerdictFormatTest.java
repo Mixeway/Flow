@@ -60,4 +60,14 @@ class FinalVerdictFormatTest {
         assertTrue(order.indexOf("false_positive_evidence") < order.indexOf("verdict"));
         assertTrue(order.endsWith("confidence"));
     }
+
+    @Test
+    void promptContractSeparatesInternalAnalysisFromDeveloperReasoning() {
+        assertTrue(FinalVerdictFormat.ORDER_RULE.contains("never shown to developers")
+                || FinalVerdictFormat.ORDER_RULE.contains("not shown to developers"));
+        assertTrue(FinalVerdictFormat.REASONING_SHAPE.contains("developer"));
+        assertTrue(FinalVerdictFormat.REASONING_SHAPE.contains("analysis"));
+        assertTrue(SastDeveloperFacingReasoning.PROMPT_RULE.contains("analysis")
+                || SastDeveloperFacingReasoning.PROMPT_RULE.contains("review_notes"));
+    }
 }

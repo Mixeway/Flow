@@ -44,8 +44,12 @@ public class CodeSearchService {
     private static final Set<String> SOURCE_EXT = Set.of(
             "py", "java", "js", "jsx", "ts", "tsx", "mjs", "cjs", "rb", "go", "php",
             "cs", "rs", "swift", "kt", "kts", "scala", "groovy", "c", "cc", "cpp",
-            "cxx", "h", "hh", "hpp", "m", "mm", "vue", "svelte", "html", "erb",
+            "cxx", "h", "hh", "hpp", "m", "mm", "vue", "svelte", "html", "htm", "xhtml", "erb",
             "ejs", "tpl", "twig", "pl", "pm", "sh", "bash",
+            // Server-side view templates: XSS verdicts depend on how a model attribute is rendered,
+            // so the model must be able to grep for `${attr}` / `th:utext` / `<c:out>` in these.
+            "jsp", "jspx", "tag", "tagx", "ftl", "ftlh", "vm", "hbs", "mustache",
+            "jinja", "jinja2", "j2", "haml", "slim", "cshtml", "razor",
             "yml", "yaml", "properties", "json", "xml", "toml", "ini", "cfg", "conf", "env");
 
     /** Generated lockfiles match almost any identifier and would crowd real code out of the capped results. */
