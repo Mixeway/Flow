@@ -250,6 +250,7 @@ export class ShowRepoComponent implements OnInit, AfterViewInit, OnDestroy {
     scanRunning: boolean = false;
     llmProgress: SastLlmProgressView | null = null;
     private llmProgressTimer: ReturnType<typeof setInterval> | null = null;
+    private llmWasActive = false;
     userRole: string = 'USER';
 
     filteredComponents: any[] = [];
@@ -547,6 +548,14 @@ export class ShowRepoComponent implements OnInit, AfterViewInit, OnDestroy {
                 this.llmProgress = active
                     ? { phase: response.phase, analyzed: response.analyzed, total: response.total }
                     : null;
+                // When the AI analysis transitions from running to finished, reload the findings
+                // and stats so updated verdicts/statuses appear without a manual page reload.
+                if (this.llmWasActive && !active) {
+                    this.loadFindings();
+                    this.loadFindingStats();
+                    this.loadSourceStats();
+                }
+                this.llmWasActive = active;
             },
             error: () => {
                 // Keep the last counter. A single failed poll should not hide the bar.
