@@ -198,8 +198,6 @@ public class CodeContextExtractor {
     /** CodeMirror / editor extension registration: {@code Foo.defineExtension("openDialog", function...)}. */
     private static final Pattern JS_EXTENSION_FUNC_PATTERN = Pattern.compile(
             "\\.define(?:Doc)?Extension\\s*\\(\\s*[\"']([A-Za-z_][A-Za-z0-9_]*)[\"']");
-    private static final Pattern LITERAL_HTML_ARG_PATTERN = Pattern.compile(
-            "[\"'`]\\s*<\\s*[a-zA-Z][^\"'`]{0,200}[\"'`]");
     private static final Pattern STIMULUS_CONTROLLER_PATTERN = Pattern.compile(
             "@hotwired/stimulus|extends\\s+Controller",
             Pattern.CASE_INSENSITIVE);
@@ -1643,18 +1641,14 @@ public class CodeContextExtractor {
         // Scan EVERY call site in the file — not capped — so the origin-tag below is judged against
         // the true, complete set of callers. Only the rendered prompt text (below) is capped for
         // token budget; the literal/non-literal decision must never be based on a truncated sample.
+        // A one-line method that both declares a wrapper and calls the target still counts: only the
+        // definition of that same symbol is ignored, not the call in its body.
         List<LocalCallSite> allSites = new ArrayList<>();
         for (int i = 0; i < lines.size(); i++) {
             if (i == funcStart) continue;
-            String line = lines.get(i);
-            if (line.isBlank() || searchSymbols.stream().anyMatch(sym -> looksLikeDefinitionOf(line, sym))) {
-                continue;
-            }
-            if (callPatterns.stream().anyMatch(p -> p.matcher(line).find())) {
-                int from = Math.max(0, i - 1);
-                int to = Math.min(lines.size(), i + 3);
-                allSites.add(new LocalCallSite(i, String.join("\n", lines.subList(from, to))));
-            }
+            String args = callArgumentsOnLine(lines, i, searchSymbols, callPatterns);
+            if (args == null) continue;
+            allSites.add(new LocalCallSite(i, args));
         }
 
         String localCode = extractFunction(lines, item.getLineNumber(), language);
@@ -1855,17 +1849,12 @@ public class CodeContextExtractor {
             String label = candidate.priority() == 0 ? "[imports module] "
                     : candidate.priority() == 1 ? "[same package] " : "";
             for (int i = 0; i < cLines.size(); i++) {
-                String line = cLines.get(i);
-                if (line.isBlank() || searchSymbols.stream().anyMatch(sym -> looksLikeDefinitionOf(line, sym))) {
-                    continue;
-                }
-                if (callPatterns.stream().anyMatch(p -> p.matcher(line).find())) {
-                    // Include nearby lines so multi-line call arguments can still look literal/constant.
-                    int from = Math.max(0, i - 1);
-                    int to = Math.min(cLines.size(), i + 3);
-                    allSites.add(new CrossFileCallSite(label, candidate.rel(), i,
-                            String.join("\n", cLines.subList(from, to))));
-                }
+                // Argument text of the matched call only (following lines if the argument list
+                // continues). Neighboring calls and nested quotes such as getParameter("table")
+                // must not make a tainted argument look literal.
+                String args = callArgumentsOnLine(cLines, i, searchSymbols, callPatterns);
+                if (args == null) continue;
+                allSites.add(new CrossFileCallSite(label, candidate.rel(), i, args));
             }
         }
 
@@ -2050,15 +2039,6 @@ public class CodeContextExtractor {
         return List.copyOf(names);
     }
 
-    /**
-     * Checks whether the call-site line argument looks like a string literal or named constant.
-     * Used to emit the origin-tag comment when all discovered call sites pass safe arguments.
-     * Does NOT treat config loaders (e.g. getSqlString) as proven-safe — their input origin is unknown.
-     */
-    private static final Pattern LITERAL_SQL_ARG_PATTERN = Pattern.compile(
-            "[\"']\\s*(?:SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|MERGE|CALL|WITH|EXEC)\\s",
-            Pattern.CASE_INSENSITIVE);
-
     /** SQL/DDL keyword used when detecting locally built dynamic SQL from identifier operands. */
     private static final String LOCAL_SQL_KEYWORD_REGEX =
             "select|insert|update|delete|where|from|create|drop|alter|merge|call|with|exec|truncate|index";
@@ -2139,16 +2119,174 @@ public class CodeContextExtractor {
                 .matcher(code).find();
     }
 
-    private boolean argumentLooksLikeLiteral(String callSiteLine) {
-        if (callSiteLine == null) return false;
-        if (LITERAL_SQL_ARG_PATTERN.matcher(callSiteLine).find()) return true;
-        // Hardcoded HTML markup passed to dialog/template APIs (e.g. openDialog("<div>..."))
-        if (LITERAL_HTML_ARG_PATTERN.matcher(callSiteLine).find()) return true;
-        // Quoted non-SQL string arg at the call (e.g. new CreateIndexTransform("the_geom"))
-        if (Pattern.compile("\\(\\s*[\"'][^\"']+[\"']").matcher(callSiteLine).find()) return true;
-        // ALL_CAPS constant (e.g. UPDATE_SQL, INSERT_QUERY)
-        if (Pattern.compile("\\b[A-Z][A-Z0-9_]{3,}\\b").matcher(callSiteLine).find()) return true;
-        return false;
+    /**
+     * Argument text of a real call on {@code lineIdx}, or null when the line is not a call site.
+     * When several calls share the line, a non-literal argument wins so one literal neighbor cannot
+     * hide a tainted one. Definition matches of a symbol are ignored, which keeps one-line wrappers
+     * such as {@code void caller() { run("users"); }} visible as calls of {@code run}.
+     */
+    private String callArgumentsOnLine(List<String> lines, int lineIdx, List<String> symbols,
+                                       List<Pattern> patterns) {
+        if (lines == null || lineIdx < 0 || lineIdx >= lines.size()
+                || symbols == null || patterns == null || symbols.isEmpty()) {
+            return null;
+        }
+        String line = lines.get(lineIdx);
+        if (line == null || line.isBlank()) {
+            return null;
+        }
+        int to = Math.min(lines.size(), lineIdx + 4);
+        StringBuilder slice = new StringBuilder();
+        for (int i = lineIdx; i < to; i++) {
+            if (i > lineIdx) slice.append('\n');
+            slice.append(lines.get(i));
+        }
+        String text = slice.toString();
+        String literalArgs = null;
+        String nonLiteralArgs = null;
+        int limit = Math.min(symbols.size(), patterns.size());
+        for (int s = 0; s < limit; s++) {
+            String sym = symbols.get(s);
+            if (sym == null || sym.isBlank() || looksLikeDefinitionOf(line, sym)) {
+                continue;
+            }
+            var matcher = patterns.get(s).matcher(line);
+            while (matcher.find()) {
+                int open = matcher.end() - 1;
+                if (open < 0 || open >= text.length() || text.charAt(open) != '(') {
+                    continue;
+                }
+                String args = argsInsideCall(text, open);
+                if (argumentLooksLikeLiteral(args)) {
+                    if (literalArgs == null) literalArgs = args;
+                } else if (nonLiteralArgs == null) {
+                    nonLiteralArgs = args;
+                }
+            }
+        }
+        return nonLiteralArgs != null ? nonLiteralArgs : literalArgs;
+    }
+
+    /** Text inside the call parentheses that start at {@code openParenIdx}, respecting strings and nesting. */
+    private String argsInsideCall(String text, int openParenIdx) {
+        StringBuilder sb = new StringBuilder();
+        int depth = 0;
+        boolean inString = false;
+        char quote = 0;
+        for (int i = openParenIdx; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (inString) {
+                sb.append(c);
+                if (c == '\\' && i + 1 < text.length()) {
+                    sb.append(text.charAt(++i));
+                    continue;
+                }
+                if (c == quote) inString = false;
+                continue;
+            }
+            if (c == '"' || c == '\'' || c == '`') {
+                inString = true;
+                quote = c;
+                sb.append(c);
+                continue;
+            }
+            if (c == '(') {
+                depth++;
+                if (depth > 1) sb.append(c);
+                continue;
+            }
+            if (c == ')') {
+                depth--;
+                if (depth == 0) return sb.toString();
+                sb.append(c);
+                continue;
+            }
+            sb.append(c);
+        }
+        return sb.toString();
+    }
+
+    /**
+     * True when every data argument of the call is a string literal (or concatenation of literals)
+     * or a named constant. Nested quotes such as {@code getParameter("table")} are not literals.
+     * Callback arguments ({@code function () {}} / arrow functions) are ignored so a literal
+     * template passed next to a callback still counts.
+     */
+    private boolean argumentLooksLikeLiteral(String callArgs) {
+        if (callArgs == null || callArgs.isBlank()) return false;
+        boolean sawDataArg = false;
+        for (String arg : splitTopLevelArgs(callArgs)) {
+            String trimmed = arg.trim();
+            if (trimmed.isEmpty() || isCallbackArgument(trimmed)) continue;
+            sawDataArg = true;
+            if (!singleArgLooksLiteral(trimmed)) return false;
+        }
+        return sawDataArg;
+    }
+
+    private boolean isCallbackArgument(String arg) {
+        if (arg.startsWith("\"") || arg.startsWith("'") || arg.startsWith("`")) return false;
+        return arg.startsWith("function ") || arg.startsWith("function(")
+                || arg.startsWith("async function") || arg.startsWith("async(")
+                || arg.contains("=>");
+    }
+
+    private boolean singleArgLooksLiteral(String arg) {
+        if (isQuotedLiteralOrConcat(arg)) return true;
+        return arg.matches("(?:[A-Za-z_][\\w$]*\\.)*[A-Z][A-Z0-9_]{3,}");
+    }
+
+    /** A quoted string, or several quoted strings joined only by {@code +} or {@code .}. */
+    private boolean isQuotedLiteralOrConcat(String arg) {
+        if (arg.indexOf('"') < 0 && arg.indexOf('\'') < 0 && arg.indexOf('`') < 0) return false;
+        String rest = arg.replaceAll(
+                "(?s)\"(?:\\\\.|[^\"\\\\])*\"|'(?:\\\\.|[^'\\\\])*'|`(?:\\\\.|[^`\\\\])*`", "");
+        rest = rest.replaceAll("[\\s+.]", "");
+        return rest.isEmpty();
+    }
+
+    private List<String> splitTopLevelArgs(String args) {
+        List<String> parts = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        int paren = 0;
+        int brace = 0;
+        int bracket = 0;
+        boolean inString = false;
+        char quote = 0;
+        for (int i = 0; i < args.length(); i++) {
+            char c = args.charAt(i);
+            if (inString) {
+                current.append(c);
+                if (c == '\\' && i + 1 < args.length()) {
+                    current.append(args.charAt(++i));
+                    continue;
+                }
+                if (c == quote) inString = false;
+                continue;
+            }
+            if (c == '"' || c == '\'' || c == '`') {
+                inString = true;
+                quote = c;
+                current.append(c);
+                continue;
+            }
+            if (c == '(') paren++;
+            else if (c == ')') paren = Math.max(0, paren - 1);
+            else if (c == '{') brace++;
+            else if (c == '}') brace = Math.max(0, brace - 1);
+            else if (c == '[') bracket++;
+            else if (c == ']') bracket = Math.max(0, bracket - 1);
+            if (c == ',' && paren == 0 && brace == 0 && bracket == 0) {
+                parts.add(current.toString());
+                current.setLength(0);
+                continue;
+            }
+            current.append(c);
+        }
+        if (current.length() > 0 || !parts.isEmpty()) {
+            parts.add(current.toString());
+        }
+        return parts;
     }
 
     /**

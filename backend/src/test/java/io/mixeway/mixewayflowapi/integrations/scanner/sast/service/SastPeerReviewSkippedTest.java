@@ -22,6 +22,12 @@ import static org.mockito.Mockito.when;
 class SastPeerReviewSkippedTest {
 
     private static final LlmApiClient.LlmResponse EMPTY = new LlmApiClient.LlmResponse("", 0, 0);
+    private static final LlmApiClient.LlmResponse NOT_JSON = new LlmApiClient.LlmResponse("not json", 0, 0);
+    private static final LlmApiClient.LlmResponse INCOMPLETE_JSON = new LlmApiClient.LlmResponse(
+            "{\"explanation\":\"looks fine\"}", 0, 0);
+    private static final LlmApiClient.LlmResponse CONFIRMING_REVIEW = new LlmApiClient.LlmResponse(
+            "{\"original_verdict_correct\":true,\"verdict\":\"TRUE_POSITIVE\",\"confidence\":0.92,"
+                    + "\"explanation\":\"The path comes from the request and reaches open().\"}", 0, 0);
 
     private final LlmApiClient llmApiClient = mock(LlmApiClient.class);
     private SastFindingVerificationService service;
@@ -52,16 +58,64 @@ class SastPeerReviewSkippedTest {
     }
 
     @Test
-    void secondAttemptAnswerCountsAsReview() {
-        when(llmApiClient.chatCompletion(anyList(), eq(true)))
-                .thenReturn(EMPTY, new LlmApiClient.LlmResponse("not json", 0, 0));
+    void malformedReviewerAnswerIsRetriedThenReportedAsSkipped() {
+        // A non-empty answer that is not valid JSON is not a usable review: it must be retried exactly
+        // like an empty one and, when every attempt is malformed, reported as skipped with capped confidence.
+        when(llmApiClient.chatCompletion(anyList(), eq(true))).thenReturn(NOT_JSON, NOT_JSON);
         Item item = item(0.92d);
 
         SastFindingVerificationService.ValidationOutcome outcome = service.validateVerdict(
                 List.of(), item, "report_service.py:430", context(), metadata(), null, SourceOriginHunt.Report.none());
 
+        verify(llmApiClient, times(2)).chatCompletion(anyList(), eq(true));
+        assertTrue(outcome.skipped());
+        assertEquals(2, outcome.llmRequests());
+        assertEquals("TRUE_POSITIVE", item.getAiVerdict());
+        assertEquals(0.69d, item.getAiConfidence(), 1e-9);
+    }
+
+    @Test
+    void incompleteJsonAnswerIsRetriedThenReportedAsSkipped() {
+        // Valid JSON without the verdict/confidence fields the merge step reads is equally unusable.
+        when(llmApiClient.chatCompletion(anyList(), eq(true))).thenReturn(INCOMPLETE_JSON, INCOMPLETE_JSON);
+        Item item = item(0.92d);
+
+        SastFindingVerificationService.ValidationOutcome outcome = service.validateVerdict(
+                List.of(), item, "report_service.py:430", context(), metadata(), null, SourceOriginHunt.Report.none());
+
+        verify(llmApiClient, times(2)).chatCompletion(anyList(), eq(true));
+        assertTrue(outcome.skipped());
+        assertEquals(0.69d, item.getAiConfidence(), 1e-9);
+    }
+
+    @Test
+    void secondAttemptUsableAnswerCountsAsReview() {
+        // First attempt malformed, second attempt a complete review confirming the verdict: the review
+        // happened, so the outcome is not skipped and the confidence is not capped.
+        when(llmApiClient.chatCompletion(anyList(), eq(true))).thenReturn(NOT_JSON, CONFIRMING_REVIEW);
+        Item item = item(0.92d);
+
+        SastFindingVerificationService.ValidationOutcome outcome = service.validateVerdict(
+                List.of(), item, "report_service.py:430", context(), metadata(), null, SourceOriginHunt.Report.none());
+
+        verify(llmApiClient, times(2)).chatCompletion(anyList(), eq(true));
         assertFalse(outcome.skipped());
         assertEquals(2, outcome.llmRequests());
+        assertEquals("TRUE_POSITIVE", item.getAiVerdict());
+        assertEquals(0.92d, item.getAiConfidence(), 1e-9);
+    }
+
+    @Test
+    void usableFirstAnswerIsNotRetried() {
+        when(llmApiClient.chatCompletion(anyList(), eq(true))).thenReturn(CONFIRMING_REVIEW);
+        Item item = item(0.92d);
+
+        SastFindingVerificationService.ValidationOutcome outcome = service.validateVerdict(
+                List.of(), item, "report_service.py:430", context(), metadata(), null, SourceOriginHunt.Report.none());
+
+        verify(llmApiClient, times(1)).chatCompletion(anyList(), eq(true));
+        assertFalse(outcome.skipped());
+        assertEquals(1, outcome.llmRequests());
         assertEquals(0.92d, item.getAiConfidence(), 1e-9);
     }
 
