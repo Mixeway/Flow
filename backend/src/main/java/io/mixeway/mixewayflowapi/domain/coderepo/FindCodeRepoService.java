@@ -16,7 +16,9 @@ import org.springframework.stereotype.Service;
 
 import java.security.Principal;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.Optional;
 
 @Service
@@ -29,6 +31,58 @@ public class FindCodeRepoService {
 
     public Optional<CodeRepo> findCodeRepoByUrl(String url){
         return codeRepoRepository.findByRepourl(url);
+    }
+
+    /**
+     * The repository with that clone URL, provided the user may see it (their team's, or any for an
+     * administrator). Pipelines do not always know the URL exactly as it was registered, so the
+     * scheme, credentials in the URL, a trailing slash and a {@code .git} suffix are not held against it.
+     */
+    public Optional<CodeRepo> findByUrl(String url, Principal principal) {
+        if (url == null || url.isBlank() || principal == null) {
+            return Optional.empty();
+        }
+        Optional<CodeRepo> codeRepo = Optional.empty();
+        for (String candidate : urlVariants(url)) {
+            codeRepo = codeRepoRepository.findByRepourl(candidate);
+            if (codeRepo.isPresent()) {
+                break;
+            }
+        }
+        if (codeRepo.isEmpty()) {
+            return Optional.empty();
+        }
+        UserInfo userInfo = findUserService.findUser(principal.getName());
+        if (userInfo.getHighestRole().equals("ADMIN")) {
+            return codeRepo;
+        }
+        Team team = codeRepo.get().getTeam();
+        boolean ownTeam = team != null
+                && userInfo.getTeams().stream().anyMatch(userTeam -> userTeam.getId() == team.getId());
+        return ownTeam ? codeRepo : Optional.empty();
+    }
+
+    /** The ways the same repository URL may be written, the given one first. */
+    static List<String> urlVariants(String url) {
+        String trimmed = url.trim();
+        String base = trimmed.replaceFirst("^(?i)(https?://)[^/@]*@", "$1");
+        while (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        if (base.toLowerCase().endsWith(".git")) {
+            base = base.substring(0, base.length() - 4);
+        }
+        String other = base.matches("(?i)^http://.*") ? "https://" + base.substring(7)
+                : base.matches("(?i)^https://.*") ? "http://" + base.substring(8) : null;
+
+        Set<String> variants = new LinkedHashSet<>();
+        variants.add(trimmed);
+        for (String root : other == null ? List.of(base) : List.of(base, other)) {
+            variants.add(root);
+            variants.add(root + ".git");
+            variants.add(root + "/");
+        }
+        return List.copyOf(variants);
     }
 
     public List<CodeRepo> findCodeRepoForUser(Principal principal){

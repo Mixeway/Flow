@@ -905,3 +905,5 @@ ALTER TABLE settings ADD COLUMN IF NOT EXISTS sca_llm_batch_timeout_minutes INTE
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS iac_llm_batch_timeout_minutes INTEGER NOT NULL DEFAULT 30;
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS secrets_llm_batch_timeout_minutes INTEGER NOT NULL DEFAULT 30;
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS dast_llm_batch_timeout_minutes INTEGER NOT NULL DEFAULT 30;
+--changeset siewer:finding-fingerprint
+ALTER TABLE finding ADD COLUMN IF NOT EXISTS fingerprint VARCHAR(64);

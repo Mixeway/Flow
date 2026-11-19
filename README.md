@@ -1,5 +1,6 @@
 # Mixeway Flow — DevSecOps Swiss Army Knife 🔐⚙️
 
+[![Version](https://img.shields.io/badge/version-1.2.14-blue.svg)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-FlowLicense-blue.svg)](LICENSE.md)
 ![CI: Docker Backend](https://github.com/mixeway/flow/actions/workflows/docker-build-backend.yml/badge.svg)
 [![Discord](https://img.shields.io/discord/1272884200323944550)](https://discord.gg/76RY2Y82)

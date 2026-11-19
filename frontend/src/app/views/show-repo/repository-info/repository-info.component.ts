@@ -113,6 +113,7 @@ export class RepositoryInfoComponent implements OnInit {
   @Output() evaluateLlmEvent = new EventEmitter<'SAST' | 'SECRETS'>();
   @Output() openChangeTeamModalEvent = new EventEmitter<void>();
   @Output() deleteRepoEvent = new EventEmitter<void>();
+  @Output() accessTokenChangedEvent = new EventEmitter<void>();
 
   get llmPercent(): number {
     if (!this.llmProgress || this.llmProgress.total <= 0) {
@@ -353,22 +354,27 @@ export class RepositoryInfoComponent implements OnInit {
         const id = this.repoData?.id;
         if (!id) return;
 
+        if (this.tokenSaving) return;
+
         const trimmed = (this.tokenForm.accessToken || '').trim();
         if (!trimmed) {
             this.tokenError = 'Access token cannot be empty.';
             return;
         }
 
+        this.tokenError = null;
         this.tokenSaving = true;
         this.codeService.changeAccessToken(id, trimmed).subscribe({
             next: () => {
                 this.tokenSaving = false;
                 this.tokenModalVisible = false;
                 this.tokenForm.accessToken = '';
+                this.accessTokenChangedEvent.emit();
             },
             error: (err) => {
                 this.tokenSaving = false;
-                this.tokenError = err?.error?.message || 'Token update failed.';
+                // The backend answers with { status: "<reason>" } when the token fails its test.
+                this.tokenError = err?.error?.status || err?.error?.message || 'Token update failed.';
             }
         });
     }

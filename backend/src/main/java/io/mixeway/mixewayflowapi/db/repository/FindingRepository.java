@@ -6,6 +6,7 @@ import io.mixeway.mixewayflowapi.db.entity.*;
 import io.mixeway.mixewayflowapi.db.projection.ItemProjection;
 import io.mixeway.mixewayflowapi.db.projection.RemovedVulnerabilityProjection;
 import io.mixeway.mixewayflowapi.db.projection.ReviewedVulnerabilityProjection;
+import io.mixeway.mixewayflowapi.db.projection.SuppressedFindingProjection;
 import org.aspectj.apache.bcel.classfile.Code;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -181,6 +182,45 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
                                                                     String location,
                                                                     Finding.Status status);
 
+    /**
+     * Every suppression currently in force in the repository, on any branch.
+     */
+    @Query("""
+    select f.vulnerability.id as vulnerabilityId,
+           f.location as location,
+           f.fingerprint as fingerprint,
+           f.suppressedReason as suppressedReason,
+           f.suppressedUntil as suppressedUntil
+      from Finding f
+     where f.codeRepo = :codeRepo
+       and f.status = io.mixeway.mixewayflowapi.db.entity.Finding.Status.SUPRESSED
+       and f.suppressedReason is not null
+     order by f.id
+""")
+    List<SuppressedFindingProjection> findSuppressedInRepo(@Param("codeRepo") CodeRepo codeRepo);
+
+    /**
+     * Suppressed findings of the same vulnerability with an identical explanation (for SAST and IaC
+     * that is the flagged code), wherever in the repository they are.
+     */
+    @Query("""
+    select f from Finding f
+     where f.codeRepo = :codeRepo
+       and f.vulnerability = :vulnerability
+       and f.source = :source
+       and f.explanation = :explanation
+       and f.status = io.mixeway.mixewayflowapi.db.entity.Finding.Status.SUPRESSED
+       and f.suppressedReason is not null
+     order by f.id
+""")
+    List<Finding> findSuppressedWithSameExplanation(@Param("codeRepo") CodeRepo codeRepo,
+                                                    @Param("vulnerability") Vulnerability vulnerability,
+                                                    @Param("source") Finding.Source source,
+                                                    @Param("explanation") String explanation);
+
+    /** Every finding a JIRA ticket was created for. */
+    List<Finding> findByJiraTicketKey(String jiraTicketKey);
+
     void deleteByCodeRepo(CodeRepo codeRepo);
 
     @Query(value = """
@@ -259,6 +299,19 @@ public interface FindingRepository extends JpaRepository<Finding, Long> {
     List<Finding> findToSuppressWithJiraTicket(@Param("repoId") Long repoId,
                                                @Param("vulnId") Long vulnId,
                                                @Param("location") String location);
+
+    /** Branches on which the vulnerability at that location is still open (new or existing). */
+    @Query("""
+    select distinct f.codeRepoBranch.id from Finding f
+     where f.codeRepo.id = :repoId
+       and f.vulnerability.id = :vulnId
+       and f.location = :location
+       and f.status in (io.mixeway.mixewayflowapi.db.entity.Finding.Status.NEW,
+                        io.mixeway.mixewayflowapi.db.entity.Finding.Status.EXISTING)
+""")
+    List<Long> findBranchIdsWithOpenFinding(@Param("repoId") Long repoId,
+                                            @Param("vulnId") Long vulnId,
+                                            @Param("location") String location);
 }
 
 

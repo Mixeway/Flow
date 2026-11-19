@@ -1285,6 +1285,12 @@ export class ShowRepoComponent implements OnInit, AfterViewInit, OnDestroy {
         });
     }
 
+    onAccessTokenChanged(): void {
+        this.toastStatus = 'success';
+        this.toastMessage = 'Access token tested and saved';
+        this.visible = true;
+    }
+
     openDeleteRepoModal(): void {
         this.deleteConfirmationText = '';
         this.deleteRepoConfirmationVisible = true;

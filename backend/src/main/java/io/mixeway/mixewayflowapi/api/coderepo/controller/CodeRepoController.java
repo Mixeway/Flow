@@ -7,6 +7,7 @@ import io.mixeway.mixewayflowapi.api.gitlabcicd.dto.GitLabCICDRequestDto;
 import io.mixeway.mixewayflowapi.db.entity.CodeRepo;
 import io.mixeway.mixewayflowapi.domain.coderepo.CreateCodeRepoService;
 import io.mixeway.mixewayflowapi.domain.coderepo.DeleteCodeRepoService;
+import io.mixeway.mixewayflowapi.exceptions.AccessTokenVerificationException;
 import io.mixeway.mixewayflowapi.exceptions.CodeRepoNotFoundException;
 import io.mixeway.mixewayflowapi.exceptions.ScanThrottledException;
 import io.mixeway.mixewayflowapi.exceptions.TeamNotFoundException;
@@ -301,6 +302,9 @@ public class CodeRepoController {
         try {
             codeRepoApiService.changeAccessToken(id, request.getAccessToken(), principal);
             return ResponseEntity.ok(new StatusDTO("Access token updated for repository."));
+        } catch (AccessTokenVerificationException e) {
+            log.warn("[CodeRepo] Token change for repo {} by {} rejected: {}", id, principal.getName(), e.getMessage());
+            return new ResponseEntity<>(new StatusDTO(e.getMessage()), HttpStatus.BAD_REQUEST);
         } catch (Exception e) {
             log.error("[CodeRepo] Error during token change for repo {} by {}: {}", id, principal.getName(), e.getMessage());
             return new ResponseEntity<>(new StatusDTO("Error during access token update."), HttpStatus.BAD_REQUEST);

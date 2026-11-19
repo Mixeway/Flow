@@ -5,7 +5,9 @@ import io.mixeway.mixewayflowapi.db.entity.JiraConfiguration;
 import io.mixeway.mixewayflowapi.db.entity.Team;
 import io.mixeway.mixewayflowapi.db.repository.FindingRepository;
 import io.mixeway.mixewayflowapi.db.repository.JiraConfigurationRepository;
+import io.mixeway.mixewayflowapi.domain.jira.JiraTicketClosureService.FindingClosure;
 import io.mixeway.mixewayflowapi.integrations.jira.apiclient.JiraApiClientService;
+import io.mixeway.mixewayflowapi.integrations.jira.apiclient.JiraTicketCloser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.scheduling.annotation.Async;
@@ -14,14 +16,19 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
  * Handles JIRA ticket lifecycle events triggered by finding status changes.
- * Runs asynchronously to avoid blocking the main suppression/removal flow.
+ * The calls to JIRA run asynchronously to avoid blocking the main suppression/removal flow.
  */
 @Service
 @RequiredArgsConstructor
@@ -30,15 +37,61 @@ public class JiraTicketLifecycleService {
     private final JiraConfigurationRepository jiraConfigurationRepository;
     private final JiraApiClientService jiraApiClientService;
     private final FindingRepository findingRepository;
+    private final JiraTicketClosureService jiraTicketClosureService;
 
-    @Async
     public void onFindingSuppressed(Finding finding) {
-        closeTicketIfExists(finding, "Finding suppressed. Reason: " + finding.getSuppressedReason());
+        recordClosure(finding, JiraTicketCloser.Reason.SUPPRESSED);
     }
 
-    @Async
     public void onFindingRemoved(Finding finding) {
-        closeTicketIfExists(finding, "Finding no longer detected (marked as REMOVED).");
+        recordClosure(finding, JiraTicketCloser.Reason.REMOVED);
+    }
+
+    /**
+     * Notes that a finding with a JIRA ticket was closed. The ticket is brought up to date only after
+     * the surrounding transaction has committed, and once per ticket: a scan closes many findings in one
+     * transaction, and whether a ticket covering several of them can be closed depends on all of them.
+     */
+    private void recordClosure(Finding finding, JiraTicketCloser.Reason reason) {
+        try {
+            String ticketKey = finding.getJiraTicketKey();
+            if (ticketKey == null || ticketKey.isBlank()) {
+                return;
+            }
+            FindingClosure closure = new FindingClosure(finding.getId(), reason, finding.getSuppressedReason());
+            if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+                jiraTicketClosureService.process(ticketKey, List.of(closure));
+                return;
+            }
+            closuresOfCurrentTransaction().computeIfAbsent(ticketKey, key -> new ArrayList<>()).add(closure);
+        } catch (Exception e) {
+            log.error("[JIRA Lifecycle] Error recording closed finding {} for ticket {}: {}",
+                    finding.getId(), finding.getJiraTicketKey(), e.getMessage());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, List<FindingClosure>> closuresOfCurrentTransaction() {
+        Map<String, List<FindingClosure>> pending =
+                (Map<String, List<FindingClosure>>) TransactionSynchronizationManager.getResource(this);
+        if (pending != null) {
+            return pending;
+        }
+        Map<String, List<FindingClosure>> closures = new LinkedHashMap<>();
+        TransactionSynchronizationManager.bindResource(this, closures);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                closures.forEach((ticketKey, ticketClosures) ->
+                        jiraTicketClosureService.process(ticketKey, List.copyOf(ticketClosures)));
+            }
+
+            @Override
+            public void afterCompletion(int status) {
+                TransactionSynchronizationManager.unbindResourceIfPossible(JiraTicketLifecycleService.this);
+            }
+        });
+        return closures;
     }
 
     /**
@@ -125,27 +178,6 @@ public class JiraTicketLifecycleService {
             case "INFO" -> 4;
             default -> 5;
         };
-    }
-
-    private void closeTicketIfExists(Finding finding, String comment) {
-        if (finding.getJiraTicketKey() == null || finding.getJiraTicketKey().isBlank()) {
-            return;
-        }
-        try {
-            Team team = resolveTeam(finding);
-            if (team == null) return;
-
-            Optional<JiraConfiguration> configOpt = jiraConfigurationRepository.findByTeam(team);
-            if (configOpt.isEmpty()) {
-                log.warn("[JIRA Lifecycle] No JIRA config found for team of finding {}", finding.getId());
-                return;
-            }
-
-            jiraApiClientService.closeTicket(configOpt.get(), finding.getJiraTicketKey(), comment);
-        } catch (Exception e) {
-            log.error("[JIRA Lifecycle] Error closing ticket {} for finding {}: {}",
-                    finding.getJiraTicketKey(), finding.getId(), e.getMessage());
-        }
     }
 
     private Team resolveTeam(Finding finding) {
