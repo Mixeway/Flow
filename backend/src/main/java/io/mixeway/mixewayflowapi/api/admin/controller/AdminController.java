@@ -110,6 +110,27 @@ public class AdminController {
     }
 
     @PreAuthorize("hasAuthority('ADMIN')")
+    @PostMapping(value = "/api/v1/admin/settings/llmconfig/test")
+    public ResponseEntity<LlmConnectivityResultDto> testLlmConnectivity(@RequestBody LlmSourceConfigDto request) {
+        try {
+            LlmConnectivityResultDto result = adminApiService.testLlmConnectivity(request);
+            if (result.isOk()) {
+                return new ResponseEntity<>(result, HttpStatus.OK);
+            }
+            log.error("[AdminSettings] LLM connectivity check failed for source={} url={}: {}",
+                    request == null ? null : request.getSource(),
+                    request == null ? null : request.getApiUrl(),
+                    result.getMessage());
+            return new ResponseEntity<>(result, HttpStatus.BAD_REQUEST);
+        } catch (Exception e) {
+            log.error("[AdminSettings] LLM connectivity check error {}", e.getLocalizedMessage());
+            return new ResponseEntity<>(
+                    LlmConnectivityResultDto.failure(e.getLocalizedMessage(), null, 0L),
+                    HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PreAuthorize("hasAuthority('ADMIN')")
     @PostMapping(value = "/api/v1/admin/settings/other")
     public ResponseEntity<StatusDTO> changeOtherConfig(@Valid @RequestBody OtherConfigRequestDto otherConfigRequestDto) {
         try {

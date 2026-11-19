@@ -157,7 +157,38 @@ public final class ControlSoundnessGate {
                 || lower.contains("literal sql")
                 || lower.contains("string literal")
                 || lower.contains("processbuilder")
-                || lower.contains("argument array");
+                || lower.contains("argument array")
+                || hasFrameworkEscapingEvidence(lower);
+    }
+
+    /**
+     * Framework/template escaping that is independent of custom escape/sanitize helpers.
+     * When the XSS verdict rests on th:text / c:out / {{ x }} / Razor @ / html/template, the
+     * control-soundness gate must not flip FALSE_POSITIVE because a nearby custom helper looked unsound.
+     */
+    static boolean hasFrameworkEscapingEvidence(String lowerOrMixed) {
+        if (lowerOrMixed == null || lowerOrMixed.isBlank()) {
+            return false;
+        }
+        if (XssSinkMarkers.hasFrameworkEscaping(lowerOrMixed)) {
+            return true;
+        }
+        String lower = lowerOrMixed.toLowerCase(Locale.ROOT);
+        return lower.contains("th:text")
+                || lower.contains("c:out")
+                || lower.contains("fn:escapexml")
+                || lower.contains("html/template")
+                || lower.contains("framework auto-escap")
+                || lower.contains("framework escaping")
+                || lower.contains("template auto-escap")
+                || lower.contains("razor encoding")
+                || lower.contains("erb auto-escap")
+                || lower.contains("twig auto-escap")
+                || lower.contains("jinja auto-escap")
+                || lower.contains("django auto-escap")
+                || lower.contains("blade {{")
+                || (lower.contains("{{") && !lower.contains("|safe") && !lower.contains("|raw")
+                && !lower.contains("{!!") && lower.contains("escap"));
     }
 
     /**

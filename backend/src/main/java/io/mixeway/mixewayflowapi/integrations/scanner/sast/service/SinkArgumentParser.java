@@ -436,6 +436,16 @@ public class SinkArgumentParser {
     ) {}
 
     /**
+     * True when {@code code} contains a direct HTTP/request accessor (query, body, cookie, header,
+     * files, PHP superglobals, Express {@code req.*}, servlet {@code getHeader}/{@code getParameter},
+     * Spring {@code @RequestHeader}/{@code @CookieValue}, etc.). Shared by context extraction and
+     * verification so origin-tag / SQL heuristics stay aligned with sink trust analysis.
+     */
+    public boolean hasImmediateUntrustedSource(String code) {
+        return code != null && !code.isBlank() && IMMEDIATE_HTTP_PATTERN.matcher(code).find();
+    }
+
+    /**
      * Analyses the flagged code extract and returns a {@link SinkAnalysis}.
      * Never throws; returns a conservative (not safe, not untrusted) result on any error.
      */
@@ -444,7 +454,7 @@ public class SinkArgumentParser {
             return new SinkAnalysis(false, false, null, List.of());
         }
 
-        boolean immediatelyUntrusted = IMMEDIATE_HTTP_PATTERN.matcher(codeExtract).find();
+        boolean immediatelyUntrusted = hasImmediateUntrustedSource(codeExtract);
         String trimmed = codeExtract.trim();
         boolean immediatelySafe = !immediatelyUntrusted && SAFE_LITERAL_PATTERN.matcher(trimmed).matches();
 

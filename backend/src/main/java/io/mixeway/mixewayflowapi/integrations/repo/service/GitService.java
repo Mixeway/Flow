@@ -286,7 +286,7 @@ public class GitService {
     }
 
     /**
-     * Assembles a {@code git} command, injecting the Bitbucket bearer-token header
+     * Assembles a {@code git} command forced to HTTP/1.1, injecting the Bitbucket bearer-token header
      * ({@code -c http.extraHeader=Authorization: Bearer <token>}) for Bitbucket repositories.
      * For other providers the token travels in the URL (see {@link #buildAuthenticatedUrl}),
      * so no extra config is added.
@@ -294,6 +294,9 @@ public class GitService {
     private List<String> gitWithAuth(String repoUrl, String accessToken, CodeRepo.RepoType repoType, String... args) {
         List<String> command = new ArrayList<>();
         command.add("git");
+        // HTTP/2 streams get reset mid-transfer by some proxies/load balancers (curl 92 on large packs)
+        command.add("-c");
+        command.add("http.version=HTTP/1.1");
         if (isBitbucket(repoUrl, repoType) && accessToken != null && !accessToken.isBlank()) {
             command.add("-c");
             command.add("http.extraHeader=Authorization: Bearer " + accessToken);

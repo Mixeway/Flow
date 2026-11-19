@@ -100,6 +100,108 @@ class SqlLocalConcatOriginTagTest {
     }
 
     @Test
+    void phpDirectGetDoesNotEmitLiteralOriginTagDespiteLiteralCallers() throws Exception {
+        assertNoOriginTagForPhpHttpSource("$_GET['id']", "get");
+    }
+
+    @Test
+    void phpDirectCookieDoesNotEmitLiteralOriginTagDespiteLiteralCallers() throws Exception {
+        assertNoOriginTagForPhpHttpSource("$_COOKIE['sid']", "cookie");
+    }
+
+    @Test
+    void javaGetHeaderDoesNotEmitLiteralOriginTagDespiteLiteralCallers() throws Exception {
+        Path pkg = repo.resolve("app/sql");
+        Files.createDirectories(pkg);
+        Files.writeString(pkg.resolve("HeaderDao.java"), """
+                package app.sql;
+                import javax.servlet.http.HttpServletRequest;
+                public class HeaderDao {
+                    void run(String unused, HttpServletRequest request) throws Exception {
+                        String sql = "SELECT * FROM t WHERE id=" + request.getHeader("X-Id");
+                        stmt.execute(sql);
+                    }
+                    void caller(HttpServletRequest request) throws Exception {
+                        run("literal", request);
+                    }
+                    Statement stmt;
+                    interface Statement { void execute(String sql) throws Exception; }
+                }
+                """, StandardCharsets.UTF_8);
+
+        Item item = new Item();
+        item.setFullFilename("app/sql/HeaderDao.java");
+        item.setFilename("HeaderDao.java");
+        item.setLineNumber(5);
+        item.setCodeExtract("String sql = \"SELECT * FROM t WHERE id=\" + request.getHeader(\"X-Id\");");
+
+        CodeContextExtractor.CodeContext ctx = extractor.extractLocal(repo.toString(), item);
+        String callers = (ctx.callerContext() == null ? "" : ctx.callerContext())
+                + "\n" + (ctx.crossFileCallerContext() == null ? "" : ctx.crossFileCallerContext());
+        assertFalse(callers.contains("origin-tag: all-callsites-pass-literal-arg=true"),
+                "Direct getHeader must suppress origin-tag:\n" + callers);
+        assertTrue(ctx.category() == CodeContextExtractor.EvidenceCategory.PROVEN_SOURCE_UNTRUSTED,
+                "Expected PROVEN_SOURCE_UNTRUSTED, got " + ctx.category());
+    }
+
+    @Test
+    void jsReqCookiesDoesNotEmitLiteralOriginTagDespiteLiteralCallers() throws Exception {
+        Path dir = repo.resolve("app");
+        Files.createDirectories(dir);
+        Files.writeString(dir.resolve("query.js"), """
+                function runQuery(label, req) {
+                  const sql = "SELECT * FROM t WHERE sid=" + req.cookies.session;
+                  db.query(sql);
+                }
+                function other(req) {
+                  runQuery("literal", req);
+                }
+                """, StandardCharsets.UTF_8);
+
+        Item item = new Item();
+        item.setFullFilename("app/query.js");
+        item.setFilename("query.js");
+        item.setLineNumber(2);
+        item.setCodeExtract("const sql = \"SELECT * FROM t WHERE sid=\" + req.cookies.session;");
+
+        CodeContextExtractor.CodeContext ctx = extractor.extractLocal(repo.toString(), item);
+        String callers = (ctx.callerContext() == null ? "" : ctx.callerContext())
+                + "\n" + (ctx.crossFileCallerContext() == null ? "" : ctx.crossFileCallerContext());
+        assertFalse(callers.contains("origin-tag: all-callsites-pass-literal-arg=true"),
+                "Direct req.cookies must suppress origin-tag:\n" + callers);
+    }
+
+    private void assertNoOriginTagForPhpHttpSource(String httpExpr, String label) throws Exception {
+        Path dir = repo.resolve("php");
+        Files.createDirectories(dir);
+        String src = """
+                <?php
+                function cleanup() {
+                    $sql = 'delete from user_activity_cleaner where uac_id = '.%s;
+                    $db->execute($sql);
+                }
+                function other() {
+                    cleanup('literal');
+                }
+                """.formatted(httpExpr);
+        Files.writeString(dir.resolve("cleaner.php"), src, StandardCharsets.UTF_8);
+
+        Item item = new Item();
+        item.setFullFilename("php/cleaner.php");
+        item.setFilename("cleaner.php");
+        item.setLineNumber(3);
+        item.setCodeExtract("'delete from user_activity_cleaner where uac_id = '." + httpExpr);
+
+        CodeContextExtractor.CodeContext ctx = extractor.extractLocal(repo.toString(), item);
+        String callers = (ctx.callerContext() == null ? "" : ctx.callerContext())
+                + "\n" + (ctx.crossFileCallerContext() == null ? "" : ctx.crossFileCallerContext());
+        assertFalse(callers.contains("origin-tag: all-callsites-pass-literal-arg=true"),
+                "Direct " + label + " must suppress origin-tag:\n" + callers);
+        assertTrue(ctx.category() == CodeContextExtractor.EvidenceCategory.PROVEN_SOURCE_UNTRUSTED,
+                "Expected PROVEN_SOURCE_UNTRUSTED for " + label + ", got " + ctx.category());
+    }
+
+    @Test
     void createIndexTransformDoesNotEmitLiteralOriginTagDespiteLiteralCtorCallSites() throws Exception {
         Path pkg = repo.resolve("org/geoserver/importer/transform");
         Files.createDirectories(pkg);

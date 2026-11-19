@@ -181,15 +181,16 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
         model: string;
         contextWindow: number;
         scanConcurrency: number;
+        batchTimeoutMinutes: number;
         severities: string[];
         reasoningEffort: string;
         disableThinking: boolean;
     }> = [
-        { source: 'SAST', label: 'SAST', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 16384, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'], reasoningEffort: 'medium', disableThinking: true },
-        { source: 'SCA', label: 'SCA', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'], reasoningEffort: 'medium', disableThinking: true },
-        { source: 'IAC', label: 'IaC', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'], reasoningEffort: 'medium', disableThinking: true },
-        { source: 'SECRETS', label: 'Secrets', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'], reasoningEffort: 'medium', disableThinking: true },
-        { source: 'DAST', label: 'DAST', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, severities: ['CRITICAL', 'HIGH'], reasoningEffort: 'medium', disableThinking: true },
+        { source: 'SAST', label: 'SAST', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 16384, scanConcurrency: 2, batchTimeoutMinutes: 30, severities: ['CRITICAL', 'HIGH'], reasoningEffort: 'medium', disableThinking: true },
+        { source: 'SCA', label: 'SCA', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, batchTimeoutMinutes: 30, severities: ['CRITICAL', 'HIGH'], reasoningEffort: 'medium', disableThinking: true },
+        { source: 'IAC', label: 'IaC', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, batchTimeoutMinutes: 30, severities: ['CRITICAL', 'HIGH'], reasoningEffort: 'medium', disableThinking: true },
+        { source: 'SECRETS', label: 'Secrets', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, batchTimeoutMinutes: 30, severities: ['CRITICAL', 'HIGH'], reasoningEffort: 'medium', disableThinking: true },
+        { source: 'DAST', label: 'DAST', enabled: false, apiUrl: '', apiKey: '', model: '', contextWindow: 8192, scanConcurrency: 2, batchTimeoutMinutes: 30, severities: ['CRITICAL', 'HIGH'], reasoningEffort: 'medium', disableThinking: true },
     ];
     repoTokenSearchTerm: string = '';
     repoTokenValue: string = '';
@@ -672,6 +673,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
                 model: row.model || '',
                 contextWindow: row.contextWindow || 8192,
                 scanConcurrency: row.scanConcurrency || 2,
+                batchTimeoutMinutes: row.batchTimeoutMinutes || 30,
                 severities: Array.isArray(row.severities) && row.severities.length
                     ? row.severities
                     : [...this.defaultLlmSeverities],
@@ -724,6 +726,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
                 model: section.model,
                 contextWindow: section.contextWindow,
                 scanConcurrency: section.scanConcurrency,
+                batchTimeoutMinutes: section.batchTimeoutMinutes,
                 severities: section.severities,
                 reasoningEffort: section.reasoningEffort,
                 disableThinking: section.disableThinking
@@ -737,6 +740,54 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
             error: () => {
                 this.toastStatus = "danger";
                 this.toastMessage = "Failed to update LLM configuration";
+                this.toggleToast();
+            }
+        });
+    }
+
+    llmConnectivityTesting: Record<string, boolean> = {};
+
+    testLlmConnectivity(section: {
+        source: string;
+        apiUrl: string;
+        apiKey: string;
+        model: string;
+        contextWindow: number;
+        scanConcurrency: number;
+        batchTimeoutMinutes: number;
+        severities: string[];
+        reasoningEffort: string;
+        disableThinking: boolean;
+        enabled: boolean;
+    }) {
+        this.llmConnectivityTesting[section.source] = true;
+        this.settingsService.testLlmConnectivity({
+            source: section.source,
+            enabled: section.enabled,
+            apiUrl: section.apiUrl,
+            apiKey: section.apiKey,
+            model: section.model,
+            contextWindow: section.contextWindow,
+            scanConcurrency: section.scanConcurrency,
+            batchTimeoutMinutes: section.batchTimeoutMinutes,
+            severities: section.severities,
+            reasoningEffort: section.reasoningEffort,
+            disableThinking: section.disableThinking
+        }).subscribe({
+            next: (result) => {
+                this.llmConnectivityTesting[section.source] = false;
+                this.toastStatus = result?.ok ? "success" : "danger";
+                const timing = result?.elapsedMs != null ? ` (${result.elapsedMs} ms)` : "";
+                this.toastMessage = (result?.message || (result?.ok ? "LLM connection successful" : "LLM connection failed")) + timing;
+                this.toggleToast();
+            },
+            error: (error) => {
+                this.llmConnectivityTesting[section.source] = false;
+                const body = error?.error;
+                const message = body?.message || error?.message || "LLM connection failed";
+                const timing = body?.elapsedMs != null ? ` (${body.elapsedMs} ms)` : "";
+                this.toastStatus = "danger";
+                this.toastMessage = message + timing;
                 this.toggleToast();
             }
         });

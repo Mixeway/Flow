@@ -31,6 +31,8 @@ public class LlmApiClient {
 
     private static final int DEFAULT_MAX_TOKENS = 16000;
     private static final int TIMEOUT_SECONDS = 240;
+    private static final int CONNECTIVITY_TIMEOUT_SECONDS = 30;
+    private static final int CONNECTIVITY_MAX_TOKENS = 64;
     private static final Duration RETRY_WINDOW = Duration.ofMinutes(5);
     private static final Duration NON_200_RETRY_INTERVAL = Duration.ofSeconds(5);
     private static final AtomicLong CALL_SEQ = new AtomicLong();
@@ -139,12 +141,111 @@ public class LlmApiClient {
         return configured < 1 ? 2 : configured;
     }
 
+    /** Minutes allowed for one severity verification batch before remaining items are cancelled. */
+    public int batchTimeoutMinutes(Finding.Source source) {
+        Settings settings = findSettingsService.get();
+        if (settings == null || source == null) {
+            return 30;
+        }
+        int configured = settings.sourceLlmBatchTimeoutMinutes(source);
+        return configured < 1 ? 30 : configured;
+    }
+
     public Set<Finding.Severity> analysisSeverities(Finding.Source source) {
         Settings settings = findSettingsService.get();
         if (settings == null || source == null) {
             return EnumSet.of(Finding.Severity.CRITICAL, Finding.Severity.HIGH);
         }
         return settings.sourceLlmSeverities(source);
+    }
+
+    /**
+     * Lightweight OpenAI-compatible chat call used by admin settings to verify URL/key/model.
+     * No retries — failures are returned immediately with a logged error detail.
+     */
+    public ConnectivityCheckResult checkConnectivity(String url, String apiKey, String model) {
+        if (url == null || url.isBlank()) {
+            return ConnectivityCheckResult.failure("API URL is required", null, 0);
+        }
+        if (model == null || model.isBlank()) {
+            return ConnectivityCheckResult.failure("Model name is required", null, 0);
+        }
+
+        String endpoint = url.replaceAll("/+$", "");
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("model", model.trim());
+        requestBody.put("messages", List.of(Map.of("role", "user", "content", "ping")));
+        requestBody.put("temperature", 0.0);
+        requestBody.put("max_tokens", CONNECTIVITY_MAX_TOKENS);
+
+        long startedAt = System.currentTimeMillis();
+        try {
+            String responseJson = llmWebClient.post()
+                    .uri(endpoint)
+                    .headers(headers -> {
+                        if (apiKey != null && !apiKey.isBlank()) {
+                            headers.setBearerAuth(apiKey.trim());
+                        }
+                    })
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(requestBody)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .timeout(Duration.ofSeconds(CONNECTIVITY_TIMEOUT_SECONDS))
+                    .block();
+            long elapsedMs = System.currentTimeMillis() - startedAt;
+
+            if (responseJson == null || responseJson.isBlank()) {
+                String message = "LLM returned HTTP 200 with empty body";
+                log.error("[LlmApiClient] Connectivity check failed for {} model={}: {}", endpoint, model, message);
+                return ConnectivityCheckResult.failure(message, 200, elapsedMs);
+            }
+
+            JsonNode root = objectMapper.readTree(responseJson);
+            JsonNode choices = root.path("choices");
+            if (!choices.isArray() || choices.isEmpty()) {
+                String message = "LLM response missing choices";
+                log.error("[LlmApiClient] Connectivity check failed for {} model={}: {} body={}",
+                        endpoint, model, message, truncateForLog(responseJson));
+                return ConnectivityCheckResult.failure(message, 200, elapsedMs);
+            }
+
+            log.info("[LlmApiClient] Connectivity check OK for {} model={} elapsedMs={}", endpoint, model, elapsedMs);
+            return ConnectivityCheckResult.success(elapsedMs);
+        } catch (WebClientResponseException e) {
+            long elapsedMs = System.currentTimeMillis() - startedAt;
+            String body = e.getResponseBodyAsString();
+            String message = "HTTP " + e.getStatusCode().value()
+                    + (body == null || body.isBlank() ? "" : ": " + truncateForLog(body));
+            log.error("[LlmApiClient] Connectivity check failed for {} model={} elapsedMs={}: {}",
+                    endpoint, model, elapsedMs, message);
+            return ConnectivityCheckResult.failure(message, e.getStatusCode().value(), elapsedMs);
+        } catch (Exception e) {
+            long elapsedMs = System.currentTimeMillis() - startedAt;
+            String message = e.getClass().getSimpleName() + ": "
+                    + (e.getMessage() == null || e.getMessage().isBlank() ? "request failed" : e.getMessage());
+            log.error("[LlmApiClient] Connectivity check failed for {} model={} elapsedMs={}: {}",
+                    endpoint, model, elapsedMs, message);
+            return ConnectivityCheckResult.failure(message, null, elapsedMs);
+        }
+    }
+
+    private static String truncateForLog(String value) {
+        if (value == null) {
+            return "";
+        }
+        String compact = value.replaceAll("\\s+", " ").trim();
+        return compact.length() <= 500 ? compact : compact.substring(0, 500) + "...";
+    }
+
+    public record ConnectivityCheckResult(boolean ok, String message, Integer httpStatus, long elapsedMs) {
+        static ConnectivityCheckResult success(long elapsedMs) {
+            return new ConnectivityCheckResult(true, "LLM connection successful", 200, elapsedMs);
+        }
+
+        static ConnectivityCheckResult failure(String message, Integer httpStatus, long elapsedMs) {
+            return new ConnectivityCheckResult(false, message, httpStatus, elapsedMs);
+        }
     }
 
     private LlmResponse doPost(String url, LlmCredentials credentials,
@@ -197,6 +298,7 @@ public class LlmApiClient {
                 if (responseJson == null) {
                     log.warn("[LlmApiClient] req#{} attempt={} elapsedMs={} HTTP 200 with null body",
                             callId, attempt, elapsedMs);
+                    LlmConversationRecorder.record(messages, credentials.model, elapsedMs, attempt, "empty", "");
                     if (System.currentTimeMillis() > deadline) {
                         log.warn("[LlmApiClient] Empty response from LLM API after retries.");
                         return LlmResponse.empty();
@@ -227,10 +329,14 @@ public class LlmApiClient {
                     int promptTokens = root.path("usage").path("prompt_tokens").asInt(0);
                     int completionTokens = root.path("usage").path("completion_tokens").asInt(0);
                     boolean canReduce = canReduceReasoning(credentials.reasoningEffort, credentials.disableThinking);
+                    boolean alreadyLogged = false;
                     if (truncatedBeforeAnswer(finishReason(root), rawContent)) {
                         log.warn("[LlmApiClient] req#{} output budget exhausted inside reasoning before any content "
                                         + "(usage={}, reasoning_len={}, reduced_reasoning={}, can_reduce={})",
                                 callId, usageSummary(root), reasoningText.length(), reducedReasoning, canReduce);
+                        LlmConversationRecorder.record(messages, credentials.model, elapsedMs, attempt,
+                                "truncated_before_answer", content.trim());
+                        alreadyLogged = true;
                         if (!reducedReasoning && canReduce) {
                             return doPost(url, credentials, messages, true, requestJsonObject);
                         }
@@ -248,15 +354,24 @@ public class LlmApiClient {
                         log.warn("[LlmApiClient] req#{} JSON requested but content has no JSON object (finish_reason={}, content_len={}); "
                                         + "retrying with reduced reasoning",
                                 callId, finishReason(root), content.length());
+                        LlmConversationRecorder.record(messages, credentials.model, elapsedMs, attempt,
+                                "prose_only", content.trim());
+                        alreadyLogged = true;
                         LlmResponse retried = doPost(url, credentials, messages, true, requestJsonObject);
                         if (!retried.isEmpty()) {
                             return retried;
                         }
                     }
+                    if (!alreadyLogged) {
+                        LlmConversationRecorder.record(messages, credentials.model, elapsedMs, attempt,
+                                "ok", content.trim());
+                    }
                     return new LlmResponse(content.trim(), promptTokens, completionTokens);
                 }
 
                 log.warn("[LlmApiClient] req#{} no choices in LLM response (attempt {})", callId, attempt);
+                LlmConversationRecorder.record(messages, credentials.model, elapsedMs, attempt,
+                        "no_choices", responseJson);
                 if (System.currentTimeMillis() > deadline) {
                     log.warn("[LlmApiClient] No choices in LLM response after retries");
                     return LlmResponse.empty();
@@ -269,6 +384,8 @@ public class LlmApiClient {
                 int status = e.getStatusCode().value();
                 log.warn("[LlmApiClient] req#{} attempt={} elapsedMs={} HTTP {}",
                         callId, attempt, elapsedMs, status);
+                LlmConversationRecorder.record(messages, credentials.model, elapsedMs, attempt,
+                        "http_" + status, e.getResponseBodyAsString());
 
                 if (status == 400 && sendJsonObject && responseFormatRejected(e)) {
                     jsonObjectFormatRejected = true;
@@ -292,6 +409,9 @@ public class LlmApiClient {
                 long elapsedMs = System.currentTimeMillis() - startedAt;
                 log.warn("[LlmApiClient] req#{} attempt={} elapsedMs={} call failed: {}: {}",
                         callId, attempt, elapsedMs, e.getClass().getSimpleName(), e.getMessage());
+                LlmConversationRecorder.record(messages, credentials.model, elapsedMs, attempt,
+                        e.getClass().getSimpleName(),
+                        e.getMessage() == null ? "" : e.getMessage());
                 if (System.currentTimeMillis() > deadline) {
                     return LlmResponse.empty();
                 }

@@ -16,16 +16,18 @@ enum SafetyBasis {
     NUMERIC_COERCION,
     TRUSTED_SOURCE,
     NOT_REACHABLE,
+    /** Template/framework auto-escaping (th:text, c:out, {{ x }}, Razor @, html/template) — not a custom helper. */
+    FRAMEWORK_ESCAPE,
     CUSTOM_CONTROL,
     NONE;
 
     static final String PROMPT_VALUES = "parameterized|literal_or_constant|numeric_coercion|trusted_source|"
-            + "not_reachable|custom_control|none";
+            + "not_reachable|framework_escape|custom_control|none";
 
     /** Safety that does not depend on any custom control on the path. */
     boolean independentOfCustomControls() {
         return this == PARAMETERIZED || this == LITERAL_OR_CONSTANT || this == NUMERIC_COERCION
-                || this == TRUSTED_SOURCE || this == NOT_REACHABLE;
+                || this == TRUSTED_SOURCE || this == NOT_REACHABLE || this == FRAMEWORK_ESCAPE;
     }
 
     /** Empty for blank, unknown, or {@code none}: those carry no claim the gate can rely on. */

@@ -17,6 +17,7 @@ public class LlmSourceConfigDto {
     private String model;
     private Integer contextWindow;
     private Integer scanConcurrency;
+    private Integer batchTimeoutMinutes;
     private List<String> severities;
     private String reasoningEffort;
     private Boolean disableThinking;

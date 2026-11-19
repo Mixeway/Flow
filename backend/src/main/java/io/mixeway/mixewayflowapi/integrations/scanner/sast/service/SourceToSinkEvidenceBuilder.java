@@ -418,15 +418,13 @@ public class SourceToSinkEvidenceBuilder implements SastEvidenceBuilder {
                 || lower.contains("file::open") || lower.contains("file::create")) {
             return "filesystem_path_access";
         }
-        if (family == VulnerabilityFamily.XSS || lower.contains("innerhtml")
-                || lower.contains("document.write") || lower.contains("response.getwriter(")
-                || lower.contains("dangerouslysetinnerhtml") || lower.contains("res.send(")
-                || lower.contains("res.write(") || lower.contains("render_template_string(")
-                || lower.contains("mark_safe(") || lower.contains("html_safe")
-                || lower.contains("content_tag(")
-                || lower.contains("response.write(") || lower.contains("html.raw(")
-                || lower.contains("template.html(") || lower.contains("|raw")
-                || lower.contains("echo ") || lower.contains("writeline(")
+        if (family == VulnerabilityFamily.XSS
+                || XssSinkMarkers.looksLikeXssSink(lower)
+                || lower.contains("response.getwriter(")
+                || lower.contains("res.send(")
+                || lower.contains("res.write(")
+                || lower.contains("render_template_string(")
+                || lower.contains("writeline(")
                 || lower.contains("[innerhtml]")) {
             return "html_or_http_response";
         }

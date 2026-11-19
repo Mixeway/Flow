@@ -40,6 +40,8 @@ import java.util.stream.Collectors;
 @Log4j2
 public class CreateFindingService {
     private static final String AI_FALSE_POSITIVE_COMMENT = "Assessed and suppressed by AI";
+    private static final String AI_REOPENED_COMMENT =
+            "Reopened by AI: a re-assessment no longer considers this a false positive";
 
     private final FindingRepository findingRepository;
     private final GetOrCreateVulnerabilityService getOrCreateVulnerabilityService;
@@ -323,6 +325,9 @@ public class CreateFindingService {
      */
     private void applyAiFalsePositive(Finding finding) {
         if (finding.getAiVerificationGrade() != Finding.AiVerificationGrade.FALSE_POSITIVE) {
+            // A re-assessment may have changed a previous FALSE_POSITIVE to TRUE_POSITIVE/UNCERTAIN.
+            // Undo the suppression this component set earlier, but never a human decision.
+            reverseAiFalsePositiveIfNeeded(finding);
             return;
         }
         if (finding.getStatus() == Finding.Status.REMOVED) {
@@ -338,6 +343,33 @@ public class CreateFindingService {
                 .anyMatch(comment -> AI_FALSE_POSITIVE_COMMENT.equals(comment.getMessage()));
         if (!alreadyCommented) {
             finding.addComment(new Comment(AI_FALSE_POSITIVE_COMMENT, finding));
+        }
+    }
+
+    /**
+     * Reopens a finding that THIS component previously auto-suppressed as a false positive, once the
+     * AI verdict is no longer FALSE_POSITIVE. Only an AI-set FALSE_POSITIVE suppression is reversed:
+     * a suppression with any other reason (ACCEPTED / WONT_FIX) or a FALSE_POSITIVE suppression that
+     * was decided by a human (no AI suppression comment) is left untouched. The AI suppression marker
+     * comment is the only available signal that the suppression was machine-made.
+     */
+    private void reverseAiFalsePositiveIfNeeded(Finding finding) {
+        if (finding.getStatus() != Finding.Status.SUPRESSED) {
+            return;
+        }
+        if (finding.getSuppressedReason() != Finding.SuppressedReason.FALSE_POSITIVE) {
+            return;
+        }
+        boolean aiSuppressed = finding.getComments().stream()
+                .anyMatch(comment -> AI_FALSE_POSITIVE_COMMENT.equals(comment.getMessage()));
+        if (!aiSuppressed) {
+            return;
+        }
+        finding.updateStatus(Finding.Status.EXISTING, null);
+        boolean alreadyNoted = finding.getComments().stream()
+                .anyMatch(comment -> AI_REOPENED_COMMENT.equals(comment.getMessage()));
+        if (!alreadyNoted) {
+            finding.addComment(new Comment(AI_REOPENED_COMMENT, finding));
         }
     }
 
