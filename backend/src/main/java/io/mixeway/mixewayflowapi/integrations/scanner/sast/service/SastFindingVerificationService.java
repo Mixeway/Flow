@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.mixeway.mixewayflowapi.db.entity.Finding;
 import io.mixeway.mixewayflowapi.integrations.llm.service.LlmApiClient;
+import io.mixeway.mixewayflowapi.integrations.llm.service.LlmConversationRecorder;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.BearerScanDataflow;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.BearerScanSecurity;
 import io.mixeway.mixewayflowapi.integrations.scanner.sast.dto.Item;
@@ -328,6 +329,11 @@ public class SastFindingVerificationService {
 
     public void verifyFindings(BearerScanSecurity scanSecurity, BearerScanDataflow scanDataflow, String repoDir,
             Consumer<Item> onItemVerified, SastLlmProgress progress, long repoId) {
+        verifyFindings(scanSecurity, scanDataflow, repoDir, onItemVerified, progress, repoId, null);
+    }
+
+    public void verifyFindings(BearerScanSecurity scanSecurity, BearerScanDataflow scanDataflow, String repoDir,
+            Consumer<Item> onItemVerified, SastLlmProgress progress, long repoId, String repositoryName) {
         if (!llmApiClient.isEnabled()) {
             log.debug("[SastVerification] LLM evaluation is disabled, skipping verification");
             return;
@@ -335,14 +341,15 @@ public class SastFindingVerificationService {
         String consistencyScope = (repoDir == null ? "" : repoDir) + "#" + System.nanoTime();
         try {
             verifyFindingsInScope(scanSecurity, scanDataflow, repoDir, onItemVerified, progress, repoId,
-                    consistencyScope);
+                    consistencyScope, repositoryName);
         } finally {
             sastConsistencyService.clearScope(consistencyScope);
         }
     }
 
     private void verifyFindingsInScope(BearerScanSecurity scanSecurity, BearerScanDataflow scanDataflow, String repoDir,
-            Consumer<Item> onItemVerified, SastLlmProgress progress, long repoId, String consistencyScope) {
+            Consumer<Item> onItemVerified, SastLlmProgress progress, long repoId, String consistencyScope,
+            String repositoryName) {
         applyScanConcurrency();
 
         Set<Finding.Severity> severities = llmApiClient.analysisSeverities(Finding.Source.SAST);
@@ -353,16 +360,16 @@ public class SastFindingVerificationService {
         VerificationSummary summary = new VerificationSummary();
 
         if (severities.contains(Finding.Severity.CRITICAL) && scanSecurity.getCritical() != null && !scanSecurity.getCritical().isEmpty()) {
-            summary.add(verifyItems(scanSecurity.getCritical(), repoDir, scanDataflow, true, onItemVerified, progress, repoId, consistencyScope));
+            summary.add(verifyItems(scanSecurity.getCritical(), repoDir, scanDataflow, true, onItemVerified, progress, repoId, consistencyScope, repositoryName));
         }
         if (severities.contains(Finding.Severity.HIGH) && scanSecurity.getHigh() != null && !scanSecurity.getHigh().isEmpty()) {
-            summary.add(verifyItems(scanSecurity.getHigh(), repoDir, scanDataflow, true, onItemVerified, progress, repoId, consistencyScope));
+            summary.add(verifyItems(scanSecurity.getHigh(), repoDir, scanDataflow, true, onItemVerified, progress, repoId, consistencyScope, repositoryName));
         }
         if (severities.contains(Finding.Severity.MEDIUM) && scanSecurity.getMedium() != null && !scanSecurity.getMedium().isEmpty()) {
-            summary.add(verifyItems(scanSecurity.getMedium(), repoDir, scanDataflow, true, onItemVerified, progress, repoId, consistencyScope));
+            summary.add(verifyItems(scanSecurity.getMedium(), repoDir, scanDataflow, true, onItemVerified, progress, repoId, consistencyScope, repositoryName));
         }
         if (severities.contains(Finding.Severity.LOW) && scanSecurity.getLow() != null && !scanSecurity.getLow().isEmpty()) {
-            summary.add(verifyItems(scanSecurity.getLow(), repoDir, scanDataflow, true, onItemVerified, progress, repoId, consistencyScope));
+            summary.add(verifyItems(scanSecurity.getLow(), repoDir, scanDataflow, true, onItemVerified, progress, repoId, consistencyScope, repositoryName));
         }
 
         log.debug("[SastVerification] Completed LLM evaluation. Total findings: {}, LLM requests: {}, valid verdicts: {}, not verified: {}, cache hits: {}, normalized verdicts: {}, json repairs attempted: {}, json repairs succeeded: {}, duplicate actions skipped: {}, query expansions used: {}, validation overrides: {}, remediation corrections: {}, peer reviews skipped: {}, rejection reasons: {}",
@@ -390,6 +397,12 @@ public class SastFindingVerificationService {
     private VerificationSummary verifyItems(List<Item> items, String repoDir, BearerScanDataflow dataflow,
             boolean useDataflow, Consumer<Item> onItemVerified, SastLlmProgress progress, long repoId,
             String consistencyScope) {
+        return verifyItems(items, repoDir, dataflow, useDataflow, onItemVerified, progress, repoId, consistencyScope, null);
+    }
+
+    private VerificationSummary verifyItems(List<Item> items, String repoDir, BearerScanDataflow dataflow,
+            boolean useDataflow, Consumer<Item> onItemVerified, SastLlmProgress progress, long repoId,
+            String consistencyScope, String repositoryName) {
         ConcurrentVerificationSummary summary = new ConcurrentVerificationSummary();
         if (items == null || items.isEmpty()) return summary.toVerificationSummary();
         summary.totalFindings.set(items.size());
@@ -436,7 +449,7 @@ public class SastFindingVerificationService {
                     return;
                 }
                 try {
-                    VerificationResult result = verifySingleItem(item, repoDir, dataflow, useDataflow, consistencyScope);
+                    VerificationResult result = verifySingleItem(item, repoDir, dataflow, useDataflow, consistencyScope, repositoryName);
                     
                     // Update thread-safe counters
                     summary.llmRequests.addAndGet(result.llmRequests());
@@ -696,8 +709,19 @@ public class SastFindingVerificationService {
     }
 
     private VerificationResult verifySingleItem(Item item, String repoDir, BearerScanDataflow dataflow,
-            boolean useDataflow, String consistencyScope) {
+            boolean useDataflow, String consistencyScope, String repositoryName) {
         String itemRef = formatItemRef(item);
+        LlmConversationRecorder.begin(repositoryName, itemRef, item.getId(), item.getTitle(), item.getFilename(),
+                item.getLineNumber());
+        try {
+            return verifySingleItemLogged(item, repoDir, dataflow, useDataflow, consistencyScope, itemRef);
+        } finally {
+            LlmConversationRecorder.finish(item.getAiVerdict(), item.getAiConfidence());
+        }
+    }
+
+    private VerificationResult verifySingleItemLogged(Item item, String repoDir, BearerScanDataflow dataflow,
+            boolean useDataflow, String consistencyScope, String itemRef) {
         CodeContextExtractor.CodeContext context = useDataflow && dataflow != null
                 ? codeContextExtractor.extractWithDataflow(repoDir, item, dataflow)
                 : codeContextExtractor.extractLocal(repoDir, item);

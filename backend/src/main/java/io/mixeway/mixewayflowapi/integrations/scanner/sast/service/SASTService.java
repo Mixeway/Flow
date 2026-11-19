@@ -230,7 +230,7 @@ public class SASTService {
 
         try {
             sastFindingVerificationService.verifyFindings(bearerScanSecurity, bearerScanDataflow, repoDir, saveCallback,
-                    sastLlmProgress, codeRepo.getId());
+                    sastLlmProgress, codeRepo.getId(), codeRepo.getName());
         } catch (Throwable t) {
             log.error("[BearerScanService] LLM verification failed, persisting verdicts collected so far for [{} / {}]: {}",
                     codeRepo.getRepourl(), codeRepoBranch.getName(), t.getMessage(), t);

@@ -298,6 +298,7 @@ public class LlmApiClient {
                 if (responseJson == null) {
                     log.warn("[LlmApiClient] req#{} attempt={} elapsedMs={} HTTP 200 with null body",
                             callId, attempt, elapsedMs);
+                    LlmConversationRecorder.record(messages, credentials.model, elapsedMs, attempt, "empty", "");
                     if (System.currentTimeMillis() > deadline) {
                         log.warn("[LlmApiClient] Empty response from LLM API after retries.");
                         return LlmResponse.empty();
@@ -328,10 +329,14 @@ public class LlmApiClient {
                     int promptTokens = root.path("usage").path("prompt_tokens").asInt(0);
                     int completionTokens = root.path("usage").path("completion_tokens").asInt(0);
                     boolean canReduce = canReduceReasoning(credentials.reasoningEffort, credentials.disableThinking);
+                    boolean alreadyLogged = false;
                     if (truncatedBeforeAnswer(finishReason(root), rawContent)) {
                         log.warn("[LlmApiClient] req#{} output budget exhausted inside reasoning before any content "
                                         + "(usage={}, reasoning_len={}, reduced_reasoning={}, can_reduce={})",
                                 callId, usageSummary(root), reasoningText.length(), reducedReasoning, canReduce);
+                        LlmConversationRecorder.record(messages, credentials.model, elapsedMs, attempt,
+                                "truncated_before_answer", content.trim());
+                        alreadyLogged = true;
                         if (!reducedReasoning && canReduce) {
                             return doPost(url, credentials, messages, true, requestJsonObject);
                         }
@@ -349,15 +354,24 @@ public class LlmApiClient {
                         log.warn("[LlmApiClient] req#{} JSON requested but content has no JSON object (finish_reason={}, content_len={}); "
                                         + "retrying with reduced reasoning",
                                 callId, finishReason(root), content.length());
+                        LlmConversationRecorder.record(messages, credentials.model, elapsedMs, attempt,
+                                "prose_only", content.trim());
+                        alreadyLogged = true;
                         LlmResponse retried = doPost(url, credentials, messages, true, requestJsonObject);
                         if (!retried.isEmpty()) {
                             return retried;
                         }
                     }
+                    if (!alreadyLogged) {
+                        LlmConversationRecorder.record(messages, credentials.model, elapsedMs, attempt,
+                                "ok", content.trim());
+                    }
                     return new LlmResponse(content.trim(), promptTokens, completionTokens);
                 }
 
                 log.warn("[LlmApiClient] req#{} no choices in LLM response (attempt {})", callId, attempt);
+                LlmConversationRecorder.record(messages, credentials.model, elapsedMs, attempt,
+                        "no_choices", responseJson);
                 if (System.currentTimeMillis() > deadline) {
                     log.warn("[LlmApiClient] No choices in LLM response after retries");
                     return LlmResponse.empty();
@@ -370,6 +384,8 @@ public class LlmApiClient {
                 int status = e.getStatusCode().value();
                 log.warn("[LlmApiClient] req#{} attempt={} elapsedMs={} HTTP {}",
                         callId, attempt, elapsedMs, status);
+                LlmConversationRecorder.record(messages, credentials.model, elapsedMs, attempt,
+                        "http_" + status, e.getResponseBodyAsString());
 
                 if (status == 400 && sendJsonObject && responseFormatRejected(e)) {
                     jsonObjectFormatRejected = true;
@@ -393,6 +409,9 @@ public class LlmApiClient {
                 long elapsedMs = System.currentTimeMillis() - startedAt;
                 log.warn("[LlmApiClient] req#{} attempt={} elapsedMs={} call failed: {}: {}",
                         callId, attempt, elapsedMs, e.getClass().getSimpleName(), e.getMessage());
+                LlmConversationRecorder.record(messages, credentials.model, elapsedMs, attempt,
+                        e.getClass().getSimpleName(),
+                        e.getMessage() == null ? "" : e.getMessage());
                 if (System.currentTimeMillis() > deadline) {
                     return LlmResponse.empty();
                 }
