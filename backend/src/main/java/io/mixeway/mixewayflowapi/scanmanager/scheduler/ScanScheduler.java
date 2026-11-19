@@ -62,8 +62,9 @@ public class ScanScheduler {
         providerRepository.findAll().forEach(syncService::syncProvider);
     }
 
-    @Scheduled(cron = "0 30 1 * * ?") // Every day at 1:30 AM
+    @Scheduled(cron = "0 30 1 * * ?") // Every day at 1:30 AM. GitLab work continues on its own thread and can run for a few hours.
     public void syncAllRepositoryMetadata() {
+        log.info("[Scheduler] Submitting repository metadata sync");
         repositoryMetadataSyncService.syncAllRepositoriesMetadata();
     }
     /**
